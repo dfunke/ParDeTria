@@ -23,15 +23,15 @@
 								<option id="gnu.cpp.compiler.exe.debug.option.debugging.level.2027070290" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.1347371578" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.c++1y" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.50912173" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/usr/include/root"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1882723581" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -lm" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.172561944" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="LINUX"/>
 									<listOptionValue builtIn="false" value="NO_TIMER"/>
-									<listOptionValue builtIn="false" value="SINGLE"/>
 									<listOptionValue builtIn="false" value="ANSI_DECLARATORS"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.870088455" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -39,14 +39,9 @@
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.445342511" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug">
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.exe.debug.option.optimization.level.582257429" name="Optimization Level" superClass="gnu.c.compiler.exe.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.debug.option.debugging.level.1758603043" name="Debug Level" superClass="gnu.c.compiler.exe.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
-								<option id="gnu.c.compiler.option.include.paths.160221569" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/usr/include/root"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-								</option>
+								<option id="gnu.c.compiler.option.include.paths.160221569" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths"/>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1437017402" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="LINUX"/>
-									<listOptionValue builtIn="false" value="SINGLE"/>
 									<listOptionValue builtIn="false" value="ANSI_DECLARATORS"/>
 									<listOptionValue builtIn="false" value="NO_TIMER"/>
 								</option>
@@ -56,7 +51,6 @@
 							<tool command="g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GLDErrorParser" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.259626646" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 								<option id="gnu.cpp.link.option.libs.1659500504" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Core"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Cint"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="MathCore"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Matrix"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Hist"/>
@@ -64,11 +58,14 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="CGAL"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="triangle"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="voronoi"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="delaunay"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="pthread"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.802914912" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="/usr/lib/root"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/lib&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.userobjs.1406386531" name="Other objects" superClass="gnu.cpp.link.option.userobjs"/>
 								<option id="gnu.cpp.link.option.flags.211226374" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-lm" valueType="string"/>
@@ -78,9 +75,7 @@
 								</inputType>
 							</tool>
 							<tool command="as" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.tool.gnu.assembler.exe.debug.206431578" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.debug">
-								<option id="gnu.both.asm.option.include.paths.1634230000" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.1634230000" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1338112183" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
@@ -114,15 +109,15 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1194580034" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.886359713" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.c++1y" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1317922391" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/usr/include/root"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1119755753" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -lm" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.2067442039" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="LINUX"/>
 									<listOptionValue builtIn="false" value="NO_TIMER"/>
-									<listOptionValue builtIn="false" value="SINGLE"/>
 									<listOptionValue builtIn="false" value="ANSI_DECLARATORS"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.198420547" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -130,15 +125,10 @@
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.593874867" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.exe.release.option.optimization.level.1089428376" name="Optimization Level" superClass="gnu.c.compiler.exe.release.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.exe.release.option.debugging.level.1635092665" name="Debug Level" superClass="gnu.c.compiler.exe.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
-								<option id="gnu.c.compiler.option.include.paths.1691656122" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/usr/include/root"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-								</option>
+								<option id="gnu.c.compiler.option.include.paths.1691656122" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths"/>
 								<option id="gnu.c.compiler.option.dialect.std.191777061" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" value="gnu.c.compiler.dialect.c11" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1106246092" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="LINUX"/>
-									<listOptionValue builtIn="false" value="SINGLE"/>
 									<listOptionValue builtIn="false" value="ANSI_DECLARATORS"/>
 									<listOptionValue builtIn="false" value="NO_TIMER"/>
 								</option>
@@ -148,7 +138,6 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1389272750" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.libs.1285312128" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Core"/>
-									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Cint"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="MathCore"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Matrix"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="Hist"/>
@@ -156,11 +145,14 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="CGAL"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="triangle"/>
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="voronoi"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="delaunay"/>
+									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="pthread"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1241123977" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="/usr/lib/root"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/lib&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.userobjs.758570227" name="Other objects" superClass="gnu.cpp.link.option.userobjs"/>
 								<option id="gnu.cpp.link.option.flags.947956020" name="Linker flags" superClass="gnu.cpp.link.option.flags" value="-lm" valueType="string"/>
@@ -173,7 +165,6 @@
 								<option id="gnu.both.asm.option.include.paths.1653003595" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/include/root"/>
 									<listOptionValue builtIn="false" value="/home/dfunke/workspace/Delaunay/lib/triangle"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.893919508" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
@@ -214,4 +205,5 @@
 			<resource resourceType="PROJECT" workspacePath="/Delaunay"/>
 		</configuration>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>

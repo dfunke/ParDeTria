@@ -73,7 +73,7 @@ CC = g++
 #
 #   CSWITCHES = -O -DNO_TIMER -DLINUX -I/usr/X11R6/include -L/usr/X11R6/lib
 
-CSWITCHES = -g -O3 -march=native -DANSI_DECLARATORS -DLINUX -DSINGLE -DNO_TIMER -I/usr/X11R6/include -L/usr/X11R6/lib -fPIC
+CSWITCHES = -g -O3 -march=native -DANSI_DECLARATORS -DLINUX -DNO_TIMER -I/usr/X11R6/include -L/usr/X11R6/lib -fPIC
 
 # TRILIBDEFS is a list of definitions used to compile an object code version
 #   of Triangle (triangle.o) to be called by another program.  The file

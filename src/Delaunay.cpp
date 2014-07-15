@@ -8,21 +8,31 @@
 #include <functional>
 #include <limits>
 #include <sstream>
+#include <thread>
+#include <future>
 
 //root
-#include <root/TGraph2D.h>
-#include <root/TGraphDelaunay.h>
+#include <TGraph2D.h>
+#include <TGraphDelaunay.h>
 
 //CGAL
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 
 //Triangle
-#define REAL float
+#ifdef SINGLE
+	#define REAL float
+#else /* not SINGLE */
+	#define REAL double
+#endif /* not SINGLE */
+
 #include <triangle.h>
 
 //Voronoi
 #include <VoronoiDiagramGenerator.h>
+
+//Delaunay
+#include <delaunay.h>
 
 //#############################################################################
 
@@ -204,6 +214,27 @@ tDuration delaunayFortune(const Points & points) {
 
 }
 
+tDuration delaunayDAC(const Points & points) {
+
+	del_point2d_t * dPoints = new del_point2d_t[points.size()];
+
+
+	for(uint i = 0; i < points.size(); ++i){
+		dPoints[i].x = points[i].x;
+		dPoints[i].y = points[i].y;
+	}
+
+	auto start = Clock::now();
+	auto res = delaunay2d_from(dPoints, points.size(), NULL);
+	auto end = Clock::now();
+
+	delaunay2d_release(res);
+	delete[] dPoints;
+
+	return tDuration(end - start);
+
+}
+
 enum class Algorithms : char {
 	FORTUNE = 'F',
 	INSERTION = 'i',
@@ -335,7 +366,7 @@ int main(int argc, char* argv[]) {
 	tTests tests;
 	std::string header = "n time time_std\n";
 
-	/*tTest root;
+	tTest root;
 	root.name = "ROOT";
 	root.fn = std::bind(delaunayRoot, std::placeholders::_1);
 	root.file.open("data/root.csv", std::ofstream::trunc);
@@ -368,7 +399,7 @@ int main(int argc, char* argv[]) {
 	triangleFortune.fn = std::bind(delaunayTriangle, std::placeholders::_1, Algorithms::FORTUNE, false);
 	triangleFortune.file.open("data/triangleFortune.csv", std::ofstream::trunc);
 	triangleFortune.file << header;
-	tests.push_back(&triangleFortune);*/
+	tests.push_back(&triangleFortune);
 
 	tTest fortune;
 	fortune.name = "Fortune";
@@ -377,7 +408,14 @@ int main(int argc, char* argv[]) {
 	fortune.file << header;
 	tests.push_back(&fortune);
 
-	uint N = 100;
+	tTest delaunay;
+	delaunay.name = "DAC";
+	delaunay.fn = std::bind(delaunayDAC, std::placeholders::_1);
+	delaunay.file.open("data/dac.csv", std::ofstream::trunc);
+	delaunay.file << header;
+	tests.push_back(&delaunay);
+
+	uint N = 1e6;
 	for(uint n = 10; n < N; n *= 2){
 
 		runTest(n, bounds, dice, 10, tests);

@@ -1,0 +1,11 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2028879770/ROOTSYS/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2028879770/ROOTSYS/operation=replace
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2028879770/ROOTSYS/value=/home/dfunke/devel/root/debug
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2028879770/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2028879770/appendContributed=true
+environment/project/cdt.managedbuild.config.gnu.exe.release.1606436063/ROOTSYS/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.exe.release.1606436063/ROOTSYS/operation=replace
+environment/project/cdt.managedbuild.config.gnu.exe.release.1606436063/ROOTSYS/value=/home/dfunke/devel/root/release
+environment/project/cdt.managedbuild.config.gnu.exe.release.1606436063/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.release.1606436063/appendContributed=true

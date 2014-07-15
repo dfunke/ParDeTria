@@ -55,14 +55,24 @@ ax.legend(loc=2)
 
 closeFig("runtime")
 
-#runtime figure
+#runtime per point figure
+fig, ax = getFig("Runtime per Point over Number of Points", "n", "t / n [ns]")
+
+for tag in tags: #reverse tags, as speedup is opposite to runtime
+    ax.plot(data[tag]['n'], data[tag]['time'] / data[tag]['n'], label=tag)
+
+ax.legend(loc=2)
+
+closeFig("runtime_per_point")
+
+#speedup figure
 fig, ax = getFig("Speedup over ROOT with Number of Points", "n", "t [ns]")
 
 baseline = data['root']['time']
 for tag in reversed(tags): #reverse tags, as speedup is opposite to runtime
     ax.plot(data[tag]['n'], baseline / data[tag]['time'], label=tag)
 
-ax.legend(loc=2)
+ax.legend(loc=4)
 
 closeFig("speedup")
 
