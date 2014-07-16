@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindowClass</class>
+ <widget class="QMainWindow" name="MainWindowClass">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="DelForm" name="widget" native="true"/>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>600</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="action_New"/>
+    <addaction name="separator"/>
+    <addaction name="actionE_xit"/>
+   </widget>
+   <widget class="QMenu" name="menuAuto">
+    <property name="title">
+     <string>Auto</string>
+    </property>
+    <addaction name="actionRandom"/>
+    <addaction name="actionGrid"/>
+    <addaction name="actionCircular"/>
+    <addaction name="action1_Vertical_1_Horizontal"/>
+    <addaction name="action1_Vertical"/>
+    <addaction name="action1_Horizontal"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menuAuto"/>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="action_New">
+   <property name="text">
+    <string>&amp;New</string>
+   </property>
+  </action>
+  <action name="actionE_xit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="actionRandom">
+   <property name="text">
+    <string>Random</string>
+   </property>
+  </action>
+  <action name="actionGrid">
+   <property name="text">
+    <string>Grid</string>
+   </property>
+  </action>
+  <action name="actionCircular">
+   <property name="text">
+    <string>Circular</string>
+   </property>
+  </action>
+  <action name="action1_Vertical_1_Horizontal">
+   <property name="text">
+    <string>1 Vertical, 1 Horizontal</string>
+   </property>
+  </action>
+  <action name="action1_Vertical">
+   <property name="text">
+    <string>1 Vertical</string>
+   </property>
+  </action>
+  <action name="action1_Horizontal">
+   <property name="text">
+    <string>1 Horizontal</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>DelForm</class>
+   <extends>QWidget</extends>
+   <header>delform.h</header>
+   <container>1</container>
+   <slots>
+    <slot>newGrid()</slot>
+    <slot>newRandom()</slot>
+    <slot>newCircle()</slot>
+    <slot>newOneVertOneHoriz()</slot>
+    <slot>newOneVert()</slot>
+    <slot>newOneHoriz()</slot>
+    <slot>newTwoVert()</slot>
+    <slot>newTwoHoriz()</slot>
+    <slot>newDoc()</slot>
+   </slots>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>actionRandom</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newRandom()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionGrid</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newGrid()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCircular</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newCircle()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action1_Vertical_1_Horizontal</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newOneVertOneHoriz()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action1_Vertical</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newOneVert()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action1_Horizontal</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newOneHoriz()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action_New</sender>
+   <signal>triggered()</signal>
+   <receiver>widget</receiver>
+   <slot>newDoc()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>299</x>
+     <y>207</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
