@@ -86,9 +86,10 @@ struct tMeas{
 
 typedef std::vector<tMeas> tMeass;
 
-tMeas stats(const std::vector<tDuration> & meas){
+constexpr tDuration TIMEOUT() {return std::chrono::seconds(10);}
+constexpr tDuration FAILURE() {return tDuration(-1);}
 
-	assert(meas.size() > 0);
+tMeas stats(const std::vector<tDuration> & meas){
 
 	size_t N = 0;
 	tMeas result;
@@ -102,7 +103,8 @@ tMeas stats(const std::vector<tDuration> & meas){
 		result.std += (x.count() - Mprev) * (x.count() - result.avg);
 	}
 
-	result.std = std::sqrt(result.std / (N-1));
+	if(N > 1)
+		result.std = std::sqrt(result.std / (N-1));
 
 	return result;
 
@@ -127,13 +129,52 @@ Points genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> 
 
 }
 
+void timeCall(std::function<void()> & func, std::promise<tDuration> && duration){
+
+	auto start = Clock::now();
+
+	func();
+
+	auto stop = Clock::now();
+
+	duration.set_value(tDuration(stop - start));
+
+}
+
+tDuration getTimingThreaded(std::function<void()> & func, const tDuration & timeout){
+
+	std::promise<tDuration> duration;
+	auto f = duration.get_future();
+
+	std::thread t(&timeCall, std::ref(func), std::move(duration));
+	pthread_t id = t.native_handle();
+	t.detach();
+
+	std::future_status res = f.wait_for(timeout);
+
+	while(res == std::future_status::deferred)
+		res = f.wait_for(timeout);
+
+	if(res == std::future_status::ready)
+		return f.get();
+	else { //std::future_status::timeout
+		pthread_cancel(id);
+
+		std::cerr << "ERROR: Timeout reached for function " << func.target_type().name() << std::endl;
+		return FAILURE();
+	}
+}
+
 tDurations getTiming(tTestFunction & function, const Points & input, const uint reps = 10){
 
 	tDurations meas;
 	meas.reserve(reps);
 
 
-	function(input); //warm-up
+	tDuration t = function(input); //warm-up
+	if(t == FAILURE())
+		return meas;
+
 	for(uint i = 0; i < reps; ++i)
 		meas.push_back(function(input));
 
@@ -149,11 +190,9 @@ tDuration delaunayRoot(const Points & points){
 
 	TGraphDelaunay delaunay(&graph);
 
-	auto start = Clock::now();
-	delaunay.FindAllTriangles();
-	auto end = Clock::now();
+	std::function<void()> f = std::bind(&TGraphDelaunay::FindAllTriangles, std::ref(delaunay));
 
-	return tDuration(end - start);
+	return getTimingThreaded(f, TIMEOUT());
 }
 
 tDuration delaunayCgal(const Points & points){
@@ -169,11 +208,10 @@ tDuration delaunayCgal(const Points & points){
 
 	Triangulation t;
 
-	auto start = Clock::now();
-	t.insert(cPoints.begin(), cPoints.end());
-	auto end = Clock::now();
-
-	return tDuration(end - start);
+	std::function<void()> f = std::bind(
+			(std::ptrdiff_t(Triangulation::*)(std::vector<Triangulation::Point>::iterator,std::vector<Triangulation::Point>::iterator, void *)) &Triangulation::insert,
+			std::ref(t), cPoints.begin(), cPoints.end(), nullptr);
+	return getTimingThreaded(f, TIMEOUT());
 
 
 }
@@ -203,14 +241,13 @@ tDuration delaunayFortune(const Points & points) {
 
 	VDG::VoronoiDiagramGenerator vdg;
 
-	auto start = Clock::now();
-	vdg.generateVoronoi(xValues,yValues,points.size(), minX, maxX,minY,maxY);
-	auto end = Clock::now();
+	std::function<void()> f = std::bind(&VDG::VoronoiDiagramGenerator::generateVoronoi, std::ref(vdg), xValues,yValues,points.size(), minX, maxX,minY,maxY, 0);
+	auto t = getTimingThreaded(f, TIMEOUT());
 
 	delete[] xValues;
 	delete[] yValues;
 
-	return tDuration(end - start);
+	return t;
 
 }
 
@@ -224,14 +261,16 @@ tDuration delaunayDAC(const Points & points) {
 		dPoints[i].y = points[i].y;
 	}
 
-	auto start = Clock::now();
-	auto res = delaunay2d_from(dPoints, points.size(), NULL);
-	auto end = Clock::now();
+	std::function<void()> f = [&] {
+		auto res = delaunay2d_from(dPoints, points.size(), NULL);
+		delaunay2d_release(res);
+	};
 
-	delaunay2d_release(res);
+	auto t = getTimingThreaded(f, TIMEOUT());
+
 	delete[] dPoints;
 
-	return tDuration(end - start);
+	return t;
 
 }
 
@@ -311,14 +350,14 @@ tDuration delaunayTriangle(const Points & points, Algorithms alg = Algorithms::D
 
 	std::stringstream options;
 	options << "pczAevn" << ( verbose ? "V" : "Q") << (char) alg;
+	std::string sOptions = options.str();
 
-	auto start = Clock::now();
-	triangulate(const_cast<char*>(options.str().c_str()), &in, &out, &vorout);
-	auto end = Clock::now();
+	std::function<void()> f = std::bind(&triangulate, const_cast<char*>(sOptions.c_str()), &in, &out, &vorout);
+	auto t = getTimingThreaded(f, TIMEOUT());
 
 	freeStruct(in); freeStruct(out); freeStruct(vorout);
 
-	return tDuration(end - start);
+	return t;
 
 }
 
