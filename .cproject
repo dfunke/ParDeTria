@@ -23,9 +23,9 @@
 								<option id="gnu.cpp.compiler.exe.debug.option.debugging.level.2027070290" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.1347371578" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.c++1y" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.50912173" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/triangle}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/delaunay}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1882723581" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -lm" valueType="string"/>
@@ -62,9 +62,9 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="pthread"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.802914912" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/triangle}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/delaunay}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/lib&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.userobjs.1406386531" name="Other objects" superClass="gnu.cpp.link.option.userobjs"/>
@@ -109,9 +109,9 @@
 								<option id="gnu.cpp.compiler.exe.release.option.debugging.level.1194580034" name="Debug Level" superClass="gnu.cpp.compiler.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.886359713" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.c++1y" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1317922391" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/triangle}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/delaunay}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1119755753" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -lm" valueType="string"/>
@@ -149,9 +149,9 @@
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="pthread"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1241123977" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/triangle}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/fortune}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/lib/delaunay}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/triangle}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/fortune}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/delaunay}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/lib&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.userobjs.758570227" name="Other objects" superClass="gnu.cpp.link.option.userobjs"/>
@@ -164,14 +164,14 @@
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.472030161" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
 								<option id="gnu.both.asm.option.include.paths.1653003595" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/include/root"/>
-									<listOptionValue builtIn="false" value="/home/dfunke/workspace/Delaunay/lib/triangle"/>
+									<listOptionValue builtIn="false" value="/home/dfunke/workspace/Delaunay/src/lib/triangle"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.893919508" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+						<entry excluding="lib/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="src"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -180,21 +180,6 @@
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="Delaunay.cdt.managedbuild.target.gnu.exe.1364586304" name="Executable" projectType="cdt.managedbuild.target.gnu.exe"/>
-	</storageModule>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1606436063;cdt.managedbuild.config.gnu.exe.release.1606436063.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.593874867;cdt.managedbuild.tool.gnu.c.compiler.input.634141882">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.2028879770;cdt.managedbuild.config.gnu.exe.debug.2028879770.;cdt.managedbuild.tool.gnu.c.compiler.exe.debug.445342511;cdt.managedbuild.tool.gnu.c.compiler.input.452404818">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.2028879770;cdt.managedbuild.config.gnu.exe.debug.2028879770.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug.131564899;cdt.managedbuild.tool.gnu.cpp.compiler.input.870088455">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1606436063;cdt.managedbuild.config.gnu.exe.release.1606436063.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1065227371;cdt.managedbuild.tool.gnu.cpp.compiler.input.198420547">
-			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
@@ -206,4 +191,19 @@
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.2028879770;cdt.managedbuild.config.gnu.exe.debug.2028879770.;cdt.managedbuild.tool.gnu.c.compiler.exe.debug.445342511;cdt.managedbuild.tool.gnu.c.compiler.input.452404818">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1606436063;cdt.managedbuild.config.gnu.exe.release.1606436063.;cdt.managedbuild.tool.gnu.c.compiler.exe.release.593874867;cdt.managedbuild.tool.gnu.c.compiler.input.634141882">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.debug.2028879770;cdt.managedbuild.config.gnu.exe.debug.2028879770.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.debug.131564899;cdt.managedbuild.tool.gnu.cpp.compiler.input.870088455">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.exe.release.1606436063;cdt.managedbuild.config.gnu.exe.release.1606436063.;cdt.managedbuild.tool.gnu.cpp.compiler.exe.release.1065227371;cdt.managedbuild.tool.gnu.cpp.compiler.input.198420547">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+	</storageModule>
 </cproject>
