@@ -418,6 +418,8 @@ int main(int argc, char* argv[]) {
 	delaunay.file << header;
 	tests.push_back(&delaunay);
 
+	std::cout << "Running with " << tests.size() << std::endl;
+
 	uint N = 1e6;
 	for(uint n = 10; n < N; n *= 2){
 

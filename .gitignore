@@ -3,3 +3,4 @@ Release
 
 *.o
 *.a
+*.pyc
