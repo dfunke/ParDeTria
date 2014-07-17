@@ -32,7 +32,9 @@
 #include <VoronoiDiagramGenerator.h>
 
 //Delaunay
-#include <delaunay.h>
+extern "C" {
+	#include <delaunay.h>
+}
 
 //#############################################################################
 
