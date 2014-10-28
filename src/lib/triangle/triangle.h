@@ -1,3 +1,5 @@
+#ifndef TRIANGLE_H
+#define TRIANGLE_H
 /*****************************************************************************/
 /*                                                                           */
 /*  (triangle.h)                                                             */
@@ -287,3 +289,5 @@ void trifree(void *memptr);
 void triangulate();
 void trifree();
 #endif /* not ANSI_DECLARATORS */
+
+#endif /* not TRIANGLE_H */

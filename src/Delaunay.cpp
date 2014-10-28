@@ -13,7 +13,7 @@
 
 //root
 #include <TGraph2D.h>
-#include <TGraphDelaunay.h>
+#include <TGraphDelaunay2D.h>
 
 //CGAL
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -36,43 +36,14 @@ extern "C" {
 	#include <delaunay.h>
 }
 
-//#############################################################################
-
-typedef float tCoordinate;
-
-struct Point {
-	tCoordinate x,y,z;
-};
-
-typedef std::vector<Point> Points;
-
-struct Box {
-	tCoordinate x,y,z;
-	tCoordinate dx,dy,dz;
-};
+//own
+#include "Timings.h"
+#include "Random.h"
+#include "Geometry.h"
 
 //#############################################################################
 
-const uint SEED = 1986;
-std::random_device rd;
-std::mt19937 generator(rd());
-
-/* Prototype
- * std::uniform_int_distribution<uint> distribution(0,100);
- * auto dice = std::bind ( distribution, generator );
- */
-
-//#############################################################################
-
-typedef std::chrono::high_resolution_clock Clock;
-
-typedef std::chrono::nanoseconds tDuration;
-
-typedef std::vector<tDuration> tDurations;
-
-//#############################################################################
-
-typedef std::function<tDuration(const Points &)> tTestFunction;
+typedef std::function<tDuration(const Points3D &)> tTestFunction;
 
 struct tTest {
 	tTestFunction fn;
@@ -82,40 +53,11 @@ struct tTest {
 
 typedef std::vector<tTest*> tTests;
 
-struct tMeas{
-	double avg, std;
-};
-
-typedef std::vector<tMeas> tMeass;
-
-tMeas stats(const std::vector<tDuration> & meas){
-
-	//assert(meas.size() > 0);
-
-	size_t N = 0;
-	tMeas result;
-	result.avg = 0, result.std = 0;
-	double Mprev = 0;
-
-	for (const auto & x : meas) {
-		++N;
-		Mprev = result.avg;
-		result.avg += (x.count() - Mprev) / N;
-		result.std += (x.count() - Mprev) * (x.count() - result.avg);
-	}
-
-	if(N > 1)
-		result.std = std::sqrt(result.std / (N-1));
-
-	return result;
-
-}
-
 //#############################################################################
 
-Points genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> & dice){
+Points3D genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> & dice){
 
-	Points points(n);
+	Points3D points(n);
 
 
 	for(uint i = 0; i < n; ++i){
@@ -130,7 +72,7 @@ Points genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> 
 
 }
 
-tDurations getTiming(tTestFunction & function, const Points & input, const uint reps = 10){
+tDurations getTiming(tTestFunction & function, const Points3D & input, const uint reps = 10){
 
 	tDurations meas;
 	meas.reserve(reps);
@@ -143,14 +85,14 @@ tDurations getTiming(tTestFunction & function, const Points & input, const uint 
 	return meas;
 }
 
-tDuration delaunayRoot(const Points & points){
+tDuration delaunayRoot(const Points3D & points){
 
 	TGraph2D graph(points.size());
 
 	for(uint i = 0; i < points.size(); ++i)
 		graph.SetPoint(i, points[i].x, points[i].y, points[i].z);
 
-	TGraphDelaunay delaunay(&graph);
+	TGraphDelaunay2D delaunay(&graph);
 
 	auto start = Clock::now();
 	delaunay.FindAllTriangles();
@@ -159,7 +101,7 @@ tDuration delaunayRoot(const Points & points){
 	return tDuration(end - start);
 }
 
-tDuration delaunayCgal(const Points & points){
+tDuration delaunayCgal(const Points3D & points){
 
 	typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 	typedef CGAL::Delaunay_triangulation_2<K> Triangulation;
@@ -181,7 +123,7 @@ tDuration delaunayCgal(const Points & points){
 
 }
 
-tDuration delaunayFortune(const Points & points) {
+tDuration delaunayFortune(const Points3D & points) {
 
 
 	float * xValues = new float[points.size()];
@@ -217,7 +159,7 @@ tDuration delaunayFortune(const Points & points) {
 
 }
 
-tDuration delaunayDAC(const Points & points) {
+tDuration delaunayDAC(const Points3D & points) {
 
 	del_point2d_t * dPoints = new del_point2d_t[points.size()];
 
@@ -244,7 +186,7 @@ enum class Algorithms : char {
 	DAC = '\0',
 };
 
-tDuration delaunayTriangle(const Points & points, Algorithms alg = Algorithms::DAC, bool verbose = false) {
+tDuration delaunayTriangle(const Points3D & points, Algorithms alg = Algorithms::DAC, bool verbose = false) {
 
 	auto initStruct = [] (triangulateio & s) {
 							  s.pointlist = nullptr;                                               /* In / out */
@@ -337,7 +279,7 @@ void runTest(const uint n, const Box & bounds, std::function<tCoordinate()> & di
 	tDurations tmp;
 
 	for(uint _ = 0; _ < reps; ++_){
-		Points points = genPoints(n, bounds, dice);
+		Points3D points = genPoints(n, bounds, dice);
 
 		for(uint i = 0; i < tests.size(); ++i){
 			tmp = getTiming(tests[i]->fn, points, reps);

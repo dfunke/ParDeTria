@@ -34,7 +34,10 @@ def closeFig(file):
     plt.close()
     
 dir = 'data'
-files = [ f for f in os.listdir(dir) if '.csv' in f ]
+files = [ f for f in os.listdir(dir) 
+        if '.csv' in f 
+        and not 'timings_' in f 
+        and not 'precision_' in f ]
 
 print("processing files: ", files)
 
