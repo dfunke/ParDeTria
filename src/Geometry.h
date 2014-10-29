@@ -8,6 +8,7 @@
 #pragma once
 
 #include <vector>
+#include <iostream>
 
 typedef float tCoordinate;
 
@@ -21,3 +22,8 @@ struct Box {
 	tCoordinate x,y,z;
 	tCoordinate dx,dy,dz;
 };
+
+std::ostream & operator<<(std::ostream & o, const Point3D & p){
+	o << "[" << p.x << ", " << p.y << ", " << p.z << "]";
+	return o;
+}
