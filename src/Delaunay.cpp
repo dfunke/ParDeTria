@@ -20,11 +20,13 @@
 #include <CGAL/Delaunay_triangulation_2.h>
 
 //Triangle
-#ifdef SINGLE
-	#define REAL float
-#else /* not SINGLE */
-	#define REAL double
-#endif /* not SINGLE */
+#ifndef REAL
+	#ifdef SINGLE
+		#define REAL float
+	#else /* not SINGLE */
+		#define REAL double
+	#endif /* not SINGLE */
+#endif /* ndef REAL */
 
 #include <triangle.h>
 
