@@ -4,3 +4,4 @@ Release
 *.o
 *.a
 *.pyc
+*.png
