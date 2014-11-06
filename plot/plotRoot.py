@@ -1,6 +1,11 @@
 import numpy as np
+
+from scipy.stats import norm
+
 import matplotlib.pylab as plt
 import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
+
 from matplotlib.ticker import FormatStrFormatter
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -11,10 +16,11 @@ def ensure_dir(f):
     if not os.path.exists(d):
         os.makedirs(d)
         
-def getFig(title, xlabel, ylabel, zlabel = None):
+def getFig(title, xlabel, ylabel, zlabel = None, grid = 'both'):
     if not zlabel:
         fig, ax = plt.subplots()
-        ax.grid(b=True, which='both')
+        if not grid is 'none':
+            ax.grid(b=True, which='both', axis=grid)
     else:
         fig, ax = plt.subplots(subplot_kw={'projection' :'3d'})
         ax.set_zlabel(zlabel)
@@ -28,7 +34,7 @@ def getFig(title, xlabel, ylabel, zlabel = None):
 
 def closeFig(file):
     
-    if not '/' in file:
+    if not file.startswith('plot/output/'):
         file = 'plot/output/' + file
         
     if not '.' in file:
@@ -42,7 +48,9 @@ def closeFig(file):
     
 dir = 'data'
 impl = ['cgal', 'tria', 'root']
-colors = {'cgal' : 'blue', 'tria' : 'green', 'root' : 'red'}
+labels =  {'cgal' : 'CGAL', 'tria' : 'Triangle', 'root' : 'ROOT'}
+colors  = {'cgal' : 'blue', 'tria' : 'green', 'root' : 'red'}
+markers = {'cgal' : 'x', 'tria' : 'D', 'root' : 'o'}
 
 funcNames = [  'sin'
               ,'sinsin'
@@ -57,7 +65,9 @@ funcLabels = [ r'$\sin(4 xy)$'
 
 timings = {}
 
+print("Reading in timing data")
 for tag in impl:
+    print("\t%s" % tag)
     timings[tag] = np.genfromtxt(os.path.join(dir, 'timings_%s.csv' % tag),
                                  names=True)
 
@@ -65,65 +75,25 @@ for tag in impl:
 N = np.unique(timings[impl[0]]['n']).astype(int)
 F = np.unique(timings[impl[0]]['f']).astype(int)
 
-#gen time figure
-fig, ax = getFig("Generation Time over Number of Points", "n", "t [ns]")
-
-for tag in impl:
-    ax.errorbar(timings[tag]['n'],
-                timings[tag]['gen'],
-                yerr=timings[tag]['gen_std'],
-                label=tag)
-
-ax.set_xscale('log')
-ax.set_yscale('log')
-
-ax.legend(loc=2)
-
-closeFig("runtime_root_gen")
-
-#gen time per point figure
-fig, ax = getFig("Generation Time per Point", "n", "t/n [ns]")
-
-for tag in impl:
-    ax.errorbar(timings[tag]['n'],
-            timings[tag]['gen'] / timings[tag]['n'],
-            yerr=timings[tag]['gen_std'] / timings[tag]['n'],
-            label=tag)
-
-ax.set_xscale('log')
-ax.set_yscale('log')
-
-ax.legend(loc=2)
-
-closeFig("runtime_root_gen_pp")
-
-#interpolation over points figure
-fig, ax = getFig("Interpolation Time over Number of Points", "n", "t [ns]")
-
-for tag in impl:
-    ax.errorbar(timings[tag]['n'],
-            timings[tag]['ip'],
-            yerr=timings[tag]['ip_std'],
-            label=tag)
-
-ax.set_xscale('log')
-ax.set_yscale('log')
-
-ax.legend(loc=2)
-
-closeFig("runtime_root_ip")
-
 gen = {}
 ip = {}
+tt = {}
 
+print("Processing timing data")
 for tag in impl:
+    print("\t%s" % tag)
     gen[tag] = []
     ip[tag] = []
+    tt[tag] = []
     for n in N:
-        gen[tag].append(timings[tag][timings[tag]['n'] == n]['gen'])
-        ip[tag].append(timings[tag][timings[tag]['n'] == n]['ip'])
+        dat = timings[tag][timings[tag]['n'] == n]
+        gen[tag].append(dat['gen'])
+        ip[tag].append(dat['ip'])
+        tt[tag].append(dat['gen'] + 1e4 * dat['ip'])
 
-fig, ax = getFig("Generation Time over Number of Points", "n", "t [ns]")
+print("Generating timing plots")
+
+fig, ax = getFig("Triangulation Runtime", r"$n$ sampling points", r"$t$ [ns]", None, "x")
 start = .75
 legItems = []
 for tag in impl:
@@ -134,20 +104,21 @@ for tag in impl:
                capprops={'color' : colors[tag]},
                flierprops={'color' : colors[tag]},
                medianprops={'color' : colors[tag]})
-    legItems.append(mpatches.Patch(color=colors[tag], label=tag))
+    legItems.append(mpatches.Patch(color=colors[tag], label=labels[tag]))
     start += .25
 
 ax.set_yscale('log')
 
+ax.axhline(60000000000, color='k')
 ax.set_xlim(0, len(N)+1)
 ax.set_xticklabels(N[1::2])
 ax.set_xticks(np.arange(2, len(N)+1, 2))
 
 ax.legend(handles=legItems, bbox_to_anchor=(1.1, 1.1))
 
-closeFig("runtime_root_gen_bp")
+closeFig("runtime/gen")
 
-fig, ax = getFig("Interpolation Time over Number of Points", "n", "t [ns]")
+fig, ax = getFig("Interpolation Time per Point", r"$n$ sampling points", r"$t$ [ns]", None, "x")
 start = .75
 legItems = []
 for tag in impl:
@@ -158,7 +129,7 @@ for tag in impl:
                capprops={'color' : colors[tag]},
                flierprops={'color' : colors[tag]},
                medianprops={'color' : colors[tag]})
-    legItems.append(mpatches.Patch(color=colors[tag], label=tag))
+    legItems.append(mpatches.Patch(color=colors[tag], label=labels[tag]))
     start += .25
 
 ax.set_yscale('log')
@@ -169,8 +140,33 @@ ax.set_xticks(np.arange(2, len(N)+1, 2))
 
 ax.legend(handles=legItems, bbox_to_anchor=(1.1, 1.1))
 
-closeFig("runtime_root_ip_bp")
+closeFig("runtime/ip")
 
+fig, ax = getFig(r"Runtime Triangulation + $10^4$ Interpolations", r"$n$ sampling points", r"$t$ [ns]", None, "x")
+start = .75
+legItems = []
+for tag in impl:
+    ax.boxplot(tt[tag], positions = np.arange(start, len(N)+start, 1),
+               widths=.2,
+               boxprops={'color' : colors[tag]},
+               whiskerprops={'color' : colors[tag]},
+               capprops={'color' : colors[tag]},
+               flierprops={'color' : colors[tag]},
+               medianprops={'color' : colors[tag]})
+    legItems.append(mpatches.Patch(color=colors[tag], label=labels[tag]))
+    start += .25
+
+ax.set_yscale('log')
+
+ax.set_xlim(0, len(N)+1)
+ax.set_xticklabels(N[1::2])
+ax.set_xticks(np.arange(2, len(N)+1, 2))
+
+ax.legend(handles=legItems, bbox_to_anchor=(1.1, 1.1))
+
+closeFig("runtime/total")
+
+################################################################################
 #precision figure
 
 precision = {}
@@ -181,7 +177,7 @@ for tag in impl:
     precision[tag] = np.genfromtxt(os.path.join(dir, 'precision_%s.csv' % tag),
                                  names=True)
 
-norm = precision['cgal']
+reference = precision['cgal']
 
 print("Processing precision plots")
 for f in F:
@@ -193,33 +189,34 @@ for f in F:
         ipError[tag] = []
 
         for n in N:
-            chi2 = []
+            err = []
             nums = precision[tag]
             nums = nums[(nums['n'] == n) & (nums['f'] == f)]
             for x in nums:
-                chi2.append((x['ip'] - x['z']) / x['z'])
-            ipError[tag].append(chi2)
+                err.append((x['ip'] - x['z']) / x['z'])
+            ipError[tag].append(err)
 
-    #boxplots
+    #boxplots of errors over N
 
-    fig, ax = getFig(r"Interpolation Error - %s" % funcLabels[f], "n", "Error")
+    fig, ax = getFig(r"Interpolation Error - %s" % funcLabels[f], r"$n$ sampling points", r"Error - $\frac{\hat{z} - z}{z}$")
 
     start = .75
     legItems = []
     for tag in impl:
         ax.boxplot(ipError[tag], positions = np.arange(start, len(N)+start, 1),
-                   widths=.2,
+                   widths=.2, whis=[5,95],
                    boxprops={'color' : colors[tag]},
                    whiskerprops={'color' : colors[tag]},
                    capprops={'color' : colors[tag]},
-                   flierprops={'color' : colors[tag]},
+                   flierprops={'color' : colors[tag], 'marker' : '.'},
                    medianprops={'color' : colors[tag]})
-        legItems.append(mpatches.Patch(color=colors[tag], label=tag))
+        legItems.append(mpatches.Patch(color=colors[tag], label=labels[tag]))
         start += .25
 
-    ax.axhline(0)
+    ax.axhline(0, color='k')
 
     ax.set_yscale('symlog', linthreshy=1e-3)
+    ax.set_ylim(-100, 100)
 
     ax.set_xlim(0, len(N)+1)
     ax.set_xticklabels(N[1::2])
@@ -227,26 +224,44 @@ for f in F:
 
     ax.legend(handles=legItems, bbox_to_anchor=(1.1, 1.1))
 
-    closeFig("interpolation_error_boxplot_%s" % funcNames[f])
+    closeFig("precision/bp_error_%s" % funcNames[f])
 
+    #histograms of individual error distributions
+    for i,n in enumerate(N):
+        fig, ax = getFig(r"Interpolation Error n = %i - %s" % (n, funcLabels[f]), 
+                r"Error - $\frac{\hat{z} - z}{z}$", "Frequency")
 
-#    #mean interpolation error
-#
-#    fig, ax = getFig("Mean Interpolation Error", "n", "Error")
-#
-#    for tag in impl:
-#        ax.errorbar(N, np.mean(ipError[tag], axis=1), yerr=np.std(ipError[tag], axis=1), label=tag)
-#
-#    ax.set_xscale('log')
-#    ax.set_yscale('log')
-#
-#    ax.legend(loc=2)
-#    closeFig("interpolation_error")
-#
+        legItems = []
+        for tag in impl:
+            data = ipError[tag][i]
+            #select data in range [-100,100]
+            data = [x for x in data if -100 < x and x < 100]
+
+            hist, bin_edges = np.histogram(data,
+                                           bins=100, range=(-100, 100), density=True)
+            bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+
+            (mu, sigma) = norm.fit(data)
+            gauss = norm.pdf(bin_centres, loc=mu, scale=sigma)
+
+            plt.plot(bin_centres, hist,
+                     color=colors[tag], linestyle='None', marker=markers[tag])
+
+#            plt.plot(bin_centres, gauss,
+#                     color=colors[tag])
+
+            legItems.append(mlines.Line2D([], [], color=colors[tag], marker=markers[tag],
+                                          label=labels[tag]))
+
+        ax.set_yscale('symlog', linthreshy=1e-4)
+        ax.legend(handles=legItems)
+        closeFig("precision/dist/%s_%i"%(funcNames[f] ,n))
+
+    #3d plots of functions
 #    for n in N:
 #        fig, ax = getFig(r"Interpolation Quality n = %i - %s" % (n, funcLabels[f]), "x", "y", "z")
 #
-#        dNorm = norm[(norm['n'] == n) & (norm['f'] == f)]
+#        dNorm = reference[(reference['n'] == n) & (reference['f'] == f)]
 #        ax.plot_wireframe(dNorm['x'], dNorm['y'], dNorm['z'], rstride=10, cstride=10,
 #                          label='real', color='grey', alpha=0.4)
 #
@@ -257,8 +272,8 @@ for f in F:
 #                              nums['y'],
 #                              nums['ip'],
 #                              rstride=10, cstride=10, 
-#                              label=tag, color=colors[tag], alpha=0.4)
+#                              label=labels[tag], color=colors[tag], alpha=0.4)
 #        ax.legend(loc=2)
-#        closeFig("precision_%s_%i"%(funcNames[f] ,n))
+#        closeFig("precision/3d/%s_%i"%(funcNames[f] ,n))
 
 print("done")
