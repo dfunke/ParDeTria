@@ -42,7 +42,7 @@ double fSqrtSinCos(double x, double y){
 
 //******************************************************************************
 
-Points3D genSample(const uint n, const Box & bounds,
+Points3D genSample(const uint n, const Box3D & bounds,
 		tTestFunction & f,
 		std::function<tCoordinate()> & dice){
 
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
 	uint R = 10; //number of repetitions
 	uint IP = 1e4; //number of interpolation points
 
-	Box bounds;
+	Box3D bounds;
 	bounds.x = bounds.y = -6; bounds.z = 0;
 	bounds.dx = bounds.dy = 12; bounds.dz = 0;
 

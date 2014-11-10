@@ -21,4 +21,4 @@ add_executable (DelaunayRoot DelaunayRoot.cpp)
 target_link_libraries(DelaunayRoot ${ROOT_LIBRARIES} ${CGAL_LIBRARY})
 
 add_executable (DACTest DAC_Test.cpp)
-target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES})
+target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} cairo)

@@ -23,80 +23,25 @@ typedef CGAL::Delaunay_triangulation_2<K, Tds> CT; //CGAL triangulation
 //own
 #include "Timings.h"
 #include "Random.h"
+#include "Geometry.h"
+#include "Painter.h"
 
 //#############################################################################
-
-//dimensionality of our problem
-const uint D = 2;
-const uint INF = std::numeric_limits<uint>::max();
-
-typedef float tCoordinate;
-
-struct Point {
-	uint id;
-	tCoordinate coords[D];
-
-	bool operator==(const Point & a) const {
-		if(!(this->id == INF ^ a.id == INF))
-			return this->id == a.id;
-		else{
-			bool eq = true;
-			for(uint i = 0; i < D; ++i){
-				if(this->coords[i] != a.coords[i])
-					eq = false;
-			}
-			return eq;
-		}
-	}
-};
-
-
-struct dSimplex {
-	uint id;
-	uint vertices[D+1];
-	uint neighbors[D+1];
-
-	bool operator==(const dSimplex & a) const {
-		if(!(this->id == INF ^ a.id == INF))
-			return this->id == a.id;
-		else {
-			bool eq = true;
-			for(uint i = 0; i < D+1; ++i){
-				bool found = false;
-				for(uint j = 0; j < D+1; ++j){
-					if(vertices[i] == vertices[j])
-						found = true;
-				}
-				if(!found)
-					eq = false;
-			}
-			return eq;
-		}
-	}
-};
-
-std::ostream & operator<<(std::ostream & o, const Point & p){
-	o << "[" << p.coords[0];
-	for(uint i = 1; i < D; ++i)
-		o << ", " << p.coords[i];
-	o << "]";
-	return o;
+uint indentLevel = 0;
+std::string indent(){
+	std::stringstream ss;
+	for(uint i = 0; i < indentLevel; ++i)
+		ss << "\t";
+	return ss.str();
 }
 
-typedef std::vector<Point> Points;
-typedef std::vector<Points> Partition;
-typedef std::vector<dSimplex> Triangulation;
-
-struct Box {
-	tCoordinate coords[D];
-	tCoordinate dim[D];
-};
+#define COUT std::cout << indent()
 
 //#############################################################################
 
-Points genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> & dice){
+dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
 
-	Points points(n);
+	dPoints points(n);
 
 
 	for(uint i = 0; i < n; ++i){
@@ -112,21 +57,21 @@ Points genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> 
 
 }
 
-Partition partition(const Points & points){
+Partition partition(const dPoints & points){
 
 	// do mid-point based partitioning for now
-	Point midpoint;
+	dPoint midpoint;
 	for(uint dim = 0; dim < D; ++dim){
 		auto minmax = std::minmax_element(points.begin(), points.end(),
-				[dim] (const Point & a, const Point & b) {
+				[dim] (const dPoint & a, const dPoint & b) {
 					return a.coords[dim] < b.coords[dim];
 				});
 		midpoint.coords[dim] = ((*minmax.second).coords[dim] - (*minmax.first).coords[dim]) / 2;
 	}
 
-	std::cout << "Midpoint is " <<  midpoint << std::endl;
+	COUT << "Midpoint is " <<  midpoint << std::endl;
 
-	Partition partition(8);
+	Partition partition(pow(2,D));
 
 	for(auto & p : points){
 		uint part = 0;
@@ -134,7 +79,7 @@ Partition partition(const Points & points){
 			part |= (p.coords[dim] > midpoint.coords[dim]) << dim;
 		}
 
-		//std::cout << "Adding " << p << " to " << part << std::endl;
+		//COUT << "Adding " << p << " to " << part << std::endl;
 		partition[part].push_back(p);
 	}
 
@@ -143,7 +88,7 @@ Partition partition(const Points & points){
 }
 
 uint tetrahedronID = 0;
-Triangulation delaunayCgal(const Points & points){
+dSimplices delaunayCgal(const dPoints & points){
 
 	//copy points into CGAL structure
 	std::vector<std::pair<CT::Point, uint> > cPoints;
@@ -159,34 +104,31 @@ Triangulation delaunayCgal(const Points & points){
 	t.insert(cPoints.begin(), cPoints.end());
 	//auto end = Clock::now();
 
-	std::cout << "Triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
-	std::cout << "finite faces/vertices " 
-						<< t.number_of_faces() << "/" << t.number_of_vertices()  << std::endl;
-	std::cout << std::endl;
+	COUT << "Triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
+	COUT << "finite faces/vertices "
+			  << t.number_of_faces() << "/" << t.number_of_vertices()  << std::endl;
 	
-	Triangulation tria;
-	std::map<uint, std::set<uint> > pointToSimplex;
+	COUT << "Collecting simplices" << std::endl;
+	++indentLevel;
+
+	dSimplices tria;
 	for(auto it = t.all_faces_begin(); it != t.all_faces_end(); ++it){
 		dSimplex a;
 		a.id = tetrahedronID++;
 
-		std::cout << "Simplex " << a.id << " vertices: [";
-
 		for(uint i = 0; i < D+1; ++i){
 			if(!t.is_infinite(it->vertex(i))){
 				a.vertices[i] = it->vertex(i)->info();
-				pointToSimplex[it->vertex(i)->info()].insert(a.id);
 			} else {
 				a.vertices[i] = INF;
-				//pointToSimplex[INF].insert(a.id);
 			}
 
-			std::cout << a.vertices[i] << " ";
 		}
 
-		std::cout << "]" << std::endl;
+		COUT << a << std::endl;
 		tria.push_back(a);
 	}
+	--indentLevel;
 
 	auto cmp = [&] (const CT::Face_handle & f) -> dSimplex {
 		dSimplex a;
@@ -202,49 +144,155 @@ Triangulation delaunayCgal(const Points & points){
 		return a;
 	};
 
-	for(auto it = t.finite_faces_begin(); it != t.finite_faces_end(); ++it){
+	COUT << "Collecting neighbors" << std::endl;
+
+	++indentLevel;
+	for(auto it = t.all_faces_begin(); it != t.all_faces_end(); ++it){
 		auto tet = std::find(tria.begin(), tria.end(), cmp(it));
-		std::cout << "Simplex " << tet->id << " neighbors: [";
 		
 		for(uint i = 0; i < D+1; ++i){
 			auto n = it->neighbor(i);
 			auto nn = std::find(tria.begin(), tria.end(), cmp(n));
 			tet->neighbors[i] = nn->id;
-			std::cout << nn->id << " ";
 		}
-		std::cout << "]" << std::endl;
+
+		COUT << *tet << std::endl;
 	}
+	--indentLevel;
 
 	return tria;
 }
 
+dSimplices getEdge(const dSimplices & simplices){
+
+	dSimplices edgeSimplices;
+	std::set<uint> edgeIdx;
+
+	auto norm = [&] (uint i) {
+		return i - simplices[0].id; //is only called if simplices contains at least one element
+	};
+
+	for(const auto & s : simplices){
+		if(!s.isFinite()){
+			//we have an infinte vertex, at least one of its neighbors must be finite
+			for(uint i = 0; i < D+1; ++i){
+				if(simplices[norm(s.neighbors[i])].isFinite() && edgeIdx.insert(s.neighbors[i]).second)
+					//the neighbor is finite and has not been added to the edge simplices yet
+					edgeSimplices.push_back(simplices[norm(s.neighbors[i])]);
+			}
+		}
+	}
+
+	return edgeSimplices;
+
+}
+
+dPoints extractPoints(const dSimplices & simplices, const dPoints & inPoints){
+
+	dPoints outPoints;
+	std::set<uint> idx;
+
+	for(const auto & s : simplices){
+		for(uint i = 0; i < D+1; ++i){
+			if(s.vertices[i] != INF && idx.insert(s.vertices[i]).second)
+				outPoints.push_back(inPoints[s.vertices[i]]);
+		}
+	}
+
+	return outPoints;
+
+}
+
 int main(int argc, char* argv[]) {
 
-	uint N = 1e1;
+	uint N = 1e2;
 
-	Box bounds;
+	dBox bounds;
 	for(uint i = 0; i < D; ++i){
 		bounds.coords[i] = 0;
 		bounds.dim[i] = 100;
 	}
 
+	dBox img;
+	for(uint i = 0; i < D; ++i){
+		img.coords[i] = 0;
+		img.dim[i] = 2000;
+	}
+
+	Painter painter(bounds, img);
+
 	std::uniform_real_distribution<tCoordinate> distribution(0,1);
 	std::function<tCoordinate()> dice = std::bind (distribution, generator);
 
 	auto points = genPoints(N, bounds, dice);
+
+	COUT << "Partioning" << std::endl;
+	++indentLevel;
 	auto part = partition(points);
+	--indentLevel;
+
+	painter.draw(points);
+	painter.savePNG("01_points.png");
 
 	for(uint i = 0; i < part.size(); ++i){
-		std::cout << "Partition " << i << ": ";
+		COUT << "Partition " << i << ": ";
 		for(auto & p : part[i])
 			std::cout << p << " ";
 		std::cout << std::endl;
-		std::cout << std::endl;
 	}
 
-	std::vector<Triangulation> partialDT;
+	std::vector<dSimplices> partialDT;
 	for(uint i = 0; i < part.size(); ++i){
+		COUT << "Partition " << i << std::endl;
+		++indentLevel;
 		partialDT.push_back(delaunayCgal(part[i]));
-		std::cout << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl;
+		COUT << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl << std::endl;
+		--indentLevel;
+
+		painter.draw(partialDT[i], points);
 	}
+	painter.savePNG("02_partialDTs.png");
+
+	dPoints edgePoints;
+	for(uint i = 0; i < part.size(); ++i){
+
+		auto edge = getEdge(partialDT[i]);
+		auto ep = extractPoints(edge, points);
+		//points are in different partitions, there can be no overlap
+		edgePoints.insert(edgePoints.end(), ep.begin(), ep.end());
+
+		painter.setColor(1, 0, 0);
+		painter.draw(edge, points);
+		painter.setColor(0, 0, 0);
+
+	}
+	painter.setColor(1, 0, 0);
+	painter.draw(edgePoints, false);
+	painter.setColor(0, 0, 0);
+	painter.savePNG("03_edgeMarked.png");
+
+	COUT << "Triangulating edges" << std::endl;
+	++indentLevel;
+	auto edgeDT = delaunayCgal(edgePoints);
+	COUT << "Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl << std::endl;
+	--indentLevel;
+
+	painter.setColor(0, 1, 0);
+	painter.draw(edgeDT, points);
+	painter.setColor(0, 0, 0);
+
+	painter.savePNG("04_edgeDT.png");
+
+	COUT << "Real triangulation" << std::endl;
+	++indentLevel;
+	auto realDT = delaunayCgal(points);
+	COUT << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
+	--indentLevel;
+
+	painter.setColor(0, 0, 1);
+	painter.draw(realDT, points);
+	painter.setColor(0, 0, 0);
+
+	painter.savePNG("05_realDT.png");
+
 }

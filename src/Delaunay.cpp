@@ -57,7 +57,7 @@ typedef std::vector<tTest*> tTests;
 
 //#############################################################################
 
-Points3D genPoints(const uint n, const Box & bounds, std::function<tCoordinate()> & dice){
+Points3D genPoints(const uint n, const Box3D & bounds, std::function<tCoordinate()> & dice){
 
 	Points3D points(n);
 
@@ -269,7 +269,7 @@ tDuration delaunayTriangle(const Points3D & points, Algorithms alg = Algorithms:
 
 }
 
-void runTest(const uint n, const Box & bounds, std::function<tCoordinate()> & dice, const uint reps,
+void runTest(const uint n, const Box3D & bounds, std::function<tCoordinate()> & dice, const uint reps,
 		tTests tests){
 
 	//initialize measurement array
@@ -303,7 +303,7 @@ void runTest(const uint n, const Box & bounds, std::function<tCoordinate()> & di
 
 int main(int argc, char* argv[]) {
 
-	Box bounds;
+	Box3D bounds;
 	bounds.x = bounds.y = bounds.z = 0;
 	bounds.dx = bounds.dy = bounds.dz = 100;
 
