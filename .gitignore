@@ -1,5 +1,8 @@
-Debug
-Release
+*
+!*.*
+
+build
+data
 
 *.o
 *.a
