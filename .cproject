@@ -27,6 +27,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/fortune}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/delaunay}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/include/cairomm-1.0"/>
+									<listOptionValue builtIn="false" value="/lib/cairomm-1.0/include"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1882723581" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -lm" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.172561944" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -113,6 +115,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/fortune}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Delaunay/src/lib/delaunay}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ROOTSYS}/include&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/include/cairomm-1.0"/>
+									<listOptionValue builtIn="false" value="/lib/cairomm-1.0/include"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1119755753" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -fmessage-length=0 -lm" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.2067442039" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
@@ -162,10 +166,7 @@
 								</inputType>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.exe.release.472030161" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.exe.release">
-								<option id="gnu.both.asm.option.include.paths.1653003595" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/usr/include/root"/>
-									<listOptionValue builtIn="false" value="/home/dfunke/workspace/Delaunay/src/lib/triangle"/>
-								</option>
+								<option id="gnu.both.asm.option.include.paths.1653003595" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.893919508" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 						</toolChain>

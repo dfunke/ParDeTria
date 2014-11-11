@@ -10,6 +10,8 @@
 #include <vector>
 #include <iostream>
 
+#include "Logger.h"
+
 typedef float tCoordinate;
 
 struct Point3D {
@@ -41,7 +43,6 @@ std::ostream & operator<<(std::ostream & o, const Point3D & p){
 
 //dimensionality of our problem
 const uint D = 2;
-const uint INF = std::numeric_limits<uint>::max();
 
 struct dPoint {
 	uint id;
@@ -51,17 +52,17 @@ struct dPoint {
 
 		//COUT << "Comparing POINTS THIS " << *this << " and OTHER " << a << ": ";
 
-		if(!(this->id == INF ^ a.id == INF)){
+		if(!(isFinite() ^ a.isFinite())){
 			//either none or both points are infinity
 			//compare ids
 			//std::cout << (this->id == a.id) << std::endl;
-			return this->id == a.id;
+			return id == a.id;
 		}
 		else{
 			//either one is infinity
 			//compare coordinates
 			for(uint i = 0; i < D; ++i){
-				if(this->coords[i] != a.coords[i]){
+				if(coords[i] != a.coords[i]){
 					//std::cout << false << std::endl;
 					return false;
 				}
@@ -70,6 +71,19 @@ struct dPoint {
 			return true;
 		}
 	}
+
+	inline bool isFinite() const {
+		return !((id & cINF) == cINF);
+	}
+
+	static inline bool isFinite(const uint & i) {
+		INDENT
+		PLOG << i << " -> " << (i & cINF) << " != " << cINF << ": " << !((i & cINF) == cINF) << std::endl;
+		DEDENT
+		return !((i & cINF) == cINF);
+	}
+
+	static constexpr uint cINF = std::numeric_limits<uint>::max() << D;
 };
 
 
@@ -82,11 +96,11 @@ struct dSimplex {
 
 		//COUT << "Comparing SIMPLICES THIS " << *this << " and OTHER " << a << ": ";
 
-		if(!(this->id == INF ^ a.id == INF)){
+		if(!((id == cINF) ^ (a.id == cINF))){
 			//either none or both simplices are infinity
 			//compare ids
 			//std::cout << (this->id == a.id) << std::endl;
-			return this->id == a.id;
+			return id == a.id;
 		}
 		else {
 			//either one is infinity
@@ -94,7 +108,7 @@ struct dSimplex {
 			for(uint i = 0; i < D+1; ++i){
 				bool found = false;
 				for(uint j = 0; j < D+1; ++j){
-					if(this->vertices[i] == a.vertices[j]){
+					if(vertices[i] == a.vertices[j]){
 						//std::cout << this->vertices[i] << " == " << a.vertices[j];
 						found = true;
 						break;
@@ -114,12 +128,14 @@ struct dSimplex {
 		bool finite = true;
 
 		for(uint i = 0; i < D+1; ++i){
-			if(this->vertices[i] == INF)
+			if(!dPoint::isFinite(vertices[i]))
 				finite = false;
 		}
 
 		return finite;
 	}
+
+	static constexpr uint cINF = std::numeric_limits<uint>::max();
 };
 
 std::ostream & operator<<(std::ostream & o, const dPoint & p){
