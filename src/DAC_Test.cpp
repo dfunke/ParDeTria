@@ -25,19 +25,7 @@ typedef CGAL::Delaunay_triangulation_2<K, Tds> CT; //CGAL triangulation
 #include "Random.h"
 #include "Geometry.h"
 #include "Painter.h"
-
-//#############################################################################
-uint indentLevel = 0;
-std::string indent(){
-	std::stringstream ss;
-	for(uint i = 0; i < indentLevel; ++i)
-		ss << "\t";
-	return ss.str();
-}
-
-#define COUT std::cout << indent()
-
-//#############################################################################
+#include "Logger.h"
 
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
 
@@ -69,7 +57,7 @@ Partition partition(const dPoints & points){
 		midpoint.coords[dim] = ((*minmax.second).coords[dim] - (*minmax.first).coords[dim]) / 2;
 	}
 
-	COUT << "Midpoint is " <<  midpoint << std::endl;
+	LOG << "Midpoint is " <<  midpoint << std::endl;
 
 	Partition partition(pow(2,D));
 
@@ -79,7 +67,7 @@ Partition partition(const dPoints & points){
 			part |= (p.coords[dim] > midpoint.coords[dim]) << dim;
 		}
 
-		//COUT << "Adding " << p << " to " << part << std::endl;
+		//LOG << "Adding " << p << " to " << part << std::endl;
 		partition[part].push_back(p);
 	}
 
@@ -104,12 +92,12 @@ dSimplices delaunayCgal(const dPoints & points){
 	t.insert(cPoints.begin(), cPoints.end());
 	//auto end = Clock::now();
 
-	COUT << "Triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
-	COUT << "finite faces/vertices "
+	LOG << "Triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
+	LOG << "finite faces/vertices "
 			  << t.number_of_faces() << "/" << t.number_of_vertices()  << std::endl;
 	
-	COUT << "Collecting simplices" << std::endl;
-	++indentLevel;
+	LOG << "Collecting simplices" << std::endl;
+	INDENT
 
 	dSimplices tria;
 	for(auto it = t.all_faces_begin(); it != t.all_faces_end(); ++it){
@@ -125,10 +113,10 @@ dSimplices delaunayCgal(const dPoints & points){
 
 		}
 
-		COUT << a << std::endl;
+		LOG << a << std::endl;
 		tria.push_back(a);
 	}
-	--indentLevel;
+	DEDENT
 
 	auto cmp = [&] (const CT::Face_handle & f) -> dSimplex {
 		dSimplex a;
@@ -144,9 +132,9 @@ dSimplices delaunayCgal(const dPoints & points){
 		return a;
 	};
 
-	COUT << "Collecting neighbors" << std::endl;
+	LOG << "Collecting neighbors" << std::endl;
 
-	++indentLevel;
+	INDENT
 	for(auto it = t.all_faces_begin(); it != t.all_faces_end(); ++it){
 		auto tet = std::find(tria.begin(), tria.end(), cmp(it));
 		
@@ -156,9 +144,9 @@ dSimplices delaunayCgal(const dPoints & points){
 			tet->neighbors[i] = nn->id;
 		}
 
-		COUT << *tet << std::endl;
+		LOG << *tet << std::endl;
 	}
-	--indentLevel;
+	DEDENT
 
 	return tria;
 }
@@ -205,6 +193,8 @@ dPoints extractPoints(const dSimplices & simplices, const dPoints & inPoints){
 
 int main(int argc, char* argv[]) {
 
+	Logger::getInstance().setLogLevel(Logger::Verbosity::LIVEVERBOSE);
+
 	uint N = 1e2;
 
 	dBox bounds;
@@ -226,33 +216,35 @@ int main(int argc, char* argv[]) {
 
 	auto points = genPoints(N, bounds, dice);
 
-	COUT << "Partioning" << std::endl;
-	++indentLevel;
+	LOG << "Partioning" << std::endl;
+	INDENT
 	auto part = partition(points);
-	--indentLevel;
+	DEDENT
 
 	painter.draw(points);
 	painter.savePNG("01_points.png");
 
 	for(uint i = 0; i < part.size(); ++i){
-		COUT << "Partition " << i << ": ";
+		LOG << "Partition " << i << ": ";
 		for(auto & p : part[i])
-			std::cout << p << " ";
-		std::cout << std::endl;
+			CONT << p << " ";
+		CONT << std::endl;
 	}
 
 	std::vector<dSimplices> partialDT;
 	for(uint i = 0; i < part.size(); ++i){
-		COUT << "Partition " << i << std::endl;
-		++indentLevel;
+		LOG << "Partition " << i << std::endl;
+		INDENT
 		partialDT.push_back(delaunayCgal(part[i]));
-		COUT << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl << std::endl;
-		--indentLevel;
+		LOG << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl << std::endl;
+		DEDENT
 
 		painter.draw(partialDT[i], points);
 	}
 	painter.savePNG("02_partialDTs.png");
 
+	LOG << "Extracting edges" << std::endl;
+	INDENT
 	dPoints edgePoints;
 	for(uint i = 0; i < part.size(); ++i){
 
@@ -261,21 +253,24 @@ int main(int argc, char* argv[]) {
 		//points are in different partitions, there can be no overlap
 		edgePoints.insert(edgePoints.end(), ep.begin(), ep.end());
 
+		VLOG << "Edge has " << edge.size() << " simplices with " << ep.size() << " points" << std::endl;
+
 		painter.setColor(1, 0, 0);
-		painter.draw(edge, points);
+		painter.draw(edge, points, true);
 		painter.setColor(0, 0, 0);
 
 	}
+	DEDENT
 	painter.setColor(1, 0, 0);
 	painter.draw(edgePoints, false);
 	painter.setColor(0, 0, 0);
 	painter.savePNG("03_edgeMarked.png");
 
-	COUT << "Triangulating edges" << std::endl;
-	++indentLevel;
+	LOG << "Triangulating edges" << std::endl;
+	INDENT
 	auto edgeDT = delaunayCgal(edgePoints);
-	COUT << "Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl << std::endl;
-	--indentLevel;
+	LOG << "Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl << std::endl;
+	DEDENT
 
 	painter.setColor(0, 1, 0);
 	painter.draw(edgeDT, points);
@@ -283,11 +278,11 @@ int main(int argc, char* argv[]) {
 
 	painter.savePNG("04_edgeDT.png");
 
-	COUT << "Real triangulation" << std::endl;
-	++indentLevel;
+	LOG << "Real triangulation" << std::endl;
+	INDENT
 	auto realDT = delaunayCgal(points);
-	COUT << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
-	--indentLevel;
+	LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
+	DEDENT
 
 	painter.setColor(0, 0, 1);
 	painter.draw(realDT, points);

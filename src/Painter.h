@@ -3,6 +3,7 @@
 #include <cairo/cairo.h>
 
 #include "Geometry.h"
+#include "Logger.h"
 
 class Painter {
 
