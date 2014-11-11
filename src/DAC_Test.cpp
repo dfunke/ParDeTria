@@ -108,7 +108,7 @@ dSimplices delaunayCgal(const dPoints & points){
 			if(!t.is_infinite(it->vertex(i))){
 				a.vertices[i] = it->vertex(i)->info();
 			} else {
-				a.vertices[i] = INF;
+				a.vertices[i] = dPoint::cINF;
 			}
 
 		}
@@ -120,12 +120,12 @@ dSimplices delaunayCgal(const dPoints & points){
 
 	auto cmp = [&] (const CT::Face_handle & f) -> dSimplex {
 		dSimplex a;
-		a.id = INF;
+		a.id = dSimplex::cINF;
 		for(uint i = 0; i < D+1; ++i){
 			if(!t.is_infinite(f->vertex(i))){
 				a.vertices[i] = f->vertex(i)->info();
 			} else {
-				a.vertices[i] = INF;
+				a.vertices[i] = dPoint::cINF;
 			}
 		}
 
@@ -182,7 +182,7 @@ dPoints extractPoints(const dSimplices & simplices, const dPoints & inPoints){
 
 	for(const auto & s : simplices){
 		for(uint i = 0; i < D+1; ++i){
-			if(s.vertices[i] != INF && idx.insert(s.vertices[i]).second)
+			if(dPoint::isFinite(s.vertices[i]) && idx.insert(s.vertices[i]).second)
 				outPoints.push_back(inPoints[s.vertices[i]]);
 		}
 	}
