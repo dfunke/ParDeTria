@@ -9,16 +9,19 @@
 
 Logger& Logger::getInstance()
 {
-	static Logger    instance; // Guaranteed to be destroyed.
+	static Logger    instance; // Guaranteed to be destroyed and thread safe
 	// Instantiated on first use.
 	return instance;
 }
+
+thread_local Logger::Verbosity Logger::contVerbosity; //continue log level for LIVE
+thread_local tbb::concurrent_vector<Logger::tLogEntry>::iterator Logger::contIt; //continue stream for non-live
 
 std::ostream & Logger::addLogEntry(Verbosity level) {
 
 	if(logLevel <= Logger::Verbosity::LIVE){
 		if(level <= abs(logLevel)){
-			contLevel = level;
+			contVerbosity = level; //thread local
 			return std::cout << indent();
 		} else {
 			return nullStream;
@@ -31,15 +34,15 @@ std::ostream & Logger::addLogEntry(Verbosity level) {
 	std::stringstream* s = new std::stringstream();
 
 	tLogEntry entry = std::make_pair(level, s);
-	logEntries.push_back(entry);
+	contIt = logEntries.push_back(entry); //thread local
 
-	return *(logEntries[logEntries.size()-1].second) << indent();
+	return *(contIt->second) << indent();
 }
 
 std::ostream & Logger::continueLogEntry() {
 
 	if(logLevel <= Logger::Verbosity::LIVE){
-		if(contLevel <= abs(logLevel)){
+		if(contVerbosity <= abs(logLevel)){
 			return std::cout;
 		} else {
 			return nullStream;
@@ -49,7 +52,7 @@ std::ostream & Logger::continueLogEntry() {
 	if(logLevel == Logger::Verbosity::SILENT)
 		return nullStream;
 
-	return *(logEntries[logEntries.size()-1].second);
+	return *(contIt->second);
 }
 
 std::ostream & Logger::printLog(std::ostream & out){

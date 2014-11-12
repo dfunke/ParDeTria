@@ -25,10 +25,7 @@ struct Box3D {
 	tCoordinate dx,dy,dz;
 };
 
-std::ostream & operator<<(std::ostream & o, const Point3D & p){
-	o << "[" << p.x << ", " << p.y << ", " << p.z << "]";
-	return o;
-}
+std::ostream & operator<<(std::ostream & o, const Point3D & p);
 
 //#############################################################################
 // forward declarations
@@ -72,18 +69,22 @@ struct dPoint {
 		}
 	}
 
+	bool operator==(const uint & a) const {
+		return id == a;
+	}
+
 	inline bool isFinite() const {
-		return !((id & cINF) == cINF);
+		return isFinite(id);
 	}
 
 	static inline bool isFinite(const uint & i) {
-		INDENT
-		PLOG << i << " -> " << (i & cINF) << " != " << cINF << ": " << !((i & cINF) == cINF) << std::endl;
-		DEDENT
+		//INDENT
+		//PLOG << i << " -> " << (i & cINF) << " != " << cINF << ": " << !((i & cINF) == cINF) << std::endl;
+		//DEDENT
 		return !((i & cINF) == cINF);
 	}
 
-	static constexpr uint cINF = std::numeric_limits<uint>::max() << D;
+	static constexpr uint cINF = ~(0) << 2*D;
 };
 
 
@@ -124,6 +125,10 @@ struct dSimplex {
 		}
 	}
 
+	bool operator==(const uint & a) const {
+		return id == a;
+	}
+
 	bool isFinite() const {
 		bool finite = true;
 
@@ -135,27 +140,16 @@ struct dSimplex {
 		return finite;
 	}
 
-	static constexpr uint cINF = std::numeric_limits<uint>::max();
+	static bool isFinite(const uint & i){
+		return i != cINF;
+	}
+
+	static constexpr uint cINF = ~(0);
 };
 
-std::ostream & operator<<(std::ostream & o, const dPoint & p){
-	o << p.id << "-[" << p.coords[0];
-	for(uint i = 1; i < D; ++i)
-		o << ", " << p.coords[i];
-	o << "]";
-	return o;
-}
+std::ostream & operator<<(std::ostream & o, const dPoint & p);
 
-std::ostream & operator<<(std::ostream & o, const dSimplex & p){
-	o << p.id << ": V = [" << p.vertices[0];
-	for(uint i = 1; i < D+1; ++i)
-		o << ", " << p.vertices[i];
-	o << "] N = [" << p.neighbors[0];
-	for(uint i = 1; i < D+1; ++i)
-		o << ", " << p.neighbors[i];
-	o << "]";
-	return o;
-}
+std::ostream & operator<<(std::ostream & o, const dSimplex & p);
 
 typedef std::vector<dPoint> dPoints;
 typedef std::vector<dPoints> Partition;
@@ -165,5 +159,13 @@ struct dBox {
 	tCoordinate coords[D];
 	tCoordinate dim[D];
 };
+
+struct dPointStats {
+	dPoint min;
+	dPoint mid;
+	dPoint max;
+};
+
+dPointStats getPointStats(const dPoints & points);
 
 //#############################################################################

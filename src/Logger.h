@@ -7,6 +7,8 @@
 #include <boost/iostreams/stream.hpp>
 #include <boost/iostreams/device/null.hpp>
 
+#include <tbb/concurrent_vector.h>
+
 class Logger : private boost::noncopyable {
 
 #define LOG  Logger::getInstance().addLogEntry(Logger::Verbosity::NORMAL)
@@ -61,15 +63,19 @@ public:
 	~Logger();
 
 private:
-	Logger() : logLevel(Logger::Verbosity::NORMAL), contLevel(Logger::Verbosity::NORMAL), indentLevel(0),
+	Logger() : logLevel(Logger::Verbosity::NORMAL),
+			   indentLevel(0),
 			   nullStream( ( boost::iostreams::null_sink() ) ) { };
 
-	std::vector<tLogEntry> logEntries;
+	tbb::concurrent_vector<tLogEntry> logEntries;
+
 	Verbosity logLevel;
-	Verbosity contLevel; //only used for live logging
 	uint indentLevel;
 
-	 boost::iostreams::stream< boost::iostreams::null_sink > nullStream;
+	boost::iostreams::stream< boost::iostreams::null_sink > nullStream;
+
+	static thread_local Verbosity contVerbosity; //continue log level for LIVE
+	static thread_local tbb::concurrent_vector<tLogEntry>::iterator contIt; //continue stream for non-live
 };
 
 std::ostream & operator<<(std::ostream& s, const Logger & log);

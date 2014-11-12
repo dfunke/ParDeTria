@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <vector>
+#include <cmath>
 
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::nanoseconds tDuration;
