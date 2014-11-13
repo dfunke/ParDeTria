@@ -123,8 +123,16 @@ void Painter::line(const dPoints & points, uint a, uint b){
 	auto A = getPoint(points, a);
 	auto B = getPoint(points, b);
 
+	if(!A.isFinite() || !B.isFinite()){
+		std::vector<double> dash = { 2, 2};
+		cr->set_dash(dash, 0);
+	}
+
 	cr->move_to(translatePoint(A.coords[0],0), translatePoint(A.coords[1],1));
 	cr->line_to(translatePoint(B.coords[0],0), translatePoint(B.coords[1],1));
+	cr->stroke();
+
+	cr->unset_dash();
 
 }
 
