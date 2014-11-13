@@ -31,8 +31,15 @@ public:
 	}
 
 	void draw(const dPoint & point);
-	void draw(const dPoints & points, bool drawPartition = true);
-	void draw(const dSimplices & simplices, const dPoints & points, bool drawCC = false);
+	void draw(const dPoints & points);
+
+	void draw(const dSimplex & simplex, const dPoints & points, bool drawInfinite = false);
+	void draw(const dSimplices & simplices, const dPoints & points, bool drawInfinite = false);
+
+	void drawCircumCircle(const dSimplex & simplex, const dPoints & points, bool drawInfinite = false);
+	void drawCircumCircle(const dSimplices & simplices, const dPoints & points, bool drawInfinite = false);
+
+	void drawPartition(const dPoints & points);
 
 	void setColor(tCoordinate r, tCoordinate g, tCoordinate b){
 		if(r > 1 || g > 1 || b > 1){
@@ -58,9 +65,7 @@ private:
 
 	const dPoint & getPoint(const dPoints & points, uint a) const;
 
-	void line(const dPoints & points, uint a, uint b);
-
-	void circumCircle(const dSimplex & s, const dPoints & points);
+	void line(const dPoints & points, uint a, uint b, bool drawInfinite);
 
 	inline tCoordinate width() const {
 		return imgDim(0);

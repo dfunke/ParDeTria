@@ -15,46 +15,86 @@ void Painter::draw(const dPoint & point){
 		cr->restore();
 }
 
-void Painter::draw(const dPoints & points, bool drawPartition){
+void Painter::draw(const dPoints & points){
 
-	for(const auto & p : points){
+	for(const auto & p : points)
 		draw(p);
-	}
-
-	if(drawPartition){
-		auto stats = getPointStats(points);
-
-		//draw partition borders
-		cr->move_to(translatePoint(stats.mid.coords[0], 0),0);
-		cr->line_to(translatePoint(stats.mid.coords[0], 0),height());
-
-		cr->move_to(0, translatePoint(stats.mid.coords[1],1));
-		cr->line_to(width(), translatePoint(stats.mid.coords[1],1));
-
-		cr->stroke();
-	}
 }
 
-void Painter::draw(const dSimplices & simplices, const dPoints & points, bool drawCC){
+void Painter::draw(const dSimplex & simplex, const dPoints & points, bool drawInfinite){
 
-	for(const auto & s : simplices){
-		for(uint d = 0; d < D; ++d){
-			line(points, s.vertices[d], s.vertices[d+1]);
-		}
-		//close the loop
-		line(points, s.vertices[D], s.vertices[0]);
+	for(uint d = 0; d < D; ++d){
+		line(points, simplex.vertices[d], simplex.vertices[d+1], drawInfinite);
 	}
+	//close the loop
+	line(points, simplex.vertices[D], simplex.vertices[0], drawInfinite);
 
 	cr->stroke();
+}
 
-	if(drawCC) {
-		for(const auto & s : simplices) {
-			PLOG << "CC of " << s.id << std::endl;
-			INDENT
-			circumCircle(s, points);
-			DEDENT
-		}
+
+void Painter::draw(const dSimplices & simplices, const dPoints & points, bool drawInfinite){
+
+	for(const auto & s : simplices)
+		draw(s, points, drawInfinite);
+}
+
+void Painter::drawCircumCircle(const dSimplex & s, const dPoints & points, bool drawInfinite){
+
+	dPoint p[D+1];
+	bool allFinite = true;
+
+	for(uint i = 0; i < D+1; ++i){
+			p[i] =getPoint(points, s.vertices[i]);
+			if(!p[i].isFinite())
+				allFinite = false;
 	}
+
+	if(!drawInfinite && !allFinite)
+		return;
+
+	tCoordinate D = 2 * (p[0].coords[0] * (p[1].coords[1] - p[2].coords[1])
+					   + p[1].coords[0] * (p[2].coords[1] - p[0].coords[1])
+					   + p[2].coords[0] * (p[0].coords[1] - p[1].coords[1]));
+
+	dPoint u;
+	u.coords[0] = (( pow(p[0].coords[0],2) + pow(p[0].coords[1],2)) * (p[1].coords[1] - p[2].coords[1])
+				  +( pow(p[1].coords[0],2) + pow(p[1].coords[1],2)) * (p[2].coords[1] - p[0].coords[1])
+				  +( pow(p[2].coords[0],2) + pow(p[2].coords[1],2)) * (p[0].coords[1] - p[1].coords[1])) / D;
+
+
+	u.coords[1] = (( pow(p[0].coords[0],2) + pow(p[0].coords[1],2)) * (p[2].coords[0] - p[1].coords[0])
+				  +( pow(p[1].coords[0],2) + pow(p[1].coords[1],2)) * (p[0].coords[0] - p[2].coords[0])
+				  +( pow(p[2].coords[0],2) + pow(p[2].coords[1],2)) * (p[1].coords[0] - p[0].coords[0])) / D;
+
+	//draw circumcenter
+	draw(u);
+
+	tCoordinate r = sqrt(pow(u.coords[0] - p[0].coords[0], 2) + pow(u.coords[1] - p[0].coords[1], 2));
+
+	PLOG <<"r = " << r << std::endl;
+
+	cr->arc(translatePoint(u.coords[0], 0), translatePoint(u.coords[1],1), translateLength(r,0), 0, 2*M_PI);
+	cr->stroke();
+
+}
+
+void Painter::drawCircumCircle(const dSimplices & s, const dPoints & points, bool drawInfinite){
+	for(const auto & x : s)
+		drawCircumCircle(x,points, drawInfinite);
+}
+
+void Painter::drawPartition(const dPoints & points){
+	auto stats = getPointStats(points);
+
+	//draw partition borders
+	cr->move_to(translatePoint(stats.mid.coords[0], 0),0);
+	cr->line_to(translatePoint(stats.mid.coords[0], 0),height());
+
+	cr->move_to(0, translatePoint(stats.mid.coords[1],1));
+	cr->line_to(width(), translatePoint(stats.mid.coords[1],1));
+
+	cr->stroke();
 }
 
 void Painter::_init(const dBox & _bounds, uint _resolution) {
@@ -118,12 +158,15 @@ const dPoint & Painter::getPoint(const dPoints & points, uint a) const {
 
 }
 
-void Painter::line(const dPoints & points, uint a, uint b){
+void Painter::line(const dPoints & points, uint a, uint b, bool drawInfinite){
 
 	auto A = getPoint(points, a);
 	auto B = getPoint(points, b);
 
 	if(!A.isFinite() || !B.isFinite()){
+		if(!drawInfinite)
+			return;
+
 		std::vector<double> dash = { 2, 2};
 		cr->set_dash(dash, 0);
 	}
@@ -133,42 +176,5 @@ void Painter::line(const dPoints & points, uint a, uint b){
 	cr->stroke();
 
 	cr->unset_dash();
-
-}
-
-void Painter::circumCircle(const dSimplex & s, const dPoints & points){
-
-	dPoint p[D+1];
-	for(uint i = 0; i < D+1; ++i){
-			p[i] =getPoint(points, s.vertices[i]);
-	}
-
-	tCoordinate D = 2 * (p[0].coords[0] * (p[1].coords[1] - p[2].coords[1])
-					   + p[1].coords[0] * (p[2].coords[1] - p[0].coords[1])
-					   + p[2].coords[0] * (p[0].coords[1] - p[1].coords[1]));
-
-	PLOG << "D = " << D << std::endl;
-
-	dPoint u;
-	u.coords[0] = (( pow(p[0].coords[0],2) + pow(p[0].coords[1],2)) * (p[1].coords[1] - p[2].coords[1])
-				  +( pow(p[1].coords[0],2) + pow(p[1].coords[1],2)) * (p[2].coords[1] - p[0].coords[1])
-				  +( pow(p[2].coords[0],2) + pow(p[2].coords[1],2)) * (p[0].coords[1] - p[1].coords[1])) / D;
-
-
-	u.coords[1] = (( pow(p[0].coords[0],2) + pow(p[0].coords[1],2)) * (p[2].coords[0] - p[1].coords[0])
-				  +( pow(p[1].coords[0],2) + pow(p[1].coords[1],2)) * (p[0].coords[0] - p[2].coords[0])
-				  +( pow(p[2].coords[0],2) + pow(p[2].coords[1],2)) * (p[1].coords[0] - p[0].coords[0])) / D;
-
-	//draw circumcenter
-	draw(u);
-
-	PLOG <<"u = " << u << std::endl;
-
-	tCoordinate r = sqrt(pow(u.coords[0] - p[0].coords[0], 2) + pow(u.coords[1] - p[0].coords[1], 2));
-
-	PLOG <<"r = " << r << std::endl;
-
-	cr->arc(translatePoint(u.coords[0], 0), translatePoint(u.coords[1],1), translateLength(r,0), 0, 2*M_PI);
-	cr->stroke();
 
 }

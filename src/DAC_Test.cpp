@@ -14,6 +14,10 @@
 #include "Logger.h"
 #include "CGAL_Interface.h"
 
+//**************************
+dBox bounds;
+//**************************
+
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
 
 	dPoints points(n);
@@ -148,14 +152,46 @@ void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const 
 
 		VLOG << "Candidate mergers" << std::endl;
 		INDENT
-		dSimplices simplices;
+		dSimplices candidates;
 		for(const auto & x : otherDT){
 			if(x.contains(finitePoints) && !partitionContains(x)){
-				simplices.push_back(x);
+				candidates.push_back(x);
 				VLOG << x << std::endl;
 			}
 		}
+
+		Painter detailPainter(bounds);
+		detailPainter.draw(points);
+		detailPainter.drawPartition(points);
+
+		detailPainter.setColor(0,1,0);
+		detailPainter.draw(s, points);
+
+		detailPainter.setColor(0,1,1);
+		detailPainter.draw(finitePoints);
+
+		detailPainter.setColor(1, 0, 0);
+		detailPainter.draw(candidates, points);
+
+		detailPainter.savePNG("details/merging_" + std::to_string(s.id) + ".png");
+
 		DEDENT
+		if(candidates.size() == 1){
+			auto origSimplexIT = std::find(mergeDT.begin(), mergeDT.end(), s);
+
+			assert(origSimplexIT != mergeDT.end()); //it should be in there, s belongs to its edge
+
+			dSimplex origSimplex = *origSimplexIT;
+			dSimplex mergeSimplex = candidates[0]; //there is only one in there
+		} else {
+			INDENT
+			if(candidates.size() < 1)
+				VLOG << "NO candidate found" << std::endl;
+			else
+				VLOG << "Found several candidates, skipping" << std::endl;
+			DEDENT
+		}
+
 	}
 
 }
@@ -166,7 +202,6 @@ int main(int argc, char* argv[]) {
 
 	uint N = 1e2;
 
-	dBox bounds;
 	for(uint i = 0; i < D; ++i){
 		bounds.coords[i] = 0;
 		bounds.dim[i] = 100;
@@ -185,6 +220,7 @@ int main(int argc, char* argv[]) {
 	DEDENT
 
 	basePainter.draw(points);
+	basePainter.drawPartition(points);
 	basePainter.savePNG("01_points.png");
 
 	for(uint i = 0; i < part.size(); ++i){
@@ -207,7 +243,7 @@ int main(int argc, char* argv[]) {
 		paintPartialDTs.draw(partialDT[i], points);
 
 		Painter paintPartialDT = basePainter;
-		paintPartialDT.draw(partialDT[i], points);
+		paintPartialDT.draw(partialDT[i], points, true);
 		paintPartialDT.savePNG("02_partialDT_" + std::to_string(i) + ".png");
 	}
 	paintPartialDTs.savePNG("02_partialDTs.png");
@@ -235,7 +271,7 @@ int main(int argc, char* argv[]) {
 	DEDENT
 
 	paintEdges.setColor(1, 0, 0);
-	paintEdges.draw(edgePoints, false);
+	paintEdges.draw(edgePoints);
 	paintEdges.setColor(0, 0, 0);
 
 	paintEdges.savePNG("03_edgeMarked.png");
