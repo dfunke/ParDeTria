@@ -55,23 +55,17 @@ Partition partition(dPoints & points){
 	for(uint i = 0; i < partition.size(); ++i){
 		auto stats = getPointStats(partition[i]);
 		VLOG << "Partition " << i << ": " << stats.min << " - " << stats.mid << " - " << stats.max << std::endl;
-		for(uint d = 0; d < D; ++d){
+		for(uint k = 0; k < pow(2,D); ++k){
 
 			//low point
-			dPoint low = stats.mid;
-			low.id = dPoint::cINF | i << D | ((1 << d) & ~(1));
-			low.coords[d] = stats.min.coords[d] - (stats.max.coords[d] - stats.min.coords[d]);
-			partition[i].push_back(low);
-			points.push_back(low);
+			dPoint p = stats.mid;
+			p.id = dPoint::cINF | i << D | k;
 
-			//high point
-			dPoint high = stats.mid;
-			high.id = dPoint::cINF | i << D | ((1 << d) | 1);
-			high.coords[d] = stats.max.coords[d] + (stats.max.coords[d] - stats.min.coords[d]);
-			partition[i].push_back(high);
-			points.push_back(high);
+			for(uint d = 0; d < D; ++d)
+				p.coords[d] += (k & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
 
-			VLOG << "Partition " << i << " - dimension " << d << ": " << low << " - " << high << std::endl;
+			partition[i].push_back(p);
+			points.push_back(p);
 		}
 	}
 
