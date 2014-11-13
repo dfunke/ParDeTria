@@ -97,6 +97,19 @@ void Painter::drawPartition(const dPoints & points){
 	cr->stroke();
 }
 
+void Painter::drawNeighbors(const dSimplex & simplex, const dSimplices & neighbors, const dPoints & points, bool drawInfinite){
+	for(uint n = 0; n < D+1; ++n){
+		if(dSimplex::isFinite(simplex.neighbors[n])){
+			draw(neighbors[simplex.neighbors[n]], points, drawInfinite);
+		}
+	}
+}
+
+void Painter::drawNeighbors(const dSimplices & simplices, const dSimplices & neighbors, const dPoints & points, bool drawInfinite){
+	for(const auto & x : simplices)
+		drawNeighbors(x,neighbors, points, drawInfinite);
+}
+
 void Painter::_init(const dBox & _bounds, uint _resolution) {
 	bounds = _bounds;
 

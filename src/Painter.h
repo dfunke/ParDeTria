@@ -41,6 +41,9 @@ public:
 
 	void drawPartition(const dPoints & points);
 
+	void drawNeighbors(const dSimplex & simplex, const dSimplices & neighbors, const dPoints & points, bool drawInfinite = false);
+	void drawNeighbors(const dSimplices & simplices, const dSimplices & neighbors, const dPoints & points, bool drawInfinite = false);
+
 	void setColor(tCoordinate r, tCoordinate g, tCoordinate b){
 		if(r > 1 || g > 1 || b > 1){
 			//rescale colors
