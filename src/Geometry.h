@@ -87,6 +87,8 @@ struct dPoint {
 	static constexpr uint cINF = ~(0) << 2*D;
 };
 
+typedef std::vector<dPoint> dPoints;
+typedef std::vector<dPoints> Partition;
 
 struct dSimplex {
 	uint id;
@@ -129,6 +131,24 @@ struct dSimplex {
 		return id == a;
 	}
 
+	bool contains(const dPoint & p) const {
+		for(uint d = 0; d < D+1; ++d){
+			if(p == vertices[d])
+				return true;
+		}
+
+		return false;
+	}
+
+	bool contains(const dPoints & points) const {
+		for(const auto & p : points){
+			if(!contains(p))
+				return false;
+		}
+
+		return true;
+	}
+
 	bool isFinite() const {
 		bool finite = true;
 
@@ -151,8 +171,6 @@ std::ostream & operator<<(std::ostream & o, const dPoint & p);
 
 std::ostream & operator<<(std::ostream & o, const dSimplex & p);
 
-typedef std::vector<dPoint> dPoints;
-typedef std::vector<dPoints> Partition;
 typedef std::vector<dSimplex> dSimplices;
 
 struct dBox {
