@@ -52,7 +52,7 @@ dSimplices delaunayCgal(const dPoints & points, bool filterInfinite){
 
 		}
 
-		LOG << a << std::endl;
+		PLOG << a << std::endl;
 		tria.push_back(a);
 	}
 	DEDENT
@@ -90,7 +90,7 @@ dSimplices delaunayCgal(const dPoints & points, bool filterInfinite){
 				<< std::endl;*/
 		}
 
-		LOG << *tet << std::endl;
+		PLOG << *tet << std::endl;
 	}
 	DEDENT
 
