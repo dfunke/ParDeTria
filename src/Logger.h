@@ -42,7 +42,8 @@ public:
 
 public:
 
-	typedef std::pair<Verbosity, std::stringstream*> tLogEntry;
+	typedef std::pair<Verbosity, std::unique_ptr<std::stringstream>> LogEntry;
+	typedef tbb::concurrent_vector<LogEntry> LogEntries;
 
 	static Logger& getInstance();
 
@@ -60,14 +61,12 @@ public:
 	void incIndent() { ++indentLevel; }
 	void decIndent() { --indentLevel; }
 
-	~Logger();
-
 private:
 	Logger() : logLevel(Logger::Verbosity::NORMAL),
 			   indentLevel(0),
 			   nullStream( ( boost::iostreams::null_sink() ) ) { };
 
-	tbb::concurrent_vector<tLogEntry> logEntries;
+	LogEntries logEntries;
 
 	Verbosity logLevel;
 	uint indentLevel;
@@ -75,7 +74,7 @@ private:
 	boost::iostreams::stream< boost::iostreams::null_sink > nullStream;
 
 	static thread_local Verbosity contVerbosity; //continue log level for LIVE
-	static thread_local tbb::concurrent_vector<tLogEntry>::iterator contIt; //continue stream for non-live
+	static thread_local LogEntries::iterator contIt; //continue stream for non-live
 };
 
 std::ostream & operator<<(std::ostream& s, const Logger & log);

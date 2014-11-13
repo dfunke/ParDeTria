@@ -15,7 +15,7 @@ Logger& Logger::getInstance()
 }
 
 thread_local Logger::Verbosity Logger::contVerbosity; //continue log level for LIVE
-thread_local tbb::concurrent_vector<Logger::tLogEntry>::iterator Logger::contIt; //continue stream for non-live
+thread_local Logger::LogEntries::iterator Logger::contIt; //continue stream for non-live
 
 std::ostream & Logger::addLogEntry(Verbosity level) {
 
@@ -31,10 +31,7 @@ std::ostream & Logger::addLogEntry(Verbosity level) {
 	if(logLevel == Logger::Verbosity::SILENT)
 		return nullStream;
 
-	std::stringstream* s = new std::stringstream();
-
-	tLogEntry entry = std::make_pair(level, s);
-	contIt = logEntries.push_back(entry); //thread local
+	contIt = logEntries.emplace_back(level, std::make_unique<std::stringstream>()); //thread local
 
 	return *(contIt->second) << indent();
 }
@@ -65,19 +62,13 @@ std::ostream & Logger::printLog(std::ostream & out, Verbosity level){
 	if(level == Logger::Verbosity::SILENT)
 		return out;
 
-	for(tLogEntry t : logEntries){
+	for(const LogEntry & t : logEntries){
 		if( t.first <= level){
 			out << t.second->str();
 		}
 	}
 
 	return out;
-}
-
-Logger::~Logger(){
-	for(tLogEntry t : logEntries){
-		delete t.second;
-	}
 }
 
 std::string Logger::indent() const {
