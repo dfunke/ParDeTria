@@ -89,8 +89,7 @@ dSimplices getEdge(const dSimplices & simplices){
 	};
 
 	for(const auto & s : simplices){
-		PLOG << "Examining " << s << std::endl;
-		if(!s.isFinite()){
+		/*if(!s.isFinite()){
 			//we have an infinte vertex, at least one of its neighbors must be finite
 			for(uint i = 0; i < D+1; ++i){
 				if(dSimplex::isFinite(s.neighbors[i])
@@ -99,7 +98,9 @@ dSimplices getEdge(const dSimplices & simplices){
 					//the neighbor is finite and has not been added to the edge simplices yet
 					edgeSimplices.push_back(simplices[norm(s.neighbors[i])]);
 			}
-		}
+		}*/
+		if(!s.isFinite())
+			edgeSimplices.push_back(s);
 	}
 
 	return edgeSimplices;
@@ -122,9 +123,52 @@ dPoints extractPoints(const dSimplices & simplices, const dPoints & inPoints){
 
 }
 
+void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const dPoints & partition, const dPoints & points){
+
+	auto edgeSimplices = getEdge(mergeDT);
+	auto edgePoints = extractPoints(edgeSimplices, points);
+
+	auto partitionContains = [&] (const dSimplex & simplex){
+		for(uint i = 0; i < D+1; ++i){
+			if(std::find(partition.begin(), partition.end(), simplex.vertices[i]) == partition.end())
+				return false;
+		}
+
+		return true;
+	};
+
+	for(const auto & s : edgeSimplices){
+
+		VLOG << "Edge Simplex " << s << std::endl;
+
+		if(s.isFinite())
+			continue; //this simplex has only finite points -> skip it //TODO alter edge detection
+
+		//the simplex should have D finite points
+		dPoints finitePoints;
+		for(uint v = 0; v < D+1; ++v){
+			if(dPoint::isFinite(s.vertices[v]))
+				finitePoints.push_back(points[s.vertices[v]]);
+		}
+		VLOG << "Found " << finitePoints.size() << " finite points" << std::endl;
+
+		VLOG << "Candidate mergers" << std::endl;
+		INDENT
+		dSimplices simplices;
+		for(const auto & x : otherDT){
+			if(x.contains(finitePoints) && !partitionContains(x)){
+				simplices.push_back(x);
+				VLOG << x << std::endl;
+			}
+		}
+		DEDENT
+	}
+
+}
+
 int main(int argc, char* argv[]) {
 
-	Logger::getInstance().setLogLevel(Logger::Verbosity::LIVEPROLIX);
+	Logger::getInstance().setLogLevel(Logger::Verbosity::LIVEVERBOSE);
 
 	uint N = 1e2;
 
@@ -150,14 +194,14 @@ int main(int argc, char* argv[]) {
 	basePainter.savePNG("01_points.png");
 
 	for(uint i = 0; i < part.size(); ++i){
-		LOG << "Partition " << i << ": ";
+		PLOG << "Partition " << i << ": ";
 		for(auto & p : part[i])
 			CONT << p << " ";
 		CONT << std::endl;
 	}
 
 	std::vector<dSimplices> partialDT;
-	Painter paintPartialDT = basePainter;
+	Painter paintPartialDTs = basePainter;
 
 	for(uint i = 0; i < part.size(); ++i){
 		LOG << "Partition " << i << std::endl;
@@ -166,15 +210,19 @@ int main(int argc, char* argv[]) {
 		LOG << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl << std::endl;
 		DEDENT
 
+		paintPartialDTs.draw(partialDT[i], points);
+
+		Painter paintPartialDT = basePainter;
 		paintPartialDT.draw(partialDT[i], points);
+		paintPartialDT.savePNG("02_partialDT_" + std::to_string(i) + ".png");
 	}
-	paintPartialDT.savePNG("02_partialDTs.png");
+	paintPartialDTs.savePNG("02_partialDTs.png");
 
 	LOG << "Extracting edges" << std::endl;
 	INDENT
 
 	dPoints edgePoints;
-	Painter paintEdges = paintPartialDT;
+	Painter paintEdges = paintPartialDTs;
 
 	for(uint i = 0; i < part.size(); ++i){
 
@@ -186,7 +234,7 @@ int main(int argc, char* argv[]) {
 		VLOG << "Edge has " << edge.size() << " simplices with " << ep.size() << " points" << std::endl;
 
 		paintEdges.setColor(1, 0, 0);
-		paintEdges.draw(edge, points, true);
+		paintEdges.draw(edge, points, false);
 		paintEdges.setColor(0, 0, 0);
 
 	}
@@ -211,6 +259,13 @@ int main(int argc, char* argv[]) {
 	paintEdgeDT.setColor(0, 0, 0);
 
 	paintEdgeDT.savePNG("04_edgeDT.png");
+
+	for(uint i = 0; i < partialDT.size(); ++i){
+		LOG << "Merge partition " << i << std::endl;
+		INDENT
+		mergeTriangulation(partialDT[i], edgeDT, part[i], points);
+		DEDENT
+	}
 
 	LOG << "Real triangulation" << std::endl;
 	INDENT
