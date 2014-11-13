@@ -43,7 +43,7 @@ const uint D = 2;
 
 struct dPoint {
 	uint id;
-	tCoordinate coords[D];
+	std::array<tCoordinate, D> coords;
 
 	bool operator==(const dPoint & a) const {
 
@@ -92,8 +92,8 @@ typedef std::vector<dPoints> Partition;
 
 struct dSimplex {
 	uint id;
-	uint vertices[D+1];
-	uint neighbors[D+1];
+	std::array<uint, D+1> vertices;
+	std::array<uint, D+1> neighbors;
 
 	bool operator==(const dSimplex & a) const {
 
