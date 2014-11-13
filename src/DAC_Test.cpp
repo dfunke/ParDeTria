@@ -165,13 +165,15 @@ void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const 
 		detailPainter.drawPartition(points);
 
 		detailPainter.setColor(0,1,0);
-		detailPainter.draw(s, points);
+		detailPainter.draw(s, points, true);
+		detailPainter.drawNeighbors(s, mergeDT, points, true);
 
 		detailPainter.setColor(0,1,1);
 		detailPainter.draw(finitePoints);
 
 		detailPainter.setColor(1, 0, 0);
-		detailPainter.draw(candidates, points);
+		detailPainter.draw(candidates, points, true);
+		detailPainter.drawNeighbors(candidates, otherDT, points, true);
 
 		detailPainter.savePNG("details/merging_" + std::to_string(s.id) + ".png");
 
