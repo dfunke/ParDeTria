@@ -20,8 +20,8 @@ thread_local Logger::LogEntries::iterator Logger::contIt; //continue stream for 
 std::ostream & Logger::addLogEntry(Verbosity level) {
 
 	if(logLevel <= Logger::Verbosity::LIVE){
+		contVerbosity = level; //thread local
 		if(level <= abs(logLevel)){
-			contVerbosity = level; //thread local
 			return std::cout << indent();
 		} else {
 			return nullStream;
