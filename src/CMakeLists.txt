@@ -18,7 +18,7 @@ set(BUILTIN_LIBS lib/delaunay lib/fortune lib/triangle)
 
 include_directories(${BUILTIN_LIBS} ${ROOT_INCLUDE_DIRS} ${CGAL_INCLUDE_DIRS} ${Cairomm_INCLUDE_DIRS})
 
-set(CMAKE_CXX_FLAGS "-std=c++1y -DLINUX -DNO_TIMER -DANSI_DECLARATORS -O3 -g -Wall -fmessage-length=0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -Wall")
 
 add_executable (Delaunay Delaunay.cpp)
 target_link_libraries(Delaunay delaunay fortune triangle pthread ${ROOT_LIBRARIES} ${CGAL_LIBRARY} ${GMP_LIBRARIES})
