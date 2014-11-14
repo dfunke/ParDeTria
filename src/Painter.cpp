@@ -45,7 +45,7 @@ void Painter::drawCircumCircle(const dSimplex & s, const dPoints & points, bool 
 	bool allFinite = true;
 
 	for(uint i = 0; i < D+1; ++i){
-			p[i] =getPoint(points, s.vertices[i]);
+			p[i] = points[s.vertices[i]];
 			if(!p[i].isFinite())
 				allFinite = false;
 	}
@@ -155,26 +155,10 @@ void Painter::_copy(const Painter & a) {
 	cr->restore();
 }
 
-const dPoint & Painter::getPoint(const dPoints & points, uint a) const {
-
-	if(dPoint::isFinite(a)){
-		return points[a];
-	} else {
-		auto p = std::find(points.rbegin(), points.rend(), a);
-		if(p != points.rend())
-			return *p;
-		else
-			VLOG << "Could not find point " << a << std::endl;
-	}
-
-	return dPoint();
-
-}
-
 void Painter::line(const dPoints & points, uint a, uint b, bool drawInfinite){
 
-	auto A = getPoint(points, a);
-	auto B = getPoint(points, b);
+	auto A = points[a];
+	auto B = points[b];
 
 	if(!A.isFinite() || !B.isFinite()){
 		if(!drawInfinite)

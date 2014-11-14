@@ -66,8 +66,6 @@ private:
 	void _init(const dBox & _bounds, uint _resolution);
 	void _copy(const Painter & a);
 
-	const dPoint & getPoint(const dPoints & points, uint a) const;
-
 	void line(const dPoints & points, uint a, uint b, bool drawInfinite);
 
 	inline tCoordinate width() const {

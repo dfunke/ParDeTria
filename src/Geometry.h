@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <vector>
 #include <iostream>
 
 #include "Logger.h"
+#include "IdVector.hxx"
 
 typedef float tCoordinate;
 
@@ -87,7 +87,7 @@ struct dPoint {
 	static constexpr uint cINF = ~(0) << 2*D;
 };
 
-typedef std::vector<dPoint> dPoints;
+typedef IdVector<dPoint> dPoints;
 typedef std::vector<dPoints> Partition;
 
 struct dSimplex {
@@ -171,7 +171,7 @@ std::ostream & operator<<(std::ostream & o, const dPoint & p);
 
 std::ostream & operator<<(std::ostream & o, const dSimplex & p);
 
-typedef std::vector<dSimplex> dSimplices;
+typedef IdVector<dSimplex> dSimplices;
 
 struct dBox {
 	tCoordinate coords[D];

@@ -20,7 +20,8 @@ dBox bounds;
 
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
 
-	dPoints points(n);
+	dPoints points;
+	points.resize(n);
 
 
 	for(uint i = 0; i < n; ++i){
@@ -81,10 +82,6 @@ dSimplices getEdge(const dSimplices & simplices){
 
 	dSimplices edgeSimplices;
 	std::set<uint> edgeIdx;
-
-	auto norm = [&] (uint i) {
-		return i - simplices[0].id; //is only called if simplices contains at least one element
-	};
 
 	for(const auto & s : simplices){
 		/*if(!s.isFinite()){
