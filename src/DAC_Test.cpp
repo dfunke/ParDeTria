@@ -161,27 +161,49 @@ void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const 
 		detailPainter.draw(points);
 		detailPainter.drawPartition(points);
 
+		detailPainter.setColor(0,0,1);
+		detailPainter.drawNeighbors(candidates, otherDT, points, true);
+
 		detailPainter.setColor(0,1,0);
-		detailPainter.draw(s, points, true);
 		detailPainter.drawNeighbors(s, mergeDT, points, true);
 
+
 		detailPainter.setColor(0,1,1);
-		detailPainter.draw(finitePoints);
+		detailPainter.draw(s, points, true);
 
 		detailPainter.setColor(1, 0, 0);
 		detailPainter.draw(candidates, points, true);
-		detailPainter.drawNeighbors(candidates, otherDT, points, true);
+
 
 		detailPainter.savePNG("details/merging_" + std::to_string(s.id) + ".png");
 
 		DEDENT
 		if(candidates.size() == 1){
-			auto origSimplexIT = std::find(mergeDT.begin(), mergeDT.end(), s);
+			auto origSimplex = std::find(mergeDT.begin(), mergeDT.end(), s);
 
-			assert(origSimplexIT != mergeDT.end()); //it should be in there, s belongs to its edge
+			assert(origSimplex != mergeDT.end()); //it should be in there, s belongs to its edge
+			assert(finitePoints.size() == D); // we have a unique candidate, should be only one infinite point
 
-			dSimplex origSimplex = *origSimplexIT;
 			dSimplex mergeSimplex = candidates[0]; //there is only one in there
+
+			//find infinite point in original simplex
+			uint infIdx = 0;
+			while(dPoint::isFinite(origSimplex->vertices[infIdx])) ++infIdx;
+			assert(infIdx < D+1);
+
+			//find differing point in mergeSimplex
+			uint diffIdx = 0;
+			while(origSimplex->contains(mergeSimplex.vertices[diffIdx])) ++diffIdx;
+			assert(diffIdx < D+1);
+
+			//do the change
+			VLOG << "Changing " << infIdx << ": " << points[origSimplex->vertices[infIdx]] << " to "
+				 << diffIdx << ": " << points[mergeSimplex.vertices[diffIdx]] << std::endl;;
+			origSimplex->vertices[infIdx] = mergeSimplex.vertices[diffIdx];
+
+			//TODO what about neighbors?
+
+
 		} else {
 			INDENT
 			if(candidates.size() < 1)
@@ -228,6 +250,20 @@ int main(int argc, char* argv[]) {
 			CONT << p << " ";
 		CONT << std::endl;
 	}
+
+	LOG << "Real triangulation" << std::endl;
+	INDENT
+	auto realDT = delaunayCgal(points,true);
+	LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
+	DEDENT
+
+	Painter paintRealDT = basePainter;
+
+	paintRealDT.setColor(0, 0, 1);
+	paintRealDT.draw(realDT, points);
+	paintRealDT.setColor(0, 0, 0);
+
+	paintRealDT.savePNG("00_realDT.png");
 
 	std::vector<dSimplices> partialDT;
 	Painter paintPartialDTs = basePainter;
@@ -289,25 +325,19 @@ int main(int argc, char* argv[]) {
 
 	paintEdgeDT.savePNG("04_edgeDT.png");
 
+	Painter paintMerged = basePainter;
 	for(uint i = 0; i < partialDT.size(); ++i){
 		LOG << "Merge partition " << i << std::endl;
 		INDENT
 		mergeTriangulation(partialDT[i], edgeDT, part[i], points);
 		DEDENT
+
+		paintMerged.draw(partialDT[i], points);
 	}
+	paintMerged.savePNG("05_mergedDT.png");
 
-	LOG << "Real triangulation" << std::endl;
-	INDENT
-	auto realDT = delaunayCgal(points,true);
-	LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
-	DEDENT
-
-	Painter paintRealDT = basePainter;
-
-	paintRealDT.setColor(0, 0, 1);
-	paintRealDT.draw(realDT, points);
-	paintRealDT.setColor(0, 0, 0);
-
-	paintRealDT.savePNG("05_realDT.png");
+	paintMerged.setColor(1,0,0);
+	paintMerged.draw(realDT, points);
+	paintMerged.savePNG("05_mergeDT_overlay.png");
 
 }
