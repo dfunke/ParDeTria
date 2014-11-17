@@ -131,6 +131,15 @@ struct dSimplex {
 		return id == a;
 	}
 
+	bool contains(uint p) const {
+		for (uint d = 0; d < D + 1; ++d) {
+			if (p == vertices[d])
+				return true;
+		}
+
+		return false;
+	}
+
 	bool contains(const dPoint & p) const {
 		for(uint d = 0; d < D+1; ++d){
 			if(p == vertices[d])
