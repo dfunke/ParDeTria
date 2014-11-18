@@ -88,7 +88,8 @@ struct dPoint {
 };
 
 typedef IdVector<dPoint> dPoints;
-typedef std::vector<dPoints> Partition;
+typedef std::vector<uint> dPointIds;
+typedef std::vector<dPointIds> Partition;
 
 struct dSimplex {
 	uint id;
@@ -193,6 +194,6 @@ struct dPointStats {
 	dPoint max;
 };
 
-dPointStats getPointStats(const dPoints & points);
+dPointStats getPointStats(const dPoints & points, const dPointIds * = nullptr);
 
 //#############################################################################

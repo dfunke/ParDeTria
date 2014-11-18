@@ -1,6 +1,8 @@
 #include "CGAL_Interface.h"
 #include "Logger.h"
 
+#include <algorithm>
+
 //CGAL
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
@@ -12,13 +14,14 @@ typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
 typedef CGAL::Delaunay_triangulation_2<K, Tds> CT; //CGAL triangulation
 
 uint tetrahedronID = 0;
-dSimplices delaunayCgal(const dPoints & points, bool filterInfinite){
+dSimplices delaunayCgal(dPoints & points, const dPointIds * ids, bool filterInfinite){
 
 	//copy points into CGAL structure
 	std::vector<std::pair<CT::Point, uint> > cPoints;
 	cPoints.reserve(points.size());
 	for(const auto & p : points){
-		if(filterInfinite && !p.isFinite())
+		if((ids != nullptr && std::find(ids->begin(), ids->end(), p.id) == ids->end())
+				|| (filterInfinite && !p.isFinite()))
 			continue;
 
 		CT::Point cp(p.coords[0], p.coords[1]);

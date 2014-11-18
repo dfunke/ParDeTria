@@ -2,4 +2,4 @@
 
 #include "Geometry.h"
 
-dSimplices delaunayCgal(const dPoints & points, bool filterInfinite = false);
+dSimplices delaunayCgal(dPoints & points, const dPointIds * ids = nullptr, bool filterInfinite = false);

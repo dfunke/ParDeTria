@@ -53,12 +53,12 @@ Partition partition(dPoints & points){
 		}
 
 		//LOG << "Adding " << p << " to " << part << std::endl;
-		partition[part].push_back(p);
+		partition[part].push_back(p.id);
 	}
 
 	//add points at the extermities
 	for(uint i = 0; i < partition.size(); ++i){
-		auto stats = getPointStats(partition[i]);
+		auto stats = getPointStats(points, &partition[i]);
 		VLOG << "Partition " << i << ": " << stats.min << " - " << stats.mid << " - " << stats.max << std::endl;
 		for(uint k = 0; k < pow(2,D); ++k){
 
@@ -69,8 +69,8 @@ Partition partition(dPoints & points){
 			for(uint d = 0; d < D; ++d)
 				p.coords[d] += (k & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
 
-			partition[i].push_back(p);
 			points.push_back(p);
+			partition[i].push_back(p.id);
 		}
 	}
 
@@ -118,7 +118,7 @@ dPoints extractPoints(const dSimplices & simplices, const dPoints & inPoints){
 
 }
 
-void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const dPoints & partition, const dPoints & points){
+void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const dPointIds & partition, const dPoints & points){
 
 	auto edgeSimplices = getEdge(mergeDT);
 	auto edgePoints = extractPoints(edgeSimplices, points);
@@ -253,7 +253,7 @@ int main(int argc, char* argv[]) {
 
 	LOG << "Real triangulation" << std::endl;
 	INDENT
-	auto realDT = delaunayCgal(points,true);
+	auto realDT = delaunayCgal(points,nullptr, true);
 	LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
 	DEDENT
 
@@ -271,7 +271,7 @@ int main(int argc, char* argv[]) {
 	for(uint i = 0; i < part.size(); ++i){
 		LOG << "Partition " << i << std::endl;
 		INDENT
-		partialDT.push_back(delaunayCgal(part[i]));
+		partialDT.push_back(delaunayCgal(points, &part[i]));
 		LOG << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl << std::endl;
 		DEDENT
 

@@ -24,12 +24,28 @@ std::ostream & operator<<(std::ostream & o, const dSimplex & p){
 	return o;
 }
 
-dPointStats getPointStats(const dPoints & points){
+dPointStats getPointStats(const dPoints & points, const dPointIds * ids){
 
 	dPointStats stats;
 
+	dPoints::const_iterator begin, end;
+	dPoints projection;
+
+	if(ids == nullptr){
+		begin = points.begin();
+		end = points.end();
+	}
+	else {
+		projection.reserve(ids->size());
+		for(const auto & i : *ids)
+			projection.push_back(points[i]);
+
+		begin = projection.begin();
+		end = projection.end();
+	}
+
 	for(uint dim = 0; dim < D; ++dim){
-		auto minmax = std::minmax_element(points.begin(), points.end(),
+		auto minmax = std::minmax_element(begin, end,
 				[dim] (const dPoint & a, const dPoint & b) {
 					return a.coords[dim] < b.coords[dim];
 				});
