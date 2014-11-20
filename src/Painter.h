@@ -11,6 +11,9 @@
 class Painter {
 
 public:
+	typedef std::tuple<tCoordinate, tCoordinate, tCoordinate> tRGB;
+
+public:
 
 	Painter(const dBox & _bounds, uint _resolution = 10) {
 
@@ -44,13 +47,12 @@ public:
 	void drawNeighbors(const dSimplex & simplex, const dSimplices & neighbors, const dPoints & points, bool drawInfinite = false);
 	void drawNeighbors(const dSimplices & simplices, const dSimplices & neighbors, const dPoints & points, bool drawInfinite = false);
 
-	void setColor(tCoordinate r, tCoordinate g, tCoordinate b){
-		if(r > 1 || g > 1 || b > 1){
-			//rescale colors
-			r /= 255; g /= 255; b /= 255;
-		}
+	void setColor(const tRGB & rgb, tCoordinate alpha = 1.0){
+		setColor(std::get<0>(rgb), std::get<1>(rgb), std::get<2>(rgb), alpha);
+	}
 
-		cr->set_source_rgb(r, g, b);
+	void setColor(tCoordinate r, tCoordinate g, tCoordinate b, tCoordinate alpha = 1.0){
+		cr->set_source_rgba(r, g, b, alpha);
 	}
 
 	void setLineWidth(tCoordinate w){
@@ -59,6 +61,12 @@ public:
 
 	void savePNG(const std::string & file) const {
 		cs->write_to_png(file);
+	}
+
+public:
+
+	static tRGB tetradicColor(uint i) {
+		return tRGB(!(i & 2), i & 2, i & 1);
 	}
 
 private:

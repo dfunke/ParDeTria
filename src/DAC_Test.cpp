@@ -341,6 +341,7 @@ int main(int argc, char* argv[]) {
 
 		partialDTs[i] = dt;
 
+		paintPartialDTs.setColor(Painter::tetradicColor(i) ,0.4);
 		paintPartialDTs.draw(dt, points);
 
 		Painter paintPartialDT = basePainter;
@@ -354,6 +355,7 @@ int main(int argc, char* argv[]) {
 
 	dPoints edgePoints;
 	Painter paintEdges = paintPartialDTs;
+	paintEdges.setColor(1, 0, 0);
 
 	for(uint i = 0; i < partioning.size(); ++i){
 
@@ -364,17 +366,11 @@ int main(int argc, char* argv[]) {
 
 		VLOG << "Edge has " << edge.size() << " simplices with " << ep.size() << " points" << std::endl;
 
-		paintEdges.setColor(1, 0, 0);
 		paintEdges.draw(edge, points, false);
-		paintEdges.setColor(0, 0, 0);
-
 	}
 	DEDENT
 
-	paintEdges.setColor(1, 0, 0);
 	paintEdges.draw(edgePoints);
-	paintEdges.setColor(0, 0, 0);
-
 	paintEdges.savePNG("03_edgeMarked.png");
 
 	LOG << "Triangulating edges" << std::endl;
@@ -392,6 +388,7 @@ int main(int argc, char* argv[]) {
 	paintEdgeDT.savePNG("04_edgeDT.png");
 
 	Painter paintMerged = basePainter;
+	paintMerged.setColor(0,1,0,0.4);
 
 	for(uint i = 0; i < partialDTs.size(); ++i){
 		LOG << "Merge partition " << i << std::endl;
@@ -399,16 +396,18 @@ int main(int argc, char* argv[]) {
 		mergeTriangulation(partialDTs[i], edgeDT, partioning[i], points);
 		DEDENT
 
+		paintMerged.setColor(Painter::tetradicColor(i), 0.4);
 		paintMerged.draw(partialDTs[i], points);
 	}
 
-	paintMerged.savePNG("05_mergedDT.png");
-
-	paintMerged.setColor(0,0,1);
-	paintMerged.draw(realDT, points);
-
 	paintMerged.setColor(1,0,0);
 	paintMerged.draw(edgePoints);
+	paintMerged.savePNG("05_mergedDT.png");
+
+	paintMerged.setColor(0,0,0, 0.1);
+	paintMerged.draw(realDT, points);
+
 	paintMerged.savePNG("05_mergedDT_overlay.png");
 
+	LOG << "Finished" << std::endl;
 }
