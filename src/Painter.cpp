@@ -98,9 +98,9 @@ void Painter::drawPartition(const dPoints & points){
 }
 
 void Painter::drawNeighbors(const dSimplex & simplex, const dSimplices & neighbors, const dPoints & points, bool drawInfinite){
-	for(uint n = 0; n < D+1; ++n){
-		if(dSimplex::isFinite(simplex.neighbors[n])){
-			draw(neighbors[simplex.neighbors[n]], points, drawInfinite);
+	for(uint n : simplex.neighbors){
+		if(dSimplex::isFinite(n)){
+			draw(neighbors[n], points, drawInfinite);
 		}
 	}
 }

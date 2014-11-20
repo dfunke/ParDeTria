@@ -47,12 +47,8 @@ dSimplices delaunayCgal(dPoints & points, const dPointIds * ids, bool filterInfi
 		a.id = tetrahedronID++;
 
 		for(uint i = 0; i < D+1; ++i){
-			//if(!t.is_infinite(it->vertex(i))){
-				a.vertices[i] = it->vertex(i)->info();
-			//} else {
-			//	a.vertices[i] = dPoint::cINF;
-			//}
-
+			a.vertices[i] = it->vertex(i)->info();
+			points[a.vertices[i]].simplices.insert(a.id);
 		}
 
 		PLOG << a << std::endl;
@@ -84,7 +80,7 @@ dSimplices delaunayCgal(dPoints & points, const dPointIds * ids, bool filterInfi
 			auto n = it->neighbor(i);
 			auto nn = std::find(tria.begin(), tria.end(), cmp(n));
 
-			tet->neighbors[i] = (nn != tria.end()) ? nn->id : dSimplex::cINF;
+			tet->neighbors.insert((nn != tria.end()) ? nn->id : dSimplex::cINF);
 
 				/*LOG << "Did not find neighbor " << i << " of " << *tet << " - handle "
 				<< n->vertex(0)->info() << " " << t.is_infinite(n->vertex(0)) << "; "

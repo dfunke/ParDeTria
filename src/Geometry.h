@@ -224,10 +224,27 @@ public:
 	  return orientation(points) * det >= 0;
 	}
 
+	bool isNeighbor(const dSimplex & other) const {
+		uint sharedVertices = 0;
+
+		for(uint i = 0; i < D+1; ++i){
+			for(uint j = 0; j < D+1; ++j){
+				sharedVertices += vertices[i] == other.vertices[j];
+			}
+		}
+
+		assert(sharedVertices <= D || id == other.id);
+
+		//if(sharedVertices > 2 && id != other.id)
+		//	PLOG << "Distinct vertices " << *this " and " << other << " share more than 2 hits";
+
+		return sharedVertices == D;
+	}
+
 public:
 	uint id;
 	std::array<uint, D+1> vertices;
-	std::array<uint, D+1> neighbors;
+	std::set<uint> neighbors;
 
 
 public:
