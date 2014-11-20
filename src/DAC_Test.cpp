@@ -6,6 +6,9 @@
 #include <functional>
 #include <set>
 
+//debug
+#include <csignal>
+
 //own
 #include "Timings.h"
 #include "Random.h"
@@ -21,8 +24,6 @@ dBox bounds;
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
 
 	dPoints points;
-	points.resize(n);
-
 
 	for(uint i = 0; i < n; ++i){
 		points[i].id = i;
@@ -178,13 +179,13 @@ void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const 
 		detailPainter.savePNG("details/merging_" + std::to_string(s.id) + ".png");
 
 		DEDENT
-		if(candidates.size() == 1){
+		if(candidates.size() == 1 && finitePoints.size() == D){
 			auto origSimplex = std::find(mergeDT.begin(), mergeDT.end(), s);
 
 			assert(origSimplex != mergeDT.end()); //it should be in there, s belongs to its edge
-			assert(finitePoints.size() == D); // we have a unique candidate, should be only one infinite point
+			//assert(finitePoints.size() == D); // we have a unique candidate, should be only one infinite point
 
-			dSimplex mergeSimplex = candidates[0]; //there is only one in there
+			auto mergeSimplex = candidates.begin(); //there is only one in there
 
 			//find infinite point in original simplex
 			uint infIdx = 0;
@@ -193,13 +194,13 @@ void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const 
 
 			//find differing point in mergeSimplex
 			uint diffIdx = 0;
-			while(origSimplex->contains(mergeSimplex.vertices[diffIdx])) ++diffIdx;
+			while(origSimplex->contains(mergeSimplex->vertices[diffIdx])) ++diffIdx;
 			assert(diffIdx < D+1);
 
 			//do the change
 			VLOG << "Changing " << infIdx << ": " << points[origSimplex->vertices[infIdx]] << " to "
-				 << diffIdx << ": " << points[mergeSimplex.vertices[diffIdx]] << std::endl;;
-			origSimplex->vertices[infIdx] = mergeSimplex.vertices[diffIdx];
+				 << diffIdx << ": " << points[mergeSimplex->vertices[diffIdx]] << std::endl;;
+			origSimplex->vertices[infIdx] = mergeSimplex->vertices[diffIdx];
 
 			//TODO what about neighbors?
 
@@ -217,9 +218,64 @@ void mergeTriangulation(dSimplices & mergeDT, const dSimplices & otherDT, const 
 
 }
 
+void updateNeighbors(dSimplices & simplices, dPoints & points){
+
+	INDENT
+	for(dSimplex & simplex : simplices){
+
+		PLOG << "Updating neighbors of " << simplex << std::endl;
+
+		simplex.neighbors.clear();
+
+		INDENT
+		for(uint v = 0; v < D+1; ++v){
+
+			//for every point, look where else its used
+			//if the other simplex shares a second point -> it is a neighbor
+
+			const dPoint & vertex = points[simplex.vertices[v]];
+
+			if(IS_PROLIX){
+				PLOG << "Vertex " << vertex << " used in ";
+				Logger::getInstance().logContainer(vertex.simplices, Logger::Verbosity::PROLIX);
+			}
+
+			INDENT
+			for(const uint u : vertex.simplices){
+
+				if(u != simplex.id && simplices.contains(u) && simplex.isNeighbor(simplices[u])){
+
+					PLOG << "Neighbor with " << simplices[u] << std::endl;
+
+					simplex.neighbors.insert(u);
+
+					Logger::getInstance().logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
+
+					assert(simplex.neighbors.size() <= D+1);
+					//u will be updated in its own round;
+				}
+
+			}
+			DEDENT
+
+		}
+		DEDENT
+
+		//TODO it might be better NOT to save the infinite simplex as neighbor
+		if(simplex.neighbors.size() == D){ //if it is a simplex at the border, it might have one infinite simplex as neighbor
+			simplex.neighbors.insert(uint(dSimplex::cINF));
+		}
+
+		assert(simplex.neighbors.size() == D+1);
+
+	}
+	DEDENT
+
+}
+
 int main(int argc, char* argv[]) {
 
-	Logger::getInstance().setLogLevel(Logger::Verbosity::LIVEVERBOSE);
+	Logger::getInstance().setLogLevel(Logger::Verbosity::LIVEPROLIX);
 
 	uint N = 1e2;
 
@@ -237,16 +293,16 @@ int main(int argc, char* argv[]) {
 
 	LOG << "Partioning" << std::endl;
 	INDENT
-	auto part = partition(points);
+	auto partioning = partition(points);
 	DEDENT
 
 	basePainter.draw(points);
 	basePainter.drawPartition(points);
 	basePainter.savePNG("01_points.png");
 
-	for(uint i = 0; i < part.size(); ++i){
+	for(uint i = 0; i < partioning.size(); ++i){
 		PLOG << "Partition " << i << ": ";
-		for(auto & p : part[i])
+		for(auto & p : partioning[i])
 			CONT << p << " ";
 		CONT << std::endl;
 	}
@@ -265,20 +321,30 @@ int main(int argc, char* argv[]) {
 
 	paintRealDT.savePNG("00_realDT.png");
 
-	std::vector<dSimplices> partialDT;
+	std::vector<dSimplices> partialDTs;
+	partialDTs.resize(partioning.size());
 	Painter paintPartialDTs = basePainter;
 
-	for(uint i = 0; i < part.size(); ++i){
+	for(uint i = 0; i < partioning.size(); ++i){
 		LOG << "Partition " << i << std::endl;
 		INDENT
-		partialDT.push_back(delaunayCgal(points, &part[i]));
-		LOG << "Triangulation " << i << " contains " << partialDT[i].size() << " tetrahedra" << std::endl << std::endl;
+		auto dt = delaunayCgal(points, &partioning[i]);
+		LOG << "Triangulation " << i << " contains " << dt.size() << " tetrahedra" << std::endl << std::endl;
 		DEDENT
 
-		paintPartialDTs.draw(partialDT[i], points);
+#ifndef NDEBUG
+		auto saveDT = dt;
+#endif
+		updateNeighbors(dt, points);
+
+		assert(saveDT == dt); //only performed if not NDEBUG
+
+		partialDTs[i] = dt;
+
+		paintPartialDTs.draw(dt, points);
 
 		Painter paintPartialDT = basePainter;
-		paintPartialDT.draw(partialDT[i], points, true);
+		paintPartialDT.draw(dt, points, true);
 		paintPartialDT.savePNG("02_partialDT_" + std::to_string(i) + ".png");
 	}
 	paintPartialDTs.savePNG("02_partialDTs.png");
@@ -289,12 +355,12 @@ int main(int argc, char* argv[]) {
 	dPoints edgePoints;
 	Painter paintEdges = paintPartialDTs;
 
-	for(uint i = 0; i < part.size(); ++i){
+	for(uint i = 0; i < partioning.size(); ++i){
 
-		auto edge = getEdge(partialDT[i]);
+		auto edge = getEdge(partialDTs[i]);
 		auto ep = extractPoints(edge, points);
 		//points are in different partitions, there can be no overlap
-		edgePoints.insert(edgePoints.end(), ep.begin(), ep.end());
+		edgePoints.insert(ep.begin(), ep.end());
 
 		VLOG << "Edge has " << edge.size() << " simplices with " << ep.size() << " points" << std::endl;
 
@@ -326,18 +392,23 @@ int main(int argc, char* argv[]) {
 	paintEdgeDT.savePNG("04_edgeDT.png");
 
 	Painter paintMerged = basePainter;
-	for(uint i = 0; i < partialDT.size(); ++i){
+
+	for(uint i = 0; i < partialDTs.size(); ++i){
 		LOG << "Merge partition " << i << std::endl;
 		INDENT
-		mergeTriangulation(partialDT[i], edgeDT, part[i], points);
+		mergeTriangulation(partialDTs[i], edgeDT, partioning[i], points);
 		DEDENT
 
-		paintMerged.draw(partialDT[i], points);
+		paintMerged.draw(partialDTs[i], points);
 	}
+
 	paintMerged.savePNG("05_mergedDT.png");
 
-	paintMerged.setColor(1,0,0);
+	paintMerged.setColor(0,0,1);
 	paintMerged.draw(realDT, points);
-	paintMerged.savePNG("05_mergeDT_overlay.png");
+
+	paintMerged.setColor(1,0,0);
+	paintMerged.draw(edgePoints);
+	paintMerged.savePNG("05_mergedDT_overlay.png");
 
 }
