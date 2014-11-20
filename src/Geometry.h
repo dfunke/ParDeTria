@@ -10,8 +10,8 @@
 #include <iostream>
 #include <set>
 
+#include "IndexedVector.hxx"
 #include "Logger.h"
-#include "IdVector.hxx"
 
 typedef float tCoordinate;
 
@@ -96,7 +96,7 @@ public:
 	static constexpr uint cINF = ~(0) ^ ((1 << (2*D)) - 1);
 };
 
-typedef IdVector<dPoint> dPoints;
+typedef IndexedVector<dPoint> dPoints;
 typedef std::vector<uint> dPointIds;
 typedef std::vector<dPointIds> Partition;
 
@@ -243,7 +243,17 @@ std::ostream & operator<<(std::ostream & o, const dPoint & p);
 
 std::ostream & operator<<(std::ostream & o, const dSimplex & p);
 
-typedef IdVector<dSimplex> dSimplices;
+class dSimplices : public IndexedVector<dSimplex> {
+
+public:
+
+	bool operator==(const dSimplices & other) const;
+
+	bool operator!=(const dSimplices & other) const {
+		return !operator==(other);
+	}
+
+};
 
 struct dBox {
 	tCoordinate coords[D];
