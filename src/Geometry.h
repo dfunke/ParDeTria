@@ -93,7 +93,7 @@ public:
 		return !((i & cINF) == cINF);
 	}
 
-	static constexpr uint cINF = ~(0) << 2*D;
+	static constexpr uint cINF = ~(0) ^ ((1 << (2*D)) - 1);
 };
 
 typedef IdVector<dPoint> dPoints;
