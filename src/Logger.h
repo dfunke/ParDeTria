@@ -22,8 +22,8 @@ class Logger : private boost::noncopyable {
 #define INDENT Logger::getInstance().incIndent();
 #define DEDENT Logger::getInstance().decIndent();
 
-#define IS_VERBOSE abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::VERBOSE
-#define IS_PROLIX  abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::PROLIX
+#define IS_VERBOSE Logger::abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::VERBOSE
+#define IS_PROLIX  Logger::abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::PROLIX
 
 public:
 	 enum class Verbosity : short {
@@ -60,6 +60,21 @@ public:
 	std::string indent() const;
 	void incIndent() { ++indentLevel; }
 	void decIndent() { --indentLevel; }
+
+	template<typename Container>
+	void logContainer(const Container & c, Verbosity level, const std::string & prefix = "", const std::string & sep = " "){
+		auto & stream = addLogEntry(level);
+
+		if(prefix != "")
+			stream << prefix << ": ";
+
+		for(auto it = c.begin(); it != c.end(); ++it){
+			if(it != c.begin())
+				stream << " ";
+			stream << *it;
+		}
+		stream << std::endl;
+	}
 
 private:
 	Logger() : logLevel(Logger::Verbosity::NORMAL),
