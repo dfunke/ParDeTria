@@ -34,15 +34,14 @@ dPointStats getPointStats(const dPoints & points, const dPointIds * ids){
 	dPointStats stats;
 
 	dPoints::const_iterator begin, end;
-	dPoints projection;
+	dPoints projection; //used if needed
 
 	if(ids == nullptr){
 		begin = points.begin();
 		end = points.end();
 	}
 	else {
-		for(const auto & i : *ids)
-			projection.push_back(points[i]);
+		projection = points.project(*ids);
 
 		begin = projection.begin();
 		end = projection.end();

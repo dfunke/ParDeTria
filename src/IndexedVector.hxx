@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <vector>
 #include <iterator>
 
 template <typename V, typename K = uint>
@@ -170,21 +171,20 @@ public:
 		return map::count(key) == 1;
 	}
 
-	iterator begin() {
-		return iterator(map::begin());
+	IndexedVector project(const std::vector<K> & ids) const {
+		IndexedVector res;
+
+		for(const auto & id : ids)
+			res.push_back(operator[](id));
+
+		return res;
 	}
 
-	iterator end() {
-		return iterator(map::end());
+	iterator begin() { return iterator(map::begin()); }
 
-	}
+	iterator end() { return iterator(map::end()); }
 
-	const_iterator begin() const {
-		return const_iterator(map::begin());
-	}
+	const_iterator begin() const { return const_iterator(map::begin());	}
 
-	const_iterator end() const {
-		return const_iterator(map::end());
-
-	}
+	const_iterator end() const { return const_iterator(map::end());	}
 };
