@@ -97,8 +97,10 @@ public:
 };
 
 typedef IndexedVector<dPoint> dPoints;
-typedef std::vector<uint> dPointIds;
-typedef std::vector<dPointIds> Partition;
+
+typedef std::vector<uint> Ids;
+
+typedef std::vector<Ids> Partition;
 
 class dSimplex {
 
@@ -158,13 +160,24 @@ public:
 		return false;
 	}
 
-	bool contains(const dPoints & points) const {
-		for(const auto & p : points){
-			if(!contains(p))
+	template <typename Container>
+	bool containsAll(const Container & p) const {
+		for(const auto & x : p ){
+			if(!contains(x))
 				return false;
 		}
 
 		return true;
+	}
+
+	template <typename Container>
+	bool containsAny(const Container & p) const {
+		for(const auto & x : p ){
+			if(contains(x))
+				return true;
+		}
+
+		return false;
 	}
 
 	bool isFinite() const {
@@ -264,6 +277,12 @@ class dSimplices : public IndexedVector<dSimplex> {
 
 public:
 
+	dSimplices()
+		: IndexedVector<dSimplex>() { }
+
+	dSimplices(const IndexedVector<dSimplex> & other)
+		: IndexedVector<dSimplex>(other) { }
+
 	bool operator==(const dSimplices & other) const;
 
 	bool operator!=(const dSimplices & other) const {
@@ -283,6 +302,6 @@ struct dPointStats {
 	dPoint max;
 };
 
-dPointStats getPointStats(const dPoints & points, const dPointIds * = nullptr);
+dPointStats getPointStats(const dPoints & points, const Ids * = nullptr);
 
 //#############################################################################

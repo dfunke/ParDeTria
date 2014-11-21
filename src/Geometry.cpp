@@ -29,7 +29,7 @@ std::ostream & operator<<(std::ostream & o, const dSimplex & p){
 	return o;
 }
 
-dPointStats getPointStats(const dPoints & points, const dPointIds * ids){
+dPointStats getPointStats(const dPoints & points, const Ids * ids){
 
 	dPointStats stats;
 

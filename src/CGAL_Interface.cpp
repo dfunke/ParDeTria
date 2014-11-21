@@ -14,7 +14,7 @@ typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
 typedef CGAL::Delaunay_triangulation_2<K, Tds> CT; //CGAL triangulation
 
 uint tetrahedronID = 0;
-dSimplices delaunayCgal(dPoints & points, const dPointIds * ids, bool filterInfinite){
+dSimplices delaunayCgal(dPoints & points, const Ids * ids, bool filterInfinite){
 
 	//copy points into CGAL structure
 	std::vector<std::pair<CT::Point, uint> > cPoints;
