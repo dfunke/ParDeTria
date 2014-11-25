@@ -96,7 +96,23 @@ public:
 	static constexpr uint cINF = ~(0) ^ ((1 << (2*D)) - 1);
 };
 
-typedef IndexedVector<dPoint> dPoints;
+class dPoints : public IndexedVector<dPoint> {
+
+public:
+
+	dPoints()
+		: IndexedVector<dPoint>() { }
+
+	dPoints(const IndexedVector<dPoint> & other)
+		: IndexedVector<dPoint>(other) { }
+
+	bool operator==(const std::set<uint> & other) const;
+
+	bool operator!=(const std::set<uint> & other) const {
+		return !operator==(other);
+	}
+
+};
 
 typedef std::vector<uint> Ids;
 
@@ -136,6 +152,31 @@ public:
 			//std::cout << true << std::endl;
 			return true;
 		}
+	}
+
+	bool equals(const dSimplex & a) const {
+		//compare vertices
+		for (uint i = 0; i < D + 1; ++i) {
+			bool found = false;
+			for (uint j = 0; j < D + 1; ++j) {
+				if (vertices[i] == a.vertices[j]) {
+					//std::cout << this->vertices[i] << " == " << a.vertices[j];
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				//std::cout << false << std::endl;
+				return false;
+			}
+		}
+
+		//compare neighbors
+		if(neighbors != a.neighbors)
+			return false;
+
+		return true;
+
 	}
 
 	bool operator==(const uint & a) const {
@@ -242,7 +283,7 @@ public:
 
 		for(uint i = 0; i < D+1; ++i){
 			for(uint j = 0; j < D+1; ++j){
-				sharedVertices += vertices[i] == other.vertices[j];
+				sharedVertices += (vertices[i] == other.vertices[j]);
 			}
 		}
 
@@ -288,6 +329,8 @@ public:
 	bool operator!=(const dSimplices & other) const {
 		return !operator==(other);
 	}
+
+	bool verify(const dPoints & points) const;
 
 };
 

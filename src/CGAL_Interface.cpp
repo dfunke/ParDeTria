@@ -34,7 +34,7 @@ dSimplices delaunayCgal(dPoints & points, const Ids * ids, bool filterInfinite){
 	t.insert(cPoints.begin(), cPoints.end());
 	//auto end = Clock::now();
 
-	LOG << "Triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
+	LOG << "CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
 	LOG << "finite faces/vertices "
 			  << t.number_of_faces() << "/" << t.number_of_vertices()  << std::endl;
 
