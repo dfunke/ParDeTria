@@ -42,6 +42,18 @@ std::ostream & operator<<(std::ostream & o, const Point3D & p);
 //dimensionality of our problem
 const uint D = 2;
 
+struct dBox {
+	tCoordinate coords[D];
+	tCoordinate dim[D];
+};
+
+struct dSphere {
+	tCoordinate center[D];
+	tCoordinate radius;
+};
+
+//#############################################################################
+
 class dPoint {
 
 public:
@@ -278,6 +290,28 @@ public:
 	  return orientation(points) * det >= 0;
 	}
 
+	dSphere circumcircle(const dPoints & points) const {
+
+		dSphere sphere;
+
+		tCoordinate D = 2 * (points[vertices[0]].coords[0] * (points[vertices[1]].coords[1] - points[vertices[2]].coords[1])
+						   + points[vertices[1]].coords[0] * (points[vertices[2]].coords[1] - points[vertices[0]].coords[1])
+						   + points[vertices[2]].coords[0] * (points[vertices[0]].coords[1] - points[vertices[1]].coords[1]));
+
+		sphere.center[0] = (( pow(points[vertices[0]].coords[0],2) + pow(points[vertices[0]].coords[1],2)) * (points[vertices[1]].coords[1] - points[vertices[2]].coords[1])
+						   +( pow(points[vertices[1]].coords[0],2) + pow(points[vertices[1]].coords[1],2)) * (points[vertices[2]].coords[1] - points[vertices[0]].coords[1])
+						   +( pow(points[vertices[2]].coords[0],2) + pow(points[vertices[2]].coords[1],2)) * (points[vertices[0]].coords[1] - points[vertices[1]].coords[1])) / D;
+
+
+		sphere.center[1] = (( pow(points[vertices[0]].coords[0],2) + pow(points[vertices[0]].coords[1],2)) * (points[vertices[2]].coords[0] - points[vertices[1]].coords[0])
+					  	   +( pow(points[vertices[1]].coords[0],2) + pow(points[vertices[1]].coords[1],2)) * (points[vertices[0]].coords[0] - points[vertices[2]].coords[0])
+						   +( pow(points[vertices[2]].coords[0],2) + pow(points[vertices[2]].coords[1],2)) * (points[vertices[1]].coords[0] - points[vertices[0]].coords[0])) / D;
+
+		sphere.radius = sqrt(pow(sphere.center[0] - points[vertices[0]].coords[0], 2) + pow(sphere.center[1] - points[vertices[0]].coords[1], 2));
+
+		return sphere;
+	}
+
 	bool isNeighbor(const dSimplex & other) const {
 		uint sharedVertices = 0;
 
@@ -332,11 +366,8 @@ public:
 
 	bool verify(const dPoints & points) const;
 
-};
+	dSimplices findSimplices(const dPoints & points) const;
 
-struct dBox {
-	tCoordinate coords[D];
-	tCoordinate dim[D];
 };
 
 struct dPointStats {

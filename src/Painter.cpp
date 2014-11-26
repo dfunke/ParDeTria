@@ -41,40 +41,17 @@ void Painter::draw(const dSimplices & simplices, const dPoints & points, bool dr
 
 void Painter::drawCircumCircle(const dSimplex & s, const dPoints & points, bool drawInfinite){
 
-	dPoint p[D+1];
-	bool allFinite = true;
 
-	for(uint i = 0; i < D+1; ++i){
-			p[i] = points[s.vertices[i]];
-			if(!p[i].isFinite())
-				allFinite = false;
-	}
-
-	if(!drawInfinite && !allFinite)
+	if(!drawInfinite && !s.isFinite())
 		return;
 
-	tCoordinate D = 2 * (p[0].coords[0] * (p[1].coords[1] - p[2].coords[1])
-					   + p[1].coords[0] * (p[2].coords[1] - p[0].coords[1])
-					   + p[2].coords[0] * (p[0].coords[1] - p[1].coords[1]));
-
-	dPoint u;
-	u.coords[0] = (( pow(p[0].coords[0],2) + pow(p[0].coords[1],2)) * (p[1].coords[1] - p[2].coords[1])
-				  +( pow(p[1].coords[0],2) + pow(p[1].coords[1],2)) * (p[2].coords[1] - p[0].coords[1])
-				  +( pow(p[2].coords[0],2) + pow(p[2].coords[1],2)) * (p[0].coords[1] - p[1].coords[1])) / D;
-
-
-	u.coords[1] = (( pow(p[0].coords[0],2) + pow(p[0].coords[1],2)) * (p[2].coords[0] - p[1].coords[0])
-				  +( pow(p[1].coords[0],2) + pow(p[1].coords[1],2)) * (p[0].coords[0] - p[2].coords[0])
-				  +( pow(p[2].coords[0],2) + pow(p[2].coords[1],2)) * (p[1].coords[0] - p[0].coords[0])) / D;
+	auto circumcircle = s.circumcircle(points);
 
 	//draw circumcenter
-	draw(u);
+	cr->arc(translatePoint(circumcircle.center[0], 0), translatePoint(circumcircle.center[1],1), 5, 0, 2*M_PI);
+	cr->fill();
 
-	tCoordinate r = sqrt(pow(u.coords[0] - p[0].coords[0], 2) + pow(u.coords[1] - p[0].coords[1], 2));
-
-	PLOG <<"r = " << r << std::endl;
-
-	cr->arc(translatePoint(u.coords[0], 0), translatePoint(u.coords[1],1), translateLength(r,0), 0, 2*M_PI);
+	cr->arc(translatePoint(circumcircle.center[0], 0), translatePoint(circumcircle.center[1],1), translateLength(circumcircle.radius,0), 0, 2*M_PI);
 	cr->stroke();
 
 }

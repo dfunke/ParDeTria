@@ -191,3 +191,16 @@ bool dSimplices::verify(const dPoints & points) const{
 	return valid;
 
 }
+
+dSimplices dSimplices::findSimplices(const dPoints & points) const{
+
+	dSimplices result;
+
+	for(const auto & s : *this){
+		if(s.containsAny(points))
+			result.push_back(s);
+	}
+
+	return result;
+
+}
