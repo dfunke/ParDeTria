@@ -6,9 +6,12 @@
 #include <functional>
 #include <set>
 #include <stdexcept>
+#include <queue>
 
 //debug
+#ifndef NDEBUG
 #include <csignal>
+#endif
 
 //own
 #include "Timings.h"
@@ -20,6 +23,7 @@
 
 //**************************
 dBox bounds;
+dSimplices realDT;
 //**************************
 
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
@@ -143,7 +147,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 
 			if(IS_PROLIX){
 				PLOG << "Vertex " << vertex << " used in ";
-				Logger::getInstance().logContainer(vertex.simplices, Logger::Verbosity::PROLIX);
+				LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX);
 			}
 
 			INDENT
@@ -155,7 +159,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 
 					simplex.neighbors.insert(u);
 
-					Logger::getInstance().logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
+					LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
 
 					assert(simplex.neighbors.size() <= D+1);
 					//u will be updated in its own round;
@@ -167,12 +171,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 		}
 		DEDENT
 
-		//TODO it might be better NOT to save the infinite simplex as neighbor
-		if(simplex.neighbors.size() == D){ //if it is a simplex at the border, it might have one infinite simplex as neighbor
-			simplex.neighbors.insert(uint(dSimplex::cINF));
-		}
-
-		if(simplex.neighbors.size()!= D+1){
+		if(!(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1)) {
 			LOG << "Error: not enough neighbors for simplex " << simplex << std::endl;
 			Painter errorPainter(bounds);
 			errorPainter.draw(points);
@@ -184,24 +183,29 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 			errorPainter.setColor(1,0,0); //simplex in red
 			errorPainter.draw(simplex, points, true);
 
-			errorPainter.setColor(1,1,0,0.4); //neighbors in yellow
+			errorPainter.setColor(1,1,0,0.4);//neighbors in yellow
 			errorPainter.drawNeighbors(simplex, simplices, points, true);
 #ifndef NDEBUG
-			if(!simplex.equals(saveSimplex)){
+			if(!simplex.equals(saveSimplex)) {
 				LOG << "Error: was before " << saveSimplex << std::endl;
 
 				errorPainter.setColor(0,0,1); //old simplex in blue
 				errorPainter.draw(saveSimplex, points, true);
 
-				errorPainter.setColor(0,1,1,0.4); //old simplex neighbors in cyan
+				errorPainter.setColor(0,1,1,0.4);//old simplex neighbors in cyan
 				errorPainter.drawNeighbors(saveSimplex, simplices, points, true);
 			}
 #endif
 			errorPainter.savePNG("errors/neighbors_" + std::to_string(simplex.id) + ".png");
 		}
 
-		assert(simplex.neighbors.size() == D+1);
 
+		//assert(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1);
+
+		//TODO it might be better NOT to save the infinite simplex as neighbor
+		if(simplex.neighbors.size() < D+1){ //if it is a simplex at the border, it might have one infinite simplex as neighbor
+			simplex.neighbors.insert(uint(dSimplex::cINF));
+		}
 	}
 	DEDENT
 
@@ -254,13 +258,18 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 				return true;
 			};
 
-	for (uint infVertex = dPoint::cINF; infVertex <= (unsigned) ~(0); ++infVertex) {
+	typedef std::pair<tCoordinate, uint> tCandidate;
+	auto cmpCandidates = [] (const tCandidate & a, const tCandidate & b) { return a.first > b.first; };
+	typedef std::priority_queue<tCandidate, std::vector<tCandidate>, decltype(cmpCandidates)> tCandidateQueue;
+
+	//we use the overflow of the uint to zero to abort the loop
+	for (uint infVertex = dPoint::cINF; infVertex != 0; ++infVertex) {
 		//loop over all infinite vertices contained in DT
 		assert(points.contains(infVertex));
 
 		if(IS_PROLIX){
 			PLOG << "Vertex " << points[infVertex] << " used in ";
-			Logger::getInstance().logContainer(points[infVertex].simplices, Logger::Verbosity::PROLIX);
+			LOGGER.logContainer(points[infVertex].simplices, Logger::Verbosity::PROLIX);
 		}
 
 		auto saveSimplices = points[infVertex].simplices; //needs to be copied since we modify the original set
@@ -272,8 +281,21 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 				continue; //TODO is this correct?
 
 			dSimplex & s = DT[i];
-			uint sp = partition(s); //partition number of s
 			VLOG<< "Edge Simplex " << s << std::endl;
+
+			Painter detailPainter(bounds);
+			detailPainter.draw(points);
+			detailPainter.drawPartition(points);
+
+			detailPainter.setColor(1,1,0,.4); //simplex neighbors in yellow
+			detailPainter.drawNeighbors(s, DT, points, true);
+
+			detailPainter.setColor(1,0,0); // to be replaced simplex in red
+			detailPainter.draw(s, points, true);
+
+			detailPainter.savePNG("details/merging_" + std::to_string(infVertex) + "_" + std::to_string(s.id) + ".png");
+
+			uint sp = partition(s); //partition number of s
 
 			assert(!s.isFinite());
 
@@ -284,69 +306,85 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 				finitePoints.push_back(points[s.vertices[v]]);
 			}
 
+			auto realSimplices = realDT.findSimplices(finitePoints);
+			detailPainter.setColor(0,0,0,0.4); //real simplices in grey
+			detailPainter.draw(realSimplices, points);
+
+			detailPainter.savePNG("details/merging_" + std::to_string(infVertex) + "_" + std::to_string(s.id) + ".png");
+
+
 			if(finitePoints.size() < D){
 				VLOG << "Found only " << finitePoints.size() << " finite points, skipping" << std::endl;
 				continue;
 				//TODO: handle less than D finite points
 			}
 
+			tCandidateQueue candPQ(cmpCandidates);
+
 			VLOG << "Candidate mergers" << std::endl;
 			INDENT
-			dSimplices candidates;
 			for(const auto & x : edgeDT) {
 				if(x.containsAll(finitePoints) && !partitionContains(x, sp)) {
-					candidates.push_back(x);
-					VLOG << x << std::endl;
+					auto cc = x.circumcircle(points);
+					candPQ.emplace(cc.radius, x.id);
+					VLOG << x << " - r = " << cc.radius << std::endl;
 				}
 			}
-
-			if(candidates.empty())
-				VLOG << "NO candidates found" << std::endl;
-
 			DEDENT
 
-			Painter detailPainter(bounds);
-			detailPainter.draw(points);
-			detailPainter.drawPartition(points);
-
-			detailPainter.setColor(0,1,1,.4); //candidate neighbors in cyan
-			detailPainter.drawNeighbors(candidates, edgeDT, points, true);
-
-			detailPainter.setColor(0,1,0,.4); //simplex in green
-			detailPainter.drawNeighbors(s, DT, points, true);
-
-			detailPainter.setColor(1,0,0); // to be replaced simplex in red
-			detailPainter.draw(s, points, true);
-
-			detailPainter.setColor(0, 1, 0); //candidate in green
-			detailPainter.draw(candidates, points, true);
-
-			for(const auto & mergeSimplex : candidates){
-				
-				//find infinite point in original simplex
-				uint infIdx = 0;
-				while(dPoint::isFinite(s.vertices[infIdx])) ++infIdx;
-				assert(infIdx < D+1);
-
-				//find differing point in mergeSimplex
-				uint diffIdx = 0;
-				while(s.contains(mergeSimplex.vertices[diffIdx])) ++diffIdx;
-				assert(diffIdx < D+1);
-
-				//do the change
-				VLOG << "Changing " << infIdx << ": " << points[s.vertices[infIdx]] << " to "
-				<< diffIdx << ": " << points[mergeSimplex.vertices[diffIdx]] << std::endl;;
-				
-				points[s.vertices[infIdx]].simplices.erase(s.id);
-				points[mergeSimplex.vertices[diffIdx]].simplices.erase(mergeSimplex.id);
-
-				s.vertices[infIdx] = mergeSimplex.vertices[diffIdx];
-
-				points[s.vertices[infIdx]].simplices.insert(s.id);
-
+			if(candPQ.empty()){
+				INDENT
+				VLOG << "NO candidates found" << std::endl;
+				DEDENT
+				continue;
 			}
 
-			detailPainter.savePNG("details/merging_" + std::to_string(s.id) + ".png");
+			//take the canddiate with the smallest circumcircle
+			const auto & mergeSimplex = edgeDT[candPQ.top().second];
+
+
+			if(IS_PROLIX){
+
+				dSimplices candidates;
+				//gather candidates
+				while(!candPQ.empty()){
+					candidates.push_back(edgeDT[candPQ.top().second]);
+					candPQ.pop();
+				}
+
+				detailPainter.setColor(0,1,1,.4); //candidate neighbors in cyan
+				detailPainter.drawNeighbors(candidates, edgeDT, points, true);
+
+				detailPainter.setColor(0, 0, 1,0.4); //candidate in blue
+				detailPainter.draw(candidates, points, true);
+
+				detailPainter.setColor(0,1,0); //accepted candidate in green
+				detailPainter.draw(mergeSimplex, points,true);
+
+				detailPainter.savePNG("details/merging_" + std::to_string(infVertex) + "_" + std::to_string(s.id) + ".png");
+			}
+
+			//find infinite point in original simplex
+			uint infIdx = 0;
+			while(dPoint::isFinite(s.vertices[infIdx])) ++infIdx;
+			assert(infIdx < D+1);
+
+			//find differing point in mergeSimplex
+			uint diffIdx = 0;
+			while(s.contains(mergeSimplex.vertices[diffIdx])) ++diffIdx;
+			assert(diffIdx < D+1);
+
+			//do the change
+			VLOG << "Changing " << infIdx << ": " << points[s.vertices[infIdx]] << " to "
+			<< diffIdx << ": " << points[mergeSimplex.vertices[diffIdx]] << std::endl;;
+
+			points[s.vertices[infIdx]].simplices.erase(s.id);
+			points[mergeSimplex.vertices[diffIdx]].simplices.erase(mergeSimplex.id);
+
+			s.vertices[infIdx] = mergeSimplex.vertices[diffIdx];
+
+			points[s.vertices[infIdx]].simplices.insert(s.id);
+
 
 		}
 		DEDENT
@@ -358,7 +396,10 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 
 int main(int argc, char* argv[]) {
 
-	Logger::getInstance().setLogLevel(Logger::Verbosity::LIVE);
+	if(argc == 2)
+		LOGGER.setLogLevel(static_cast<Logger::Verbosity>(std::stoi(argv[1])));
+	else
+		LOGGER.setLogLevel(Logger::Verbosity::LIVE);
 
 	uint N = 1e2;
 
@@ -392,7 +433,7 @@ int main(int argc, char* argv[]) {
 
 	LOG << "Real triangulation" << std::endl;
 	INDENT
-	auto realDT = delaunayCgal(points,nullptr, true);
+	realDT = delaunayCgal(points,nullptr, true);
 	LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
 	DEDENT
 
@@ -497,8 +538,6 @@ int main(int argc, char* argv[]) {
 	dSimplices mergedDT;
 	for(uint i = 0; i < partialDTs.size(); ++i)
 		mergedDT.insert(partialDTs[i].begin(), partialDTs[i].end());
-
-	mergedDT.verify(points); // this SHOULD fail
 
 	mergeTriangulation(mergedDT, edgeDT, partioning, points);
 
