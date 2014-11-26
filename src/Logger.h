@@ -11,6 +11,7 @@
 
 class Logger : private boost::noncopyable {
 
+#define LOGGER Logger::getInstance()
 #define LOG  Logger::getInstance().addLogEntry(Logger::Verbosity::NORMAL)
 #define VLOG Logger::getInstance().addLogEntry(Logger::Verbosity::VERBOSE)
 #define PLOG Logger::getInstance().addLogEntry(Logger::Verbosity::PROLIX)
