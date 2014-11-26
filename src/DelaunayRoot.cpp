@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
 
 				int idx = i * sampleStep + diceT();
 				if(idx < 0) idx = 0;
-				if(idx >= samplePoints.size() - 1) idx = samplePoints.size() - 1;
+				if(idx >= (signed) samplePoints.size() - 1) idx = samplePoints.size() - 1;
 
 	//			std::cout << i << "->" << idx << ": " << samplePoints[idx] << std::endl;
 
@@ -172,7 +172,7 @@ int main(int argc, char* argv[]) {
 
 				int idx = i * sampleStep + diceIP();
 				if(idx < 0) idx = 0;
-				if(idx >= samplePoints.size() - 1) idx = samplePoints.size() - 1;
+				if(idx >= (signed) samplePoints.size() - 1) idx = samplePoints.size() - 1;
 
 	//			std::cout << i << "->" << idx << ": " << samplePoints[idx] << std::endl;
 
