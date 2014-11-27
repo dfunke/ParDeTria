@@ -143,6 +143,59 @@ public:
 		typename map::const_iterator i;
 	};
 
+	struct const_key_iterator: public std::iterator<std::bidirectional_iterator_tag, K> {
+
+	public:
+
+		const_key_iterator() {
+		}
+
+		const_key_iterator(typename map::const_iterator j) :
+				i(j) {
+		}
+
+		const_key_iterator& operator++() {
+			++i;
+			return *this;
+		}
+
+		const_key_iterator operator++(int) {
+			auto tmp = *this;
+			++(*this);
+			return tmp;
+		}
+
+		const_key_iterator& operator--() {
+			--i;
+			return *this;
+		}
+
+		const_key_iterator operator--(int) {
+			auto tmp = *this;
+			--(*this);
+			return tmp;
+		}
+
+		bool operator==(const_key_iterator j) const {
+			return i == j.i;
+		}
+
+		bool operator!=(const_key_iterator j) const {
+			return !(*this == j);
+		}
+
+		const K & operator*() const {
+			return i->first;
+		}
+
+		const K * operator->() const {
+			return &i->first;
+		}
+
+	protected:
+		typename map::const_iterator i;
+	};
+
 public:
 	V & operator[](uint idx) {
 		return map::operator [](idx);
@@ -187,4 +240,8 @@ public:
 	const_iterator begin() const { return const_iterator(map::begin());	}
 
 	const_iterator end() const { return const_iterator(map::end());	}
+
+	const_key_iterator begin_keys() const { return const_key_iterator(map::begin());	}
+
+	const_key_iterator end_keys() const { return const_key_iterator(map::end());	}
 };
