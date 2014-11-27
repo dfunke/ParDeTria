@@ -366,7 +366,26 @@ public:
 
 	bool verify(const dPoints & points) const;
 
-	dSimplices findSimplices(const dPoints & points) const;
+	template <typename Container>
+	dSimplices findSimplices(const Container & points, const bool all = false) const{
+
+		dSimplices result;
+
+		if (all) {
+			for (const auto & s : *this) {
+				if (s.containsAll(points))
+					result.push_back(s);
+			}
+		} else {
+			for (const auto & s : *this) {
+				if (s.containsAny(points))
+					result.push_back(s);
+			}
+		}
+
+		return result;
+
+	}
 
 };
 
