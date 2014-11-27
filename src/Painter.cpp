@@ -76,7 +76,7 @@ void Painter::drawPartition(const dPoints & points){
 
 void Painter::drawNeighbors(const dSimplex & simplex, const dSimplices & neighbors, const dPoints & points, bool drawInfinite){
 	for(uint n : simplex.neighbors){
-		if(dSimplex::isFinite(n)){
+		if(dSimplex::isFinite(n) && neighbors.contains(n)){
 			draw(neighbors[n], points, drawInfinite);
 		}
 	}
