@@ -90,16 +90,6 @@ dSimplices getEdge(const dSimplices & simplices){
 	std::set<uint> edgeIdx;
 
 	for(const auto & s : simplices){
-		/*if(!s.isFinite()){
-			//we have an infinte vertex, at least one of its neighbors must be finite
-			for(uint i = 0; i < D+1; ++i){
-				if(dSimplex::isFinite(s.neighbors[i])
-						&& simplices[norm(s.neighbors[i])].isFinite()
-						&& edgeIdx.insert(s.neighbors[i]).second)
-					//the neighbor is finite and has not been added to the edge simplices yet
-					edgeSimplices.push_back(simplices[norm(s.neighbors[i])]);
-			}
-		}*/
 		if(!s.isFinite())
 			edgeSimplices.push_back(s);
 	}
@@ -161,7 +151,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 
 					LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
 
-					assert(simplex.neighbors.size() <= D+1);
+					//assert(simplex.neighbors.size() <= D+1);
 					//u will be updated in its own round;
 				}
 
@@ -252,36 +242,13 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 
 			};
 
-	auto partition =
-			[&] (const dSimplex & simplex) -> uint {
-
-				for(uint p = 0; p < partitioning.size(); ++p){
-					if(std::all_of(simplex.vertices.begin(), simplex.vertices.end(),
-							[&] (const uint v){
-								return std::find(partitioning[p].begin(), partitioning[p].end(), v) != partitioning[p].end();
-							}))
-						return p;
-				}
-
-				uint p0 = partitionPoint(simplex.vertices[0]);
-				uint p1 = partitionPoint(simplex.vertices[1]);
-				uint p2 = partitionPoint(simplex.vertices[2]);
-
-				throw std::out_of_range("Partition of simplex " + std::to_string(simplex.id) + " ambiguous: "
-						+ std::to_string(p0) + std::to_string(p1) + std::to_string(p2));
-
-			};
-
 	auto partitionContains =
-			[&] (const dSimplex & simplex, const uint partition) -> bool {
-				for(uint i = 0; i < D+1; ++i) {
-					if(std::find(partitioning[partition].begin(),
-							     partitioning[partition].end(),
-								 simplex.vertices[i]) == partitioning[partition].end())
-					return false;
-				}
+			[&] (const dSimplex & simplex) -> bool {
+					uint p0 = partitionPoint(simplex.vertices[0]);
+					uint p1 = partitionPoint(simplex.vertices[1]);
+					uint p2 = partitionPoint(simplex.vertices[2]);
 
-				return true;
+					return p0 == p1 && p1 == p2;
 			};
 
 	typedef std::pair<tCoordinate, uint> tCandidate;
@@ -321,8 +288,6 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 
 			detailPainter.savePNG("details/merging_" + std::to_string(infVertex) + "_" + std::to_string(s.id) + ".png");
 
-			uint sp = partition(s); //partition number of s
-
 			assert(!s.isFinite());
 
 			//the simplex should have D finite points
@@ -339,18 +304,18 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 			detailPainter.savePNG("details/merging_" + std::to_string(infVertex) + "_" + std::to_string(s.id) + ".png");
 
 
-			if(finitePoints.size() < D){
+			/*if(finitePoints.size() < D){
 				VLOG << "Found only " << finitePoints.size() << " finite points, skipping" << std::endl;
 				continue;
 				//TODO: handle less than D finite points
-			}
+			}*/
 
 			tCandidateQueue candPQ(cmpCandidates);
 
 			VLOG << "Candidate mergers" << std::endl;
 			INDENT
 			for(const auto & x : edgeDT) {
-				if(x.containsAll(finitePoints) && !partitionContains(x, sp)) {
+				if(x.containsAll(finitePoints) && !partitionContains(x)) {
 					auto cc = x.circumcircle(points);
 					candPQ.emplace(cc.radius, x.id);
 					VLOG << x << " - r = " << cc.radius << std::endl;
@@ -404,19 +369,20 @@ void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 			VLOG << "Changing " << infIdx << ": " << points[s.vertices[infIdx]] << " to "
 			<< diffIdx << ": " << points[mergeSimplex.vertices[diffIdx]] << std::endl;;
 
+			//remove the simplices from the where-used list of the points
 			points[s.vertices[infIdx]].simplices.erase(s.id);
 			points[mergeSimplex.vertices[diffIdx]].simplices.erase(mergeSimplex.id);
 
+			//perform the change
 			s.vertices[infIdx] = mergeSimplex.vertices[diffIdx];
 
+			//update where-used list
 			points[s.vertices[infIdx]].simplices.insert(s.id);
 
 
 		}
 		DEDENT
 	}
-
-	updateNeighbors(DT, points);
 
 }
 
@@ -557,29 +523,44 @@ int main(int argc, char* argv[]) {
 
 	paintEdgeDT.savePNG("04_edgeDT.png");
 
-	Painter paintMerged = basePainter;
-	paintMerged.setColor(0,1,0,0.4);
+	auto paintMerging = [&] (const dSimplices & dt, const std::string & name){
+		Painter painter = basePainter;
+
+		painter.setColor(0,1,0,0.4);
+		painter.draw(dt, points);
+
+		painter.setColor(1,0,0);
+		painter.draw(edgePoints);
+		painter.savePNG(name + ".png");
+
+		painter.setColor(0,0,0, 0.1);
+		painter.draw(realDT, points);
+
+		painter.savePNG(name + "_overlay.png");
+	};
 
 	LOG << "Merging partial DTs into one triangulation" << std::endl;
 	dSimplices mergedDT;
 	for(uint i = 0; i < partialDTs.size(); ++i)
 		mergedDT.insert(partialDTs[i].begin(), partialDTs[i].end());
 
+	paintMerging(mergedDT, "05a_mergedDT_plain");
+
 	mergeTriangulation(mergedDT, edgeDT, partioning, points);
 
-	mergedDT.verify(points); //this should NOT fail;
+	paintMerging(mergedDT, "05b_mergedDT_merged");
 
-	paintMerged.draw(mergedDT, points);
+	LOG << "Eliminating duplicates" << std::endl;
+	eliminateDuplicates(mergedDT,points);
 
-	paintMerged.setColor(1,0,0);
-	paintMerged.draw(edgePoints);
-	paintMerged.savePNG("05_mergedDT.png");
+	paintMerging(mergedDT, "05c_mergedDT_duplicates");
 
-	paintMerged.setColor(0,0,0, 0.1);
-	paintMerged.draw(realDT, points);
+	LOG << "Updating neighbors" << std::endl;
+	updateNeighbors(mergedDT, points);
 
-	paintMerged.savePNG("05_mergedDT_overlay.png");
+	mergedDT.verify(points);
 
+	paintMerging(mergedDT, "05d_mergedDT_finished");
 
 	LOG << "Finished" << std::endl;
 }
