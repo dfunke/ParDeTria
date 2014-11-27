@@ -211,6 +211,32 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 
 }
 
+void eliminateDuplicates(dSimplices & DT, dPoints & points) {
+
+	Ids saveSimplices(DT.begin_keys(), DT.end_keys());
+
+	for(const auto & s : saveSimplices){
+		if(!DT.contains(s))
+			continue;
+
+		auto duplicates = DT.findSimplices(DT[s].vertices, true);
+		if(duplicates.size() > 1){
+			//keep the one with the minimum index
+			auto minSimplex = *std::min_element(duplicates.begin_keys(), duplicates.end_keys());
+			for(const auto & del : duplicates){
+				if(del.id == minSimplex)
+					continue; //keep the lowest one
+
+				//delete simplex from where-used list
+				for(const auto & p : del.vertices)
+					points[p].simplices.erase(del.id);
+				DT.erase(del.id);
+			}
+		}
+	}
+
+}
+
 void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
 		const Partition & partitioning, dPoints & points) {
 
