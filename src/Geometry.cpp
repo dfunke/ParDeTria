@@ -29,6 +29,25 @@ std::ostream & operator<<(std::ostream & o, const dSimplex & p){
 	return o;
 }
 
+std::ostream & operator<<(std::ostream & o, const dBox & b){
+	o << "[" << b.coords[0] << " - " << b.coords[0] + b.dim[0];
+	for(uint i = 1; i < D; ++i)
+		o << ", " << b.coords[i] << " - " << b.coords[i] + b.dim[i];
+	o << "]";
+	return o;
+}
+
+std::ostream & operator<<(std::ostream & o, const Partition & p){
+	o << p.id << " " << p.bounds << " [";
+	for(auto it = p.points.begin(); it != p.points.end(); ++it){
+		if(it != p.points.begin())
+			o << ", ";
+		o  << *it;
+	}
+	o << "]";
+	return o;
+}
+
 dPointStats getPointStats(const dPoints & points, const Ids * ids){
 
 	dPointStats stats;

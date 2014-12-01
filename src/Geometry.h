@@ -42,14 +42,41 @@ std::ostream & operator<<(std::ostream & o, const Point3D & p);
 //dimensionality of our problem
 const uint D = 2;
 
-struct dBox {
-	tCoordinate coords[D];
-	tCoordinate dim[D];
+struct dSphere {
+	std::array<tCoordinate,D> center;
+	tCoordinate radius;
 };
 
-struct dSphere {
-	tCoordinate center[D];
-	tCoordinate radius;
+struct dBox {
+	std::array<tCoordinate,D> coords;
+	tCoordinate dim[D];
+
+	/* tests whether sphere is FULLY contained in box */
+	bool contains(const dSphere & sphere) const {
+
+		tCoordinate r2 = sphere.radius * sphere.radius;
+
+		for(uint d = 0; d < D; ++d)
+			if(!(coords[d] <= sphere.center[d] && sphere.center[d] <= coords[d] + dim[d]))
+				return false;
+
+		//the center of the sphere is within the box
+		for(uint d = 0; d < D; ++d){
+			auto p = sphere.center;
+			//project p to the bounday of box in dimension d closest to center of the sphere
+			p[d] = sphere.center[d] < coords[d] + dim[d]/2 ? coords[d] : coords[d] + dim[d];
+
+			tCoordinate dist = 0;
+			for(uint i = 0; i < D; ++i)
+				dist += (sphere.center[d] - p[d]) * (sphere.center[d] - p[d]);
+
+			if(dist < r2)
+				return false;
+		}
+
+		return true;
+
+	}
 };
 
 //#############################################################################
@@ -128,7 +155,16 @@ public:
 
 typedef std::vector<uint> Ids;
 
-typedef std::vector<Ids> Partition;
+class Partition {
+
+public:
+	uint id;
+	Ids points;
+	dBox bounds;
+
+};
+
+typedef IndexedVector<Partition> Partitioning;
 
 class dSimplex {
 
@@ -347,6 +383,10 @@ public:
 std::ostream & operator<<(std::ostream & o, const dPoint & p);
 
 std::ostream & operator<<(std::ostream & o, const dSimplex & p);
+
+std::ostream & operator<<(std::ostream & o, const Partition & p);
+
+std::ostream & operator<<(std::ostream & o, const dBox & b);
 
 class dSimplices : public IndexedVector<dSimplex> {
 
