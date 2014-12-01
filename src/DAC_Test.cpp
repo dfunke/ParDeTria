@@ -43,14 +43,33 @@ dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()
 
 }
 
-Partition partition(dPoints & points){
+Partitioning partition(dPoints & points){
 
 	// do mid-point based partitioning for now
 	auto stats = getPointStats(points);
 
 	LOG << "Midpoint is " <<  stats.mid << std::endl;
 
-	Partition partition(pow(2,D));
+	Partitioning partitioning;
+	for(uint i = 0; i < pow(2,D); ++i){
+		partitioning[i].id = i;
+
+		for(uint d = 0; d < D; ++d){
+			partitioning[i].bounds.coords[d] = i & (1 << d) ? stats.mid.coords[d]
+														    : stats.min.coords[d];
+			partitioning[i].bounds.dim[d]    = i & (1 << d) ? stats.max.coords[d] - stats.mid.coords[d]
+														    : stats.mid.coords[d] - stats.min.coords[d];
+		}
+	}
+
+#ifndef NDEBUG
+	auto inPartition = [&] (const dPoint & p, const uint partition) -> bool {
+		for(uint i = 0; i < D; ++i)
+			if(!(partitioning[partition].bounds.coords[i] <= p.coords[i] && p.coords[i] <= partitioning[partition].bounds.coords[i] + partitioning[partition].bounds.dim[i]))
+				return false;
+		return true;
+	};
+#endif
 
 	for(auto & p : points){
 		uint part = 0;
@@ -58,13 +77,15 @@ Partition partition(dPoints & points){
 			part |= (p.coords[dim] > stats.mid.coords[dim]) << dim;
 		}
 
+		assert(inPartition(p, part));
+
 		//LOG << "Adding " << p << " to " << part << std::endl;
-		partition[part].push_back(p.id);
+		partitioning[part].points.push_back(p.id);
 	}
 
 	//add points at the extermities
-	for(uint i = 0; i < partition.size(); ++i){
-		auto stats = getPointStats(points, &partition[i]);
+	for(uint i = 0; i < partitioning.size(); ++i){
+		auto stats = getPointStats(points, &partitioning[i].points);
 		VLOG << "Partition " << i << ": " << stats.min << " - " << stats.mid << " - " << stats.max << std::endl;
 		for(uint k = 0; k < pow(2,D); ++k){
 
@@ -76,22 +97,65 @@ Partition partition(dPoints & points){
 				p.coords[d] += (k & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
 
 			points.push_back(p);
-			partition[i].push_back(p.id);
+			partitioning[i].points.push_back(p.id);
 		}
 	}
 
-	return partition;
+	return partitioning;
 
 }
 
-dSimplices getEdge(const dSimplices & simplices){
+dSimplices getEdge(const dSimplices & simplices, const Partition & partition, const dPoints & points){
 
 	dSimplices edgeSimplices;
-	std::set<uint> edgeIdx;
 
-	for(const auto & s : simplices){
-		if(!s.isFinite())
-			edgeSimplices.push_back(s);
+	//we use the overflow of the uint to zero to abort the loop
+	for (uint infVertex = (dPoint::cINF | (partition.id << D));
+			  infVertex != (dPoint::cINF | (partition.id << D)) + (1 << D); ++infVertex) {
+
+		assert(std::find(partition.points.begin(), partition.points.end(), infVertex) != partition.points.end()); //the infinite point must be in the partition
+		assert(points.contains(infVertex));
+
+		PLOG << "Vertex " << points[infVertex] << std::endl;
+
+		INDENT
+		for(const auto & s : points[infVertex].simplices){
+			if(!simplices.contains(s))
+				continue;
+
+			PLOG << "Adding " << simplices[s] << " to edge" << std::endl;
+			edgeSimplices.push_back(simplices[s]);
+
+			/* Walk along the neighbors,
+			 * testing for each neighbor whether its circumsphere is within the partition or not
+			 */
+			std::deque<uint> wq;
+			std::set<uint> wqa;
+
+			//work queue of simplices to check for circum circle criterian
+			wq.insert(wq.end(), simplices[s].neighbors.begin(), simplices[s].neighbors.end());
+
+			//keep track of already inspected simplices
+			wqa.insert(simplices[s].neighbors.begin(), simplices[s].neighbors.end());
+			INDENT
+			while(!wq.empty()){
+				PLOG << "Inspecting " << wq.size() << " simplices" << std::endl;
+				uint x = wq.front(); wq.pop_front();
+				if(simplices.contains(x) && !partition.bounds.contains(simplices[x].circumcircle(points))){
+					PLOG << "Adding " << simplices[x] << " to edge -> circumcircle criterion" << std::endl;
+					edgeSimplices.push_back(simplices[x]);
+
+					for(const auto & n : simplices[x].neighbors){
+						if(wqa.insert(n).second){
+							//n was not yet inspected
+							wq.push_back(n);
+						}
+					}
+				}
+			}
+			DEDENT
+		}
+		DEDENT
 	}
 
 	return edgeSimplices;
@@ -203,6 +267,9 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 
 void eliminateDuplicates(dSimplices & DT, dPoints & points) {
 
+	uint inSimplices = DT.size();
+	LOG << "Eliminating duplicates: " << inSimplices << " simplices" << std::endl;
+
 	Ids saveSimplices(DT.begin_keys(), DT.end_keys());
 
 	for(const auto & s : saveSimplices){
@@ -225,16 +292,18 @@ void eliminateDuplicates(dSimplices & DT, dPoints & points) {
 		}
 	}
 
+	LOG << inSimplices - DT.size() << " duplicates found" << std::endl;
+
 }
 
 void mergeTriangulation(dSimplices & DT, const dSimplices & edgeDT,
-		const Partition & partitioning, dPoints & points) {
+		const Partitioning & partitioning, dPoints & points) {
 
 	auto partitionPoint =
 			[&] (const uint & point) -> uint {
 
 				for(uint p = 0; p < partitioning.size(); ++p){
-					if(std::find(partitioning[p].begin(), partitioning[p].end(), point) != partitioning[p].end())
+					if(std::find(partitioning[p].points.begin(), partitioning[p].points.end(), point) != partitioning[p].points.end())
 						return p;
 				}
 
@@ -416,12 +485,8 @@ int main(int argc, char* argv[]) {
 	basePainter.drawPartition(points);
 	basePainter.savePNG("01_points.png");
 
-	for(uint i = 0; i < partioning.size(); ++i){
-		PLOG << "Partition " << i << ": ";
-		for(auto & p : partioning[i])
-			CONT << p << " ";
-		CONT << std::endl;
-	}
+	for(auto & p : partioning)
+		PLOG << "Partition " << p << std::endl;;
 
 	LOG << "Real triangulation" << std::endl;
 	INDENT
@@ -445,12 +510,12 @@ int main(int argc, char* argv[]) {
 	for(uint i = 0; i < partioning.size(); ++i){
 		LOG << "Partition " << i << std::endl;
 		INDENT
-		auto dt = delaunayCgal(points, &partioning[i]);
+		auto dt = delaunayCgal(points, &partioning[i].points);
 		LOG << "Triangulation " << i << " contains " << dt.size() << " tetrahedra" << std::endl << std::endl;
 		DEDENT
 
 		LOG << "Verifying CGAL triangulation" << std::endl;
-		dt.verify(points.project(partioning[i]));
+		dt.verify(points.project(partioning[i].points));
 
 #ifndef NDEBUG
 		auto saveDT = dt;
@@ -460,7 +525,7 @@ int main(int argc, char* argv[]) {
 		updateNeighbors(dt, points);
 
 		LOG << "Verifying updated triangulation" << std::endl;
-		dt.verify(points.project(partioning[i]));
+		dt.verify(points.project(partioning[i].points));
 
 		assert(saveDT == dt); //only performed if not NDEBUG
 
@@ -487,7 +552,7 @@ int main(int argc, char* argv[]) {
 
 	for(uint i = 0; i < partioning.size(); ++i){
 
-		auto edge = getEdge(partialDTs[i]);
+		auto edge = getEdge(partialDTs[i], partioning[i], points);
 		auto ep = extractPoints(edge, points);
 		//points are in different partitions, there can be no overlap
 		edgePoints.insert(ep.begin(), ep.end());
@@ -519,7 +584,8 @@ int main(int argc, char* argv[]) {
 
 	paintEdgeDT.setColor(0, 1, 0);
 	paintEdgeDT.draw(edgeDT, points);
-	paintEdgeDT.setColor(0, 0, 0);
+	paintEdgeDT.setColor(1, 0, 0);
+	paintEdgeDT.draw(edgePoints);
 
 	paintEdgeDT.savePNG("04_edgeDT.png");
 
