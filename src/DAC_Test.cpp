@@ -187,6 +187,8 @@ Ids extractPoints(const Ids & edgeSimplices, const dSimplices & simplices){
 
 void updateNeighbors(dSimplices & simplices, dPoints & points){
 
+	PainterBulkWriter paintWriter;
+
 	INDENT
 	for(dSimplex & simplex : simplices){
 
@@ -233,31 +235,35 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 		DEDENT
 
 		if(!(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1)) {
-			LOG << "Error: not enough neighbors for simplex " << simplex << std::endl;
-			Painter errorPainter(bounds);
-			errorPainter.draw(points);
-			errorPainter.drawPartition(points);
+			LOG << "Error: wrong number of neighbors for simplex " << simplex << std::endl;
 
-			errorPainter.setColor(0,0,0,0.4);
-			errorPainter.draw(simplices, points, true);
+			if(IS_PROLIX){
+				std::string png = "errors/neighbors_" + std::to_string(simplex.id) + ".png";
 
-			errorPainter.setColor(1,0,0); //simplex in red
-			errorPainter.draw(simplex, points, true);
+				paintWriter[png] = Painter(bounds);
+				paintWriter[png].draw(points);
+				paintWriter[png].drawPartition(points);
 
-			errorPainter.setColor(1,1,0,0.4);//neighbors in yellow
-			errorPainter.drawNeighbors(simplex, simplices, points, true);
+				paintWriter[png].setColor(0,0,0,0.4);
+				paintWriter[png].draw(simplices, points, true);
+
+				paintWriter[png].setColor(1,0,0); //simplex in red
+				paintWriter[png].draw(simplex, points, true);
+
+				paintWriter[png].setColor(1,1,0,0.4);//neighbors in yellow
+				paintWriter[png].drawNeighbors(simplex, simplices, points, true);
 #ifndef NDEBUG
-			if(!simplex.equals(saveSimplex)) {
-				LOG << "Error: was before " << saveSimplex << std::endl;
+				if(!simplex.equals(saveSimplex)) {
+					LOG << "Error: was before " << saveSimplex << std::endl;
 
-				errorPainter.setColor(0,0,1); //old simplex in blue
-				errorPainter.draw(saveSimplex, points, true);
+					paintWriter[png].setColor(0,0,1); //old simplex in blue
+					paintWriter[png].draw(saveSimplex, points, true);
 
-				errorPainter.setColor(0,1,1,0.4);//old simplex neighbors in cyan
-				errorPainter.drawNeighbors(saveSimplex, simplices, points, true);
-			}
+					paintWriter[png].setColor(0,1,1,0.4);//old simplex neighbors in cyan
+					paintWriter[png].drawNeighbors(saveSimplex, simplices, points, true);
+				}
 #endif
-			errorPainter.savePNG("errors/neighbors_" + std::to_string(simplex.id) + ".png");
+			}
 		}
 
 
@@ -306,170 +312,21 @@ void eliminateDuplicates(dSimplices & DT, dPoints & points) {
 void mergeTriangulation(dSimplices & DT, const Ids & edgeSimplices, const dSimplices & edgeDT,
 		const Partitioning & partitioning, dPoints & points) {
 
-	auto partitionPoint =
-			[&] (const uint & point) -> uint {
 
-				for(uint p = 0; p < partitioning.size(); ++p){
-					if(std::find(partitioning[p].points.begin(), partitioning[p].points.end(), point) != partitioning[p].points.end())
-						return p;
-				}
+	//first of delete all simplices belonging to the edge from DT
+	for(const uint id : edgeSimplices){
+		assert(DT.contains(id));
 
-				throw std::out_of_range(std::to_string(point) + "not found");
-
-			};
-
-	auto partitionContains =
-			[&] (const dSimplex & simplex) -> bool {
-					uint p0 = partitionPoint(simplex.vertices[0]);
-					uint p1 = partitionPoint(simplex.vertices[1]);
-					uint p2 = partitionPoint(simplex.vertices[2]);
-
-					return p0 == p1 && p1 == p2;
-			};
-
-	typedef std::pair<tCoordinate, uint> tCandidate;
-	auto cmpCandidates = [] (const tCandidate & a, const tCandidate & b) { return a.first > b.first; };
-	typedef std::priority_queue<tCandidate, std::vector<tCandidate>, decltype(cmpCandidates)> tCandidateQueue;
-
-	PainterBulkWriter paintWriter;
-
-	for (auto & i : edgeSimplices) {
-
-		if(!DT.contains(i))
-			continue; //TODO is this correct?
-
-		dSimplex & s = DT[i];
-		VLOG<< "Edge Simplex " << s << std::endl;
-
-		std::string png = "details/merging_" + std::to_string(s.id) + ".png";
-
-		if(IS_PROLIX){
-			paintWriter[png] = Painter(bounds);
-			paintWriter[png].draw(points);
-			paintWriter[png].drawPartition(points);
-
-			paintWriter[png].setColor(1,1,0,.4); //simplex neighbors in yellow
-			paintWriter[png].drawNeighbors(s, DT, points, true);
-
-			paintWriter[png].setColor(1,0,0); // to be replaced simplex in red
-			paintWriter[png].draw(s, points, true);
+		//remove simplex from where used list
+		for(uint p = 0; p < D+1; ++p){
+			points[DT[id].vertices[p]].simplices.erase(id);
 		}
 
-		//assert(!s.isFinite());
-
-		//the simplex should have D finite points
-		dPoints finitePoints;
-		for(uint v = 0; v < D+1; ++v) {
-			if(dPoint::isFinite(s.vertices[v]))
-			finitePoints.push_back(points[s.vertices[v]]);
-		}
-
-		if(IS_PROLIX){
-			auto realSimplices = realDT.findSimplices(finitePoints);
-			paintWriter[png].setColor(0,0,0,0.4); //real simplices in grey
-			paintWriter[png].draw(realSimplices, points);
-		}
-
-
-		/*if(finitePoints.size() < D){
-			VLOG << "Found only " << finitePoints.size() << " finite points, skipping" << std::endl;
-			continue;
-			//TODO: handle less than D finite points
-		}*/
-
-		tCandidateQueue candPQ(cmpCandidates);
-
-		VLOG << "Candidate mergers" << std::endl;
-		INDENT
-		if(s.isFinite()){
-			auto cc = s.circumcircle(points);
-			candPQ.emplace(cc.radius, s.id);
-			VLOG << s << " - r = " << cc.radius << std::endl;
-		}
-
-		for(const auto & x : edgeDT) {
-			if(x.containsAll(finitePoints) && !partitionContains(x)) {
-				auto cc = x.circumcircle(points);
-				candPQ.emplace(cc.radius, x.id);
-				VLOG << x << " - r = " << cc.radius << std::endl;
-			}
-		}
-		DEDENT
-
-		if(candPQ.empty()){
-			INDENT
-			VLOG << "NO candidates found" << std::endl;
-			DEDENT
-			continue;
-		}
-
-		auto drawCandidates = [&] () {
-			dSimplices candidates;
-			//gather candidates
-			while(!candPQ.empty()){
-
-				if(edgeDT.contains(candPQ.top().second))
-					candidates.push_back(edgeDT[candPQ.top().second]);
-
-				candPQ.pop();
-			}
-
-			paintWriter[png].setColor(0,1,1,.4); //candidate neighbors in cyan
-			paintWriter[png].drawNeighbors(candidates, edgeDT, points, true);
-
-			paintWriter[png].setColor(0, 0, 1,0.4); //candidate in blue
-			paintWriter[png].draw(candidates, points, true);
-		};
-
-		//take the canddiate with the smallest circumcircle
-		if(!edgeDT.contains(candPQ.top().second)){
-			//the topmost simplex must be the one from DT itself -> nothing to be merged
-			assert(DT.contains(candPQ.top().second) && s == DT[candPQ.top().second]);
-
-			if(IS_PROLIX)
-				drawCandidates();
-
-			continue;
-		}
-
-		const dSimplex & mergeSimplex = edgeDT[candPQ.top().second];
-
-		if(IS_PROLIX){
-			drawCandidates();
-			paintWriter[png].setColor(0,1,0); //accepted candidate in green
-			paintWriter[png].draw(mergeSimplex, points,true);
-		}
-
-		VLOG << "Merging " << s << " and " << mergeSimplex << std::endl;
-
-		//find the points they are differing in
-		INDENT
-		for(uint i = 0; i < D+1; ++i){
-			if(!mergeSimplex.contains(s.vertices[i])){
-				//vertex i of S is NOT in mergeSimplex
-				//find partner to exchange it with
-
-				uint j = 0;
-				while(s.contains(mergeSimplex.vertices[j])) ++j;
-				assert(j < D+1);
-
-				//do the change
-				VLOG << "Changing " << i << ": " << points[s.vertices[i]] << " to "
-				<< j << ": " << points[mergeSimplex.vertices[j]] << std::endl;;
-
-				//remove the simplices from the where-used list of the points
-				points[s.vertices[i]].simplices.erase(s.id);
-				points[mergeSimplex.vertices[j]].simplices.erase(mergeSimplex.id);
-
-				//perform the change
-				s.vertices[i] = mergeSimplex.vertices[j];
-
-				//update where-used list
-				points[s.vertices[i]].simplices.insert(s.id);
-			}
-		}
-		DEDENT
+		DT.erase(id);
 	}
+
+	DT.insert(edgeDT.begin(), edgeDT.end());
+
 }
 
 int main(int argc, char* argv[]) {
