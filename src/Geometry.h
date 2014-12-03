@@ -153,7 +153,7 @@ public:
 
 };
 
-typedef std::vector<uint> Ids;
+typedef std::set<uint> Ids;
 
 class Partition {
 

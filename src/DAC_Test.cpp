@@ -80,7 +80,7 @@ Partitioning partition(dPoints & points){
 		assert(inPartition(p, part));
 
 		//LOG << "Adding " << p << " to " << part << std::endl;
-		partitioning[part].points.push_back(p.id);
+		partitioning[part].points.insert(p.id);
 	}
 
 	//add points at the extermities
@@ -97,7 +97,7 @@ Partitioning partition(dPoints & points){
 				p.coords[d] += (k & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
 
 			points.push_back(p);
-			partitioning[i].points.push_back(p.id);
+			partitioning[i].points.insert(p.id);
 		}
 	}
 
@@ -124,7 +124,7 @@ Ids getEdge(const dSimplices & simplices, const Partition & partition, const dPo
 				continue;
 
 			PLOG << "Adding " << simplices[s] << " to edge" << std::endl;
-			edgeSimplices.push_back(simplices[s].id);
+			edgeSimplices.insert(simplices[s].id);
 
 			/* Walk along the neighbors,
 			 * testing for each neighbor whether its circumsphere is within the partition or not
@@ -143,7 +143,7 @@ Ids getEdge(const dSimplices & simplices, const Partition & partition, const dPo
 				uint x = wq.front(); wq.pop_front();
 				if(simplices.contains(x) && !partition.bounds.contains(simplices[x].circumcircle(points))){
 					PLOG << "Adding " << simplices[x] << " to edge -> circumcircle criterion" << std::endl;
-					edgeSimplices.push_back(simplices[x].id);
+					edgeSimplices.insert(simplices[x].id);
 
 					for(const auto & n : simplices[x].neighbors){
 						if(wqa.insert(n).second){
@@ -173,13 +173,13 @@ Ids extractPoints(const Ids & edgeSimplices, const dSimplices & simplices){
 
 		for(uint i = 0; i < D+1; ++i){
 			if(dPoint::isFinite(simplices[id].vertices[i]) && idx.insert(simplices[id].vertices[i]).second)
-				outPoints.push_back(simplices[id].vertices[i]);
+				outPoints.insert(simplices[id].vertices[i]);
 		}
 	}
 
 	//add the extreme infinite points to the set
 	for(uint i = 0; i < std::pow(2,D); ++i)
-		outPoints.push_back(dPoint::cINF | i << D | i);
+		outPoints.insert(dPoint::cINF | i << D | i);
 
 	return outPoints;
 
@@ -573,10 +573,10 @@ int main(int argc, char* argv[]) {
 		//points are in different partitions, there can be no overlap
 
 		auto edge = getEdge(partialDTs[i], partioning[i], points);
-		edgeSimplexIds.insert(edgeSimplexIds.end(), edge.begin(), edge.end());
+		edgeSimplexIds.insert(edge.begin(), edge.end());
 
 		auto ep = extractPoints(edge, partialDTs[i]);
-		edgePointIds.insert(edgePointIds.end(), ep.begin(), ep.end());
+		edgePointIds.insert(ep.begin(), ep.end());
 
 		VLOG << "Edge has " << edge.size() << " simplices with " << ep.size() << " points" << std::endl;
 
