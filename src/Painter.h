@@ -119,13 +119,16 @@ class PainterBulkWriter {
 public:
 
 	~PainterBulkWriter(){
-		LOG << "Writing " << m_items.size() << " items" << std::endl;
 
-		boost::progress_display progress(m_items.size(), LOG);
+		if(!m_items.empty()){
+			LOG << "Writing " << m_items.size() << " items" << std::endl;
 
-		for(auto & item : m_items){
-			item.second.savePNG(item.first);
-			++progress;
+			boost::progress_display progress(m_items.size(), LOG);
+
+			for(auto & item : m_items){
+				item.second.savePNG(item.first);
+				++progress;
+			}
 		}
 	}
 
