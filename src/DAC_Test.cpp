@@ -309,11 +309,41 @@ void eliminateDuplicates(dSimplices & DT, dPoints & points) {
 
 }
 
-void mergeTriangulation(dSimplices & DT, const Ids & edgeSimplices, const dSimplices & edgeDT,
+dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & edgeSimplices, const dSimplices & edgeDT,
 		const Partitioning & partitioning, dPoints & points) {
 
+	LOG << "Merging partial DTs into one triangulation" << std::endl;
+	dSimplices DT;
+	for(uint i = 0; i < partialDTs.size(); ++i)
+		DT.insert(partialDTs[i].begin(), partialDTs[i].end());
 
-	//first of delete all simplices belonging to the edge from DT
+	auto edgePointIds = extractPoints(edgeSimplices, DT);
+
+	auto paintMerging = [&] (const dSimplices & dt, const std::string & name) -> Painter {
+		Painter painter(bounds);
+
+		painter.draw(points);
+		painter.drawPartition(points);
+
+		painter.setColor(0,1,0,0.4);
+		painter.draw(dt, points);
+
+		painter.setColor(1,0,0);
+		painter.draw(points.project(edgePointIds));
+		painter.savePNG(name + ".png");
+
+		painter.setColor(0,0,0, 0.1);
+		painter.draw(realDT, points);
+
+		painter.savePNG(name + "_overlay.png");
+
+		return painter;
+	};
+
+	paintMerging(DT, "05a_merging_merged");
+
+	//delete all simplices belonging to the edge from DT
+	LOG << "Striping triangulation from edge" << std::endl;
 	for(const uint id : edgeSimplices){
 		assert(DT.contains(id));
 
@@ -325,7 +355,28 @@ void mergeTriangulation(dSimplices & DT, const Ids & edgeSimplices, const dSimpl
 		DT.erase(id);
 	}
 
+	auto painter = paintMerging(DT, "05b_merging_stripped");
+
+	painter.setColor(0,0,1,0.4);
+	painter.draw(edgeDT, points);
+
+	painter.savePNG("05b_merging_stripped+edge_overlay");
+
+
+
+	//merge partial DTs and edge DT
 	DT.insert(edgeDT.begin(), edgeDT.end());
+
+
+
+	paintMerging(DT, "05c_merging_edge");
+
+	eliminateDuplicates(DT, points);
+	updateNeighbors(DT, points);
+
+	paintMerging(DT, "05d_merging_finished");
+
+	return DT;
 
 }
 
@@ -467,44 +518,9 @@ int main(int argc, char* argv[]) {
 
 	paintEdgeDT.savePNG("04_edgeDT.png");
 
-	auto paintMerging = [&] (const dSimplices & dt, const std::string & name){
-		Painter painter = basePainter;
-
-		painter.setColor(0,1,0,0.4);
-		painter.draw(dt, points);
-
-		painter.setColor(1,0,0);
-		painter.draw(points.project(edgePointIds));
-		painter.savePNG(name + ".png");
-
-		painter.setColor(0,0,0, 0.1);
-		painter.draw(realDT, points);
-
-		painter.savePNG(name + "_overlay.png");
-	};
-
-	LOG << "Merging partial DTs into one triangulation" << std::endl;
-	dSimplices mergedDT;
-	for(uint i = 0; i < partialDTs.size(); ++i)
-		mergedDT.insert(partialDTs[i].begin(), partialDTs[i].end());
-
-	paintMerging(mergedDT, "05a_mergedDT_plain");
-
-	mergeTriangulation(mergedDT, edgeSimplexIds, edgeDT, partioning, points);
-
-	paintMerging(mergedDT, "05b_mergedDT_merged");
-
-	LOG << "Eliminating duplicates" << std::endl;
-	eliminateDuplicates(mergedDT,points);
-
-	paintMerging(mergedDT, "05c_mergedDT_duplicates");
-
-	LOG << "Updating neighbors" << std::endl;
-	updateNeighbors(mergedDT, points);
+	auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT, partioning, points);
 
 	mergedDT.verify(points);
-
-	paintMerging(mergedDT, "05d_mergedDT_finished");
 
 	LOG << "Finished" << std::endl;
 }
