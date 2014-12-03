@@ -15,6 +15,10 @@ public:
 
 public:
 
+	Painter() {
+		//non working version;
+	}
+
 	Painter(const dBox & _bounds, uint _resolution = 10) {
 
 		_init(_bounds, _resolution);
@@ -104,5 +108,32 @@ private:
 
 	Cairo::RefPtr<Cairo::ImageSurface> cs;
 	Cairo::RefPtr<Cairo::Context> cr;
+
+};
+
+#include <boost/progress.hpp>
+#include <map>
+
+class PainterBulkWriter {
+
+public:
+
+	~PainterBulkWriter(){
+		LOG << "Writing " << m_items.size() << " items" << std::endl;
+
+		boost::progress_display progress(m_items.size(), LOG);
+
+		for(auto & item : m_items){
+			item.second.savePNG(item.first);
+			++progress;
+		}
+	}
+
+	Painter & operator[](const std::string & file){
+		return m_items[file];
+	}
+
+private:
+	std::map<std::string, Painter> m_items;
 
 };
