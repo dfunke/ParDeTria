@@ -224,11 +224,17 @@ public:
 		return map::count(key) == 1;
 	}
 
-	IndexedVector project(const std::vector<K> & ids) const {
+	template<class Container>
+	const IndexedVector project(const Container & ids) const {
+		return project(ids.begin(), ids.end());
+	}
+
+	template<class InputIt>
+	const IndexedVector project(InputIt first, InputIt last) const {
 		IndexedVector res;
 
-		for(const auto & id : ids)
-			res.push_back(operator[](id));
+		for(; first != last; ++first)
+			res.push_back(operator[](*first));
 
 		return res;
 	}
