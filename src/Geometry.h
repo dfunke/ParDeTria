@@ -202,7 +202,7 @@ public:
 		}
 	}
 
-	bool equals(const dSimplex & a) const {
+	bool equalVertices(const dSimplex & a) const {
 		//compare vertices
 		for (uint i = 0; i < D + 1; ++i) {
 			bool found = false;
@@ -219,12 +219,12 @@ public:
 			}
 		}
 
-		//compare neighbors
-		if(neighbors != a.neighbors)
-			return false;
-
 		return true;
 
+	}
+
+	bool equalNeighbors(const dSimplex & a) const {
+		return neighbors != a.neighbors;
 	}
 
 	bool operator==(const uint & a) const {
@@ -414,12 +414,12 @@ public:
 		if (all) {
 			for (const auto & s : *this) {
 				if (s.containsAll(points))
-					result.push_back(s);
+					result.insert(s);
 			}
 		} else {
 			for (const auto & s : *this) {
 				if (s.containsAny(points))
-					result.push_back(s);
+					result.insert(s);
 			}
 		}
 

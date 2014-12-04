@@ -205,14 +205,14 @@ public:
 		return map::at(idx);
 	}
 
-	void push_back(const V& value) {
+	void insert(const V& value) {
 		map::insert(std::make_pair(value.id, value));
 	}
 
 	template<class InputIt>
 	void insert(InputIt first, InputIt last) {
 		for(; first != last; ++first){
-			push_back(*first);
+			insert(*first);
 		}
 	}
 
@@ -234,7 +234,7 @@ public:
 		IndexedVector res;
 
 		for(; first != last; ++first)
-			res.push_back(operator[](*first));
+			res.insert(operator[](*first));
 
 		return res;
 	}

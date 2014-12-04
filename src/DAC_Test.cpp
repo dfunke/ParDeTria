@@ -96,7 +96,7 @@ Partitioning partition(dPoints & points){
 			for(uint d = 0; d < D; ++d)
 				p.coords[d] += (k & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
 
-			points.push_back(p);
+			points.insert(p);
 			partitioning[i].points.insert(p.id);
 		}
 	}
@@ -253,7 +253,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 				paintWriter[png].setColor(1,1,0,0.4);//neighbors in yellow
 				paintWriter[png].drawNeighbors(simplex, simplices, points, true);
 #ifndef NDEBUG
-				if(!simplex.equals(saveSimplex)) {
+				if(!(simplex.equalVertices(saveSimplex) && simplex.equalNeighbors(saveSimplex))) {
 					LOG << "Error: was before " << saveSimplex << std::endl;
 
 					paintWriter[png].setColor(0,0,1); //old simplex in blue
