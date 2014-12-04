@@ -388,6 +388,8 @@ std::ostream & operator<<(std::ostream & o, const Partition & p);
 
 std::ostream & operator<<(std::ostream & o, const dBox & b);
 
+struct VerificationReport;
+
 class dSimplices : public IndexedVector<dSimplex> {
 
 public:
@@ -405,6 +407,8 @@ public:
 	}
 
 	bool verify(const dPoints & points) const;
+
+	VerificationReport verify(const dSimplices & realDT) const;
 
 	template <typename Container>
 	dSimplices findSimplices(const Container & points, const bool all = false) const{
@@ -427,6 +431,12 @@ public:
 
 	}
 
+};
+
+struct VerificationReport {
+	bool valid;
+	dSimplices missing;
+	dSimplices invalid;
 };
 
 struct dPointStats {

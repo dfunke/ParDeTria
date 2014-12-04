@@ -121,6 +121,69 @@ bool dPoints::operator==(const std::set<uint> & other) const {
 	return true;
 }
 
+VerificationReport dSimplices::verify(const dSimplices & realDT) const {
+
+	VerificationReport result;
+
+	//check whether sizes are equal
+	//there could be some differences concerning infinite vertices
+	if(size() != realDT.size()){
+		LOG << "my size: " << size() << " other size: " << realDT.size() << std::endl;
+		result.valid = false;
+	}
+
+
+	//check whether all simplices of real DT are present
+	for(const auto & realSimplex : realDT){
+
+		//find my simplex, compares simplex id or vertices ids
+		auto mySimplex = std::find_if(this->begin(), this->end(),
+				[&] (const dSimplex & s) { return s.equalVertices(realSimplex); });
+
+		if(mySimplex == this->end()){
+			LOG << "did not find simplex " << realSimplex << std::endl;
+			result.valid = false;
+			result.missing.insert(realSimplex);
+			continue;
+		}
+
+		//check neighbors
+		for(const auto & n : realSimplex.neighbors){
+			if(!dSimplex::isFinite(n))
+				continue;
+
+			bool found = false;
+			for(const auto & nn : mySimplex->neighbors){
+				if(dSimplex::isFinite(nn) && operator [](nn).equalVertices(realDT[n])){
+					found = true;
+					break;
+				}
+			}
+
+			if(!found){
+				LOG << "did not find neighbor " << realDT[n] << " of simplex " << realSimplex << std::endl;
+				result.valid = false;
+			}
+
+		}
+	}
+
+	//check for own simplices that are not in real DT
+	for(const auto & mySimplex : *this){
+		auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
+				[&] (const dSimplex & s) { return s.equalVertices(mySimplex); });
+
+		if(realSimplex == realDT.end()){
+			LOG << "simplex " << mySimplex << " does not exist in real triangulation" << std::endl;
+			result.valid = false;
+			result.invalid.insert(mySimplex);
+		}
+	}
+
+	return result;
+
+}
+
 bool dSimplices::verify(const dPoints & points) const{
 
 	INDENT

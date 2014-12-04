@@ -238,7 +238,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 			LOG << "Error: wrong number of neighbors for simplex " << simplex << std::endl;
 
 			if(IS_PROLIX){
-				std::string png = "errors/neighbors_" + std::to_string(simplex.id) + ".png";
+				std::string png = "img/neighbors_" + std::to_string(simplex.id) + ".png";
 
 				paintWriter[png] = Painter(bounds);
 				paintWriter[png].draw(points);
@@ -312,6 +312,27 @@ void eliminateDuplicates(dSimplices & DT, dPoints & points) {
 dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & edgeSimplices, const dSimplices & edgeDT,
 		const Partitioning & partitioning, dPoints & points) {
 
+	auto partitionPoint =
+			[&] (const uint & point) -> uint {
+
+				for(uint p = 0; p < partitioning.size(); ++p){
+					if(std::find(partitioning[p].points.begin(), partitioning[p].points.end(), point) != partitioning[p].points.end())
+						return p;
+				}
+
+				throw std::out_of_range(std::to_string(point) + "not found");
+
+			};
+
+	auto partitionContains =
+			[&] (const dSimplex & simplex) -> bool {
+					uint p0 = partitionPoint(simplex.vertices[0]);
+					uint p1 = partitionPoint(simplex.vertices[1]);
+					uint p2 = partitionPoint(simplex.vertices[2]);
+
+					return p0 == p1 && p1 == p2;
+			};
+
 	LOG << "Merging partial DTs into one triangulation" << std::endl;
 	dSimplices DT;
 	for(uint i = 0; i < partialDTs.size(); ++i)
@@ -342,6 +363,8 @@ dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & 
 
 	paintMerging(DT, "05a_merging_merged");
 
+	auto deletedSimplices = DT.project(edgeSimplices);
+
 	//delete all simplices belonging to the edge from DT
 	LOG << "Striping triangulation from edge" << std::endl;
 	for(const uint id : edgeSimplices){
@@ -358,16 +381,29 @@ dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & 
 	auto painter = paintMerging(DT, "05b_merging_stripped");
 
 	painter.setColor(0,0,1,0.4);
+	painter.setLineDash({2,4});
 	painter.draw(edgeDT, points);
 
-	painter.savePNG("05b_merging_stripped+edge_overlay");
+	painter.savePNG("05b_merging_stripped+edge_overlay.png");
 
+	painter.setColor(1,0,0,0.4);
+	painter.setLineDash({2,4});
+	painter.draw(deletedSimplices, points);
+	painter.unsetLineDash();
 
+	painter.savePNG("05b_merging_stripped+edge+deleted_overlay.png");
 
 	//merge partial DTs and edge DT
-	DT.insert(edgeDT.begin(), edgeDT.end());
-
-
+	for(const auto & edgeSimplex : edgeDT){
+		if(!partitionContains(edgeSimplex)){
+			DT.insert(edgeSimplex);
+		} else {
+			auto it = std::find_if(deletedSimplices.begin(), deletedSimplices.end(),
+					[&] (const dSimplex & s) { return s.equalVertices(edgeSimplex); } );
+			if(it != deletedSimplices.end())
+				DT.insert(edgeSimplex);
+		}
+	}
 
 	paintMerging(DT, "05c_merging_edge");
 
@@ -520,7 +556,26 @@ int main(int argc, char* argv[]) {
 
 	auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT, partioning, points);
 
+	LOG << "Consistency check of triangulation" << std::endl;
 	mergedDT.verify(points);
+
+	LOG << "Cross check with real triangulation" << std::endl;
+	auto report = mergedDT.verify(realDT);
+
+	PainterBulkWriter writer;
+	for(const auto & missingSimplex : report.missing){
+		std::string img = "img/missing_" + std::to_string(missingSimplex.id) + ".png";
+
+		writer[img] = basePainter;
+
+		writer[img].setColor(1,0,0);
+		writer[img].draw(missingSimplex, points, true);
+
+		auto mySimplices = mergedDT.findSimplices(missingSimplex.vertices);
+
+		writer[img].setColor(0,1,0);
+		writer[img].draw(mySimplices, points, true);
+	}
 
 	LOG << "Finished" << std::endl;
 }
