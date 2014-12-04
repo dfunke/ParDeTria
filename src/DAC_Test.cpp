@@ -24,6 +24,7 @@
 //**************************
 dBox bounds;
 dSimplices realDT;
+const tCoordinate SAFETY = 100;
 //**************************
 
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
@@ -49,7 +50,7 @@ dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()
 		p.id = dPoint::cINF | i;
 
 		for(uint d = 0; d < D; ++d)
-			p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
+			p.coords[d] += (i & (1 << d) ? 1 : -1) * 2* SAFETY * (stats.max.coords[d] - stats.min.coords[d]);
 
 		points.insert(p);
 	}
@@ -566,6 +567,12 @@ int main(int argc, char* argv[]) {
 
 	LOG << "Cross check with real triangulation" << std::endl;
 	auto report = mergedDT.verify(realDT);
+
+	Painter paintFinal = basePainter;
+
+	paintFinal.setColor(0,1,0);
+	paintFinal.draw(mergedDT, points, true);
+	paintFinal.savePNG("06_final.png");
 
 	PainterBulkWriter writer;
 	for(const auto & missingSimplex : report.missing){
