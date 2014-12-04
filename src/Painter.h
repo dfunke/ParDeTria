@@ -63,6 +63,14 @@ public:
 		cr->set_line_width(w);
 	}
 
+	void setLineDash(const std::vector<double> & dash = { 2, 2}, const uint offset = 0){
+		cr->set_dash(dash, offset);
+	}
+
+	void unsetLineDash(){
+		cr->unset_dash();
+	}
+
 	void savePNG(const std::string & file) const {
 		cs->write_to_png(file);
 	}

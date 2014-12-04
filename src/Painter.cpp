@@ -137,18 +137,19 @@ void Painter::line(const dPoints & points, uint a, uint b, bool drawInfinite){
 	auto A = points[a];
 	auto B = points[b];
 
+	cr->save();
+
 	if(!A.isFinite() || !B.isFinite()){
 		if(!drawInfinite)
 			return;
 
-		std::vector<double> dash = { 2, 2};
-		cr->set_dash(dash, 0);
+		setLineDash();
 	}
 
 	cr->move_to(translatePoint(A.coords[0],0), translatePoint(A.coords[1],1));
 	cr->line_to(translatePoint(B.coords[0],0), translatePoint(B.coords[1],1));
 	cr->stroke();
 
-	cr->unset_dash();
+	cr->restore();
 
 }
