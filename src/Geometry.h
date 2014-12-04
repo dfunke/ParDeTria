@@ -132,7 +132,7 @@ public:
 		return !((i & cINF) == cINF);
 	}
 
-	static constexpr uint cINF = ~(0) ^ ((1 << (2*D)) - 1);
+	static constexpr uint cINF = ~(0) ^ ((1 << D) - 1);
 };
 
 class dPoints : public IndexedVector<dPoint> {

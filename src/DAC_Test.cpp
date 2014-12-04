@@ -39,6 +39,21 @@ dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()
 
 	//TODO checks for colliding points, straight lines, etc.
 
+	//add infinite points
+
+	auto stats = getPointStats(points);
+	for(uint i = 0; i < pow(2,D); ++i){
+		VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - " << stats.max << std::endl;
+
+		dPoint p = stats.mid;
+		p.id = dPoint::cINF | i;
+
+		for(uint d = 0; d < D; ++d)
+			p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
+
+		points.insert(p);
+	}
+
 	return points;
 
 }
@@ -83,21 +98,10 @@ Partitioning partition(dPoints & points){
 		partitioning[part].points.insert(p.id);
 	}
 
-	//add points at the extermities
+	//add infinite points
 	for(uint i = 0; i < partitioning.size(); ++i){
-		auto stats = getPointStats(points, &partitioning[i].points);
-		VLOG << "Partition " << i << ": " << stats.min << " - " << stats.mid << " - " << stats.max << std::endl;
-		for(uint k = 0; k < pow(2,D); ++k){
-
-			//low point
-			dPoint p = stats.mid;
-			p.id = dPoint::cINF | i << D | k;
-
-			for(uint d = 0; d < D; ++d)
-				p.coords[d] += (k & (1 << d) ? 1 : -1) * 2 * (stats.max.coords[d] - stats.min.coords[d]);
-
-			points.insert(p);
-			partitioning[i].points.insert(p.id);
+		for(uint k = dPoint::cINF; k != 0; ++k){
+			partitioning[i].points.insert(k);
 		}
 	}
 
@@ -110,8 +114,8 @@ Ids getEdge(const dSimplices & simplices, const Partition & partition, const dPo
 	Ids edgeSimplices;
 
 	//we use the overflow of the uint to zero to abort the loop
-	for (uint infVertex = (dPoint::cINF | (partition.id << D));
-			  infVertex != (dPoint::cINF | (partition.id << D)) + (1 << D); ++infVertex) {
+	for (uint infVertex = dPoint::cINF;
+			  infVertex != 0; ++infVertex) {
 
 		assert(std::find(partition.points.begin(), partition.points.end(), infVertex) != partition.points.end()); //the infinite point must be in the partition
 		assert(points.contains(infVertex));
@@ -178,8 +182,9 @@ Ids extractPoints(const Ids & edgeSimplices, const dSimplices & simplices){
 	}
 
 	//add the extreme infinite points to the set
-	for(uint i = 0; i < std::pow(2,D); ++i)
-		outPoints.insert(dPoint::cINF | i << D | i);
+	for(uint k = dPoint::cINF; k != 0; ++k){
+		outPoints.insert(k);
+	}
 
 	return outPoints;
 
