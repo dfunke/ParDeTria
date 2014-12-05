@@ -124,14 +124,7 @@ bool dPoints::operator==(const std::set<uint> & other) const {
 VerificationReport dSimplices::verify(const dSimplices & realDT) const {
 
 	VerificationReport result;
-
-	//check whether sizes are equal
-	//there could be some differences concerning infinite vertices
-	if(size() != realDT.size()){
-		LOG << "my size: " << size() << " other size: " << realDT.size() << std::endl;
-		result.valid = false;
-	}
-
+	result.valid = true;
 
 	//check whether all simplices of real DT are present
 	for(const auto & realSimplex : realDT){
@@ -169,16 +162,27 @@ VerificationReport dSimplices::verify(const dSimplices & realDT) const {
 	}
 
 	//check for own simplices that are not in real DT
+	uint infSimplices = 0;
 	for(const auto & mySimplex : *this){
 		auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
 				[&] (const dSimplex & s) { return s.equalVertices(mySimplex); });
 
-		if(realSimplex == realDT.end()){
+		infSimplices += !mySimplex.isFinite();
+
+		if(realSimplex == realDT.end() && mySimplex.isFinite()){
 			LOG << "simplex " << mySimplex << " does not exist in real triangulation" << std::endl;
 			result.valid = false;
 			result.invalid.insert(mySimplex);
 		}
 	}
+
+	//check whether sizes are equal, account for infinite simplices
+	if(size() - infSimplices != realDT.size()){
+		LOG << "my size: " << size() << " - " << infSimplices << " other size: " << realDT.size() << std::endl;
+		result.valid = false;
+	}
+
+	LOG << "cross check " << (result.valid ? "" : "NOT ") << "successful" << std::endl;
 
 	return result;
 
@@ -255,8 +259,13 @@ bool dSimplices::verify(const dPoints & points) const{
 	}
 
 	//check in circle criterion
+	LOG << "Checking empty circle criterion" << std::endl;
 	for(const auto & s : *this){
 		for(const auto & p : points){
+
+			if(!p.isFinite())
+				continue; //skip infinite points
+
 			bool contains = s.contains(p);
 			bool inCircle = s.inCircle(p, points);
 			if(contains != inCircle){
