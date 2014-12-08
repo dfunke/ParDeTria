@@ -210,9 +210,9 @@ public:
 	}
 
 	template<class InputIt>
-	void insert(InputIt first, InputIt last) {
-		for(; first != last; ++first){
-			insert(*first);
+	void insert(const InputIt & first, const InputIt & last) {
+		for(auto it = first; it != last; ++it){
+			insert(*it);
 		}
 	}
 
@@ -230,11 +230,11 @@ public:
 	}
 
 	template<class InputIt>
-	const IndexedVector project(InputIt first, InputIt last) const {
+	const IndexedVector project(const InputIt & first, const InputIt & last) const {
 		IndexedVector res;
 
-		for(; first != last; ++first)
-			res.insert(operator[](*first));
+		for(auto it = first; it != last; ++it)
+			res.insert(operator[](*it));
 
 		return res;
 	}
