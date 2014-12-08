@@ -445,6 +445,31 @@ struct dPointStats {
 	dPoint max;
 };
 
-dPointStats getPointStats(const dPoints & points, const Ids * = nullptr);
+template<class InputIt>
+dPointStats getPointStats(const InputIt & first, const InputIt & last, const dPoints & points, const bool ignoreInfinite = true){
+
+	dPointStats stats;
+
+	for(uint dim = 0; dim < D; ++dim){
+		stats.min.coords[dim] = std::numeric_limits<tCoordinate>::max();
+		stats.max.coords[dim] = std::numeric_limits<tCoordinate>::min();
+
+		for(auto it = first; it != last; ++it){
+
+			uint id = *it;
+			assert(points.contains(id));
+
+			if(points[id].isFinite() || !ignoreInfinite){
+				stats.min.coords[dim] = std::min(stats.min.coords[dim], points[id].coords[dim]);
+				stats.max.coords[dim] = std::max(stats.max.coords[dim], points[id].coords[dim]);
+			}
+		}
+
+		stats.mid.coords[dim] = (stats.max.coords[dim] + stats.min.coords[dim]) / 2;
+	}
+
+	return stats;
+
+}
 
 //#############################################################################

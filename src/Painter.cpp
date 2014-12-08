@@ -62,7 +62,7 @@ void Painter::drawCircumCircle(const dSimplices & s, const dPoints & points, boo
 }
 
 void Painter::drawPartition(const dPoints & points){
-	auto stats = getPointStats(points);
+	auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
 
 	//draw partition borders
 	cr->move_to(translatePoint(stats.mid.coords[0], 0),0);

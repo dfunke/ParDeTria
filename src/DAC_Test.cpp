@@ -43,7 +43,7 @@ dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()
 
 	//add infinite points
 
-	auto stats = getPointStats(points);
+	auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
 	for(uint i = 0; i < pow(2,D); ++i){
 		VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - " << stats.max << std::endl;
 
@@ -63,7 +63,7 @@ dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()
 Partitioning partition(const Ids & ids, const dPoints & points){
 
 	// do mid-point based partitioning for now
-	auto stats = getPointStats(points);
+	auto stats = getPointStats(ids.begin(), ids.end(), points);
 
 	LOG << "Midpoint is " <<  stats.mid << std::endl;
 

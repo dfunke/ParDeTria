@@ -48,39 +48,6 @@ std::ostream & operator<<(std::ostream & o, const Partition & p){
 	return o;
 }
 
-dPointStats getPointStats(const dPoints & points, const Ids * ids){
-
-	dPointStats stats;
-
-	dPoints::const_iterator begin, end;
-	dPoints projection; //used if needed
-
-	if(ids == nullptr){
-		begin = points.begin();
-		end = points.end();
-	}
-	else {
-		projection = points.project(*ids);
-
-		begin = projection.begin();
-		end = projection.end();
-	}
-
-	for(uint dim = 0; dim < D; ++dim){
-		auto minmax = std::minmax_element(begin, end,
-				[dim] (const dPoint & a, const dPoint & b) {
-					return a.coords[dim] < b.coords[dim];
-				});
-
-		stats.min.coords[dim] = (*minmax.first).coords[dim];
-		stats.max.coords[dim] = (*minmax.second).coords[dim];
-		stats.mid.coords[dim] = (stats.max.coords[dim] + stats.min.coords[dim]) / 2;
-	}
-
-	return stats;
-
-}
-
 bool dSimplices::operator==(const dSimplices & other) const {
 
 	if(size() != other.size()){
