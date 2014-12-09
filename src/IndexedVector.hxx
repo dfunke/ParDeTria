@@ -239,6 +239,21 @@ public:
 		return res;
 	}
 
+	template<class Return, class Container>
+	const Return project(const Container & ids) const {
+		return project<Return>(ids.begin(), ids.end());
+	}
+
+	template<class Return, class InputIt>
+	const Return project(const InputIt & first, const InputIt & last) const {
+		Return res;
+
+		for(auto it = first; it != last; ++it)
+			res.insert(operator[](*it));
+
+		return res;
+	}
+
 	iterator begin() { return iterator(map::begin()); }
 
 	iterator end() { return iterator(map::end()); }
