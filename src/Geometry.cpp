@@ -242,10 +242,9 @@ bool dSimplices::verify(const dPoints & points) const{
 			}
 		}
 	}
+	DEDENT
 
 	LOG << "Triangulation is " << (valid ? "" : "NOT ") << "valid" << std::endl;
-
-	DEDENT
 	return valid;
 
 }

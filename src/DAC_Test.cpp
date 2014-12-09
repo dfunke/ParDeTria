@@ -23,9 +23,10 @@
 
 //**************************
 dBox bounds;
-dSimplices realDT;
+
 const tCoordinate SAFETY = 100;
 const uint BASE_CASE = 50;
+const uint N = 1e2;
 //**************************
 
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
@@ -91,6 +92,9 @@ Partitioning partition(const Ids & ids, const dPoints & points){
 	for(auto & id : ids){
 		assert(points.contains(id));
 		const auto & p = points[id];
+
+		if(!p.isFinite())
+			continue; //skip infinite points, they will be added later
 
 		uint part = 0;
 		for(uint dim = 0; dim < D; ++dim){
@@ -195,7 +199,7 @@ Ids extractPoints(const Ids & edgeSimplices, const dSimplices & simplices){
 
 }
 
-void updateNeighbors(dSimplices & simplices, dPoints & points){
+void updateNeighbors(dSimplices & simplices, dPoints & points, const std::string & provenance){
 
 	PainterBulkWriter paintWriter;
 
@@ -248,7 +252,7 @@ void updateNeighbors(dSimplices & simplices, dPoints & points){
 			LOG << "Error: wrong number of neighbors for simplex " << simplex << std::endl;
 
 			if(IS_PROLIX){
-				std::string png = "img/neighbors_" + std::to_string(simplex.id) + ".png";
+				std::string png = "img/" + provenance + "_neighbors_" + std::to_string(simplex.id) + ".png";
 
 				paintWriter[png] = Painter(bounds);
 				paintWriter[png].draw(points);
@@ -320,7 +324,7 @@ void eliminateDuplicates(dSimplices & DT, dPoints & points) {
 }
 
 dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & edgeSimplices, const dSimplices & edgeDT,
-		const Partitioning & partitioning, dPoints & points) {
+		const Partitioning & partitioning, dPoints & points, const std::string & provenance, const dSimplices * realDT = nullptr) {
 
 	auto partitionPoint =
 			[&] (const uint & point) -> uint {
@@ -363,15 +367,17 @@ dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & 
 		painter.draw(points.project(edgePointIds));
 		painter.savePNG(name + ".png");
 
-		painter.setColor(0,0,0, 0.1);
-		painter.draw(realDT, points);
+		if(realDT != nullptr){
+			painter.setColor(0,0,0, 0.1);
+			painter.draw(*realDT, points);
+		}
 
 		painter.savePNG(name + "_overlay.png");
 
 		return painter;
 	};
 
-	paintMerging(DT, "05a_merging_merged");
+	paintMerging(DT, provenance + "_05a_merging_merged");
 
 	auto deletedSimplices = DT.project(edgeSimplices);
 
@@ -388,20 +394,20 @@ dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & 
 		DT.erase(id);
 	}
 
-	auto painter = paintMerging(DT, "05b_merging_stripped");
+	auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
 
 	painter.setColor(0,0,1,0.4);
 	painter.setLineDash({2,4});
 	painter.draw(edgeDT, points);
 
-	painter.savePNG("05b_merging_stripped+edge_overlay.png");
+	painter.savePNG(provenance + "_05b_merging_stripped+edge_overlay.png");
 
 	painter.setColor(1,0,0,0.4);
 	painter.setLineDash({2,4});
 	painter.draw(deletedSimplices, points);
 	painter.unsetLineDash();
 
-	painter.savePNG("05b_merging_stripped+edge+deleted_overlay.png");
+	painter.savePNG(provenance + "_05b_merging_stripped+edge+deleted_overlay.png");
 
 	//merge partial DTs and edge DT
 	for(const auto & edgeSimplex : edgeDT){
@@ -415,21 +421,48 @@ dSimplices mergeTriangulation(std::vector<dSimplices> & partialDTs, const Ids & 
 		}
 	}
 
-	paintMerging(DT, "05c_merging_edge");
+	paintMerging(DT, provenance + "_05c_merging_edge");
 
 	eliminateDuplicates(DT, points);
-	updateNeighbors(DT, points);
+	updateNeighbors(DT, points, provenance);
 
-	paintMerging(DT, "05d_merging_finished");
+	paintMerging(DT, provenance + "_05d_merging_finished");
 
 	return DT;
 
 }
 
-dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const uint level = 0){
+dSimplices triangulateBase(const Ids partitionPoints, dPoints & points, const std::string provenance = "0"){
+
+	LOG << "triangulateBASE called on level " << provenance << " with " << partitionPoints.size() << " points" << std::endl;
+
+	INDENT
+	auto dt = delaunayCgal(points, &partitionPoints);
+	LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
+	DEDENT
+
+	LOG << "Verifying CGAL triangulation" << std::endl;
+	dt.verify(points.project(partitionPoints));
+
+#ifndef NDEBUG
+	auto saveDT = dt;
+#endif
+
+	LOG << "Updating neighbors" << std::endl;
+	updateNeighbors(dt, points, provenance);
+
+	LOG << "Verifying updated triangulation" << std::endl;
+	dt.verify(points.project(partitionPoints));
+
+	assert(saveDT == dt); //only performed if not NDEBUG
+
+	return dt;
+}
+
+dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const std::string provenance = "0"){
 
 
-	LOG << "triangulateDAC called on level " << level << " with " << partitionPoints.size() << " points" << std::endl;
+	LOG << "triangulateDAC called on level " << provenance << " with " << partitionPoints.size() << " points" << std::endl;
 
 	if(partitionPoints.size() > BASE_CASE){
 
@@ -443,24 +476,24 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const uin
 		Painter basePainter(bounds);
 		basePainter.draw(points);
 		basePainter.drawPartition(points);
-		basePainter.savePNG("01_points.png");
+		basePainter.savePNG(provenance + "_00_points.png");
 
 		for(auto & p : partioning)
 			PLOG << "Partition " << p << std::endl;;
 
 		LOG << "Real triangulation" << std::endl;
 		INDENT
-		realDT = delaunayCgal(points,nullptr, true);
-		LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
+		auto realDTLocal = delaunayCgal(points, &partitionPoints, true);
+		LOG << "Real triangulation contains " << realDTLocal.size() << " tetrahedra" << std::endl;
 		DEDENT
 
 		Painter paintRealDT = basePainter;
 
 		paintRealDT.setColor(0, 0, 1);
-		paintRealDT.draw(realDT, points);
+		paintRealDT.draw(realDTLocal, points);
 		paintRealDT.setColor(0, 0, 0);
 
-		paintRealDT.savePNG("00_" + std::to_string(level) + "_realDT.png");
+		paintRealDT.savePNG(provenance + "_01_realDT.png");
 
 		std::vector<dSimplices> partialDTs;
 		partialDTs.resize(partioning.size());
@@ -470,7 +503,7 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const uin
 		for(uint i = 0; i < partioning.size(); ++i){
 			LOG << "Partition " << i << std::endl;
 			INDENT
-			partialDTs[i] = triangulateDAC(partioning[i].points, points, level+1);
+			partialDTs[i] = triangulateDAC(partioning[i].points, points, provenance + std::to_string(i));
 			LOG << "Triangulation " << i << " contains " << partialDTs[i].size() << " tetrahedra" << std::endl;
 			DEDENT
 
@@ -479,12 +512,12 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const uin
 
 			Painter paintPartialDT = basePainter;
 			paintPartialDT.draw(partialDTs[i], points, true);
-			paintPartialDT.savePNG("02_partialDT_" + std::to_string(level) + "_ " + std::to_string(i) + ".png");
+			paintPartialDT.savePNG(provenance + "_02_partialDT_" + std::to_string(i) + ".png");
 
 		}
 		DEDENT
 
-		paintPartialDTs.savePNG("02_" + std::to_string(level) + "_partialDTs.png");
+		paintPartialDTs.savePNG(provenance + "_02_partialDTs.png");
 
 		LOG << "Extracting edges" << std::endl;
 		INDENT
@@ -504,18 +537,18 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const uin
 			auto ep = extractPoints(edge, partialDTs[i]);
 			edgePointIds.insert(ep.begin(), ep.end());
 
-			VLOG << "Edge has " << edge.size() << " simplices with " << ep.size() << " points" << std::endl;
-
 			paintEdges.draw(partialDTs[i].project(edge), points, false);
 		}
 		DEDENT
 
+		LOG << "Edge has " << edgeSimplexIds.size() << " simplices with " << edgePointIds.size() << " points" << std::endl;
+
 		paintEdges.draw(points.project(edgePointIds));
-		paintEdges.savePNG("03_" + std::to_string(level) + "_edgeMarked.png");
+		paintEdges.savePNG(provenance + "_03_edgeMarked.png");
 
 		LOG << "Triangulating edges" << std::endl;
 		INDENT
-		auto edgeDT = triangulateDAC(edgePointIds, points, level);
+		auto edgeDT = triangulateBase(edgePointIds, points, provenance + "e");
 		LOG << "Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl << std::endl;
 		DEDENT
 
@@ -526,63 +559,43 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const uin
 		paintEdgeDT.setColor(1, 0, 0);
 		paintEdgeDT.draw(points.project(edgePointIds));
 
-		paintEdgeDT.savePNG("04_" + std::to_string(level) + "_edgeDT.png");
+		paintEdgeDT.savePNG(provenance + "_04_edgeDT.png");
 
-		auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT, partioning, points);
+		auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT, partioning, points, provenance, &realDTLocal);
 
 		LOG << "Consistency check of triangulation" << std::endl;
-		mergedDT.verify(points);
+		mergedDT.verify(points.project(partitionPoints));
 
 		LOG << "Cross check with real triangulation" << std::endl;
-		auto report = mergedDT.verify(realDT);
+		auto report = mergedDT.verify(realDTLocal);
 
 		Painter paintFinal = basePainter;
 
 		paintFinal.setColor(0,1,0);
 		paintFinal.draw(mergedDT, points, true);
-		paintFinal.savePNG("06_" + std::to_string(level) + "_final.png");
+		paintFinal.savePNG(provenance + "_06_final.png");
 
-		PainterBulkWriter writer;
-		for(const auto & missingSimplex : report.missing){
-			std::string img = "img/missing_" + std::to_string(level) + "_" + std::to_string(missingSimplex.id) + ".png";
+		if(IS_PROLIX){
+			PainterBulkWriter writer;
+			for(const auto & missingSimplex : report.missing){
+				std::string img = "img/" + provenance + "_missing_" + std::to_string(missingSimplex.id) + ".png";
 
-			writer[img] = basePainter;
+				writer[img] = basePainter;
 
-			writer[img].setColor(1,0,0);
-			writer[img].draw(missingSimplex, points, true);
+				writer[img].setColor(1,0,0);
+				writer[img].draw(missingSimplex, points, true);
 
-			auto mySimplices = mergedDT.findSimplices(missingSimplex.vertices);
+				auto mySimplices = mergedDT.findSimplices(missingSimplex.vertices);
 
-			writer[img].setColor(0,1,0);
-			writer[img].draw(mySimplices, points, true);
+				writer[img].setColor(0,1,0);
+				writer[img].draw(mySimplices, points, true);
+			}
 		}
 
 		return mergedDT;
 
 	} else { //base case
-		LOG << "Base case" << std::endl;
-
-		INDENT
-		auto dt = delaunayCgal(points, &partitionPoints);
-		LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
-		DEDENT
-
-		LOG << "Verifying CGAL triangulation" << std::endl;
-		dt.verify(points.project(partitionPoints));
-
-#ifndef NDEBUG
-		auto saveDT = dt;
-#endif
-
-		LOG << "Updating neighbors" << std::endl;
-		updateNeighbors(dt, points);
-
-		LOG << "Verifying updated triangulation" << std::endl;
-		dt.verify(points.project(partitionPoints));
-
-		assert(saveDT == dt); //only performed if not NDEBUG
-
-		return dt;
+		return triangulateBase(partitionPoints, points, provenance);
 	}
 }
 
@@ -592,8 +605,6 @@ int main(int argc, char* argv[]) {
 		LOGGER.setLogLevel(static_cast<Logger::Verbosity>(std::stoi(argv[1])));
 	else
 		LOGGER.setLogLevel(Logger::Verbosity::LIVE);
-
-	uint N = 1e2;
 
 	for(uint i = 0; i < D; ++i){
 		bounds.coords[i] = 0;
@@ -605,34 +616,11 @@ int main(int argc, char* argv[]) {
 
 	auto points = genPoints(N, bounds, dice);
 
-	LOG << "Real triangulation" << std::endl;
-	INDENT
-	realDT = delaunayCgal(points,nullptr, true);
-	LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl << std::endl;
-	DEDENT
-
-	Painter paintRealDT(bounds);
-
-	paintRealDT.draw(points);
-	paintRealDT.setColor(0, 0, 1);
-	paintRealDT.draw(realDT, points);
-	paintRealDT.setColor(0, 0, 0);
-
-	paintRealDT.savePNG("00_realDT.png");
-
 	Ids allPoints(points.begin_keys(), points.end_keys());
 
 	INDENT
 	auto dt = triangulateDAC(allPoints, points);
 	DEDENT
-
-	Painter paintFinal(bounds);
-
-	paintFinal.draw(points);
-
-	paintFinal.setColor(0,1,0);
-	paintFinal.draw(dt, points, true);
-	paintFinal.savePNG("06_final.png");
 
 	LOG << "Finished" << std::endl;
 }

@@ -34,11 +34,11 @@ dSimplices delaunayCgal(dPoints & points, const Ids * ids, bool filterInfinite){
 	t.insert(cPoints.begin(), cPoints.end());
 	//auto end = Clock::now();
 
-	LOG << "CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
-	LOG << "finite faces/vertices "
+	VLOG << "CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl;
+	VLOG << "finite faces/vertices "
 			  << t.number_of_faces() << "/" << t.number_of_vertices()  << std::endl;
 
-	LOG << "Collecting simplices" << std::endl;
+	PLOG << "Collecting simplices" << std::endl;
 	INDENT
 
 	dSimplices tria;
@@ -70,7 +70,7 @@ dSimplices delaunayCgal(dPoints & points, const Ids * ids, bool filterInfinite){
 		return a;
 	};
 
-	LOG << "Collecting neighbors" << std::endl;
+	PLOG << "Collecting neighbors" << std::endl;
 
 	INDENT
 	for(auto it = t.finite_faces_begin(); it != t.finite_faces_end(); ++it){
