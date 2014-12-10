@@ -120,31 +120,51 @@ private:
 };
 
 #include <boost/progress.hpp>
-#include <map>
+#include <deque>
 
 class PainterBulkWriter {
 
 public:
+	const uint FLUSH_THRESHOLD = 100;
+
+public:
 
 	~PainterBulkWriter(){
+		flush();
+	}
 
-		if(!m_items.empty()){
+	template <class ... Types>
+	void add(const std::string & file, Types && ... args){
+		if(m_items.size() > FLUSH_THRESHOLD)
+			flush();
+
+		m_items.emplace_front(std::piecewise_construct, std::forward_as_tuple(file), std::forward_as_tuple(args ...));
+	}
+
+	Painter & top(){
+		return m_items.front().second;
+	}
+
+private:
+
+	void flush() {
+
+		if(!m_items.empty()) {
 			LOG << "Writing " << m_items.size() << " items" << std::endl;
 
 			boost::progress_display progress(m_items.size(), LOG);
 
-			for(auto & item : m_items){
-				item.second.savePNG(item.first);
+			while(!m_items.empty()) {
+				m_items.back().second.savePNG(m_items.back().first);
+				m_items.pop_back();
 				++progress;
 			}
+			//clear the memory
+			m_items.shrink_to_fit();
 		}
 	}
 
-	Painter & operator[](const std::string & file){
-		return m_items[file];
-	}
-
 private:
-	std::map<std::string, Painter> m_items;
+	std::deque<std::pair<std::string, Painter> > m_items;
 
 };

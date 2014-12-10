@@ -25,8 +25,8 @@
 dBox bounds;
 
 const tCoordinate SAFETY = 100;
-const uint BASE_CASE = 50;
-const uint N = 1e2;
+const uint BASE_CASE = 100;
+const uint N = 1e3;
 //**************************
 
 dPoints genPoints(const uint n, const dBox & bounds, std::function<tCoordinate()> & dice){
@@ -252,29 +252,27 @@ void updateNeighbors(dSimplices & simplices, dPoints & points, const std::string
 			LOG << "Error: wrong number of neighbors for simplex " << simplex << std::endl;
 
 			if(IS_PROLIX){
-				std::string png = "img/" + provenance + "_neighbors_" + std::to_string(simplex.id) + ".png";
+				paintWriter.add("img/" + provenance + "_neighbors_" + std::to_string(simplex.id) + ".png", bounds);
+				paintWriter.top().draw(points);
+				paintWriter.top().drawPartition(points);
 
-				paintWriter[png] = Painter(bounds);
-				paintWriter[png].draw(points);
-				paintWriter[png].drawPartition(points);
+				paintWriter.top().setColor(0,0,0,0.4);
+				paintWriter.top().draw(simplices, points, true);
 
-				paintWriter[png].setColor(0,0,0,0.4);
-				paintWriter[png].draw(simplices, points, true);
+				paintWriter.top().setColor(1,0,0); //simplex in red
+				paintWriter.top().draw(simplex, points, true);
 
-				paintWriter[png].setColor(1,0,0); //simplex in red
-				paintWriter[png].draw(simplex, points, true);
-
-				paintWriter[png].setColor(1,1,0,0.4);//neighbors in yellow
-				paintWriter[png].drawNeighbors(simplex, simplices, points, true);
+				paintWriter.top().setColor(1,1,0,0.4);//neighbors in yellow
+				paintWriter.top().drawNeighbors(simplex, simplices, points, true);
 #ifndef NDEBUG
 				if(!(simplex.equalVertices(saveSimplex) && simplex.equalNeighbors(saveSimplex))) {
 					LOG << "Error: was before " << saveSimplex << std::endl;
 
-					paintWriter[png].setColor(0,0,1); //old simplex in blue
-					paintWriter[png].draw(saveSimplex, points, true);
+					paintWriter.top().setColor(0,0,1); //old simplex in blue
+					paintWriter.top().draw(saveSimplex, points, true);
 
-					paintWriter[png].setColor(0,1,1,0.4);//old simplex neighbors in cyan
-					paintWriter[png].drawNeighbors(saveSimplex, simplices, points, true);
+					paintWriter.top().setColor(0,1,1,0.4);//old simplex neighbors in cyan
+					paintWriter.top().drawNeighbors(saveSimplex, simplices, points, true);
 				}
 #endif
 			}
@@ -483,14 +481,14 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const std
 
 		LOG << "Real triangulation" << std::endl;
 		INDENT
-		auto realDTLocal = delaunayCgal(points, &partitionPoints, true);
-		LOG << "Real triangulation contains " << realDTLocal.size() << " tetrahedra" << std::endl;
+		auto realDT = delaunayCgal(points, &partitionPoints, true);
+		LOG << "Real triangulation contains " << realDT.size() << " tetrahedra" << std::endl;
 		DEDENT
 
 		Painter paintRealDT = basePainter;
 
 		paintRealDT.setColor(0, 0, 1);
-		paintRealDT.draw(realDTLocal, points);
+		paintRealDT.draw(realDT, points);
 		paintRealDT.setColor(0, 0, 0);
 
 		paintRealDT.savePNG(provenance + "_01_realDT.png");
@@ -561,34 +559,57 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints & points, const std
 
 		paintEdgeDT.savePNG(provenance + "_04_edgeDT.png");
 
-		auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT, partioning, points, provenance, &realDTLocal);
-
-		LOG << "Consistency check of triangulation" << std::endl;
-		mergedDT.verify(points.project(partitionPoints));
-
-		LOG << "Cross check with real triangulation" << std::endl;
-		auto report = mergedDT.verify(realDTLocal);
+		auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT, partioning, points, provenance, &realDT);
 
 		Painter paintFinal = basePainter;
-
 		paintFinal.setColor(0,1,0);
 		paintFinal.draw(mergedDT, points, true);
 		paintFinal.savePNG(provenance + "_06_final.png");
 
+		LOG << "Consistency check of triangulation" << std::endl;
+		auto vr = mergedDT.verify(points.project(partitionPoints));
+
 		if(IS_PROLIX){
 			PainterBulkWriter writer;
-			for(const auto & missingSimplex : report.missing){
-				std::string img = "img/" + provenance + "_missing_" + std::to_string(missingSimplex.id) + ".png";
+			for(const auto & inCircle : vr.inCircle){
+				writer.add("img/" + provenance + "_inCircle_" + std::to_string(inCircle.first.id) + ".png", basePainter);
 
-				writer[img] = basePainter;
+				writer.top().setColor(0,1,0);
+				writer.top().draw(inCircle.first, points, true);
+				writer.top().drawCircumCircle(inCircle.first, points, true);
 
-				writer[img].setColor(1,0,0);
-				writer[img].draw(missingSimplex, points, true);
+				writer.top().setColor(1,0,0);
+				writer.top().draw(points.project(inCircle.second));
+			}
+		}
+
+		LOG << "Cross check with real triangulation" << std::endl;
+		auto ccr = mergedDT.crossCheck(realDT);
+
+		if(IS_PROLIX){
+			PainterBulkWriter writer;
+			for(const auto & missingSimplex : ccr.missing){
+				writer.add("img/" + provenance + "_missing_" + std::to_string(missingSimplex.id) + ".png", basePainter);
 
 				auto mySimplices = mergedDT.findSimplices(missingSimplex.vertices);
 
-				writer[img].setColor(0,1,0);
-				writer[img].draw(mySimplices, points, true);
+				writer.top().setColor(0,1,0);
+				writer.top().draw(mySimplices, points, true);
+
+				writer.top().setColor(1,0,0);
+				writer.top().draw(missingSimplex, points, true);
+			}
+
+			for(const auto & invalidSimplex : ccr.invalid){
+				writer.add("img/" + provenance + "_invalid_" + std::to_string(invalidSimplex.id) + ".png", basePainter);
+
+				auto realSimplices = realDT.findSimplices(invalidSimplex.vertices);
+
+				writer.top().setColor(0,1,0);
+				writer.top().draw(realSimplices, points, true);
+
+				writer.top().setColor(1,0,0);
+				writer.top().draw(invalidSimplex, points, true);
 			}
 		}
 

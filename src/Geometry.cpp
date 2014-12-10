@@ -88,9 +88,9 @@ bool dPoints::operator==(const std::set<uint> & other) const {
 	return true;
 }
 
-VerificationReport dSimplices::verify(const dSimplices & realDT) const {
+CrossCheckReport dSimplices::crossCheck(const dSimplices & realDT) const {
 
-	VerificationReport result;
+	CrossCheckReport result;
 	result.valid = true;
 
 	//check whether all simplices of real DT are present
@@ -155,10 +155,11 @@ VerificationReport dSimplices::verify(const dSimplices & realDT) const {
 
 }
 
-bool dSimplices::verify(const dPoints & points) const{
+VerificationReport dSimplices::verify(const dPoints & points) const{
 
 	INDENT
-	bool valid = true;
+	VerificationReport result;
+	result.valid = true;
 
 	//verify that every input point is used
 	LOG << "Checking points" << std::endl;
@@ -179,7 +180,7 @@ bool dSimplices::verify(const dPoints & points) const{
 				CONT << p << " ";
 		CONT << std::endl;
 
-		valid = false;
+		result.valid = false;
 	}
 
 	//verify where-used data structure
@@ -190,7 +191,7 @@ bool dSimplices::verify(const dPoints & points) const{
 			if(points[p].simplices.count(s.id) != 1){
 				LOG << "Point " << p << " NOT flagged as used in " << s << std::endl;;
 				Logger::getInstance().logContainer(points[p].simplices, Logger::Verbosity::NORMAL, "p.simplices");
-				valid = false;
+				result.valid = false;
 			}
 		}
 	}
@@ -205,7 +206,7 @@ bool dSimplices::verify(const dPoints & points) const{
 			if(std::find(s.vertices.begin(), s.vertices.end(), p.id) == s.vertices.end()){
 				LOG << "Point " << p << " SHOULD be used in " << s << std::endl;
 				Logger::getInstance().logContainer(p.simplices, Logger::Verbosity::NORMAL, "p.simplices");
-				valid = false;
+				result.valid = false;
 			}
 		}
 	}
@@ -220,7 +221,7 @@ bool dSimplices::verify(const dPoints & points) const{
 				|| (!a.isNeighbor(b) && ( b.isNeighbor(a) || a.neighbors.count(b.id) != 0 || b.neighbors.count(a.id) != 0)) ){
 
 				LOG << "Wrong neighbor relation between " << a << " and " << b << std::endl;
-				valid = false;
+				result.valid = false;
 			}
 		}
 	}
@@ -235,16 +236,19 @@ bool dSimplices::verify(const dPoints & points) const{
 
 			bool contains = s.contains(p);
 			bool inCircle = s.inCircle(p, points);
-			if(contains != inCircle){
+			if(contains != inCircle) {
 				LOG << "Point " << p << " is " << (inCircle ? "" : "NOT ") << "in circle of " << s
-				    << " but should " << (contains ? "" : "NOT ") << "be" << std::endl;
-				valid = false;
+					<< " but should " << (contains ? "" : "NOT ") << "be" << std::endl;
+				result.valid = false;
+
+				result.inCircle[s].insert(p.id);
 			}
 		}
 	}
 	DEDENT
 
-	LOG << "Triangulation is " << (valid ? "" : "NOT ") << "valid" << std::endl;
-	return valid;
+	LOG << "Triangulation is " << (result.valid ? "" : "NOT ") << "valid" << std::endl;
+
+	return result;
 
 }

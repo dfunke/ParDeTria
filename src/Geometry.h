@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <set>
+#include <map>
 
 #include "IndexedVector.hxx"
 #include "Logger.h"
@@ -202,6 +203,11 @@ public:
 		}
 	}
 
+	//for use as map key
+	bool operator<(const dSimplex & a) const {
+		return id < a.id;
+	}
+
 	bool equalVertices(const dSimplex & a) const {
 		//compare vertices
 		for (uint i = 0; i < D + 1; ++i) {
@@ -388,6 +394,7 @@ std::ostream & operator<<(std::ostream & o, const Partition & p);
 
 std::ostream & operator<<(std::ostream & o, const dBox & b);
 
+struct CrossCheckReport;
 struct VerificationReport;
 
 class dSimplices : public IndexedVector<dSimplex> {
@@ -406,9 +413,9 @@ public:
 		return !operator==(other);
 	}
 
-	bool verify(const dPoints & points) const;
+	VerificationReport verify(const dPoints & points) const;
 
-	VerificationReport verify(const dSimplices & realDT) const;
+	CrossCheckReport crossCheck(const dSimplices & realDT) const;
 
 	template <typename Container>
 	dSimplices findSimplices(const Container & points, const bool all = false) const{
@@ -433,10 +440,15 @@ public:
 
 };
 
-struct VerificationReport {
+struct CrossCheckReport {
 	bool valid;
 	dSimplices missing;
 	dSimplices invalid;
+};
+
+struct VerificationReport {
+	bool valid;
+	std::map<dSimplex, Ids> inCircle;
 };
 
 struct dPointStats {
