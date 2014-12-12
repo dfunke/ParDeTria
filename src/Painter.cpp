@@ -2,8 +2,8 @@
 
 // static variables
 
-constexpr uint PADDING;
-constexpr uint FONT_SIZE;
+constexpr uint Painter::PADDING;
+constexpr uint Painter::FONT_SIZE;
 
 //
 

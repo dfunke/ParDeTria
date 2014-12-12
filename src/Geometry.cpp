@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <sstream>
 
-std::ostream &operator<<(std::ostream &o, const Point3D &p) {
-  o << "[" << p.x << ", " << p.y << ", " << p.z << "]";
-  return o;
-}
+// static variables
+constexpr uint dPoint::cINF;
+constexpr uint dSimplex::cINF;
+//
 
 std::string to_string(const dPoint &p) {
   std::stringstream o;

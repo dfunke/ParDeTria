@@ -10,35 +10,13 @@
 #include <iostream>
 #include <set>
 #include <map>
+#include <array>
+#include <cmath>
 
 #include "IndexedVector.hxx"
 #include "Logger.h"
 
 typedef float tCoordinate;
-
-struct Point3D {
-  tCoordinate x, y, z;
-};
-
-typedef std::vector<Point3D> Points3D;
-
-struct Box3D {
-  tCoordinate x, y, z;
-  tCoordinate dx, dy, dz;
-};
-
-std::ostream &operator<<(std::ostream &o, const Point3D &p);
-
-//#############################################################################
-// forward declarations
-//
-// struct Point;
-// struct dSimplex;
-//
-// std::ostream & operator<<(std::ostream & o, const Point & p);
-// std::ostream & operator<<(std::ostream & o, const dSimplex & p);
-//
-//#############################################################################
 
 // dimensionality of our problem
 const uint D = 2;
