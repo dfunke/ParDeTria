@@ -31,7 +31,6 @@ const uint N = 1e3;
 
 dPoints genPoints(const uint n, const dBox &bounds,
                   std::function<tCoordinate()> &dice) {
-
   dPoints points;
 
   for (uint i = 0; i < n; ++i) {
@@ -64,7 +63,6 @@ dPoints genPoints(const uint n, const dBox &bounds,
 }
 
 Partitioning partition(const Ids &ids, const dPoints &points) {
-
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
@@ -124,12 +122,11 @@ Partitioning partition(const Ids &ids, const dPoints &points) {
 
 Ids getEdge(const dSimplices &simplices, const Partition &partition,
             const dPoints &points) {
-
   Ids edgeSimplices;
+  std::set<uint> wqa; // set of already checked simplices
 
   // we use the overflow of the uint to zero to abort the loop
   for (uint infVertex = dPoint::cINF; infVertex != 0; ++infVertex) {
-
     assert(
         std::find(partition.points.begin(), partition.points.end(),
                   infVertex) !=
@@ -150,20 +147,22 @@ Ids getEdge(const dSimplices &simplices, const Partition &partition,
        * testing for each neighbor whether its circumsphere is within the
        * partition or not
        */
+      wqa.insert(simplices[s].id);
       std::deque<uint> wq;
-      std::set<uint> wqa;
 
       // work queue of simplices to check for circum circle criterian
-      wq.insert(wq.end(), simplices[s].neighbors.begin(),
-                simplices[s].neighbors.end());
+      for (const auto &n : simplices[s].neighbors) {
+        if (wqa.insert(n).second) {
+          // simplex not yet inspected -> add it to queue
+          wq.push_back(n);
+        }
+      }
 
-      // keep track of already inspected simplices
-      wqa.insert(simplices[s].neighbors.begin(), simplices[s].neighbors.end());
       INDENT
       while (!wq.empty()) {
-        PLOG << "Inspecting " << wq.size() << " simplices" << std::endl;
         uint x = wq.front();
         wq.pop_front();
+
         if (simplices.contains(x) &&
             !partition.bounds.contains(simplices[x].circumcircle(points))) {
           PLOG << "Adding " << simplices[x]
@@ -187,12 +186,10 @@ Ids getEdge(const dSimplices &simplices, const Partition &partition,
 }
 
 Ids extractPoints(const Ids &edgeSimplices, const dSimplices &simplices) {
-
   Ids outPoints;
   std::set<uint> idx;
 
   for (const auto &id : edgeSimplices) {
-
     assert(simplices.contains(id));
 
     for (uint i = 0; i < D + 1; ++i) {
@@ -212,12 +209,10 @@ Ids extractPoints(const Ids &edgeSimplices, const dSimplices &simplices) {
 
 void updateNeighbors(dSimplices &simplices, dPoints &points,
                      const std::string &provenance) {
-
   PainterBulkWriter paintWriter;
 
   INDENT
   for (dSimplex &simplex : simplices) {
-
     PLOG << "Updating neighbors of " << simplex << std::endl;
 
 #ifndef NDEBUG
@@ -228,7 +223,6 @@ void updateNeighbors(dSimplices &simplices, dPoints &points,
 
     INDENT
     for (uint v = 0; v < D + 1; ++v) {
-
       // for every point, look where else its used
       // if the other simplex shares a second point -> it is a neighbor
 
@@ -241,10 +235,8 @@ void updateNeighbors(dSimplices &simplices, dPoints &points,
 
       INDENT
       for (const uint u : vertex.simplices) {
-
         if (u != simplex.id && simplices.contains(u) &&
             simplex.isNeighbor(simplices[u])) {
-
           PLOG << "Neighbor with " << simplices[u] << std::endl;
 
           simplex.neighbors.insert(u);
@@ -307,7 +299,6 @@ void updateNeighbors(dSimplices &simplices, dPoints &points,
 }
 
 void eliminateDuplicates(dSimplices &DT, dPoints &points) {
-
   uint inSimplices = DT.size();
   LOG << "Eliminating duplicates: " << inSimplices << " simplices" << std::endl;
 
@@ -343,7 +334,6 @@ dSimplices mergeTriangulation(std::vector<dSimplices> &partialDTs,
                               const Partitioning &partitioning, dPoints &points,
                               const std::string &provenance,
                               const dSimplices *realDT = nullptr) {
-
   auto partitionPoint = [&](const uint &point) -> uint {
 
     for (uint p = 0; p < partitioning.size(); ++p) {
@@ -483,12 +473,10 @@ dSimplices triangulateBase(const Ids partitionPoints, dPoints &points,
 
 dSimplices triangulateDAC(const Ids partitionPoints, dPoints &points,
                           const std::string provenance = "0") {
-
   LOG << "triangulateDAC called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
   if (partitionPoints.size() > BASE_CASE) {
-
     LOG << "Recursive case" << std::endl;
 
     LOG << "Partioning" << std::endl;
@@ -555,7 +543,6 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints &points,
     paintEdges.setColor(1, 0, 0);
 
     for (uint i = 0; i < partioning.size(); ++i) {
-
       // points are in different partitions, there can be no overlap
 
       auto edge = getEdge(partialDTs[i], partioning[i], points);
@@ -659,7 +646,6 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints &points,
 }
 
 int main(int argc, char *argv[]) {
-
   if (argc == 2)
     LOGGER.setLogLevel(static_cast<Logger::Verbosity>(std::stoi(argv[1])));
   else
