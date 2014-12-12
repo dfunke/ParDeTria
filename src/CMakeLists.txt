@@ -17,8 +17,11 @@ include_directories(${ROOT_INCLUDE_DIRS} ${CGAL_INCLUDE_DIRS} ${Cairomm_INCLUDE_
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -Wall")
 
 if (CMAKE_CXX_COMPILER MATCHES ".*clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lc++abi")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_LIBCPP_VERSION")
+endif ()
+
+if (VALGRIND)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCGAL_DISABLE_ROUNDING_MATH_CHECK")
 endif ()
 
 add_executable (DACTest DAC_Test.cpp Geometry.cpp Logger.cpp Painter.cpp CGAL_Interface.cpp)
