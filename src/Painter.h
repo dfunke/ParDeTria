@@ -4,6 +4,8 @@
 #include <cairomm/cairomm.h>
 
 #include <algorithm>
+#include <vector>
+#include <tuple>
 
 #include "Geometry.h"
 #include "Logger.h"
@@ -72,6 +74,8 @@ public:
 
   void savePNG(const std::string &file) const { cs->write_to_png(file); }
 
+  void setLogging(bool _logging = true) { logging = _logging; }
+
 public:
   static tRGB tetradicColor(uint i) { return tRGB(!(i & 2), i & 2, i & 1); }
 
@@ -99,10 +103,25 @@ private:
     return (in / (3 * bounds.dim[dim])) * imgDim(dim);
   }
 
+  template <typename Object> inline void _log(const Object &o) {
+    if (logging) {
+      cr->move_to(translatePoint(bounds.dim[0] + PADDING, 0),
+                  translatePoint(bounds.coords[1], 1) +
+                      1.5 * FONT_SIZE * logLine++);
+      cr->show_text(to_string(o));
+    }
+  }
+
 private:
   dBox bounds;
   dBox img;
   dPoint offset;
+
+  bool logging;
+  uint logLine;
+
+  static constexpr uint PADDING = 10;
+  static constexpr uint FONT_SIZE = 15;
 
   Cairo::RefPtr<Cairo::ImageSurface> cs;
   Cairo::RefPtr<Cairo::Context> cr;

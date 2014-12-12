@@ -1,5 +1,12 @@
 #include "Painter.h"
 
+// static variables
+
+constexpr uint PADDING;
+constexpr uint FONT_SIZE;
+
+//
+
 void Painter::draw(const dPoint &point) {
 
   if (!point.isFinite()) {
@@ -11,8 +18,16 @@ void Painter::draw(const dPoint &point) {
           translatePoint(point.coords[1], 1), 5, 0, 2 * M_PI);
   cr->fill();
 
+  cr->move_to(translatePoint(point.coords[0], 0) + 7,
+              translatePoint(point.coords[1], 1) + 7);
+  cr->set_font_size(10);
+  cr->show_text(std::to_string(point.id));
+  cr->set_font_size(FONT_SIZE);
+
   if (!point.isFinite())
     cr->restore();
+
+  _log(point);
 }
 
 void Painter::draw(const dPoints &points) {
@@ -31,6 +46,8 @@ void Painter::draw(const dSimplex &simplex, const dPoints &points,
   line(points, simplex.vertices[D], simplex.vertices[0], drawInfinite);
 
   cr->stroke();
+
+  _log(simplex);
 }
 
 void Painter::draw(const dSimplices &simplices, const dPoints &points,
@@ -97,11 +114,13 @@ void Painter::drawNeighbors(const dSimplices &simplices,
 
 void Painter::_init(const dBox &_bounds, uint _resolution) {
   bounds = _bounds;
+  logging = false;
+  logLine = 1;
 
   for (uint d = 0; d < D; ++d) {
     offset.coords[d] = bounds.dim[d]; // offset bounds in middle of image
 
-    img.coords[d] = 0; // image starts at 0
+    img.coords[d] = 0;                            // image starts at 0
     img.dim[d] = 3 * bounds.dim[d] * _resolution; // 9 quadrants
   }
 
@@ -115,6 +134,11 @@ void Painter::_init(const dBox &_bounds, uint _resolution) {
   cr->set_line_width(1.0);
   cr->set_source_rgb(0, 0, 0);
 
+  // set font options
+  cr->select_font_face("serif", Cairo::FONT_SLANT_NORMAL,
+                       Cairo::FONT_WEIGHT_NORMAL);
+  cr->set_font_size(FONT_SIZE);
+
   // draw bounds
   cr->rectangle(
       translatePoint(bounds.coords[0], 0), translatePoint(bounds.coords[1], 1),
@@ -126,9 +150,16 @@ void Painter::_copy(const Painter &a) {
   bounds = a.bounds;
   img = a.img;
   offset = a.offset;
+  logging = a.logging;
+  logLine = a.logLine;
 
   cs = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, width(), height());
   cr = Cairo::Context::create(cs);
+
+  // set font options
+  cr->select_font_face("serif", Cairo::FONT_SLANT_NORMAL,
+                       Cairo::FONT_WEIGHT_NORMAL);
+  cr->set_font_size(FONT_SIZE);
 
   // copy a's surface
   cr->save();
