@@ -371,7 +371,7 @@ public:
 
     // if(sharedVertices > 2 && id != other.id)
     //	PLOG << "Distinct vertices " << *this " and " << other << " share more
-    //than 2 hits";
+    // than 2 hits";
 
     return sharedVertices == D;
   }
@@ -387,12 +387,14 @@ public:
   static constexpr uint cINF = ~(0);
 };
 
+std::string to_string(const dPoint &p);
+std::string to_string(const dSimplex &p);
+std::string to_string(const Partition &p);
+std::string to_string(const dBox &b);
+
 std::ostream &operator<<(std::ostream &o, const dPoint &p);
-
 std::ostream &operator<<(std::ostream &o, const dSimplex &p);
-
 std::ostream &operator<<(std::ostream &o, const Partition &p);
-
 std::ostream &operator<<(std::ostream &o, const dBox &b);
 
 struct CrossCheckReport;

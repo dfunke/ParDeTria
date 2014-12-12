@@ -1,21 +1,24 @@
 #include "Geometry.h"
 
 #include <algorithm>
+#include <sstream>
 
 std::ostream &operator<<(std::ostream &o, const Point3D &p) {
   o << "[" << p.x << ", " << p.y << ", " << p.z << "]";
   return o;
 }
 
-std::ostream &operator<<(std::ostream &o, const dPoint &p) {
+std::string to_string(const dPoint &p) {
+  std::stringstream o;
   o << p.id << "-[" << p.coords[0];
   for (uint i = 1; i < D; ++i)
     o << ", " << p.coords[i];
   o << "]";
-  return o;
+  return o.str();
 }
 
-std::ostream &operator<<(std::ostream &o, const dSimplex &p) {
+std::string to_string(const dSimplex &p) {
+  std::stringstream o;
   o << p.id << ": V = [" << p.vertices[0];
   for (uint i = 1; i < D + 1; ++i)
     o << ", " << p.vertices[i];
@@ -26,18 +29,20 @@ std::ostream &operator<<(std::ostream &o, const dSimplex &p) {
     o << *it;
   }
   o << "]";
-  return o;
+  return o.str();
 }
 
-std::ostream &operator<<(std::ostream &o, const dBox &b) {
+std::string to_string(const dBox &b) {
+  std::stringstream o;
   o << "[" << b.coords[0] << " - " << b.coords[0] + b.dim[0];
   for (uint i = 1; i < D; ++i)
     o << ", " << b.coords[i] << " - " << b.coords[i] + b.dim[i];
   o << "]";
-  return o;
+  return o.str();
 }
 
-std::ostream &operator<<(std::ostream &o, const Partition &p) {
+std::string to_string(const Partition &p) {
+  std::stringstream o;
   o << p.id << " " << p.bounds << " [";
   for (auto it = p.points.begin(); it != p.points.end(); ++it) {
     if (it != p.points.begin())
@@ -45,7 +50,23 @@ std::ostream &operator<<(std::ostream &o, const Partition &p) {
     o << *it;
   }
   o << "]";
-  return o;
+  return o.str();
+}
+
+std::ostream &operator<<(std::ostream &o, const dPoint &p) {
+  return o << to_string(p);
+}
+
+std::ostream &operator<<(std::ostream &o, const dSimplex &p) {
+  return o << to_string(p);
+}
+
+std::ostream &operator<<(std::ostream &o, const Partition &p) {
+  return o << to_string(p);
+}
+
+std::ostream &operator<<(std::ostream &o, const dBox &b) {
+  return o << to_string(b);
 }
 
 bool dSimplices::operator==(const dSimplices &other) const {
