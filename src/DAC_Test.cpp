@@ -442,9 +442,74 @@ dSimplices mergeTriangulation(std::vector<dSimplices> &partialDTs,
   return DT;
 }
 
+void evaluateVerificationReport(const VerificationReport &vr,
+                                const std::string &provenance,
+                                const dPoints &points) {
+  if (IS_PROLIX) {
+    Painter basePainter(bounds);
+    basePainter.draw(points);
+    basePainter.drawPartition(points);
+    basePainter.setLogging();
+
+    PainterBulkWriter writer;
+    for (const auto &inCircle : vr.inCircle) {
+      writer.add("img/" + provenance + "_inCircle_" +
+                     std::to_string(inCircle.first.id) + ".png",
+                 basePainter);
+
+      writer.top().setColor(0, 1, 0);
+      writer.top().draw(inCircle.first, points, true);
+      writer.top().drawCircumCircle(inCircle.first, points, true);
+
+      writer.top().setColor(1, 0, 0);
+      writer.top().draw(points.project(inCircle.second));
+    }
+  }
+}
+
+void evaluateCrossCheckReport(const CrossCheckReport &ccr,
+                              const std::string &provenance,
+                              const dSimplices &DT, const dSimplices &realDT,
+                              const dPoints &points) {
+  if (IS_PROLIX) {
+    Painter basePainter(bounds);
+    basePainter.draw(points);
+    basePainter.drawPartition(points);
+    basePainter.setLogging();
+
+    PainterBulkWriter writer;
+    for (const auto &missingSimplex : ccr.missing) {
+      writer.add("img/" + provenance + "_missing_" +
+                     std::to_string(missingSimplex.id) + ".png",
+                 basePainter);
+
+      auto mySimplices = DT.findSimplices(missingSimplex.vertices);
+
+      writer.top().setColor(0, 1, 0);
+      writer.top().draw(mySimplices, points, true);
+
+      writer.top().setColor(1, 0, 0);
+      writer.top().draw(missingSimplex, points, true);
+    }
+
+    for (const auto &invalidSimplex : ccr.invalid) {
+      writer.add("img/" + provenance + "_invalid_" +
+                     std::to_string(invalidSimplex.id) + ".png",
+                 basePainter);
+
+      auto realSimplices = realDT.findSimplices(invalidSimplex.vertices);
+
+      writer.top().setColor(0, 1, 0);
+      writer.top().draw(realSimplices, points, true);
+
+      writer.top().setColor(1, 0, 0);
+      writer.top().draw(invalidSimplex, points, true);
+    }
+  }
+}
+
 dSimplices triangulateBase(const Ids partitionPoints, dPoints &points,
                            const std::string provenance = "0") {
-
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
@@ -485,8 +550,8 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints &points,
     DEDENT
 
     Painter basePainter(bounds);
-    basePainter.draw(points);
-    basePainter.drawPartition(points);
+    basePainter.draw(points.project(partitionPoints));
+    basePainter.drawPartition(points.project(partitionPoints));
     basePainter.savePNG(provenance + "_00_points.png");
 
     for (auto &p : partioning)
@@ -587,56 +652,11 @@ dSimplices triangulateDAC(const Ids partitionPoints, dPoints &points,
 
     LOG << "Consistency check of triangulation" << std::endl;
     auto vr = mergedDT.verify(points.project(partitionPoints));
-
-    if (IS_PROLIX) {
-      PainterBulkWriter writer;
-      for (const auto &inCircle : vr.inCircle) {
-        writer.add("img/" + provenance + "_inCircle_" +
-                       std::to_string(inCircle.first.id) + ".png",
-                   basePainter);
-
-        writer.top().setColor(0, 1, 0);
-        writer.top().draw(inCircle.first, points, true);
-        writer.top().drawCircumCircle(inCircle.first, points, true);
-
-        writer.top().setColor(1, 0, 0);
-        writer.top().draw(points.project(inCircle.second));
-      }
-    }
+    evaluateVerificationReport(vr, provenance, points);
 
     LOG << "Cross check with real triangulation" << std::endl;
     auto ccr = mergedDT.crossCheck(realDT);
-
-    if (IS_PROLIX) {
-      PainterBulkWriter writer;
-      for (const auto &missingSimplex : ccr.missing) {
-        writer.add("img/" + provenance + "_missing_" +
-                       std::to_string(missingSimplex.id) + ".png",
-                   basePainter);
-
-        auto mySimplices = mergedDT.findSimplices(missingSimplex.vertices);
-
-        writer.top().setColor(0, 1, 0);
-        writer.top().draw(mySimplices, points, true);
-
-        writer.top().setColor(1, 0, 0);
-        writer.top().draw(missingSimplex, points, true);
-      }
-
-      for (const auto &invalidSimplex : ccr.invalid) {
-        writer.add("img/" + provenance + "_invalid_" +
-                       std::to_string(invalidSimplex.id) + ".png",
-                   basePainter);
-
-        auto realSimplices = realDT.findSimplices(invalidSimplex.vertices);
-
-        writer.top().setColor(0, 1, 0);
-        writer.top().draw(realSimplices, points, true);
-
-        writer.top().setColor(1, 0, 0);
-        writer.top().draw(invalidSimplex, points, true);
-      }
-    }
+    evaluateCrossCheckReport(ccr, provenance, mergedDT, realDT, points);
 
     return mergedDT;
 
