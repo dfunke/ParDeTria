@@ -28,7 +28,7 @@ struct dSphere {
 
 struct dBox {
   std::array<tCoordinate, D> coords;
-  tCoordinate dim[D];
+  std::array<tCoordinate, D> dim;
 
   /* tests whether sphere is FULLY contained in box */
   bool contains(const dSphere &sphere) const {
