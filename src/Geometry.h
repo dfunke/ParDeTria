@@ -50,7 +50,7 @@ struct dBox {
 
       tCoordinate dist = 0;
       for (uint i = 0; i < D; ++i)
-        dist += (sphere.center[d] - p[d]) * (sphere.center[d] - p[d]);
+        dist += (sphere.center[i] - p[i]) * (sphere.center[i] - p[i]);
 
       if (dist < r2)
         return false;
