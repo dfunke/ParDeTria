@@ -17,6 +17,7 @@
 #include "Logger.h"
 
 typedef float tCoordinate;
+typedef std::set<uint> Ids;
 
 // dimensionality of our problem
 const uint D = 2;
@@ -122,18 +123,6 @@ public:
     return !operator==(other);
   }
 };
-
-typedef std::set<uint> Ids;
-
-class Partition {
-
-public:
-  uint id;
-  Ids points;
-  dBox bounds;
-};
-
-typedef IndexedVector<Partition> Partitioning;
 
 class dSimplex {
 
@@ -367,15 +356,14 @@ public:
 
 std::string to_string(const dPoint &p);
 std::string to_string(const dSimplex &p);
-std::string to_string(const Partition &p);
 std::string to_string(const dBox &b);
 
 std::ostream &operator<<(std::ostream &o, const dPoint &p);
 std::ostream &operator<<(std::ostream &o, const dSimplex &p);
-std::ostream &operator<<(std::ostream &o, const Partition &p);
 std::ostream &operator<<(std::ostream &o, const dBox &b);
 
 struct CrossCheckReport;
+
 struct VerificationReport;
 
 class dSimplices : public IndexedVector<dSimplex> {
@@ -393,6 +381,8 @@ public:
   VerificationReport verify(const dPoints &points) const;
 
   CrossCheckReport crossCheck(const dSimplices &realDT) const;
+
+  uint countDuplicates() const;
 
   template <typename Container>
   dSimplices findSimplices(const Container &points,
@@ -426,41 +416,5 @@ struct VerificationReport {
   bool valid;
   std::map<dSimplex, Ids> inCircle;
 };
-
-struct dPointStats {
-  dPoint min;
-  dPoint mid;
-  dPoint max;
-};
-
-template <class InputIt>
-dPointStats getPointStats(const InputIt &first, const InputIt &last,
-                          const dPoints &points,
-                          const bool ignoreInfinite = true) {
-
-  dPointStats stats;
-
-  for (uint dim = 0; dim < D; ++dim) {
-    stats.min.coords[dim] = std::numeric_limits<tCoordinate>::max();
-    stats.max.coords[dim] = std::numeric_limits<tCoordinate>::min();
-
-    for (auto it = first; it != last; ++it) {
-
-      uint id = *it;
-      assert(points.contains(id));
-
-      if (points[id].isFinite() || !ignoreInfinite) {
-        stats.min.coords[dim] =
-            std::min(stats.min.coords[dim], points[id].coords[dim]);
-        stats.max.coords[dim] =
-            std::max(stats.max.coords[dim], points[id].coords[dim]);
-      }
-    }
-
-    stats.mid.coords[dim] = (stats.max.coords[dim] + stats.min.coords[dim]) / 2;
-  }
-
-  return stats;
-}
 
 //#############################################################################

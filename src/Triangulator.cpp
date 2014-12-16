@@ -27,98 +27,31 @@ constexpr tCoordinate Triangulator::SAFETY;
 constexpr uint Triangulator::BASE_CASE;
 //**************************
 
-dPoints Triangulator::genPoints(const uint n,
-                  std::function<tCoordinate()> &dice) {
-  dPoints points;
+Triangulator::Triangulator(dBox &_bounds, dPoints &_points,
+                           const Partitioner &_partitioner)
+    : bounds(_bounds), points(_points), partitioner(_partitioner) {
 
-  for (uint i = 0; i < n; ++i) {
-    points[i].id = i;
-    for (uint d = 0; d < D; ++d) {
-      points[i].coords[d] = bounds.coords[d] + bounds.dim[d] * dice();
+  if (!points.contains(dPoint::cINF)) {
+
+    auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
+    for (uint i = 0; i < pow(2, D); ++i) {
+      VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - "
+           << stats.max << std::endl;
+
+      dPoint p = stats.mid;
+      p.id = dPoint::cINF | i;
+
+      for (uint d = 0; d < D; ++d)
+        p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * SAFETY *
+                       (stats.max.coords[d] - stats.min.coords[d]);
+
+      points.insert(p);
     }
   }
-
-  // TODO checks for colliding points, straight lines, etc.
-
-  // add infinite points
-
-  auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
-  for (uint i = 0; i < pow(2, D); ++i) {
-    VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - "
-         << stats.max << std::endl;
-
-    dPoint p = stats.mid;
-    p.id = dPoint::cINF | i;
-
-    for (uint d = 0; d < D; ++d)
-      p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * SAFETY *
-                     (stats.max.coords[d] - stats.min.coords[d]);
-
-    points.insert(p);
-  }
-
-  return points;
 }
 
-Partitioning Triangulator::partition(const Ids &ids) {
-  // do mid-point based partitioning for now
-  auto stats = getPointStats(ids.begin(), ids.end(), points);
-
-  LOG << "Midpoint is " << stats.mid << std::endl;
-
-  Partitioning partitioning;
-  for (uint i = 0; i < pow(2, D); ++i) {
-    partitioning[i].id = i;
-
-    for (uint d = 0; d < D; ++d) {
-      partitioning[i].bounds.coords[d] =
-          i & (1 << d) ? stats.mid.coords[d] : stats.min.coords[d];
-      partitioning[i].bounds.dim[d] =
-          i & (1 << d) ? stats.max.coords[d] - stats.mid.coords[d]
-                       : stats.mid.coords[d] - stats.min.coords[d];
-    }
-  }
-
-#ifndef NDEBUG
-  auto inPartition = [&](const dPoint &p, const uint partition) -> bool {
-    for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.coords[i] +
-                               partitioning[partition].bounds.dim[i]))
-        return false;
-    return true;
-  };
-#endif
-
-  for (auto &id : ids) {
-    assert(points.contains(id));
-    const auto &p = points[id];
-
-    if (!p.isFinite())
-      continue; // skip infinite points, they will be added later
-
-    uint part = 0;
-    for (uint dim = 0; dim < D; ++dim) {
-      part |= (p.coords[dim] > stats.mid.coords[dim]) << dim;
-    }
-
-    assert(inPartition(p, part));
-
-    // LOG << "Adding " << p << " to " << part << std::endl;
-    partitioning[part].points.insert(p.id);
-  }
-
-  // add infinite points
-  for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint::cINF; k != 0; ++k) {
-      partitioning[i].points.insert(k);
-    }
-  }
-
-  return partitioning;
-}
-
-Ids Triangulator::getEdge(const dSimplices &simplices, const Partition &partition) {
+Ids Triangulator::getEdge(const dSimplices &simplices,
+                          const Partition &partition) {
   Ids edgeSimplices;
   std::set<uint> wqa; // set of already checked simplices
 
@@ -182,7 +115,8 @@ Ids Triangulator::getEdge(const dSimplices &simplices, const Partition &partitio
   return edgeSimplices;
 }
 
-Ids Triangulator::extractPoints(const Ids &edgeSimplices, const dSimplices &simplices) {
+Ids Triangulator::extractPoints(const Ids &edgeSimplices,
+                                const dSimplices &simplices) {
   Ids outPoints;
   std::set<uint> idx;
 
@@ -205,7 +139,7 @@ Ids Triangulator::extractPoints(const Ids &edgeSimplices, const dSimplices &simp
 }
 
 void Triangulator::updateNeighbors(dSimplices &simplices,
-                     const std::string &provenance) {
+                                   const std::string &provenance) {
   PainterBulkWriter paintWriter;
 
   INDENT
@@ -295,42 +229,12 @@ void Triangulator::updateNeighbors(dSimplices &simplices,
   DEDENT
 }
 
-void Triangulator::eliminateDuplicates(dSimplices &DT) {
-  uint inSimplices = DT.size();
-  LOG << "Eliminating duplicates: " << inSimplices << " simplices" << std::endl;
-
-  Ids saveSimplices(DT.begin_keys(), DT.end_keys());
-
-  for (const auto &s : saveSimplices) {
-    if (!DT.contains(s))
-      continue;
-
-    auto duplicates = DT.findSimplices(DT[s].vertices, true);
-    if (duplicates.size() > 1) {
-      // keep the one with the minimum index
-      auto minSimplex =
-          *std::min_element(duplicates.begin_keys(), duplicates.end_keys());
-      for (const auto &del : duplicates) {
-        if (del.id == minSimplex)
-          continue; // keep the lowest one
-
-        // delete simplex from where-used list
-        for (const auto &p : del.vertices)
-          points[p].simplices.erase(del.id);
-        DT.erase(del.id);
-      }
-    }
-  }
-
-  LOG << inSimplices - DT.size() << " duplicates found" << std::endl;
-}
-
 dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
-                              const Ids &edgeSimplices,
-                              const dSimplices &edgeDT,
-                              const Partitioning &partitioning,
-                              const std::string &provenance,
-                              const dSimplices *realDT) {
+                                            const Ids &edgeSimplices,
+                                            const dSimplices &edgeDT,
+                                            const Partitioning &partitioning,
+                                            const std::string &provenance,
+                                            const dSimplices *realDT) {
   auto partitionPoint = [&](const uint &point) -> uint {
 
     for (uint p = 0; p < partitioning.size(); ++p) {
@@ -417,6 +321,7 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
                   "_05b_merging_stripped+edge+deleted_overlay.png");
 
   // merge partial DTs and edge DT
+  LOG << "Merging triangulations" << std::endl;
   for (const auto &edgeSimplex : edgeDT) {
     if (!partitionContains(edgeSimplex)) {
       DT.insert(edgeSimplex);
@@ -431,7 +336,7 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
 
   paintMerging(DT, provenance + "_05c_merging_edge");
 
-  eliminateDuplicates(DT);
+  assert(DT.countDuplicates() == 0);
   updateNeighbors(DT, provenance);
 
   paintMerging(DT, provenance + "_05d_merging_finished");
@@ -439,8 +344,9 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
   return DT;
 }
 
-void Triangulator::evaluateVerificationReport(const VerificationReport &vr,
-                                const std::string &provenance) const {
+void
+Triangulator::evaluateVerificationReport(const VerificationReport &vr,
+                                         const std::string &provenance) const {
   if (IS_PROLIX) {
     Painter basePainter(bounds);
     basePainter.draw(points);
@@ -464,8 +370,9 @@ void Triangulator::evaluateVerificationReport(const VerificationReport &vr,
 }
 
 void Triangulator::evaluateCrossCheckReport(const CrossCheckReport &ccr,
-                              const std::string &provenance,
-                              const dSimplices &DT, const dSimplices &realDT) const {
+                                            const std::string &provenance,
+                                            const dSimplices &DT,
+                                            const dSimplices &realDT) const {
   if (IS_PROLIX) {
     Painter basePainter(bounds);
     basePainter.draw(points);
@@ -503,7 +410,8 @@ void Triangulator::evaluateCrossCheckReport(const CrossCheckReport &ccr,
   }
 }
 
-dSimplices Triangulator::triangulateBase(const Ids partitionPoints, const std::string provenance) {
+dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
+                                         const std::string provenance) {
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
@@ -530,7 +438,8 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints, const std::s
   return dt;
 }
 
-dSimplices Triangulator::triangulateDAC(const Ids partitionPoints, const std::string provenance) {
+dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
+                                        const std::string provenance) {
   LOG << "triangulateDAC called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
@@ -539,7 +448,8 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints, const std::st
 
     LOG << "Partioning" << std::endl;
     INDENT
-    auto partioning = partition(partitionPoints);
+    auto partioning =
+        partitioner.partition(partitionPoints, points, provenance);
     DEDENT
 
     Painter basePainter(bounds);
@@ -574,8 +484,8 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints, const std::st
     for (uint i = 0; i < partioning.size(); ++i) {
       LOG << "Partition " << i << std::endl;
       INDENT
-      partialDTs[i] = triangulateDAC(partioning[i].points,
-                                     provenance + std::to_string(i));
+      partialDTs[i] =
+          triangulateDAC(partioning[i].points, provenance + std::to_string(i));
       LOG << "Triangulation " << i << " contains " << partialDTs[i].size()
           << " tetrahedra" << std::endl;
       DEDENT

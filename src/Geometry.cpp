@@ -41,27 +41,11 @@ std::string to_string(const dBox &b) {
   return o.str();
 }
 
-std::string to_string(const Partition &p) {
-  std::stringstream o;
-  o << p.id << " " << p.bounds << " [";
-  for (auto it = p.points.begin(); it != p.points.end(); ++it) {
-    if (it != p.points.begin())
-      o << ", ";
-    o << *it;
-  }
-  o << "]";
-  return o.str();
-}
-
 std::ostream &operator<<(std::ostream &o, const dPoint &p) {
   return o << to_string(p);
 }
 
 std::ostream &operator<<(std::ostream &o, const dSimplex &p) {
-  return o << to_string(p);
-}
-
-std::ostream &operator<<(std::ostream &o, const Partition &p) {
   return o << to_string(p);
 }
 
@@ -107,6 +91,19 @@ bool dPoints::operator==(const std::set<uint> &other) const {
   }
 
   return true;
+}
+
+uint dSimplices::countDuplicates() const {
+  uint duplicates = 0;
+
+  for (const auto &s : *this) {
+    auto simplices = findSimplices(s.vertices, true);
+    duplicates += simplices.size() - 1;
+  }
+
+  PLOG << "Found " << duplicates << " duplicates" << std::endl;
+
+  return duplicates;
 }
 
 CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {

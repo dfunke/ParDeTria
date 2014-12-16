@@ -4,6 +4,7 @@
 #include "Geometry.h"
 #include "Logger.h"
 #include "Triangulator.h"
+#include "Partitioner.h"
 
 const uint N = 1e3;
 //**************************
@@ -23,7 +24,9 @@ int main(int argc, char *argv[]) {
   std::uniform_real_distribution<tCoordinate> distribution(0, 1);
   std::function<tCoordinate()> dice = std::bind(distribution, generator);
 
-  Triangulator triangulator(N, bounds, dice);
+  auto points = genPoints(N, bounds, dice);
+
+  Triangulator triangulator(bounds, points, CyclePartitioner());
 
   INDENT
   auto dt = triangulator.triangulate();

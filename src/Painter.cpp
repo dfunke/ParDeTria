@@ -1,4 +1,5 @@
 #include "Painter.h"
+#include "Partitioner.h"
 
 // static variables
 
