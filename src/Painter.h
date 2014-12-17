@@ -3,6 +3,8 @@
 #include <cairo/cairo.h>
 #include <cairomm/cairomm.h>
 
+#include <valgrind/callgrind.h>
+
 #include <algorithm>
 #include <vector>
 #include <tuple>
@@ -72,7 +74,15 @@ public:
 
   void unsetLineDash() { cr->unset_dash(); }
 
-  void savePNG(const std::string &file) const { cs->write_to_png(file); }
+  void savePNG(const std::string &file) const {
+    // stop callgrind instrumentation for saving png
+
+    CALLGRIND_STOP_INSTRUMENTATION;
+
+    cs->write_to_png(file);
+
+    CALLGRIND_START_INSTRUMENTATION;
+  }
 
   void setLogging(bool _logging = true) { logging = _logging; }
 
