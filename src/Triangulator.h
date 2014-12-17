@@ -2,10 +2,22 @@
 
 // stl
 #include <functional>
+#include <vector>
 
 // own
 #include "Geometry.h"
 #include "Partitioner.h"
+
+struct TriangulationReportEntry {
+	std::string provenance;
+	bool base_case;
+	uint nPoints;
+	uint nSimplices;
+	uint nEdgePoints;
+	uint nEdgeSimplices;
+};
+
+typedef std::vector<TriangulationReportEntry> TriangulationReport;
 
 class Triangulator {
 
