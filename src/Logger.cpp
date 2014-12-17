@@ -54,11 +54,11 @@ std::ostream &Logger::continueLogEntry() {
   return *(contIt->second);
 }
 
-std::ostream &Logger::printLog(std::ostream &out) {
+std::ostream &Logger::printLog(std::ostream &out) const {
   return printLog(out, logLevel);
 }
 
-std::ostream &Logger::printLog(std::ostream &out, Verbosity level) {
+std::ostream &Logger::printLog(std::ostream &out, Verbosity level) const {
 
   // shortcut SILENT processing
   if (level == Logger::Verbosity::SILENT)
@@ -82,5 +82,5 @@ std::string Logger::indent() const {
 
 std::ostream &operator<<(std::ostream &s, const Logger &log) {
 
-  return Logger::getInstance().printLog(s);
+  return log.printLog(s);
 }

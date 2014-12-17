@@ -17,6 +17,7 @@ std::ostream &operator<<(std::ostream &o, const Partition &p) {
 }
 
 Partitioning dPartitioner::partition(const Ids &ids, const dPoints &points,
+                                     __attribute((unused))
                                      const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
@@ -76,6 +77,7 @@ Partitioning dPartitioner::partition(const Ids &ids, const dPoints &points,
 }
 
 Partitioning kPartitioner::partition(const Ids &ids, const dPoints &points,
+                                     __attribute((unused))
                                      const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);

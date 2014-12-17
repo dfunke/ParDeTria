@@ -55,9 +55,9 @@ public:
   std::ostream &addLogEntry(Verbosity level);
   std::ostream &continueLogEntry();
 
-  std::ostream &printLog(std::ostream &out);
+  std::ostream &printLog(std::ostream &out) const;
 
-  std::ostream &printLog(std::ostream &out, Verbosity level);
+  std::ostream &printLog(std::ostream &out, Verbosity level) const;
 
   std::string indent() const;
   void incIndent() { ++indentLevel; }
@@ -74,7 +74,7 @@ public:
 
     for (auto it = c.begin(); it != c.end(); ++it) {
       if (it != c.begin())
-        stream << " ";
+        stream << sep;
       stream << *it;
     }
     stream << std::endl;
