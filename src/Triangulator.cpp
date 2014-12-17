@@ -28,7 +28,7 @@ constexpr uint Triangulator::BASE_CASE;
 //**************************
 
 Triangulator::Triangulator(dBox &_bounds, dPoints &_points,
-                           const Partitioner &_partitioner)
+                           std::unique_ptr<Partitioner> &&_partitioner)
     : bounds(_bounds), points(_points), partitioner(_partitioner) {
 
   if (!points.contains(dPoint::cINF)) {
@@ -435,6 +435,16 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
 
   assert(saveDT == dt); // only performed if not NDEBUG
 
+  TriangulationReportEntry rep;
+  rep.provenance = provenance;
+  rep.base_case = true;
+  rep.edge_triangulation = provenance.find('e') != std::string::npos;
+  rep.nPoints = partitionPoints.size();
+  rep.nSimplices = dt.size();
+  rep.nEdgePoints = 0;
+  rep.nEdgeSimplices = 0;
+  triangulationReport.push_back(rep);
+
   return dt;
 }
 
@@ -449,7 +459,7 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
     LOG << "Partioning" << std::endl;
     INDENT
     auto partioning =
-        partitioner.partition(partitionPoints, points, provenance);
+        partitioner->partition(partitionPoints, points, provenance);
     DEDENT
 
     Painter basePainter(bounds);
@@ -560,6 +570,16 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
     LOG << "Cross check with real triangulation" << std::endl;
     auto ccr = mergedDT.crossCheck(realDT);
     evaluateCrossCheckReport(ccr, provenance, mergedDT, realDT);
+
+    TriangulationReportEntry rep;
+    rep.provenance = provenance;
+    rep.base_case = false;
+    rep.edge_triangulation = provenance.find('e') != std::string::npos;
+    rep.nPoints = partitionPoints.size();
+    rep.nSimplices = mergedDT.size();
+    rep.nEdgePoints = edgePointIds.size();
+    rep.nEdgeSimplices = edgeDT.size();
+    triangulationReport.push_back(rep);
 
     return mergedDT;
 

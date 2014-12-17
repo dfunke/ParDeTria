@@ -9,12 +9,14 @@
 #include "Partitioner.h"
 
 struct TriangulationReportEntry {
-	std::string provenance;
-	bool base_case;
-	uint nPoints;
-	uint nSimplices;
-	uint nEdgePoints;
-	uint nEdgeSimplices;
+  std::string provenance;
+  bool base_case;
+  bool edge_triangulation;
+
+  uint nPoints;
+  uint nSimplices;
+  uint nEdgePoints;
+  uint nEdgeSimplices;
 };
 
 typedef std::vector<TriangulationReportEntry> TriangulationReport;
@@ -23,9 +25,13 @@ class Triangulator {
 
 public:
   Triangulator(dBox &_bounds, dPoints &_points,
-               const Partitioner &_partitioner);
+               std::unique_ptr<Partitioner> &&_partitioner);
 
   dSimplices triangulate();
+
+  const TriangulationReport &getTriangulationReport() const {
+    return triangulationReport;
+  }
 
 private:
   dSimplices triangulateBase(const Ids partitionPoints,
@@ -59,7 +65,9 @@ private:
   dBox bounds;
   dPoints points;
 
-  const Partitioner &partitioner;
+  TriangulationReport triangulationReport;
+
+  std::unique_ptr<Partitioner> &partitioner;
 
   static constexpr tCoordinate SAFETY = 100;
   static const uint BASE_CASE = 100;
