@@ -5,3 +5,6 @@ data
 *.a
 *.pyc
 *.png
+
+.session
+.clang-format
