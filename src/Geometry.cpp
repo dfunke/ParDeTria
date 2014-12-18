@@ -54,7 +54,6 @@ std::ostream &operator<<(std::ostream &o, const dBox &b) {
 }
 
 bool dSimplices::operator==(const dSimplices &other) const {
-
   if (size() != other.size()) {
     PLOG << "my size: " << size() << " other size: " << other.size()
          << std::endl;
@@ -62,7 +61,6 @@ bool dSimplices::operator==(const dSimplices &other) const {
   }
 
   for (const auto &otherSimplex : other) {
-
     // find my simplex, compares simplex id or vertices ids
     auto mySimplex = std::find(this->begin(), this->end(), otherSimplex);
 
@@ -107,13 +105,11 @@ uint dSimplices::countDuplicates() const {
 }
 
 CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
-
   CrossCheckReport result;
   result.valid = true;
 
   // check whether all simplices of real DT are present
   for (const auto &realSimplex : realDT) {
-
     // find my simplex, compares simplex id or vertices ids
     auto mySimplex = std::find_if(
         this->begin(), this->end(),
@@ -178,7 +174,6 @@ CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
 }
 
 VerificationReport dSimplices::verify(const dPoints &points) const {
-
   INDENT
   VerificationReport result;
   result.valid = true;
@@ -191,18 +186,27 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
   }
   if (points != usedPoints) {
     // not all points of input used
-    LOG << "Points of input not used: ";
-    for (const auto &p : points)
-      if (usedPoints.count(p.id) != 1)
-        CONT << p << " ";
-    CONT << std::endl;
-    LOG << "Used points not in input: ";
-    for (const auto &p : usedPoints)
-      if (!points.contains(p))
-        CONT << p << " ";
-    CONT << std::endl;
+    std::stringstream sNotUsed;
+    for (const auto &p : points) {
+      if (usedPoints.count(p.id) != 1 && p.isFinite()) {
+        sNotUsed << p << " ";
+        result.valid = false;
+      }
+    }
+    if (!result.valid) {
+      LOG << "Points of input not used: " << sNotUsed << std::endl;
+    }
 
-    result.valid = false;
+    std::stringstream sInvalidP;
+    for (const auto &p : usedPoints) {
+      if (!points.contains(p) && dPoint::isFinite(p)) {
+        sInvalidP << p << " ";
+        result.valid = false;
+      }
+    }
+    if (!result.valid) {
+      LOG << "Used points not in input: " << sInvalidP << std::endl;
+    }
   }
 
   // verify where-used data structure
@@ -221,7 +225,6 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
   }
   for (const auto &p : points) {
     for (const auto &id : p.simplices) {
-
       if (!contains(id))
         continue; // simplex of another triangulation
 
@@ -253,7 +256,6 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
           (!a.isNeighbor(b) &&
            (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
             b.neighbors.count(a.id) != 0))) {
-
         LOG << "Wrong neighbor relation between " << a << " and " << b
             << std::endl;
         result.valid = false;
@@ -265,7 +267,6 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
   LOG << "Checking empty circle criterion" << std::endl;
   for (const auto &s : *this) {
     for (const auto &p : points) {
-
       if (!p.isFinite())
         continue; // skip infinite points
 
