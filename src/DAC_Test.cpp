@@ -5,6 +5,7 @@
 #include "Logger.h"
 #include "Triangulator.h"
 #include "Partitioner.h"
+#include "CSV.h"
 
 const uint N = 1e3;
 //**************************
@@ -24,13 +25,62 @@ int main(int argc, char *argv[]) {
   std::uniform_real_distribution<tCoordinate> distribution(0, 1);
   std::function<tCoordinate()> dice = std::bind(distribution, generator);
 
-  auto points = genPoints(N, bounds, dice);
+  std::vector<unsigned char> splitters = {'d', 'c', 0, 1};
 
-  Triangulator triangulator(bounds, points, CyclePartitioner());
+/*
+ * File format for triangulation report
+ * input_n splitter provenance base_case edge_triangulation nPoints
+ * nSimplices
+ * nEdgePoints nEdgeSimplices
+ */
 
-  INDENT
-  auto dt = triangulator.triangulate();
-  DEDENT
+#ifdef STUDY
+  std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
+  f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tia",
+                "nPoints", "nSimplices", "nEdgePoints", "nEdgeSimplices")
+    << std::endl;
+
+  for (uint n = 10; n < N; n += pow(10, floor(log10(n)))) {
+    for (auto p : splitters) {
+#else  // STUDY
+  unsigned char p = 'd';
+  uint n = N;
+#endif // STUDY
+
+      auto points = genPoints(n, bounds, dice);
+
+      std::unique_ptr<Partitioner> partitioner_ptr;
+      switch (p) {
+      case 'd':
+        partitioner_ptr = std::make_unique<dPartitioner>();
+        break;
+      case 'c':
+        partitioner_ptr = std::make_unique<CyclePartitioner>();
+        break;
+      default:
+        assert(0 <= p && p < D);
+        partitioner_ptr = std::make_unique<kPartitioner>(p);
+        break;
+      }
+
+      Triangulator triangulator(bounds, points, std::move(partitioner_ptr));
+
+      INDENT
+      auto dt = triangulator.triangulate();
+      DEDENT
+
+#ifdef STUDY
+      // evaluate the triangulation report
+      const auto &trReport = triangulator.getTriangulationReport();
+
+      for (const auto &tr : trReport) {
+        f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
+                      tr.edge_triangulation, tr.nPoints, tr.nSimplices,
+                      tr.nEdgePoints, tr.nEdgeSimplices) << std::endl;
+      }
+    }
+  }
+#endif // STUDY
 
   LOG << "Finished" << std::endl;
 }
