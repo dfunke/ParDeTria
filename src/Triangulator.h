@@ -22,7 +22,6 @@ struct TriangulationReportEntry {
 typedef std::vector<TriangulationReportEntry> TriangulationReport;
 
 class Triangulator {
-
 public:
   Triangulator(dBox &_bounds, dPoints &_points,
                std::unique_ptr<Partitioner> &&_partitioner);
@@ -42,7 +41,8 @@ private:
 
   Ids getEdge(const dSimplices &simplices, const Partition &partition);
 
-  Ids extractPoints(const Ids &edgeSimplices, const dSimplices &simplices);
+  Ids extractPoints(const Ids &edgeSimplices, const dSimplices &simplices,
+                    bool ignoreInfinite = false);
 
   void updateNeighbors(dSimplices &simplices, const std::string &provenance);
 
@@ -70,5 +70,6 @@ private:
   std::unique_ptr<Partitioner> &partitioner;
 
   static constexpr tCoordinate SAFETY = 100;
-  static const uint BASE_CASE = 100;
+  static constexpr uint BASE_CASE = 100;
+  static constexpr char TOP = 0;
 };

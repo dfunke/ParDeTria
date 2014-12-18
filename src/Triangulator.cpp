@@ -25,14 +25,13 @@
 
 constexpr tCoordinate Triangulator::SAFETY;
 constexpr uint Triangulator::BASE_CASE;
+constexpr char Triangulator::TOP;
 //**************************
 
 Triangulator::Triangulator(dBox &_bounds, dPoints &_points,
                            std::unique_ptr<Partitioner> &&_partitioner)
     : bounds(_bounds), points(_points), partitioner(_partitioner) {
-
   if (!points.contains(dPoint::cINF)) {
-
     auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
     for (uint i = 0; i < pow(2, D); ++i) {
       VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - "
@@ -116,7 +115,8 @@ Ids Triangulator::getEdge(const dSimplices &simplices,
 }
 
 Ids Triangulator::extractPoints(const Ids &edgeSimplices,
-                                const dSimplices &simplices) {
+                                const dSimplices &simplices,
+                                bool ignoreInfinite) {
   Ids outPoints;
   std::set<uint> idx;
 
@@ -131,8 +131,10 @@ Ids Triangulator::extractPoints(const Ids &edgeSimplices,
   }
 
   // add the extreme infinite points to the set
-  for (uint k = dPoint::cINF; k != 0; ++k) {
-    outPoints.insert(k);
+  if (!ignoreInfinite) {
+    for (uint k = dPoint::cINF; k != 0; ++k) {
+      outPoints.insert(k);
+    }
   }
 
   return outPoints;
@@ -415,8 +417,11 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
+  // if this is the top-most triangulation, ignore infinite vertices
+  bool ignoreInfinite = provenance == std::to_string(TOP);
+
   INDENT
-  auto dt = delaunayCgal(points, &partitionPoints);
+  auto dt = delaunayCgal(points, &partitionPoints, ignoreInfinite);
   LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
   DEDENT
 
@@ -520,13 +525,16 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
     Painter paintEdges = paintPartialDTs;
     paintEdges.setColor(1, 0, 0);
 
+    // ignore infinite vertices of this is the top most triangulation
+    bool ignoreInfinite = provenance == std::to_string(TOP);
+
     for (uint i = 0; i < partioning.size(); ++i) {
       // points are in different partitions, there can be no overlap
 
       auto edge = getEdge(partialDTs[i], partioning[i]);
       edgeSimplexIds.insert(edge.begin(), edge.end());
 
-      auto ep = extractPoints(edge, partialDTs[i]);
+      auto ep = extractPoints(edge, partialDTs[i], ignoreInfinite);
       edgePointIds.insert(ep.begin(), ep.end());
 
       paintEdges.draw(partialDTs[i].project(edge), points, false);
@@ -589,7 +597,6 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
 }
 
 dSimplices Triangulator::triangulate() {
-
   Ids allPoints(points.begin_keys(), points.end_keys());
-  return triangulateDAC(allPoints, "0");
+  return triangulateDAC(allPoints, std::to_string(TOP));
 }
