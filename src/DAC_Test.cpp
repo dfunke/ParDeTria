@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef STUDY
   // define splitter test cases
-  std::vector<unsigned char> splitters = {'d', 'c', 0, 1};
+  std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
   // silence std::cout until STUDY is done - preserve log level
   LOGGER.setLogLevel(Logger::abs(LOGGER.getLogLevel()));
 
@@ -68,7 +68,8 @@ int main(int argc, char *argv[]) {
         break;
       default:
         assert(0 <= p && p < D);
-        partitioner_ptr = std::make_unique<kPartitioner>(p);
+        // p must be a dimension - subtract 'c' to get integer value
+        partitioner_ptr = std::make_unique<kPartitioner>(p - '0');
         break;
       }
 
