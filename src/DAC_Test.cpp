@@ -67,9 +67,10 @@ int main(int argc, char *argv[]) {
         partitioner_ptr = std::make_unique<CyclePartitioner>();
         break;
       default:
-        assert(0 <= p && p < D);
+        uint d = p - '0';
+        assert(0 <= d && d < D);
         // p must be a dimension - subtract 'c' to get integer value
-        partitioner_ptr = std::make_unique<kPartitioner>(p - '0');
+        partitioner_ptr = std::make_unique<kPartitioner>(d);
         break;
       }
 
