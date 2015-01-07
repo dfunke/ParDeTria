@@ -6,6 +6,8 @@
 #include "Triangulator.h"
 #include "Partitioner.h"
 #include "CSV.h"
+#include "Timings.h"
+#include "RSS.h"
 
 // boost
 #include <boost/progress.hpp>
@@ -47,7 +49,7 @@ int main(int argc, char *argv[]) {
   std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
   f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
                 "valid", "nPoints", "nSimplices", "nEdgePoints",
-                "nEdgeSimplices") << std::endl;
+                "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
 
   for (uint n = 10; n < N; n += pow(10, floor(log10(n)))) {
     for (auto p : splitters) {
@@ -67,9 +69,9 @@ int main(int argc, char *argv[]) {
         partitioner_ptr = std::make_unique<CyclePartitioner>();
         break;
       default:
+        // p must be a dimension - subtract '0' to get integer value
         uint d = p - '0';
         assert(0 <= d && d < D);
-        // p must be a dimension - subtract 'c' to get integer value
         partitioner_ptr = std::make_unique<kPartitioner>(d);
         break;
       }
@@ -77,7 +79,9 @@ int main(int argc, char *argv[]) {
       Triangulator triangulator(bounds, points, std::move(partitioner_ptr));
 
       INDENT
+      auto t1 = Clock::now();
       auto dt = triangulator.triangulate();
+      auto t2 = Clock::now();
       DEDENT
 
 #ifdef STUDY
@@ -87,8 +91,9 @@ int main(int argc, char *argv[]) {
       for (const auto &tr : trReport) {
         f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
                       tr.edge_triangulation, tr.valid, tr.nPoints,
-                      tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices)
-          << std::endl;
+                      tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
+                      std::chrono::duration_cast<tDuration>(t2 - t1).count(),
+                      getCurrentRSS(), getPeakRSS()) << std::endl;
       }
 
       ++progress;

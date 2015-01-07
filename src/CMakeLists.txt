@@ -28,5 +28,5 @@ if (STUDY)
   add_definitions(-DSTUDY)
 endif ()
 
-add_executable (DACTest DAC_Test.cpp Geometry.cpp Logger.cpp Painter.cpp CGAL_Interface.cpp Triangulator.cpp Partitioner.cpp)
+add_executable (DACTest DAC_Test.cpp Geometry.cpp Logger.cpp Painter.cpp CGAL_Interface.cpp Triangulator.cpp Partitioner.cpp Timings.cpp RSS.c)
 target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES})
