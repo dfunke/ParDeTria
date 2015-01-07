@@ -12,6 +12,7 @@ struct TriangulationReportEntry {
   std::string provenance;
   bool base_case;
   bool edge_triangulation;
+  bool valid;
 
   uint nPoints;
   uint nSimplices;

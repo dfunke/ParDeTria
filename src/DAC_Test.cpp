@@ -36,9 +36,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef STUDY
   std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
-  f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tia",
-                "nPoints", "nSimplices", "nEdgePoints", "nEdgeSimplices")
-    << std::endl;
+  f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
+                "valid", "nPoints", "nSimplices", "nEdgePoints",
+                "nEdgeSimplices") << std::endl;
 
   for (uint n = 10; n < N; n += pow(10, floor(log10(n)))) {
     for (auto p : splitters) {
@@ -75,8 +75,9 @@ int main(int argc, char *argv[]) {
 
       for (const auto &tr : trReport) {
         f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                      tr.edge_triangulation, tr.nPoints, tr.nSimplices,
-                      tr.nEdgePoints, tr.nEdgeSimplices) << std::endl;
+                      tr.edge_triangulation, tr.valid, tr.nPoints,
+                      tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices)
+          << std::endl;
       }
     }
   }

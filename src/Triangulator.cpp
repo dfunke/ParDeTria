@@ -417,6 +417,13 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
+  LOG << "Real triangulation" << std::endl;
+  INDENT
+  auto realDT = delaunayCgal(points, &partitionPoints, true);
+  LOG << "Real triangulation contains " << realDT.size() << " tetrahedra"
+      << std::endl;
+  DEDENT
+
   // if this is the top-most triangulation, ignore infinite vertices
   bool ignoreInfinite = provenance == std::to_string(TOP);
 
@@ -435,8 +442,13 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
   LOG << "Updating neighbors" << std::endl;
   updateNeighbors(dt, provenance);
 
-  LOG << "Verifying updated triangulation" << std::endl;
-  dt.verify(points.project(partitionPoints));
+  LOG << "Consistency check of triangulation" << std::endl;
+  auto vr = dt.verify(points.project(partitionPoints));
+  evaluateVerificationReport(vr, provenance);
+
+  LOG << "Cross check with real triangulation" << std::endl;
+  auto ccr = dt.crossCheck(realDT);
+  evaluateCrossCheckReport(ccr, provenance, dt, realDT);
 
   assert(saveDT == dt); // only performed if not NDEBUG
 
@@ -444,6 +456,7 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
   rep.provenance = provenance;
   rep.base_case = true;
   rep.edge_triangulation = provenance.find('e') != std::string::npos;
+  rep.valid = vr.valid && ccr.valid;
   rep.nPoints = partitionPoints.size();
   rep.nSimplices = dt.size();
   rep.nEdgePoints = 0;
@@ -474,7 +487,6 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
 
     for (auto &p : partioning)
       PLOG << "Partition " << p << std::endl;
-    ;
 
     LOG << "Real triangulation" << std::endl;
     INDENT
@@ -583,6 +595,7 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
     rep.provenance = provenance;
     rep.base_case = false;
     rep.edge_triangulation = provenance.find('e') != std::string::npos;
+    rep.valid = vr.valid && ccr.valid;
     rep.nPoints = partitionPoints.size();
     rep.nSimplices = mergedDT.size();
     rep.nEdgePoints = edgePointIds.size();
