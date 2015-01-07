@@ -7,6 +7,9 @@
 #include "Partitioner.h"
 #include "CSV.h"
 
+// boost
+#include <boost/progress.hpp>
+
 const uint N = 1e3;
 //**************************
 
@@ -25,8 +28,6 @@ int main(int argc, char *argv[]) {
   std::uniform_real_distribution<tCoordinate> distribution(0, 1);
   std::function<tCoordinate()> dice = std::bind(distribution, generator);
 
-  std::vector<unsigned char> splitters = {'d', 'c', 0, 1};
-
 /*
  * File format for triangulation report
  * input_n splitter provenance base_case edge_triangulation nPoints
@@ -35,6 +36,14 @@ int main(int argc, char *argv[]) {
  */
 
 #ifdef STUDY
+  // define splitter test cases
+  std::vector<unsigned char> splitters = {'d', 'c', 0, 1};
+  // silence std::cout until STUDY is done - preserve log level
+  LOGGER.setLogLevel(Logger::abs(LOGGER.getLogLevel()));
+
+  boost::progress_display progress(splitters.size() * (9 * (log10(N) - 1)),
+                                   std::cout);
+
   std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
   f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
                 "valid", "nPoints", "nSimplices", "nEdgePoints",
@@ -79,8 +88,12 @@ int main(int argc, char *argv[]) {
                       tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices)
           << std::endl;
       }
+
+      ++progress;
     }
   }
+
+  std::cout << LOGGER << std::endl;
 #endif // STUDY
 
   LOG << "Finished" << std::endl;
