@@ -18,7 +18,7 @@ public:
   typedef std::tuple<tCoordinate, tCoordinate, tCoordinate> tRGB;
 
 public:
-  Painter() {
+  Painter() : logging(false), logLine(0) {
     // non working version;
   }
 
