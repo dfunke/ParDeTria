@@ -15,7 +15,7 @@ def ensure_dir(f):
     d = os.path.dirname(f)
     if not os.path.exists(d):
         os.makedirs(d)
-        
+
 def getFig(title, xlabel, ylabel, zlabel = None, grid = 'both'):
     if not zlabel:
         fig, ax = plt.subplots()
@@ -28,24 +28,24 @@ def getFig(title, xlabel, ylabel, zlabel = None, grid = 'both'):
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    
+
     return fig, ax
 
 
 def closeFig(file):
-    
+
     if not file.startswith('plot/output/'):
         file = 'plot/output/' + file
-        
+
     if not '.' in file:
         file = file + '.png'
-    
+
     ensure_dir(file)
-    
+
     plt.savefig(file)
-    
+
     plt.close()
-    
+
 dir = 'data'
 impl = ['cgal', 'tria', 'root']
 labels =  {'cgal' : 'CGAL', 'tria' : 'Triangle', 'root' : 'ROOT'}
@@ -228,7 +228,7 @@ for f in F:
 
     #histograms of individual error distributions
     for i,n in enumerate(N):
-        fig, ax = getFig(r"Interpolation Error n = %i - %s" % (n, funcLabels[f]), 
+        fig, ax = getFig(r"Interpolation Error n = %i - %s" % (n, funcLabels[f]),
                 r"Error - $\frac{\hat{z} - z}{z}$", "Frequency")
 
         legItems = []
@@ -271,7 +271,7 @@ for f in F:
 #            ax.plot_wireframe(nums['x'],
 #                              nums['y'],
 #                              nums['ip'],
-#                              rstride=10, cstride=10, 
+#                              rstride=10, cstride=10,
 #                              label=labels[tag], color=colors[tag], alpha=0.4)
 #        ax.legend(loc=2)
 #        closeFig("precision/3d/%s_%i"%(funcNames[f] ,n))
