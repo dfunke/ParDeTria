@@ -55,6 +55,14 @@ dir = 'data'
 print("Reading in data")
 data = np.genfromtxt(os.path.join(dir, 'triangulation_report.csv'), dtype=None, names=True)
 
+# validity
+
+fig, ax = getFig("Validity", r"valid", r"")
+
+ax.hist(data['valid'])
+
+closeFig("report/validity")
+
 #setup unique data
 splitters = np.unique(data['splitter'])
 
