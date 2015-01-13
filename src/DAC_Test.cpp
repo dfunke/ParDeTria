@@ -16,9 +16,10 @@ const uint N = 1e3;
 //**************************
 
 int main(int argc, char *argv[]) {
-  if (argc == 2)
+  if (argc == 2) {
     LOGGER.setLogLevel(static_cast<Logger::Verbosity>(std::stoi(argv[1])));
-  else
+    std::cout << "Output level set to " << argv[1] << std::endl;
+  } else
     LOGGER.setLogLevel(Logger::Verbosity::LIVE);
 
   dBox bounds;
