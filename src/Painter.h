@@ -75,13 +75,13 @@ public:
   void unsetLineDash() { cr->unset_dash(); }
 
   void savePNG(
-#ifdef STUDY
+#ifdef NO_OUTPUT
       __attribute((unused))
 #endif
       const std::string &file) const {
 // stop callgrind instrumentation for saving png
 
-#ifndef STUDY // disable png output for study mode
+#ifndef NO_OUTPUT // disable png output
     CALLGRIND_STOP_INSTRUMENTATION;
 
     cs->write_to_png(file);
