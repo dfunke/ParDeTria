@@ -83,6 +83,10 @@ int main(int argc, char *argv[]) {
       auto t1 = Clock::now();
       auto dt = triangulator.triangulate();
       auto t2 = Clock::now();
+
+      LOG << "Triangulating " << n << " points took "
+          << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count()
+          << " s" << std::endl;
       DEDENT
 
 #ifdef STUDY
