@@ -22,7 +22,8 @@ int main(int argc, char *argv[]) {
   } else
     LOGGER.setLogLevel(Logger::Verbosity::LIVE);
 
-  dBox bounds;
+  const uint D = 2;
+  dBox<2> bounds;
   for (uint i = 0; i < D; ++i) {
     bounds.coords[i] = 0;
     bounds.dim[i] = 100;
@@ -61,23 +62,23 @@ int main(int argc, char *argv[]) {
 
       auto points = genPoints(n, bounds, dice);
 
-      std::unique_ptr<Partitioner> partitioner_ptr;
+      std::unique_ptr<Partitioner<2>> partitioner_ptr;
       switch (p) {
       case 'd':
-        partitioner_ptr = std::make_unique<dPartitioner>();
+        partitioner_ptr = std::make_unique<dPartitioner<2>>();
         break;
       case 'c':
-        partitioner_ptr = std::make_unique<CyclePartitioner>();
+        partitioner_ptr = std::make_unique<CyclePartitioner<2>>();
         break;
       default:
         // p must be a dimension - subtract '0' to get integer value
         uint d = p - '0';
         assert(0 <= d && d < D);
-        partitioner_ptr = std::make_unique<kPartitioner>(d);
+        partitioner_ptr = std::make_unique<kPartitioner<2>>(d);
         break;
       }
 
-      Triangulator triangulator(bounds, points, std::move(partitioner_ptr));
+      Triangulator<2> triangulator(bounds, points, std::move(partitioner_ptr));
 
       INDENT
       auto t1 = Clock::now();

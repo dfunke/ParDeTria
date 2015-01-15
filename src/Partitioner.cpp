@@ -1,30 +1,16 @@
 #include "Partitioner.h"
 
-std::string to_string(const Partition &p) {
-  std::stringstream o;
-  o << p.id << " " << p.bounds << " [";
-  for (auto it = p.points.begin(); it != p.points.end(); ++it) {
-    if (it != p.points.begin())
-      o << ", ";
-    o << *it;
-  }
-  o << "]";
-  return o.str();
-}
-
-std::ostream &operator<<(std::ostream &o, const Partition &p) {
-  return o << to_string(p);
-}
-
-Partitioning dPartitioner::partition(const Ids &ids, const dPoints &points,
-                                     __attribute((unused))
-                                     const std::string &provenance) const {
+template <uint D>
+Partitioning<D>
+dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
+                           __attribute((unused))
+                           const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
   PLOG << "Midpoint is " << stats.mid << std::endl;
 
-  Partitioning partitioning;
+  Partitioning<D> partitioning;
   for (uint i = 0; i < pow(2, D); ++i) {
     partitioning[i].id = i;
 
@@ -38,7 +24,7 @@ Partitioning dPartitioner::partition(const Ids &ids, const dPoints &points,
   }
 
 #ifndef NDEBUG
-  auto inPartition = [&](const dPoint &p, const uint partition) -> bool {
+  auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
     for (uint i = 0; i < D; ++i)
       if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
             p.coords[i] <= partitioning[partition].bounds.coords[i] +
@@ -68,7 +54,7 @@ Partitioning dPartitioner::partition(const Ids &ids, const dPoints &points,
 
   // add infinite points
   for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
       partitioning[i].points.insert(k);
     }
   }
@@ -76,15 +62,17 @@ Partitioning dPartitioner::partition(const Ids &ids, const dPoints &points,
   return partitioning;
 }
 
-Partitioning kPartitioner::partition(const Ids &ids, const dPoints &points,
-                                     __attribute((unused))
-                                     const std::string &provenance) const {
+template <uint D>
+Partitioning<D>
+kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
+                           __attribute((unused))
+                           const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
   PLOG << "Midpoint is " << stats.mid << std::endl;
 
-  Partitioning partitioning;
+  Partitioning<D> partitioning;
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
@@ -104,7 +92,7 @@ Partitioning kPartitioner::partition(const Ids &ids, const dPoints &points,
   }
 
 #ifndef NDEBUG
-  auto inPartition = [&](const dPoint &p, const uint partition) -> bool {
+  auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
     for (uint i = 0; i < D; ++i)
       if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
             p.coords[i] <= partitioning[partition].bounds.coords[i] +
@@ -131,7 +119,7 @@ Partitioning kPartitioner::partition(const Ids &ids, const dPoints &points,
 
   // add infinite points
   for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
       partitioning[i].points.insert(k);
     }
   }
@@ -139,8 +127,10 @@ Partitioning kPartitioner::partition(const Ids &ids, const dPoints &points,
   return partitioning;
 }
 
-Partitioning CyclePartitioner::partition(const Ids &ids, const dPoints &points,
-                                         const std::string &provenance) const {
+template <uint D>
+Partitioning<D>
+CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
+                               const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
@@ -150,7 +140,7 @@ Partitioning CyclePartitioner::partition(const Ids &ids, const dPoints &points,
   PLOG << "Midpoint is " << stats.mid << std::endl;
   PLOG << "Splitting dimension is " << k << std::endl;
 
-  Partitioning partitioning;
+  Partitioning<D> partitioning;
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
@@ -170,7 +160,7 @@ Partitioning CyclePartitioner::partition(const Ids &ids, const dPoints &points,
   }
 
 #ifndef NDEBUG
-  auto inPartition = [&](const dPoint &p, const uint partition) -> bool {
+  auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
     for (uint i = 0; i < D; ++i)
       if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
             p.coords[i] <= partitioning[partition].bounds.coords[i] +
@@ -197,10 +187,19 @@ Partitioning CyclePartitioner::partition(const Ids &ids, const dPoints &points,
 
   // add infinite points
   for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
       partitioning[i].points.insert(k);
     }
   }
 
   return partitioning;
 }
+
+// specializations
+template class dPartitioner<2>;
+template class kPartitioner<2>;
+template class CyclePartitioner<2>;
+
+template class dPartitioner<3>;
+template class kPartitioner<3>;
+template class CyclePartitioner<3>;

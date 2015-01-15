@@ -23,22 +23,25 @@
 
 //**************************
 
-constexpr tCoordinate Triangulator::SAFETY;
-constexpr uint Triangulator::BASE_CASE;
-constexpr char Triangulator::TOP;
+template <uint D> constexpr tCoordinate Triangulator<D>::SAFETY;
+
+template <uint D> constexpr uint Triangulator<D>::BASE_CASE;
+
+template <uint D> constexpr char Triangulator<D>::TOP;
 //**************************
 
-Triangulator::Triangulator(dBox &_bounds, dPoints &_points,
-                           std::unique_ptr<Partitioner> &&_partitioner)
+template <uint D>
+Triangulator<D>::Triangulator(dBox<D> &_bounds, dPoints<D> &_points,
+                              std::unique_ptr<Partitioner<D>> &&_partitioner)
     : bounds(_bounds), points(_points), partitioner(_partitioner) {
-  if (!points.contains(dPoint::cINF)) {
+  if (!points.contains(dPoint<D>::cINF)) {
     auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
     for (uint i = 0; i < pow(2, D); ++i) {
       VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - "
            << stats.max << std::endl;
 
-      dPoint p = stats.mid;
-      p.id = dPoint::cINF | i;
+      dPoint<D> p = stats.mid;
+      p.id = dPoint<D>::cINF | i;
 
       for (uint d = 0; d < D; ++d)
         p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * SAFETY *
@@ -49,13 +52,14 @@ Triangulator::Triangulator(dBox &_bounds, dPoints &_points,
   }
 }
 
-Ids Triangulator::getEdge(const dSimplices &simplices,
-                          const Partition &partition) {
+template <uint D>
+Ids Triangulator<D>::getEdge(const dSimplices<D> &simplices,
+                             const Partition<D> &partition) {
   Ids edgeSimplices;
   std::set<uint> wqa; // set of already checked simplices
 
   // we use the overflow of the uint to zero to abort the loop
-  for (uint infVertex = dPoint::cINF; infVertex != 0; ++infVertex) {
+  for (uint infVertex = dPoint<D>::cINF; infVertex != 0; ++infVertex) {
     assert(
         std::find(partition.points.begin(), partition.points.end(),
                   infVertex) !=
@@ -93,7 +97,7 @@ Ids Triangulator::getEdge(const dSimplices &simplices,
         wq.pop_front();
 
         if (simplices.contains(x) &&
-            !partition.bounds.contains(simplices[x].circumcircle(points))) {
+            !partition.bounds.contains(simplices[x].circumsphere(points))) {
           PLOG << "Adding " << simplices[x]
                << " to edge -> circumcircle criterion" << std::endl;
           edgeSimplices.insert(simplices[x].id);
@@ -114,9 +118,10 @@ Ids Triangulator::getEdge(const dSimplices &simplices,
   return edgeSimplices;
 }
 
-Ids Triangulator::extractPoints(const Ids &edgeSimplices,
-                                const dSimplices &simplices,
-                                bool ignoreInfinite) {
+template <uint D>
+Ids Triangulator<D>::extractPoints(const Ids &edgeSimplices,
+                                   const dSimplices<D> &simplices,
+                                   bool ignoreInfinite) {
   Ids outPoints;
   std::set<uint> idx;
 
@@ -124,7 +129,7 @@ Ids Triangulator::extractPoints(const Ids &edgeSimplices,
     assert(simplices.contains(id));
 
     for (uint i = 0; i < D + 1; ++i) {
-      if (dPoint::isFinite(simplices[id].vertices[i]) &&
+      if (dPoint<D>::isFinite(simplices[id].vertices[i]) &&
           idx.insert(simplices[id].vertices[i]).second)
         outPoints.insert(simplices[id].vertices[i]);
     }
@@ -132,7 +137,7 @@ Ids Triangulator::extractPoints(const Ids &edgeSimplices,
 
   // add the extreme infinite points to the set
   if (!ignoreInfinite) {
-    for (uint k = dPoint::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
       outPoints.insert(k);
     }
   }
@@ -140,16 +145,17 @@ Ids Triangulator::extractPoints(const Ids &edgeSimplices,
   return outPoints;
 }
 
-void Triangulator::updateNeighbors(dSimplices &simplices,
-                                   const std::string &provenance) {
-  PainterBulkWriter paintWriter;
+template <uint D>
+void Triangulator<D>::updateNeighbors(dSimplices<D> &simplices,
+                                      const std::string &provenance) {
+  PainterBulkWriter<D> paintWriter;
 
   INDENT
-  for (dSimplex &simplex : simplices) {
+  for (dSimplex<D> &simplex : simplices) {
     PLOG << "Updating neighbors of " << simplex << std::endl;
 
 #ifndef NDEBUG
-    dSimplex saveSimplex = simplex;
+    dSimplex<D> saveSimplex = simplex;
 #endif
 
     simplex.neighbors.clear();
@@ -159,7 +165,7 @@ void Triangulator::updateNeighbors(dSimplices &simplices,
       // for every point, look where else its used
       // if the other simplex shares a second point -> it is a neighbor
 
-      const dPoint &vertex = points[simplex.vertices[v]];
+      const dPoint<D> &vertex = points[simplex.vertices[v]];
 
       if (IS_PROLIX) {
         PLOG << "Vertex " << vertex << " used in ";
@@ -225,18 +231,17 @@ void Triangulator::updateNeighbors(dSimplices &simplices,
     if (simplex.neighbors.size() < D + 1) { // if it is a simplex at the border,
                                             // it might have one infinite
                                             // simplex as neighbor
-      simplex.neighbors.insert(uint(dSimplex::cINF));
+      simplex.neighbors.insert(uint(dSimplex<D>::cINF));
     }
   }
   DEDENT
 }
 
-dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
-                                            const Ids &edgeSimplices,
-                                            const dSimplices &edgeDT,
-                                            const Partitioning &partitioning,
-                                            const std::string &provenance,
-                                            const dSimplices *realDT) {
+template <uint D>
+dSimplices<D> Triangulator<D>::mergeTriangulation(
+    std::vector<dSimplices<D>> &partialDTs, const Ids &edgeSimplices,
+    const dSimplices<D> &edgeDT, const Partitioning<D> &partitioning,
+    const std::string &provenance, const dSimplices<D> *realDT) {
   auto partitionPoint = [&](const uint &point) -> uint {
 
     for (uint p = 0; p < partitioning.size(); ++p) {
@@ -250,7 +255,7 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
 
   };
 
-  auto partitionContains = [&](const dSimplex &simplex) -> bool {
+  auto partitionContains = [&](const dSimplex<D> &simplex) -> bool {
     uint p0 = partitionPoint(simplex.vertices[0]);
     uint p1 = partitionPoint(simplex.vertices[1]);
     uint p2 = partitionPoint(simplex.vertices[2]);
@@ -259,15 +264,15 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
   };
 
   LOG << "Merging partial DTs into one triangulation" << std::endl;
-  dSimplices DT;
+  dSimplices<D> DT;
   for (uint i = 0; i < partialDTs.size(); ++i)
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
   auto paintMerging =
-      [&](const dSimplices &dt, const std::string &name) -> Painter {
-    Painter painter(bounds);
+      [&](const dSimplices<D> &dt, const std::string &name) -> Painter<D> {
+    Painter<D> painter(bounds);
 
     painter.draw(points);
     painter.drawPartition(points);
@@ -277,14 +282,14 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
 
     painter.setColor(1, 0, 0);
     painter.draw(points.project(edgePointIds));
-    painter.savePNG(name + ".png");
+    painter.save(name + ".png");
 
     if (realDT != nullptr) {
       painter.setColor(0, 0, 0, 0.1);
       painter.draw(*realDT, points);
     }
 
-    painter.savePNG(name + "_overlay.png");
+    painter.save(name + "_overlay.png");
 
     return painter;
   };
@@ -309,18 +314,17 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
   auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
 
   painter.setColor(0, 0, 1, 0.4);
-  painter.setLineDash({2, 4});
+  painter.setDashed();
   painter.draw(edgeDT, points);
 
-  painter.savePNG(provenance + "_05b_merging_stripped+edge_overlay.png");
+  painter.save(provenance + "_05b_merging_stripped+edge_overlay.png");
 
   painter.setColor(1, 0, 0, 0.4);
-  painter.setLineDash({2, 4});
+  painter.setDashed();
   painter.draw(deletedSimplices, points);
-  painter.unsetLineDash();
+  painter.setDashed(false);
 
-  painter.savePNG(provenance +
-                  "_05b_merging_stripped+edge+deleted_overlay.png");
+  painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay.png");
 
   // merge partial DTs and edge DT
   LOG << "Merging triangulations" << std::endl;
@@ -330,7 +334,7 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
     } else {
       auto it = std::find_if(
           deletedSimplices.begin(), deletedSimplices.end(),
-          [&](const dSimplex &s) { return s.equalVertices(edgeSimplex); });
+          [&](const dSimplex<D> &s) { return s.equalVertices(edgeSimplex); });
       if (it != deletedSimplices.end())
         DT.insert(edgeSimplex);
     }
@@ -346,16 +350,16 @@ dSimplices Triangulator::mergeTriangulation(std::vector<dSimplices> &partialDTs,
   return DT;
 }
 
-void
-Triangulator::evaluateVerificationReport(const VerificationReport &vr,
-                                         const std::string &provenance) const {
+template <uint D>
+void Triangulator<D>::evaluateVerificationReport(
+    const VerificationReport<D> &vr, const std::string &provenance) const {
   if (IS_PROLIX) {
-    Painter basePainter(bounds);
+    Painter<D> basePainter(bounds);
     basePainter.draw(points);
     basePainter.drawPartition(points);
     basePainter.setLogging();
 
-    PainterBulkWriter writer;
+    PainterBulkWriter<D> writer;
     for (const auto &inCircle : vr.inCircle) {
       writer.add("img/" + provenance + "_inCircle_" +
                      std::to_string(inCircle.first.id) + ".png",
@@ -363,7 +367,7 @@ Triangulator::evaluateVerificationReport(const VerificationReport &vr,
 
       writer.top().setColor(0, 1, 0);
       writer.top().draw(inCircle.first, points, true);
-      writer.top().drawCircumCircle(inCircle.first, points, true);
+      writer.top().drawCircumSphere(inCircle.first, points, true);
 
       writer.top().setColor(1, 0, 0);
       writer.top().draw(points.project(inCircle.second));
@@ -371,17 +375,17 @@ Triangulator::evaluateVerificationReport(const VerificationReport &vr,
   }
 }
 
-void Triangulator::evaluateCrossCheckReport(const CrossCheckReport &ccr,
-                                            const std::string &provenance,
-                                            const dSimplices &DT,
-                                            const dSimplices &realDT) const {
+template <uint D>
+void Triangulator<D>::evaluateCrossCheckReport(
+    const CrossCheckReport<D> &ccr, const std::string &provenance,
+    const dSimplices<D> &DT, const dSimplices<D> &realDT) const {
   if (IS_PROLIX) {
-    Painter basePainter(bounds);
+    Painter<D> basePainter(bounds);
     basePainter.draw(points);
     basePainter.drawPartition(points);
     basePainter.setLogging();
 
-    PainterBulkWriter writer;
+    PainterBulkWriter<D> writer;
     for (const auto &missingSimplex : ccr.missing) {
       writer.add("img/" + provenance + "_missing_" +
                      std::to_string(missingSimplex.id) + ".png",
@@ -412,8 +416,9 @@ void Triangulator::evaluateCrossCheckReport(const CrossCheckReport &ccr,
   }
 }
 
-dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
-                                         const std::string provenance) {
+template <uint D>
+dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
+                                               const std::string provenance) {
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
@@ -466,8 +471,9 @@ dSimplices Triangulator::triangulateBase(const Ids partitionPoints,
   return dt;
 }
 
-dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
-                                        const std::string provenance) {
+template <uint D>
+dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
+                                              const std::string provenance) {
   LOG << "triangulateDAC called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
@@ -480,10 +486,10 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
         partitioner->partition(partitionPoints, points, provenance);
     DEDENT
 
-    Painter basePainter(bounds);
+    Painter<D> basePainter(bounds);
     basePainter.draw(points.project(partitionPoints));
     basePainter.drawPartition(points.project(partitionPoints));
-    basePainter.savePNG(provenance + "_00_points.png");
+    basePainter.save(provenance + "_00_points.png");
 
     for (auto &p : partioning)
       PLOG << "Partition " << p << std::endl;
@@ -495,17 +501,17 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
         << std::endl;
     DEDENT
 
-    Painter paintRealDT = basePainter;
+    Painter<D> paintRealDT = basePainter;
 
     paintRealDT.setColor(0, 0, 1);
     paintRealDT.draw(realDT, points);
     paintRealDT.setColor(0, 0, 0);
 
-    paintRealDT.savePNG(provenance + "_01_realDT.png");
+    paintRealDT.save(provenance + "_01_realDT.png");
 
-    std::vector<dSimplices> partialDTs;
+    std::vector<dSimplices<D>> partialDTs;
     partialDTs.resize(partioning.size());
-    Painter paintPartialDTs = basePainter;
+    Painter<D> paintPartialDTs = basePainter;
 
     INDENT
     for (uint i = 0; i < partioning.size(); ++i) {
@@ -517,24 +523,24 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
           << " tetrahedra" << std::endl;
       DEDENT
 
-      paintPartialDTs.setColor(Painter::tetradicColor(i), 0.4);
+      paintPartialDTs.setColor(Painter<D>::tetradicColor(i), 0.4);
       paintPartialDTs.draw(partialDTs[i], points);
 
-      Painter paintPartialDT = basePainter;
+      Painter<D> paintPartialDT = basePainter;
       paintPartialDT.draw(partialDTs[i], points, true);
-      paintPartialDT.savePNG(provenance + "_02_partialDT_" + std::to_string(i) +
-                             ".png");
+      paintPartialDT.save(provenance + "_02_partialDT_" + std::to_string(i) +
+                          ".png");
     }
     DEDENT
 
-    paintPartialDTs.savePNG(provenance + "_02_partialDTs.png");
+    paintPartialDTs.save(provenance + "_02_partialDTs.png");
 
     LOG << "Extracting edges" << std::endl;
     INDENT
 
     Ids edgePointIds;
     Ids edgeSimplexIds;
-    Painter paintEdges = paintPartialDTs;
+    Painter<D> paintEdges = paintPartialDTs;
     paintEdges.setColor(1, 0, 0);
 
     // ignore infinite vertices of this is the top most triangulation
@@ -557,7 +563,7 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
         << edgePointIds.size() << " points" << std::endl;
 
     paintEdges.draw(points.project(edgePointIds));
-    paintEdges.savePNG(provenance + "_03_edgeMarked.png");
+    paintEdges.save(provenance + "_03_edgeMarked.png");
 
     LOG << "Triangulating edges" << std::endl;
     INDENT
@@ -566,22 +572,22 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
         << std::endl << std::endl;
     DEDENT
 
-    Painter paintEdgeDT = basePainter;
+    Painter<D> paintEdgeDT = basePainter;
 
     paintEdgeDT.setColor(0, 1, 0);
     paintEdgeDT.draw(edgeDT, points, true);
     paintEdgeDT.setColor(1, 0, 0);
     paintEdgeDT.draw(points.project(edgePointIds));
 
-    paintEdgeDT.savePNG(provenance + "_04_edgeDT.png");
+    paintEdgeDT.save(provenance + "_04_edgeDT.png");
 
     auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                        partioning, provenance, &realDT);
 
-    Painter paintFinal = basePainter;
+    Painter<D> paintFinal = basePainter;
     paintFinal.setColor(0, 1, 0);
     paintFinal.draw(mergedDT, points, true);
-    paintFinal.savePNG(provenance + "_06_final.png");
+    paintFinal.save(provenance + "_06_final.png");
 
     LOG << "Consistency check of triangulation" << std::endl;
     auto vr = mergedDT.verify(points.project(partitionPoints));
@@ -609,7 +615,12 @@ dSimplices Triangulator::triangulateDAC(const Ids partitionPoints,
   }
 }
 
-dSimplices Triangulator::triangulate() {
+template <uint D> dSimplices<D> Triangulator<D>::triangulate() {
   Ids allPoints(points.begin_keys(), points.end_keys());
   return triangulateDAC(allPoints, std::to_string(TOP));
 }
+
+// specializations
+
+template class Triangulator<2>;
+// template class Triangulator<3>;

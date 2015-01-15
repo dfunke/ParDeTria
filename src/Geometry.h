@@ -20,19 +20,28 @@ typedef float tCoordinate;
 typedef std::set<uint> Ids;
 
 // dimensionality of our problem
-const uint D = 2;
+// const uint D = 2;
 
-struct dSphere {
-  std::array<tCoordinate, D> center;
+// basic data structure for d-dimensional data
+template <uint D> using dVector = std::array<tCoordinate, D>;
+
+//#############################################################################
+
+// sphere
+template <uint D> struct dSphere {
+  dVector<D> center;
   tCoordinate radius;
 };
 
-struct dBox {
-  std::array<tCoordinate, D> coords;
-  std::array<tCoordinate, D> dim;
+//#############################################################################
+
+// (hyper)-rectangle
+template <uint D> struct dBox {
+  dVector<D> coords;
+  dVector<D> dim;
 
   /* tests whether sphere is FULLY contained in box */
-  bool contains(const dSphere &sphere) const {
+  bool contains(const dSphere<D> &sphere) const {
 
     tCoordinate r2 = sphere.radius * sphere.radius;
 
@@ -63,10 +72,12 @@ struct dBox {
 
 //#############################################################################
 
-class dPoint {
+// point with ID and simplices list
+
+template <uint D> class dPoint {
 
 public:
-  bool operator==(const dPoint &a) const {
+  bool operator==(const dPoint<D> &a) const {
 
     // COUT << "Comparing POINTS THIS " << *this << " and OTHER " << a << ": ";
 
@@ -95,8 +106,8 @@ public:
 
 public:
   uint id;
-  std::array<tCoordinate, D> coords;
-  std::set<uint> simplices;
+  dVector<D> coords;
+  Ids simplices;
 
 public:
   static inline bool isFinite(const uint &i) {
@@ -110,24 +121,41 @@ public:
   static constexpr uint cINF = ~(0) ^ ((1 << D) - 1);
 };
 
-class dPoints : public IndexedVector<dPoint> {
+//#############################################################################
+
+// IndexedVector of dPoints
+
+template <uint D> class dPoints : public IndexedVector<dPoint<D>> {
 
 public:
-  dPoints() : IndexedVector<dPoint>() {}
+  dPoints() : IndexedVector<dPoint<D>>() {}
 
-  dPoints(const IndexedVector<dPoint> &other) : IndexedVector<dPoint>(other) {}
+  dPoints(const IndexedVector<dPoint<D>> &other)
+      : IndexedVector<dPoint<D>>(other) {}
 
-  bool operator==(const std::set<uint> &other) const;
+  bool operator==(const Ids &other) const {
+    if (this->size() != other.size())
+      return false;
 
-  bool operator!=(const std::set<uint> &other) const {
-    return !operator==(other);
+    for (const auto &p : other) {
+      if (!this->contains(p))
+        return false;
+    }
+
+    return true;
   }
+
+  bool operator!=(const Ids &other) const { return !operator==(other); }
 };
 
-class dSimplex {
+//#############################################################################
+
+// d-Simplex
+
+template <uint D> class dSimplex {
 
 public:
-  bool operator==(const dSimplex &a) const {
+  bool operator==(const dSimplex<D> &a) const {
 
     // COUT << "Comparing SIMPLICES THIS " << *this << " and OTHER " << a << ":
     // ";
@@ -160,9 +188,9 @@ public:
   }
 
   // for use as map key
-  bool operator<(const dSimplex &a) const { return id < a.id; }
+  bool operator<(const dSimplex<D> &a) const { return id < a.id; }
 
-  bool equalVertices(const dSimplex &a) const {
+  bool equalVertices(const dSimplex<D> &a) const {
     // compare vertices
     for (uint i = 0; i < D + 1; ++i) {
       bool found = false;
@@ -182,7 +210,7 @@ public:
     return true;
   }
 
-  bool equalNeighbors(const dSimplex &a) const {
+  bool equalNeighbors(const dSimplex<D> &a) const {
     return neighbors != a.neighbors;
   }
 
@@ -197,7 +225,7 @@ public:
     return false;
   }
 
-  bool contains(const dPoint &p) const {
+  bool contains(const dPoint<D> &p) const {
     for (uint d = 0; d < D + 1; ++d) {
       if (p == vertices[d])
         return true;
@@ -228,104 +256,19 @@ public:
     bool finite = true;
 
     for (uint i = 0; i < D + 1; ++i) {
-      if (!dPoint::isFinite(vertices[i]))
+      if (!dPoint<D>::isFinite(vertices[i]))
         finite = false;
     }
 
     return finite;
   }
 
-  /*
-   * return > 0: abc are counter-clockwise
-   * return < 0: abc clockwise
-   */
-  tCoordinate orientation(const dPoints &points) const {
-    tCoordinate acx, bcx, acy, bcy;
+  // dimension specific implementations in cpp file
+  tCoordinate orientation(const dPoints<D> &points) const;
+  bool inSphere(const dPoint<D> &p, const dPoints<D> &points) const;
+  dSphere<D> circumsphere(const dPoints<D> &points) const;
 
-    acx = points[vertices[0]].coords[0] - points[vertices[2]].coords[0];
-    bcx = points[vertices[1]].coords[0] - points[vertices[2]].coords[0];
-    acy = points[vertices[0]].coords[1] - points[vertices[2]].coords[1];
-    bcy = points[vertices[1]].coords[1] - points[vertices[2]].coords[1];
-    return acx * bcy - acy * bcx;
-  }
-
-  bool inCircle(const dPoint &p, const dPoints &points) const {
-    tCoordinate adx, ady, bdx, bdy, cdx, cdy;
-    tCoordinate abdet, bcdet, cadet;
-    tCoordinate alift, blift, clift;
-    tCoordinate det;
-
-    adx = points[vertices[0]].coords[0] - p.coords[0];
-    ady = points[vertices[0]].coords[1] - p.coords[1];
-    bdx = points[vertices[1]].coords[0] - p.coords[0];
-    bdy = points[vertices[1]].coords[1] - p.coords[1];
-    cdx = points[vertices[2]].coords[0] - p.coords[0];
-    cdy = points[vertices[2]].coords[1] - p.coords[1];
-
-    abdet = adx * bdy - bdx * ady;
-    bcdet = bdx * cdy - cdx * bdy;
-    cadet = cdx * ady - adx * cdy;
-    alift = adx * adx + ady * ady;
-    blift = bdx * bdx + bdy * bdy;
-    clift = cdx * cdx + cdy * cdy;
-
-    /*
-     * det > 0: d inside  abc (abc counter-clockwise)
-     * 		  d outside abc (abc clockwise)
-     * det < 0: d outside abc (abc counter-clockwise)
-     * 		  d inside  abc (abc clockwise)
-     */
-
-    det = alift * bcdet + blift * cadet + clift * abdet;
-
-    return orientation(points) * det >= 0;
-  }
-
-  dSphere circumcircle(const dPoints &points) const {
-
-    dSphere sphere;
-
-    tCoordinate D =
-        2 *
-        (points[vertices[0]].coords[0] *
-             (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
-         points[vertices[1]].coords[0] *
-             (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
-         points[vertices[2]].coords[0] *
-             (points[vertices[0]].coords[1] - points[vertices[1]].coords[1]));
-
-    sphere.center[0] =
-        ((pow(points[vertices[0]].coords[0], 2) +
-          pow(points[vertices[0]].coords[1], 2)) *
-             (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
-         (pow(points[vertices[1]].coords[0], 2) +
-          pow(points[vertices[1]].coords[1], 2)) *
-             (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
-         (pow(points[vertices[2]].coords[0], 2) +
-          pow(points[vertices[2]].coords[1], 2)) *
-             (points[vertices[0]].coords[1] - points[vertices[1]].coords[1])) /
-        D;
-
-    sphere.center[1] =
-        ((pow(points[vertices[0]].coords[0], 2) +
-          pow(points[vertices[0]].coords[1], 2)) *
-             (points[vertices[2]].coords[0] - points[vertices[1]].coords[0]) +
-         (pow(points[vertices[1]].coords[0], 2) +
-          pow(points[vertices[1]].coords[1], 2)) *
-             (points[vertices[0]].coords[0] - points[vertices[2]].coords[0]) +
-         (pow(points[vertices[2]].coords[0], 2) +
-          pow(points[vertices[2]].coords[1], 2)) *
-             (points[vertices[1]].coords[0] - points[vertices[0]].coords[0])) /
-        D;
-
-    sphere.radius =
-        sqrt(pow(sphere.center[0] - points[vertices[0]].coords[0], 2) +
-             pow(sphere.center[1] - points[vertices[0]].coords[1], 2));
-
-    return sphere;
-  }
-
-  bool isNeighbor(const dSimplex &other) const {
+  bool isNeighbor(const dSimplex<D> &other) const {
     uint sharedVertices = 0;
 
     for (uint i = 0; i < D + 1; ++i) {
@@ -346,7 +289,7 @@ public:
 public:
   uint id;
   std::array<uint, D + 1> vertices;
-  std::set<uint> neighbors;
+  Ids neighbors;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }
@@ -354,41 +297,83 @@ public:
   static constexpr uint cINF = ~(0);
 };
 
-std::string to_string(const dPoint &p);
-std::string to_string(const dSimplex &p);
-std::string to_string(const dBox &b);
+template <uint D> std::string to_string(const dPoint<D> &p);
 
-std::ostream &operator<<(std::ostream &o, const dPoint &p);
-std::ostream &operator<<(std::ostream &o, const dSimplex &p);
-std::ostream &operator<<(std::ostream &o, const dBox &b);
+template <uint D> std::string to_string(const dSimplex<D> &p);
 
-struct CrossCheckReport;
+template <uint D> std::string to_string(const dBox<D> &b);
 
-struct VerificationReport;
+template <uint D> std::ostream &operator<<(std::ostream &o, const dPoint<D> &p);
 
-class dSimplices : public IndexedVector<dSimplex> {
+template <uint D>
+std::ostream &operator<<(std::ostream &o, const dSimplex<D> &p);
+
+template <uint D> std::ostream &operator<<(std::ostream &o, const dBox<D> &b);
+
+template <uint D> struct CrossCheckReport;
+
+template <uint D> struct VerificationReport;
+
+template <uint D> class dSimplices : public IndexedVector<dSimplex<D>> {
 
 public:
-  dSimplices() : IndexedVector<dSimplex>() {}
+  dSimplices() : IndexedVector<dSimplex<D>>() {}
 
-  dSimplices(const IndexedVector<dSimplex> &other)
-      : IndexedVector<dSimplex>(other) {}
+  dSimplices(const IndexedVector<dSimplex<D>> &other)
+      : IndexedVector<dSimplex<D>>(other) {}
 
-  bool operator==(const dSimplices &other) const;
+  bool operator==(const dSimplices<D> &other) const {
+    if (this->size() != other.size()) {
+      PLOG << "my size: " << this->size() << " other size: " << other.size()
+           << std::endl;
+      return false;
+    }
 
-  bool operator!=(const dSimplices &other) const { return !operator==(other); }
+    for (const auto &otherSimplex : other) {
+      // find my simplex, compares simplex id or vertices ids
+      auto mySimplex = std::find(this->begin(), this->end(), otherSimplex);
 
-  VerificationReport verify(const dPoints &points) const;
+      if (mySimplex == this->end()) {
+        PLOG << "did not find simplex" << otherSimplex << std::endl;
+        return false;
+      }
 
-  CrossCheckReport crossCheck(const dSimplices &realDT) const;
+      // check neighbors
+      if (mySimplex->neighbors != otherSimplex.neighbors) {
+        // this should never happen
+        return false;
+      }
+    }
 
-  uint countDuplicates() const;
+    return true;
+  }
+
+  bool operator!=(const dSimplices<D> &other) const {
+    return !operator==(other);
+  }
+
+  VerificationReport<D> verify(const dPoints<D> &points) const;
+
+  CrossCheckReport<D> crossCheck(const dSimplices<D> &realDT) const;
+
+  uint countDuplicates() const {
+    uint duplicates = 0;
+
+    for (const auto &s : *this) {
+      auto simplices = findSimplices(s.vertices, true);
+      duplicates += simplices.size() - 1;
+    }
+
+    PLOG << "Found " << duplicates << " duplicates" << std::endl;
+
+    return duplicates;
+  }
 
   template <typename Container>
-  dSimplices findSimplices(const Container &points,
-                           const bool all = false) const {
+  dSimplices<D> findSimplices(const Container &points,
+                              const bool all = false) const {
 
-    dSimplices result;
+    dSimplices<D> result;
 
     if (all) {
       for (const auto &s : *this) {
@@ -406,15 +391,15 @@ public:
   }
 };
 
-struct CrossCheckReport {
+template <uint D> struct CrossCheckReport {
   bool valid;
-  dSimplices missing;
-  dSimplices invalid;
+  dSimplices<D> missing;
+  dSimplices<D> invalid;
 };
 
-struct VerificationReport {
+template <uint D> struct VerificationReport {
   bool valid;
-  std::map<dSimplex, Ids> inCircle;
+  std::map<dSimplex<D>, Ids> inCircle;
 };
 
 //#############################################################################

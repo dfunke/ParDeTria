@@ -4,108 +4,203 @@
 #include <sstream>
 
 // static variables
-constexpr uint dPoint::cINF;
-constexpr uint dSimplex::cINF;
+template <uint D> constexpr uint dPoint<D>::cINF;
+
+template <uint D> constexpr uint dSimplex<D>::cINF;
 //
 
-std::string to_string(const dPoint &p) {
-  std::stringstream o;
-  o << p.id << "-[" << p.coords[0];
-  for (uint i = 1; i < D; ++i)
-    o << ", " << p.coords[i];
-  o << "]";
-  return o.str();
+// specializations
+
+/*
+   * return > 0: abc are counter-clockwise
+   * return < 0: abc clockwise
+   */
+
+template <>
+tCoordinate dSimplex<2>::orientation(const dPoints<2> &points) const {
+  tCoordinate acx, bcx, acy, bcy;
+
+  acx = points[vertices[0]].coords[0] - points[vertices[2]].coords[0];
+  bcx = points[vertices[1]].coords[0] - points[vertices[2]].coords[0];
+  acy = points[vertices[0]].coords[1] - points[vertices[2]].coords[1];
+  bcy = points[vertices[1]].coords[1] - points[vertices[2]].coords[1];
+  return acx * bcy - acy * bcx;
 }
 
-std::string to_string(const dSimplex &p) {
-  std::stringstream o;
-  o << p.id << ": V = [" << p.vertices[0];
-  for (uint i = 1; i < D + 1; ++i)
-    o << ", " << p.vertices[i];
-  o << "] N = [";
-  for (auto it = p.neighbors.begin(); it != p.neighbors.end(); ++it) {
-    if (it != p.neighbors.begin())
-      o << ", ";
-    o << *it;
-  }
-  o << "]";
-  return o.str();
+template <>
+bool dSimplex<2>::inSphere(const dPoint<2> &p, const dPoints<2> &points) const {
+  tCoordinate adx, ady, bdx, bdy, cdx, cdy;
+  tCoordinate abdet, bcdet, cadet;
+  tCoordinate alift, blift, clift;
+  tCoordinate det;
+
+  adx = points[vertices[0]].coords[0] - p.coords[0];
+  ady = points[vertices[0]].coords[1] - p.coords[1];
+  bdx = points[vertices[1]].coords[0] - p.coords[0];
+  bdy = points[vertices[1]].coords[1] - p.coords[1];
+  cdx = points[vertices[2]].coords[0] - p.coords[0];
+  cdy = points[vertices[2]].coords[1] - p.coords[1];
+
+  abdet = adx * bdy - bdx * ady;
+  bcdet = bdx * cdy - cdx * bdy;
+  cadet = cdx * ady - adx * cdy;
+  alift = adx * adx + ady * ady;
+  blift = bdx * bdx + bdy * bdy;
+  clift = cdx * cdx + cdy * cdy;
+
+  /*
+   * det > 0: d inside  abc (abc counter-clockwise)
+   *      d outside abc (abc clockwise)
+   * det < 0: d outside abc (abc counter-clockwise)
+   *      d inside  abc (abc clockwise)
+   */
+
+  det = alift * bcdet + blift * cadet + clift * abdet;
+
+  return this->orientation(points) * det >= 0;
 }
 
-std::string to_string(const dBox &b) {
-  std::stringstream o;
-  o << "[" << b.coords[0] << " - " << b.coords[0] + b.dim[0];
-  for (uint i = 1; i < D; ++i)
-    o << ", " << b.coords[i] << " - " << b.coords[i] + b.dim[i];
-  o << "]";
-  return o.str();
+template <>
+dSphere<2> dSimplex<2>::circumsphere(const dPoints<2> &points) const {
+
+  dSphere<2> sphere;
+
+  tCoordinate det =
+      2 * (points[vertices[0]].coords[0] *
+               (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
+           points[vertices[1]].coords[0] *
+               (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
+           points[vertices[2]].coords[0] *
+               (points[vertices[0]].coords[1] - points[vertices[1]].coords[1]));
+
+  sphere.center[0] =
+      ((pow(points[vertices[0]].coords[0], 2) +
+        pow(points[vertices[0]].coords[1], 2)) *
+           (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
+       (pow(points[vertices[1]].coords[0], 2) +
+        pow(points[vertices[1]].coords[1], 2)) *
+           (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
+       (pow(points[vertices[2]].coords[0], 2) +
+        pow(points[vertices[2]].coords[1], 2)) *
+           (points[vertices[0]].coords[1] - points[vertices[1]].coords[1])) /
+      det;
+
+  sphere.center[1] =
+      ((pow(points[vertices[0]].coords[0], 2) +
+        pow(points[vertices[0]].coords[1], 2)) *
+           (points[vertices[2]].coords[0] - points[vertices[1]].coords[0]) +
+       (pow(points[vertices[1]].coords[0], 2) +
+        pow(points[vertices[1]].coords[1], 2)) *
+           (points[vertices[0]].coords[0] - points[vertices[2]].coords[0]) +
+       (pow(points[vertices[2]].coords[0], 2) +
+        pow(points[vertices[2]].coords[1], 2)) *
+           (points[vertices[1]].coords[0] - points[vertices[0]].coords[0])) /
+      det;
+
+  sphere.radius =
+      sqrt(pow(sphere.center[0] - points[vertices[0]].coords[0], 2) +
+           pow(sphere.center[1] - points[vertices[0]].coords[1], 2));
+
+  return sphere;
 }
 
-std::ostream &operator<<(std::ostream &o, const dPoint &p) {
-  return o << to_string(p);
+// TODO 3d implementation
+
+// return > 0: abc are counter-clockwise
+// return < 0: abc clockwise
+
+template <>
+tCoordinate dSimplex<3>::orientation(const dPoints<3> &points) const {
+  tCoordinate acx, bcx, acy, bcy;
+
+  acx = points[vertices[0]].coords[0] - points[vertices[2]].coords[0];
+  bcx = points[vertices[1]].coords[0] - points[vertices[2]].coords[0];
+  acy = points[vertices[0]].coords[1] - points[vertices[2]].coords[1];
+  bcy = points[vertices[1]].coords[1] - points[vertices[2]].coords[1];
+  return acx * bcy - acy * bcx;
 }
 
-std::ostream &operator<<(std::ostream &o, const dSimplex &p) {
-  return o << to_string(p);
+template <>
+bool dSimplex<3>::inSphere(const dPoint<3> &p, const dPoints<3> &points) const {
+  tCoordinate adx, ady, bdx, bdy, cdx, cdy;
+  tCoordinate abdet, bcdet, cadet;
+  tCoordinate alift, blift, clift;
+  tCoordinate det;
+
+  adx = points[vertices[0]].coords[0] - p.coords[0];
+  ady = points[vertices[0]].coords[1] - p.coords[1];
+  bdx = points[vertices[1]].coords[0] - p.coords[0];
+  bdy = points[vertices[1]].coords[1] - p.coords[1];
+  cdx = points[vertices[2]].coords[0] - p.coords[0];
+  cdy = points[vertices[2]].coords[1] - p.coords[1];
+
+  abdet = adx * bdy - bdx * ady;
+  bcdet = bdx * cdy - cdx * bdy;
+  cadet = cdx * ady - adx * cdy;
+  alift = adx * adx + ady * ady;
+  blift = bdx * bdx + bdy * bdy;
+  clift = cdx * cdx + cdy * cdy;
+
+  //
+  // det > 0: d inside  abc (abc counter-clockwise)
+  //      d outside abc (abc clockwise)
+  // det < 0: d outside abc (abc counter-clockwise)
+  //      d inside  abc (abc clockwise)
+  //
+
+  det = alift * bcdet + blift * cadet + clift * abdet;
+
+  return this->orientation(points) * det >= 0;
 }
 
-std::ostream &operator<<(std::ostream &o, const dBox &b) {
-  return o << to_string(b);
+template <>
+dSphere<3> dSimplex<3>::circumsphere(const dPoints<3> &points) const {
+
+  dSphere<3> sphere;
+
+  tCoordinate det =
+      2 * (points[vertices[0]].coords[0] *
+               (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
+           points[vertices[1]].coords[0] *
+               (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
+           points[vertices[2]].coords[0] *
+               (points[vertices[0]].coords[1] - points[vertices[1]].coords[1]));
+
+  sphere.center[0] =
+      ((pow(points[vertices[0]].coords[0], 2) +
+        pow(points[vertices[0]].coords[1], 2)) *
+           (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
+       (pow(points[vertices[1]].coords[0], 2) +
+        pow(points[vertices[1]].coords[1], 2)) *
+           (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
+       (pow(points[vertices[2]].coords[0], 2) +
+        pow(points[vertices[2]].coords[1], 2)) *
+           (points[vertices[0]].coords[1] - points[vertices[1]].coords[1])) /
+      det;
+
+  sphere.center[1] =
+      ((pow(points[vertices[0]].coords[0], 2) +
+        pow(points[vertices[0]].coords[1], 2)) *
+           (points[vertices[2]].coords[0] - points[vertices[1]].coords[0]) +
+       (pow(points[vertices[1]].coords[0], 2) +
+        pow(points[vertices[1]].coords[1], 2)) *
+           (points[vertices[0]].coords[0] - points[vertices[2]].coords[0]) +
+       (pow(points[vertices[2]].coords[0], 2) +
+        pow(points[vertices[2]].coords[1], 2)) *
+           (points[vertices[1]].coords[0] - points[vertices[0]].coords[0])) /
+      det;
+
+  sphere.radius =
+      sqrt(pow(sphere.center[0] - points[vertices[0]].coords[0], 2) +
+           pow(sphere.center[1] - points[vertices[0]].coords[1], 2));
+
+  return sphere;
 }
 
-bool dSimplices::operator==(const dSimplices &other) const {
-  if (size() != other.size()) {
-    PLOG << "my size: " << size() << " other size: " << other.size()
-         << std::endl;
-    return false;
-  }
-
-  for (const auto &otherSimplex : other) {
-    // find my simplex, compares simplex id or vertices ids
-    auto mySimplex = std::find(this->begin(), this->end(), otherSimplex);
-
-    if (mySimplex == this->end()) {
-      PLOG << "did not find simplex" << otherSimplex << std::endl;
-      return false;
-    }
-
-    // check neighbors
-    if (mySimplex->neighbors != otherSimplex.neighbors) {
-      // this should never happen
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool dPoints::operator==(const std::set<uint> &other) const {
-  if (size() != other.size())
-    return false;
-
-  for (const auto &p : other) {
-    if (!contains(p))
-      return false;
-  }
-
-  return true;
-}
-
-uint dSimplices::countDuplicates() const {
-  uint duplicates = 0;
-
-  for (const auto &s : *this) {
-    auto simplices = findSimplices(s.vertices, true);
-    duplicates += simplices.size() - 1;
-  }
-
-  PLOG << "Found " << duplicates << " duplicates" << std::endl;
-
-  return duplicates;
-}
-
-CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
-  CrossCheckReport result;
+template <uint D>
+CrossCheckReport<D>
+dSimplices<D>::crossCheck(const dSimplices<D> &realDT) const {
+  CrossCheckReport<D> result;
   result.valid = true;
 
   // check whether all simplices of real DT are present
@@ -113,7 +208,7 @@ CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
     // find my simplex, compares simplex id or vertices ids
     auto mySimplex = std::find_if(
         this->begin(), this->end(),
-        [&](const dSimplex &s) { return s.equalVertices(realSimplex); });
+        [&](const dSimplex<D> &s) { return s.equalVertices(realSimplex); });
 
     if (mySimplex == this->end()) {
       LOG << "did not find simplex " << realSimplex << std::endl;
@@ -124,12 +219,13 @@ CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
 
     // check neighbors
     for (const auto &n : realSimplex.neighbors) {
-      if (!dSimplex::isFinite(n))
+      if (!dSimplex<D>::isFinite(n))
         continue;
 
       bool found = false;
       for (const auto &nn : mySimplex->neighbors) {
-        if (dSimplex::isFinite(nn) &&operator[](nn).equalVertices(realDT[n])) {
+        if (dSimplex<D>::isFinite(nn) &&
+            this->operator[](nn).equalVertices(realDT[n])) {
           found = true;
           break;
         }
@@ -148,7 +244,7 @@ CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
   for (const auto &mySimplex : *this) {
     auto realSimplex = std::find_if(
         realDT.begin(), realDT.end(),
-        [&](const dSimplex &s) { return s.equalVertices(mySimplex); });
+        [&](const dSimplex<D> &s) { return s.equalVertices(mySimplex); });
 
     infSimplices += !mySimplex.isFinite();
 
@@ -161,8 +257,8 @@ CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
   }
 
   // check whether sizes are equal, account for infinite simplices
-  if (size() - infSimplices != realDT.size()) {
-    LOG << "my size: " << size() << " - " << infSimplices
+  if (dSimplices<D>::size() - infSimplices != realDT.size()) {
+    LOG << "my size: " << dSimplices<D>::size() << " - " << infSimplices
         << " other size: " << realDT.size() << std::endl;
     result.valid = false;
   }
@@ -172,10 +268,10 @@ CrossCheckReport dSimplices::crossCheck(const dSimplices &realDT) const {
 
   return result;
 }
-
-VerificationReport dSimplices::verify(const dPoints &points) const {
+template <uint D>
+VerificationReport<D> dSimplices<D>::verify(const dPoints<D> &points) const {
   INDENT
-  VerificationReport result;
+  VerificationReport<D> result;
   result.valid = true;
 
   // verify that every input point is used
@@ -199,7 +295,7 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
 
     std::stringstream sInvalidP;
     for (const auto &p : usedPoints) {
-      if (!points.contains(p) && dPoint::isFinite(p)) {
+      if (!points.contains(p) && dPoint<D>::isFinite(p)) {
         sInvalidP << p << " ";
         result.valid = false;
       }
@@ -225,11 +321,11 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
   }
   for (const auto &p : points) {
     for (const auto &id : p.simplices) {
-      if (!contains(id))
+      if (!this->contains(id))
         continue; // simplex of another triangulation
 
       // p is flagged as being used in s, but its not
-      const auto &s = operator[](id);
+      const auto &s = this->operator[](id);
       if (std::find(s.vertices.begin(), s.vertices.end(), p.id) ==
           s.vertices.end()) {
         LOG << "Point " << p << " SHOULD be used in " << s << std::endl;
@@ -271,7 +367,7 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
         continue; // skip infinite points
 
       bool contains = s.contains(p);
-      bool inCircle = s.inCircle(p, points);
+      bool inCircle = s.inSphere(p, points);
       if (contains != inCircle) {
         LOG << "Point " << p << " is " << (inCircle ? "" : "NOT ")
             << "in circle of " << s << " but should "
@@ -289,3 +385,14 @@ VerificationReport dSimplices::verify(const dPoints &points) const {
 
   return result;
 }
+
+// specialiations
+
+template class dPoint<2>;
+template class dPoint<3>;
+
+template class dSimplex<2>;
+template class dSimplex<3>;
+
+template class dSimplices<2>;
+template class dSimplices<3>;

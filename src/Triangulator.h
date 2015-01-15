@@ -22,53 +22,53 @@ struct TriangulationReportEntry {
 
 typedef std::vector<TriangulationReportEntry> TriangulationReport;
 
-class Triangulator {
+template <uint D> class Triangulator {
 public:
-  Triangulator(dBox &_bounds, dPoints &_points,
-               std::unique_ptr<Partitioner> &&_partitioner);
+  Triangulator(dBox<D> &_bounds, dPoints<D> &_points,
+               std::unique_ptr<Partitioner<D>> &&_partitioner);
 
-  dSimplices triangulate();
+  dSimplices<D> triangulate();
 
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;
   }
 
 private:
-  dSimplices triangulateBase(const Ids partitionPoints,
-                             const std::string provenance);
+  dSimplices<D> triangulateBase(const Ids partitionPoints,
+                                const std::string provenance);
 
-  dSimplices triangulateDAC(const Ids partitionPoints,
-                            const std::string provenance);
+  dSimplices<D> triangulateDAC(const Ids partitionPoints,
+                               const std::string provenance);
 
-  Ids getEdge(const dSimplices &simplices, const Partition &partition);
+  Ids getEdge(const dSimplices<D> &simplices, const Partition<D> &partition);
 
-  Ids extractPoints(const Ids &edgeSimplices, const dSimplices &simplices,
+  Ids extractPoints(const Ids &edgeSimplices, const dSimplices<D> &simplices,
                     bool ignoreInfinite = false);
 
-  void updateNeighbors(dSimplices &simplices, const std::string &provenance);
+  void updateNeighbors(dSimplices<D> &simplices, const std::string &provenance);
 
-  dSimplices mergeTriangulation(std::vector<dSimplices> &partialDTs,
-                                const Ids &edgeSimplices,
-                                const dSimplices &edgeDT,
-                                const Partitioning &partitioning,
-                                const std::string &provenance,
-                                const dSimplices *realDT = nullptr);
+  dSimplices<D> mergeTriangulation(std::vector<dSimplices<D>> &partialDTs,
+                                   const Ids &edgeSimplices,
+                                   const dSimplices<D> &edgeDT,
+                                   const Partitioning<D> &partitioning,
+                                   const std::string &provenance,
+                                   const dSimplices<D> *realDT = nullptr);
 
-  void evaluateVerificationReport(const VerificationReport &vr,
+  void evaluateVerificationReport(const VerificationReport<D> &vr,
                                   const std::string &provenance) const;
 
-  void evaluateCrossCheckReport(const CrossCheckReport &ccr,
+  void evaluateCrossCheckReport(const CrossCheckReport<D> &ccr,
                                 const std::string &provenance,
-                                const dSimplices &DT,
-                                const dSimplices &realDT) const;
+                                const dSimplices<D> &DT,
+                                const dSimplices<D> &realDT) const;
 
 private:
-  dBox bounds;
-  dPoints points;
+  dBox<D> bounds;
+  dPoints<D> points;
 
   TriangulationReport triangulationReport;
 
-  std::unique_ptr<Partitioner> &partitioner;
+  std::unique_ptr<Partitioner<D>> &partitioner;
 
   static constexpr tCoordinate SAFETY = 100;
   static constexpr uint BASE_CASE = 100;

@@ -2,31 +2,33 @@
 
 #include "Geometry.h"
 
-class Partition {
+template <uint D> class Partition {
 
 public:
   uint id;
   Ids points;
-  dBox bounds;
+  dBox<D> bounds;
 };
 
-std::string to_string(const Partition &p);
-std::ostream &operator<<(std::ostream &o, const Partition &p);
+template <uint D> std::string to_string(const Partition<D> &p);
 
-typedef IndexedVector<Partition> Partitioning;
+template <uint D>
+std::ostream &operator<<(std::ostream &o, const Partition<D> &p);
 
-struct dPointStats {
-  dPoint min;
-  dPoint mid;
-  dPoint max;
+template <uint D> using Partitioning = IndexedVector<Partition<D>>;
+
+template <uint D> struct dPointStats {
+  dPoint<D> min;
+  dPoint<D> mid;
+  dPoint<D> max;
 };
 
-template <class InputIt>
-dPointStats getPointStats(const InputIt &first, const InputIt &last,
-                          const dPoints &points,
-                          const bool ignoreInfinite = true) {
+template <uint D, class InputIt>
+dPointStats<D> getPointStats(const InputIt &first, const InputIt &last,
+                             const dPoints<D> &points,
+                             const bool ignoreInfinite = true) {
 
-  dPointStats stats;
+  dPointStats<D> stats;
 
   for (uint dim = 0; dim < D; ++dim) {
     stats.min.coords[dim] = std::numeric_limits<tCoordinate>::max();
@@ -51,37 +53,37 @@ dPointStats getPointStats(const InputIt &first, const InputIt &last,
   return stats;
 }
 
-class Partitioner {
+template <uint D> class Partitioner {
 
 public:
   virtual ~Partitioner() {}
 
-  virtual Partitioning partition(const Ids &ids, const dPoints &points,
-                                 const std::string &provenance) const = 0;
+  virtual Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
+                                    const std::string &provenance) const = 0;
 };
 
-class dPartitioner : public Partitioner {
+template <uint D> class dPartitioner : public Partitioner<D> {
 
 public:
-  Partitioning partition(const Ids &ids, const dPoints &points,
-                         const std::string &provenance) const;
+  Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
+                            const std::string &provenance) const;
 };
 
-class kPartitioner : public Partitioner {
+template <uint D> class kPartitioner : public Partitioner<D> {
 
 public:
   kPartitioner(uint _k) : k(_k) {}
 
-  Partitioning partition(const Ids &ids, const dPoints &points,
-                         const std::string &provenance) const;
+  Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
+                            const std::string &provenance) const;
 
 private:
   uint k; // dimension to partition
 };
 
-class CyclePartitioner : public Partitioner {
+template <uint D> class CyclePartitioner : public Partitioner<D> {
 
 public:
-  Partitioning partition(const Ids &ids, const dPoints &points,
-                         const std::string &provenance) const;
+  Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
+                            const std::string &provenance) const;
 };

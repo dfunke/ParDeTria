@@ -22,9 +22,10 @@ std::mt19937 generator(SEED);
  * auto dice = std::bind ( distribution, generator );
  */
 
-dPoints genPoints(const uint n, const dBox &bounds,
-                  std::function<tCoordinate()> &dice) {
-  dPoints points;
+template <uint D>
+dPoints<D> genPoints(const uint n, const dBox<D> &bounds,
+                     std::function<tCoordinate()> &dice) {
+  dPoints<D> points;
 
   for (uint i = 0; i < n; ++i) {
     points[i].id = i;

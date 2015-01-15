@@ -36,5 +36,16 @@ if (STUDY)
   endif ()
 endif ()
 
-add_executable (DACTest DAC_Test.cpp Geometry.cpp Logger.cpp Painter.cpp CGAL_Interface.cpp Triangulator.cpp Partitioner.cpp Timings.cpp RSS.c)
+add_executable (DACTest
+  DAC_Test.cpp
+  Geometry.cpp
+  Logger.cpp
+  Painter.cpp
+  CGAL_Interface.cpp
+  Triangulator.cpp
+  Partitioner.cpp
+  Timings.cpp RSS.c
+  StringUtils.cxx
+)
+
 target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES})
