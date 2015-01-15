@@ -12,7 +12,11 @@ find_package(ROOT REQUIRED COMPONENTS Hist)
 find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
 
-include_directories(${ROOT_INCLUDE_DIRS} ${CGAL_INCLUDE_DIRS} ${Cairomm_INCLUDE_DIRS})
+include_directories(${CMAKE_SOURCE_DIR}
+  ${ROOT_INCLUDE_DIRS}
+  ${CGAL_INCLUDE_DIRS}
+  ${Cairomm_INCLUDE_DIRS}
+)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror")
 
@@ -39,13 +43,14 @@ endif ()
 add_executable (DACTest
   DAC_Test.cpp
   Geometry.cpp
-  Logger.cpp
   Painter.cpp
   CGAL_Interface.cpp
   Triangulator.cpp
   Partitioner.cpp
-  Timings.cpp RSS.c
-  StringUtils.cxx
+  utils/Logger.cpp
+  utils/Timings.cpp
+  utils/RSS.c
+  utils/StringUtils.cxx
 )
 
 target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES})

@@ -15,11 +15,12 @@
 #endif
 
 // own
-#include "Timings.h"
 #include "Geometry.h"
 #include "Painter.h"
-#include "Logger.h"
 #include "CGAL_Interface.h"
+
+#include "utils/Timings.h"
+#include "utils/Logger.h"
 
 //**************************
 

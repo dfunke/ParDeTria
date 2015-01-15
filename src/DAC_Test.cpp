@@ -1,13 +1,14 @@
 
 // own
-#include "Random.h"
 #include "Geometry.h"
-#include "Logger.h"
 #include "Triangulator.h"
 #include "Partitioner.h"
-#include "CSV.h"
-#include "Timings.h"
-#include "RSS.h"
+
+#include "utils/Random.h"
+#include "utils/Logger.h"
+#include "utils/CSV.h"
+#include "utils/Timings.h"
+#include "utils/RSS.h"
 
 // boost
 #include <boost/progress.hpp>

@@ -13,8 +13,8 @@
 #include <array>
 #include <cmath>
 
-#include "IndexedVector.hxx"
-#include "Logger.h"
+#include "utils/IndexedVector.hxx"
+#include "utils/Logger.h"
 
 typedef float tCoordinate;
 typedef std::set<uint> Ids;

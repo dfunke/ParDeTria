@@ -8,7 +8,7 @@
 #include <cairomm/cairomm.h>
 
 #include "Geometry.h"
-#include "Logger.h"
+#include "utils/Logger.h"
 
 template <uint D> struct DataHolder;
 

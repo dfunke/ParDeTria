@@ -1,5 +1,5 @@
 #include "CGAL_Interface.h"
-#include "Logger.h"
+#include "utils/Logger.h"
 
 #include <algorithm>
 
