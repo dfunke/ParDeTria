@@ -45,18 +45,20 @@ template <uint D> struct dBox {
 
     tCoordinate r2 = sphere.radius * sphere.radius;
 
-    for (uint d = 0; d < D; ++d)
+    for (uint d = 0; d < D; ++d) {
       if (!(coords[d] <= sphere.center[d] &&
-            sphere.center[d] <= coords[d] + dim[d]))
+            sphere.center[d] <= coords[d] + dim[d])) {
         return false;
+      }
+    }
 
     // the center of the sphere is within the box
     for (uint d = 0; d < D; ++d) {
       auto p = sphere.center;
       // project p to the bounday of box in dimension d closest to center of the
       // sphere
-      p[d] = sphere.center[d] < coords[d] + dim[d] / 2 ? coords[d]
-                                                       : coords[d] + dim[d];
+      p[d] = sphere.center[d] < coords[d] + (dim[d] / 2) ? coords[d]
+                                                         : coords[d] + dim[d];
 
       tCoordinate dist = 0;
       for (uint i = 0; i < D; ++i)
