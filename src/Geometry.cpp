@@ -9,12 +9,39 @@ template <uint D> constexpr uint dPoint<D>::cINF;
 template <uint D> constexpr uint dSimplex<D>::cINF;
 //
 
+/* routines for orientation and inSphere/inCircle test based on
+ * JR Shewchuk's implementation predicates.c */
+
+/*****************************************************************************/
+/*                                                                           */
+/*  Routines for Arbitrary Precision Floating-point Arithmetic               */
+/*  and Fast Robust Geometric Predicates                                     */
+/*  (predicates.c)                                                           */
+/*                                                                           */
+/*  May 18, 1996                                                             */
+/*                                                                           */
+/*  Placed in the public domain by                                           */
+/*  Jonathan Richard Shewchuk                                                */
+/*  School of Computer Science                                               */
+/*  Carnegie Mellon University                                               */
+/*  5000 Forbes Avenue                                                       */
+/*  Pittsburgh, Pennsylvania  15213-3891                                     */
+/*  jrs@cs.cmu.edu                                                           */
+/*****************************************************************************/
+
 // specializations
 
 /*
    * return > 0: abc are counter-clockwise
    * return < 0: abc clockwise
-   */
+   * return   0: co-linear
+   *
+   * Return a positive value if the points pa, pb, and pc occur
+   * in counterclockwise order; a negative value if they occur
+   * in clockwise order; and zero if they are collinear.  The
+   * result is also a rough approximation of twice the signed
+   * area of the triangle defined by the three points.
+*/
 
 template <>
 tCoordinate dSimplex<2>::orientation(const dPoints<2> &points) const {
@@ -49,10 +76,18 @@ bool dSimplex<2>::inSphere(const dPoint<2> &p, const dPoints<2> &points) const {
   clift = cdx * cdx + cdy * cdy;
 
   /*
+   * Return a positive value if the point pd lies inside the
+   * circle passing through pa, pb, and pc; a negative value if
+   * it lies outside; and zero if the four points are cocircular.
+   * The points pa, pb, and pc must be in counterclockwise
+   * order, or the sign of the result will be reversed.
+   */
+
+  /*
    * det > 0: d inside  abc (abc counter-clockwise)
-   *      d outside abc (abc clockwise)
+   *          d outside abc (abc clockwise)
    * det < 0: d outside abc (abc counter-clockwise)
-   *      d inside  abc (abc clockwise)
+   *          d inside  abc (abc clockwise)
    */
 
   det = alift * bcdet + blift * cadet + clift * abdet;
@@ -106,49 +141,101 @@ dSphere<2> dSimplex<2>::circumsphere(const dPoints<2> &points) const {
 
 // TODO 3d implementation
 
-// return > 0: abc are counter-clockwise
-// return < 0: abc clockwise
+/*
+ * return > 0: d below abc - abc counter-clockwise
+ *             d above abc - abc clockwise
+ * return < 0: d above abc - abc counter-clockwise
+ *             d below abc - abc clockwise
+ * return   0: co-planar
+
+ * Return a positive value if the point pd lies below the
+ * plane passing through pa, pb, and pc; "below" is defined so
+ * that pa, pb, and pc appear in counterclockwise order when
+ * viewed from above the plane.  Returns a negative value if
+ * pd lies above the plane.  Returns zero if the points are
+ * coplanar.  The result is also a rough approximation of six
+ * times the signed volume of the tetrahedron defined by the
+ * four points.
+ */
 
 template <>
 tCoordinate dSimplex<3>::orientation(const dPoints<3> &points) const {
-  tCoordinate acx, bcx, acy, bcy;
 
-  acx = points[vertices[0]].coords[0] - points[vertices[2]].coords[0];
-  bcx = points[vertices[1]].coords[0] - points[vertices[2]].coords[0];
-  acy = points[vertices[0]].coords[1] - points[vertices[2]].coords[1];
-  bcy = points[vertices[1]].coords[1] - points[vertices[2]].coords[1];
-  return acx * bcy - acy * bcx;
+  tCoordinate adx, bdx, cdx;
+  tCoordinate ady, bdy, cdy;
+  tCoordinate adz, bdz, cdz;
+
+  adx = points[vertices[0]].coords[0] - points[vertices[3]].coords[0];
+  bdx = points[vertices[1]].coords[0] - points[vertices[3]].coords[0];
+  cdx = points[vertices[2]].coords[0] - points[vertices[3]].coords[0];
+  ady = points[vertices[0]].coords[1] - points[vertices[3]].coords[1];
+  bdy = points[vertices[1]].coords[1] - points[vertices[3]].coords[1];
+  cdy = points[vertices[2]].coords[1] - points[vertices[3]].coords[1];
+  adz = points[vertices[0]].coords[2] - points[vertices[3]].coords[2];
+  bdz = points[vertices[1]].coords[2] - points[vertices[3]].coords[2];
+  cdz = points[vertices[2]].coords[2] - points[vertices[3]].coords[2];
+
+  return adx * (bdy * cdz - bdz * cdy) + bdx * (cdy * adz - cdz * ady) +
+         cdx * (ady * bdz - adz * bdy);
 }
 
 template <>
 bool dSimplex<3>::inSphere(const dPoint<3> &p, const dPoints<3> &points) const {
-  tCoordinate adx, ady, bdx, bdy, cdx, cdy;
-  tCoordinate abdet, bcdet, cadet;
-  tCoordinate alift, blift, clift;
+
+  tCoordinate aex, bex, cex, dex;
+  tCoordinate aey, bey, cey, dey;
+  tCoordinate aez, bez, cez, dez;
+  tCoordinate alift, blift, clift, dlift;
+  tCoordinate ab, bc, cd, da, ac, bd;
+  tCoordinate abc, bcd, cda, dab;
   tCoordinate det;
 
-  adx = points[vertices[0]].coords[0] - p.coords[0];
-  ady = points[vertices[0]].coords[1] - p.coords[1];
-  bdx = points[vertices[1]].coords[0] - p.coords[0];
-  bdy = points[vertices[1]].coords[1] - p.coords[1];
-  cdx = points[vertices[2]].coords[0] - p.coords[0];
-  cdy = points[vertices[2]].coords[1] - p.coords[1];
+  aex = points[vertices[0]].coords[0] - p.coords[0];
+  bex = points[vertices[1]].coords[0] - p.coords[0];
+  cex = points[vertices[2]].coords[0] - p.coords[0];
+  dex = points[vertices[3]].coords[0] - p.coords[0];
+  aey = points[vertices[0]].coords[1] - p.coords[1];
+  bey = points[vertices[1]].coords[1] - p.coords[1];
+  cey = points[vertices[2]].coords[1] - p.coords[1];
+  dey = points[vertices[3]].coords[1] - p.coords[1];
+  aez = points[vertices[0]].coords[2] - p.coords[2];
+  bez = points[vertices[1]].coords[2] - p.coords[2];
+  cez = points[vertices[2]].coords[2] - p.coords[2];
+  dez = points[vertices[3]].coords[2] - p.coords[2];
 
-  abdet = adx * bdy - bdx * ady;
-  bcdet = bdx * cdy - cdx * bdy;
-  cadet = cdx * ady - adx * cdy;
-  alift = adx * adx + ady * ady;
-  blift = bdx * bdx + bdy * bdy;
-  clift = cdx * cdx + cdy * cdy;
+  ab = aex * bey - bex * aey;
+  bc = bex * cey - cex * bey;
+  cd = cex * dey - dex * cey;
+  da = dex * aey - aex * dey;
 
-  //
-  // det > 0: d inside  abc (abc counter-clockwise)
-  //      d outside abc (abc clockwise)
-  // det < 0: d outside abc (abc counter-clockwise)
-  //      d inside  abc (abc clockwise)
-  //
+  ac = aex * cey - cex * aey;
+  bd = bex * dey - dex * bey;
 
-  det = alift * bcdet + blift * cadet + clift * abdet;
+  abc = aez * bc - bez * ac + cez * ab;
+  bcd = bez * cd - cez * bd + dez * bc;
+  cda = cez * da + dez * ac + aez * cd;
+  dab = dez * ab + aez * bd + bez * da;
+
+  alift = aex * aex + aey * aey + aez * aez;
+  blift = bex * bex + bey * bey + bez * bez;
+  clift = cex * cex + cey * cey + cez * cez;
+  dlift = dex * dex + dey * dey + dez * dez;
+
+  /*
+   * det > 0: e inside  abcd (abcd positive orientation)
+   *          e outside abcd (abcd negative orientation)
+   * det < 0: e outside abcd (abcd positive orientation)
+   *          e inside  abcd (abcd negative orientation)
+   *
+   * Return a positive value if the point pe lies inside the
+   * sphere passing through pa, pb, pc, and pd; a negative value
+   * if it lies outside; and zero if the five points are
+   * cospherical.  The points pa, pb, pc, and pd must be ordered
+   * so that they have a positive orientation (as defined by
+   * orient3d()), or the sign of the result will be reversed.
+   */
+
+  det = (dlift * abc - clift * dab) + (blift * cda - alift * bcd);
 
   return this->orientation(points) * det >= 0;
 }
