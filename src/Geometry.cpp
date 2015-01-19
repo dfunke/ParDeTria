@@ -100,7 +100,7 @@ dSphere<2> dSimplex<2>::circumsphere(const dPoints<2> &points) const {
 
   dSphere<2> sphere;
 
-  tCoordinate det =
+  tCoordinate den =
       2 * (points[vertices[0]].coords[0] *
                (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
            points[vertices[1]].coords[0] *
@@ -118,7 +118,7 @@ dSphere<2> dSimplex<2>::circumsphere(const dPoints<2> &points) const {
        (pow(points[vertices[2]].coords[0], 2) +
         pow(points[vertices[2]].coords[1], 2)) *
            (points[vertices[0]].coords[1] - points[vertices[1]].coords[1])) /
-      det;
+      den;
 
   sphere.center[1] =
       ((pow(points[vertices[0]].coords[0], 2) +
@@ -130,7 +130,7 @@ dSphere<2> dSimplex<2>::circumsphere(const dPoints<2> &points) const {
        (pow(points[vertices[2]].coords[0], 2) +
         pow(points[vertices[2]].coords[1], 2)) *
            (points[vertices[1]].coords[0] - points[vertices[0]].coords[0])) /
-      det;
+      den;
 
   sphere.radius =
       sqrt(pow(sphere.center[0] - points[vertices[0]].coords[0], 2) +
@@ -245,41 +245,270 @@ dSphere<3> dSimplex<3>::circumsphere(const dPoints<3> &points) const {
 
   dSphere<3> sphere;
 
-  tCoordinate det =
-      2 * (points[vertices[0]].coords[0] *
-               (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
-           points[vertices[1]].coords[0] *
-               (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
-           points[vertices[2]].coords[0] *
-               (points[vertices[0]].coords[1] - points[vertices[1]].coords[1]));
+  tCoordinate den =
+      2 *
+      (points[vertices[0]].coords[0] *
+           (points[vertices[2]].coords[1] * points[vertices[3]].coords[2] +
+            points[vertices[1]].coords[1] * (points[vertices[2]].coords[2] -
+                                             points[vertices[3]].coords[2]) -
+            points[vertices[3]].coords[1] * points[vertices[2]].coords[2] -
+            (points[vertices[2]].coords[1] - points[vertices[3]].coords[1]) *
+                points[vertices[1]].coords[2]) -
+       points[vertices[1]].coords[0] *
+           (points[vertices[2]].coords[1] * points[vertices[3]].coords[2] -
+            points[vertices[3]].coords[1] * points[vertices[2]].coords[2]) -
+       points[vertices[0]].coords[1] *
+           (points[vertices[2]].coords[0] * points[vertices[3]].coords[2] +
+            points[vertices[1]].coords[0] * (points[vertices[2]].coords[2] -
+                                             points[vertices[3]].coords[2]) -
+            points[vertices[3]].coords[0] * points[vertices[2]].coords[2] -
+            (points[vertices[2]].coords[0] - points[vertices[3]].coords[0]) *
+                points[vertices[1]].coords[2]) +
+       points[vertices[1]].coords[1] *
+           (points[vertices[2]].coords[0] * points[vertices[3]].coords[2] -
+            points[vertices[3]].coords[0] * points[vertices[2]].coords[2]) +
+       points[vertices[0]].coords[2] *
+           (points[vertices[2]].coords[0] * points[vertices[3]].coords[1] +
+            points[vertices[1]].coords[0] * (points[vertices[2]].coords[1] -
+                                             points[vertices[3]].coords[1]) -
+            points[vertices[3]].coords[0] * points[vertices[2]].coords[1] -
+            (points[vertices[2]].coords[0] - points[vertices[3]].coords[0]) *
+                points[vertices[1]].coords[1]) -
+       points[vertices[1]].coords[2] *
+           (points[vertices[2]].coords[0] * points[vertices[3]].coords[1] -
+            points[vertices[3]].coords[0] * points[vertices[2]].coords[1]));
 
   sphere.center[0] =
-      ((pow(points[vertices[0]].coords[0], 2) +
-        pow(points[vertices[0]].coords[1], 2)) *
-           (points[vertices[1]].coords[1] - points[vertices[2]].coords[1]) +
-       (pow(points[vertices[1]].coords[0], 2) +
-        pow(points[vertices[1]].coords[1], 2)) *
-           (points[vertices[2]].coords[1] - points[vertices[0]].coords[1]) +
-       (pow(points[vertices[2]].coords[0], 2) +
-        pow(points[vertices[2]].coords[1], 2)) *
-           (points[vertices[0]].coords[1] - points[vertices[1]].coords[1])) /
-      det;
+      (-points[vertices[0]].coords[1] *
+           (-points[vertices[2]].coords[2] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2)) -
+            points[vertices[1]].coords[2] *
+                (-pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[2], 2) -
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[1], 2) -
+                 pow(points[vertices[3]].coords[0], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            (pow(points[vertices[2]].coords[2], 2) +
+             pow(points[vertices[2]].coords[1], 2) +
+             pow(points[vertices[2]].coords[0], 2)) *
+                points[vertices[3]].coords[2] +
+            (pow(points[vertices[1]].coords[2], 2) +
+             pow(points[vertices[1]].coords[1], 2) +
+             pow(points[vertices[1]].coords[0], 2)) *
+                (points[vertices[2]].coords[2] -
+                 points[vertices[3]].coords[2])) +
+       points[vertices[1]].coords[1] *
+           ((pow(points[vertices[2]].coords[2], 2) +
+             pow(points[vertices[2]].coords[1], 2) +
+             pow(points[vertices[2]].coords[0], 2)) *
+                points[vertices[3]].coords[2] -
+            points[vertices[2]].coords[2] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2))) +
+       points[vertices[0]].coords[2] *
+           (-points[vertices[2]].coords[1] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2)) -
+            points[vertices[1]].coords[1] *
+                (-pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[2], 2) -
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[1], 2) -
+                 pow(points[vertices[3]].coords[0], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            points[vertices[3]].coords[1] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            (points[vertices[2]].coords[1] - points[vertices[3]].coords[1]) *
+                (pow(points[vertices[1]].coords[2], 2) +
+                 pow(points[vertices[1]].coords[1], 2) +
+                 pow(points[vertices[1]].coords[0], 2))) -
+       points[vertices[1]].coords[2] *
+           (points[vertices[3]].coords[1] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) -
+            points[vertices[2]].coords[1] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2))) +
+       (pow(points[vertices[0]].coords[2], 2) +
+        pow(points[vertices[0]].coords[1], 2) +
+        pow(points[vertices[0]].coords[0], 2)) *
+           (points[vertices[2]].coords[1] * points[vertices[3]].coords[2] +
+            points[vertices[1]].coords[1] * (points[vertices[2]].coords[2] -
+                                             points[vertices[3]].coords[2]) -
+            points[vertices[3]].coords[1] * points[vertices[2]].coords[2] -
+            (points[vertices[2]].coords[1] - points[vertices[3]].coords[1]) *
+                points[vertices[1]].coords[2]) -
+       (pow(points[vertices[1]].coords[2], 2) +
+        pow(points[vertices[1]].coords[1], 2) +
+        pow(points[vertices[1]].coords[0], 2)) *
+           (points[vertices[2]].coords[1] * points[vertices[3]].coords[2] -
+            points[vertices[3]].coords[1] * points[vertices[2]].coords[2])) /
+      den;
 
   sphere.center[1] =
-      ((pow(points[vertices[0]].coords[0], 2) +
-        pow(points[vertices[0]].coords[1], 2)) *
-           (points[vertices[2]].coords[0] - points[vertices[1]].coords[0]) +
-       (pow(points[vertices[1]].coords[0], 2) +
-        pow(points[vertices[1]].coords[1], 2)) *
-           (points[vertices[0]].coords[0] - points[vertices[2]].coords[0]) +
-       (pow(points[vertices[2]].coords[0], 2) +
-        pow(points[vertices[2]].coords[1], 2)) *
-           (points[vertices[1]].coords[0] - points[vertices[0]].coords[0])) /
-      det;
+      (points[vertices[0]].coords[0] *
+           (-points[vertices[2]].coords[2] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2)) -
+            points[vertices[1]].coords[2] *
+                (-pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[2], 2) -
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[1], 2) -
+                 pow(points[vertices[3]].coords[0], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            (pow(points[vertices[2]].coords[2], 2) +
+             pow(points[vertices[2]].coords[1], 2) +
+             pow(points[vertices[2]].coords[0], 2)) *
+                points[vertices[3]].coords[2] +
+            (pow(points[vertices[1]].coords[2], 2) +
+             pow(points[vertices[1]].coords[1], 2) +
+             pow(points[vertices[1]].coords[0], 2)) *
+                (points[vertices[2]].coords[2] -
+                 points[vertices[3]].coords[2])) -
+       points[vertices[1]].coords[0] *
+           ((pow(points[vertices[2]].coords[2], 2) +
+             pow(points[vertices[2]].coords[1], 2) +
+             pow(points[vertices[2]].coords[0], 2)) *
+                points[vertices[3]].coords[2] -
+            points[vertices[2]].coords[2] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2))) -
+       points[vertices[0]].coords[2] *
+           (-points[vertices[2]].coords[0] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2)) -
+            points[vertices[1]].coords[0] *
+                (-pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[2], 2) -
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[1], 2) -
+                 pow(points[vertices[3]].coords[0], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            points[vertices[3]].coords[0] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            (points[vertices[2]].coords[0] - points[vertices[3]].coords[0]) *
+                (pow(points[vertices[1]].coords[2], 2) +
+                 pow(points[vertices[1]].coords[1], 2) +
+                 pow(points[vertices[1]].coords[0], 2))) +
+       points[vertices[1]].coords[2] *
+           (points[vertices[3]].coords[0] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) -
+            points[vertices[2]].coords[0] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2))) -
+       (pow(points[vertices[0]].coords[2], 2) +
+        pow(points[vertices[0]].coords[1], 2) +
+        pow(points[vertices[0]].coords[0], 2)) *
+           (points[vertices[2]].coords[0] * points[vertices[3]].coords[2] +
+            points[vertices[1]].coords[0] * (points[vertices[2]].coords[2] -
+                                             points[vertices[3]].coords[2]) -
+            points[vertices[3]].coords[0] * points[vertices[2]].coords[2] -
+            (points[vertices[2]].coords[0] - points[vertices[3]].coords[0]) *
+                points[vertices[1]].coords[2]) +
+       (pow(points[vertices[1]].coords[2], 2) +
+        pow(points[vertices[1]].coords[1], 2) +
+        pow(points[vertices[1]].coords[0], 2)) *
+           (points[vertices[2]].coords[0] * points[vertices[3]].coords[2] -
+            points[vertices[3]].coords[0] * points[vertices[2]].coords[2])) /
+      den;
+
+  sphere.center[2] =
+      (-points[vertices[0]].coords[0] *
+           (-points[vertices[2]].coords[1] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2)) -
+            points[vertices[1]].coords[1] *
+                (-pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[2], 2) -
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[1], 2) -
+                 pow(points[vertices[3]].coords[0], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            points[vertices[3]].coords[1] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            (points[vertices[2]].coords[1] - points[vertices[3]].coords[1]) *
+                (pow(points[vertices[1]].coords[2], 2) +
+                 pow(points[vertices[1]].coords[1], 2) +
+                 pow(points[vertices[1]].coords[0], 2))) +
+       points[vertices[1]].coords[0] *
+           (points[vertices[3]].coords[1] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) -
+            points[vertices[2]].coords[1] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2))) +
+       points[vertices[0]].coords[1] *
+           (-points[vertices[2]].coords[0] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2)) -
+            points[vertices[1]].coords[0] *
+                (-pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[2], 2) -
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[1], 2) -
+                 pow(points[vertices[3]].coords[0], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            points[vertices[3]].coords[0] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) +
+            (points[vertices[2]].coords[0] - points[vertices[3]].coords[0]) *
+                (pow(points[vertices[1]].coords[2], 2) +
+                 pow(points[vertices[1]].coords[1], 2) +
+                 pow(points[vertices[1]].coords[0], 2))) -
+       points[vertices[1]].coords[1] *
+           (points[vertices[3]].coords[0] *
+                (pow(points[vertices[2]].coords[2], 2) +
+                 pow(points[vertices[2]].coords[1], 2) +
+                 pow(points[vertices[2]].coords[0], 2)) -
+            points[vertices[2]].coords[0] *
+                (pow(points[vertices[3]].coords[2], 2) +
+                 pow(points[vertices[3]].coords[1], 2) +
+                 pow(points[vertices[3]].coords[0], 2))) -
+       (points[vertices[2]].coords[0] * points[vertices[3]].coords[1] -
+        points[vertices[3]].coords[0] * points[vertices[2]].coords[1]) *
+           (pow(points[vertices[1]].coords[2], 2) +
+            pow(points[vertices[1]].coords[1], 2) +
+            pow(points[vertices[1]].coords[0], 2)) +
+       (points[vertices[2]].coords[0] * points[vertices[3]].coords[1] +
+        points[vertices[1]].coords[0] *
+            (points[vertices[2]].coords[1] - points[vertices[3]].coords[1]) -
+        points[vertices[3]].coords[0] * points[vertices[2]].coords[1] -
+        (points[vertices[2]].coords[0] - points[vertices[3]].coords[0]) *
+            points[vertices[1]].coords[1]) *
+           (pow(points[vertices[0]].coords[2], 2) +
+            pow(points[vertices[0]].coords[1], 2) +
+            pow(points[vertices[0]].coords[0], 2))) /
+      den;
 
   sphere.radius =
       sqrt(pow(sphere.center[0] - points[vertices[0]].coords[0], 2) +
-           pow(sphere.center[1] - points[vertices[0]].coords[1], 2));
+           pow(sphere.center[1] - points[vertices[0]].coords[1], 2) +
+           pow(sphere.center[2] - points[vertices[0]].coords[2], 2));
 
   return sphere;
 }

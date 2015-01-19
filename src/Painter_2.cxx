@@ -150,17 +150,6 @@ template <> void Painter<2>::drawPartition(const dPoints<2> &points) {
 }
 
 template <>
-void Painter<2>::drawNeighbors(const dSimplex<2> &simplex,
-                               const dSimplices<2> &neighbors,
-                               const dPoints<2> &points, bool drawInfinite) {
-  for (uint n : simplex.neighbors) {
-    if (dSimplex<2>::isFinite(n) && neighbors.contains(n)) {
-      draw(neighbors[n], points, drawInfinite);
-    }
-  }
-}
-
-template <>
 void Painter<2>::save(
 #ifdef NO_OUTPUT
     __attribute((unused))
@@ -171,7 +160,7 @@ void Painter<2>::save(
 #ifndef NO_OUTPUT // disable png output
   CALLGRIND_STOP_INSTRUMENTATION;
 
-  data.cs->write_to_png(file);
+  data.cs->write_to_png(file + ".png");
 
   CALLGRIND_START_INSTRUMENTATION;
 #endif

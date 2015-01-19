@@ -7,6 +7,16 @@
 #include <cairo/cairo.h>
 #include <cairomm/cairomm.h>
 
+// disable warnings in VTK library
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wextra-semi"
+
+#include <vtkSmartPointer.h>
+#include <vtkPoints.h>
+#include <vtkCellArray.h>
+
+#pragma clang diagnostic pop
+
 #include "Geometry.h"
 #include "utils/Logger.h"
 
@@ -35,6 +45,9 @@ template <> struct DataHolder<3> {
 
   static constexpr uint PADDING = 10;
   static constexpr uint FONT_SIZE = 15;
+
+  vtkSmartPointer<vtkPoints> points;
+  vtkSmartPointer<vtkCellArray> cells;
 };
 
 template <uint D> class Painter {
@@ -84,7 +97,14 @@ public:
   }
 
   void drawNeighbors(const dSimplex<D> &simplex, const dSimplices<D> &neighbors,
-                     const dPoints<D> &points, bool drawInfinite = false);
+                     const dPoints<D> &points, bool drawInfinite = false) {
+    for (uint n : simplex.neighbors) {
+      if (dSimplex<3>::isFinite(n) && neighbors.contains(n)) {
+        draw(neighbors[n], points, drawInfinite);
+      }
+    }
+  }
+
   void drawNeighbors(const dSimplices<D> &simplices,
                      const dSimplices<D> &neighbors, const dPoints<D> &points,
                      bool drawInfinite = false) {

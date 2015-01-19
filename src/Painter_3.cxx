@@ -1,6 +1,16 @@
 #include "Painter.h"
 #include "Partitioner.h"
 
+// disable warnings in VTK library
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wextra-semi"
+
+#include <vtkTetra.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkXMLUnstructuredGridWriter.h>
+
+#pragma clang diagnostic pop
+
 #include <valgrind/callgrind.h>
 
 // static variables
@@ -43,7 +53,9 @@ void Painter<3>::setColor(tCoordinate r, tCoordinate g, tCoordinate b,
 //
 template <> void Painter<3>::draw(const dPoint<3> &point, bool drawInfinite) {
 
-  // TODO draw point
+  if (point.isFinite() && point.id > data.points->GetNumberOfPoints()) {
+    data.points->InsertPoint(point.id, point.coords.data());
+  }
 
   _log(point);
 }
@@ -52,7 +64,17 @@ template <>
 void Painter<3>::draw(const dSimplex<3> &simplex, const dPoints<3> &points,
                       bool drawInfinite) {
 
-  // TODO draw simplex
+  if (simplex.isFinite() && simplex.id > data.cells->GetNumberOfCells()) {
+    auto tetra = vtkSmartPointer<vtkTetra>::New();
+
+    for (uint d = 0; d < 3; ++d) {
+      draw(points[simplex.vertices[d]]); // ensure point is in the list of
+                                         // points
+      tetra->GetPointIds()->SetId(d, simplex.vertices[d]);
+    }
+
+    data.cells->InsertNextCell(tetra);
+  }
 
   _log(simplex);
 }
@@ -69,28 +91,25 @@ template <> void Painter<3>::drawPartition(const dPoints<3> &points) {
 }
 
 template <>
-void Painter<3>::drawNeighbors(const dSimplex<3> &simplex,
-                               const dSimplices<3> &neighbors,
-                               const dPoints<3> &points, bool drawInfinite) {
-  for (uint n : simplex.neighbors) {
-    if (dSimplex<3>::isFinite(n) && neighbors.contains(n)) {
-      draw(neighbors[n], points, drawInfinite);
-    }
-  }
-}
-
-template <>
 void Painter<3>::save(
 #ifdef NO_OUTPUT
     __attribute((unused))
 #endif
     const std::string &file) const {
-// stop callgrind instrumentation for saving png
+// stop callgrind instrumentation for saving VTU
 
 #ifndef NO_OUTPUT // disable png output
   CALLGRIND_STOP_INSTRUMENTATION;
 
-  // TODO save painting
+  auto grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+  grid->SetPoints(data.points);
+  grid->SetCells(VTK_TETRA, data.cells);
+
+  vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer =
+      vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+  writer->SetFileName((file + ".vtu").c_str());
+  writer->SetInputData(grid);
+  writer->Write();
 
   CALLGRIND_START_INSTRUMENTATION;
 #endif
@@ -101,6 +120,9 @@ template <> void Painter<3>::_init(const dBox<3> &_bounds, uint _resolution) {
   logging = false;
   dashed = false;
   data.logLine = 1;
+
+  data.points = vtkSmartPointer<vtkPoints>::New();
+  data.cells = vtkSmartPointer<vtkCellArray>::New();
 
   for (uint d = 0; d < 3; ++d) {
     data.offset[d] = data.bounds.dim[d]; // offset bounds in middle of image
@@ -119,7 +141,11 @@ template <> void Painter<3>::_copy(const Painter<3> &a) {
   logging = a.logging;
   data.logLine = a.data.logLine;
 
-  // TODO copy painting
+  data.points = vtkSmartPointer<vtkPoints>::New();
+  data.cells = vtkSmartPointer<vtkCellArray>::New();
+
+  data.points->DeepCopy(a.data.points);
+  data.cells->DeepCopy(a.data.cells);
 }
 
 // TODO remove

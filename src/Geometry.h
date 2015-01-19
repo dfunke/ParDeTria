@@ -303,9 +303,14 @@ template <uint D> std::string to_string(const dPoint<D> &p);
 
 template <uint D> std::string to_string(const dSimplex<D> &p);
 
+template <uint D> std::string to_string(const dSphere<D> &p);
+
 template <uint D> std::string to_string(const dBox<D> &b);
 
 template <uint D> std::ostream &operator<<(std::ostream &o, const dPoint<D> &p);
+
+template <uint D>
+std::ostream &operator<<(std::ostream &o, const dSphere<D> &p);
 
 template <uint D>
 std::ostream &operator<<(std::ostream &o, const dSimplex<D> &p);

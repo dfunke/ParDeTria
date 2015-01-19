@@ -13,8 +13,6 @@
 // boost
 #include <boost/progress.hpp>
 
-const uint N = 1e3;
-
 /* Test the output of orient3D and inSphere3D
  */
 
@@ -67,6 +65,9 @@ void testGeometry3D() {
     std::cout << "orientation: " << s.orientation(points) << std::endl;
     std::cout << "inSphere(I): " << s.inSphere(points[I], points) << std::endl;
     std::cout << "inSphere(O): " << s.inSphere(points[O], points) << std::endl;
+
+    dSphere<3> cs = s.circumsphere(points);
+    std::cout << "circumsphere: " << cs << std::endl;
   };
 
   // triangle ABC is counter-clockwise
@@ -88,6 +89,9 @@ void testGeometry3D() {
 
 //**************************
 
+#define D 3
+const uint N = 1e2;
+
 int main(int argc, char *argv[]) {
 
   if (argc == 2) {
@@ -96,8 +100,7 @@ int main(int argc, char *argv[]) {
   } else
     LOGGER.setLogLevel(Logger::Verbosity::LIVE);
 
-  const uint D = 2;
-  dBox<2> bounds;
+  dBox<D> bounds;
   for (uint i = 0; i < D; ++i) {
     bounds.coords[i] = 0;
     bounds.dim[i] = 100;
@@ -136,23 +139,23 @@ int main(int argc, char *argv[]) {
 
       auto points = genPoints(n, bounds, dice);
 
-      std::unique_ptr<Partitioner<2>> partitioner_ptr;
+      std::unique_ptr<Partitioner<D>> partitioner_ptr;
       switch (p) {
       case 'd':
-        partitioner_ptr = std::make_unique<dPartitioner<2>>();
+        partitioner_ptr = std::make_unique<dPartitioner<D>>();
         break;
       case 'c':
-        partitioner_ptr = std::make_unique<CyclePartitioner<2>>();
+        partitioner_ptr = std::make_unique<CyclePartitioner<D>>();
         break;
       default:
         // p must be a dimension - subtract '0' to get integer value
         uint d = p - '0';
         assert(0 <= d && d < D);
-        partitioner_ptr = std::make_unique<kPartitioner<2>>(d);
+        partitioner_ptr = std::make_unique<kPartitioner<D>>(d);
         break;
       }
 
-      Triangulator<2> triangulator(bounds, points, std::move(partitioner_ptr));
+      Triangulator<D> triangulator(bounds, points, std::move(partitioner_ptr));
 
       INDENT
       auto t1 = Clock::now();

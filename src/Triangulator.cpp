@@ -197,7 +197,7 @@ void Triangulator<D>::updateNeighbors(dSimplices<D> &simplices,
 
       if (IS_PROLIX) {
         paintWriter.add("img/" + provenance + "_neighbors_" +
-                            std::to_string(simplex.id) + ".png",
+                            std::to_string(simplex.id),
                         bounds);
         paintWriter.top().draw(points);
         paintWriter.top().drawPartition(points);
@@ -283,14 +283,14 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
     painter.setColor(1, 0, 0);
     painter.draw(points.project(edgePointIds));
-    painter.save(name + ".png");
+    painter.save(name);
 
     if (realDT != nullptr) {
       painter.setColor(0, 0, 0, 0.1);
       painter.draw(*realDT, points);
     }
 
-    painter.save(name + "_overlay.png");
+    painter.save(name + "_overlay");
 
     return painter;
   };
@@ -318,14 +318,14 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   painter.setDashed();
   painter.draw(edgeDT, points);
 
-  painter.save(provenance + "_05b_merging_stripped+edge_overlay.png");
+  painter.save(provenance + "_05b_merging_stripped+edge_overlay");
 
   painter.setColor(1, 0, 0, 0.4);
   painter.setDashed();
   painter.draw(deletedSimplices, points);
   painter.setDashed(false);
 
-  painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay.png");
+  painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
 
   // merge partial DTs and edge DT
   LOG << "Merging triangulations" << std::endl;
@@ -363,7 +363,7 @@ void Triangulator<D>::evaluateVerificationReport(
     PainterBulkWriter<D> writer;
     for (const auto &inCircle : vr.inCircle) {
       writer.add("img/" + provenance + "_inCircle_" +
-                     std::to_string(inCircle.first.id) + ".png",
+                     std::to_string(inCircle.first.id),
                  basePainter);
 
       writer.top().setColor(0, 1, 0);
@@ -389,7 +389,7 @@ void Triangulator<D>::evaluateCrossCheckReport(
     PainterBulkWriter<D> writer;
     for (const auto &missingSimplex : ccr.missing) {
       writer.add("img/" + provenance + "_missing_" +
-                     std::to_string(missingSimplex.id) + ".png",
+                     std::to_string(missingSimplex.id),
                  basePainter);
 
       auto mySimplices = DT.findSimplices(missingSimplex.vertices);
@@ -403,7 +403,7 @@ void Triangulator<D>::evaluateCrossCheckReport(
 
     for (const auto &invalidSimplex : ccr.invalid) {
       writer.add("img/" + provenance + "_invalid_" +
-                     std::to_string(invalidSimplex.id) + ".png",
+                     std::to_string(invalidSimplex.id),
                  basePainter);
 
       auto realSimplices = realDT.findSimplices(invalidSimplex.vertices);
@@ -490,7 +490,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     Painter<D> basePainter(bounds);
     basePainter.draw(points.project(partitionPoints));
     basePainter.drawPartition(points.project(partitionPoints));
-    basePainter.save(provenance + "_00_points.png");
+    basePainter.save(provenance + "_00_points");
 
     for (auto &p : partioning)
       PLOG << "Partition " << p << std::endl;
@@ -508,7 +508,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     paintRealDT.draw(realDT, points);
     paintRealDT.setColor(0, 0, 0);
 
-    paintRealDT.save(provenance + "_01_realDT.png");
+    paintRealDT.save(provenance + "_01_realDT");
 
     std::vector<dSimplices<D>> partialDTs;
     partialDTs.resize(partioning.size());
@@ -529,12 +529,11 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
 
       Painter<D> paintPartialDT = basePainter;
       paintPartialDT.draw(partialDTs[i], points, true);
-      paintPartialDT.save(provenance + "_02_partialDT_" + std::to_string(i) +
-                          ".png");
+      paintPartialDT.save(provenance + "_02_partialDT_" + std::to_string(i));
     }
     DEDENT
 
-    paintPartialDTs.save(provenance + "_02_partialDTs.png");
+    paintPartialDTs.save(provenance + "_02_partialDTs");
 
     LOG << "Extracting edges" << std::endl;
     INDENT
@@ -564,7 +563,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
         << edgePointIds.size() << " points" << std::endl;
 
     paintEdges.draw(points.project(edgePointIds));
-    paintEdges.save(provenance + "_03_edgeMarked.png");
+    paintEdges.save(provenance + "_03_edgeMarked");
 
     LOG << "Triangulating edges" << std::endl;
     INDENT
@@ -580,7 +579,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     paintEdgeDT.setColor(1, 0, 0);
     paintEdgeDT.draw(points.project(edgePointIds));
 
-    paintEdgeDT.save(provenance + "_04_edgeDT.png");
+    paintEdgeDT.save(provenance + "_04_edgeDT");
 
     auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                        partioning, provenance, &realDT);
@@ -588,7 +587,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     Painter<D> paintFinal = basePainter;
     paintFinal.setColor(0, 1, 0);
     paintFinal.draw(mergedDT, points, true);
-    paintFinal.save(provenance + "_06_final.png");
+    paintFinal.save(provenance + "_06_final");
 
     LOG << "Consistency check of triangulation" << std::endl;
     auto vr = mergedDT.verify(points.project(partitionPoints));
@@ -624,4 +623,4 @@ template <uint D> dSimplices<D> Triangulator<D>::triangulate() {
 // specializations
 
 template class Triangulator<2>;
-// template class Triangulator<3>;
+template class Triangulator<3>;
