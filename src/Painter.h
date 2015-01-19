@@ -32,6 +32,9 @@ template <> struct DataHolder<3> {
   dVector<3> offset;
 
   uint logLine;
+
+  static constexpr uint PADDING = 10;
+  static constexpr uint FONT_SIZE = 15;
 };
 
 template <uint D> class Painter {
@@ -58,26 +61,38 @@ public:
     return *this;
   }
 
-  void draw(const dPoint<D> &point);
-  void draw(const dPoints<D> &points);
+  void draw(const dPoint<D> &point, bool drawInfinite = false);
+  void draw(const dPoints<D> &points, bool drawInfinite = false) {
+    for (const auto &p : points)
+      draw(p, drawInfinite);
+  }
 
   void draw(const dSimplex<D> &simplex, const dPoints<D> &points,
             bool drawInfinite = false);
   void draw(const dSimplices<D> &simplices, const dPoints<D> &points,
-            bool drawInfinite = false);
+            bool drawInfinite = false) {
+    for (const auto &s : simplices)
+      draw(s, points, drawInfinite);
+  }
 
   void drawCircumSphere(const dSimplex<D> &simplex, const dPoints<D> &points,
                         bool drawInfinite = false);
   void drawCircumSphere(const dSimplices<D> &simplices,
-                        const dPoints<D> &points, bool drawInfinite = false);
-
-  void drawPartition(const dPoints<D> &points);
+                        const dPoints<D> &points, bool drawInfinite = false) {
+    for (const auto &x : simplices)
+      drawCircumSphere(x, points, drawInfinite);
+  }
 
   void drawNeighbors(const dSimplex<D> &simplex, const dSimplices<D> &neighbors,
                      const dPoints<D> &points, bool drawInfinite = false);
   void drawNeighbors(const dSimplices<D> &simplices,
                      const dSimplices<D> &neighbors, const dPoints<D> &points,
-                     bool drawInfinite = false);
+                     bool drawInfinite = false) {
+    for (const auto &x : simplices)
+      drawNeighbors(x, neighbors, points, drawInfinite);
+  }
+
+  void drawPartition(const dPoints<D> &points);
 
   void setColor(const tRGB &rgb, tCoordinate alpha = 1.0) {
     setColor(std::get<0>(rgb), std::get<1>(rgb), std::get<2>(rgb), alpha);

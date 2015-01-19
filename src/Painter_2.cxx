@@ -8,8 +8,6 @@
 constexpr uint DataHolder<2>::PADDING;
 constexpr uint DataHolder<2>::FONT_SIZE;
 
-const int D = 2;
-
 template <> tCoordinate Painter<2>::imgDim(const uint dim) const {
   return data.img.dim[dim] - data.img.coords[dim];
 }
@@ -42,9 +40,12 @@ void Painter<2>::setColor(tCoordinate r, tCoordinate g, tCoordinate b,
 }
 
 //
-template <> void Painter<2>::draw(const dPoint<2> &point) {
+template <> void Painter<2>::draw(const dPoint<2> &point, bool drawInfinite) {
 
   if (!point.isFinite()) {
+    if (!drawInfinite)
+      return;
+
     data.cr->save();
     data.cr->set_source_rgb(1, 1, 0);
   }
@@ -63,12 +64,6 @@ template <> void Painter<2>::draw(const dPoint<2> &point) {
     data.cr->restore();
 
   _log(point);
-}
-
-template <> void Painter<2>::draw(const dPoints<2> &points) {
-
-  for (const auto &p : points)
-    draw(p);
 }
 
 template <>
@@ -103,21 +98,13 @@ void Painter<2>::draw(const dSimplex<2> &simplex, const dPoints<2> &points,
     data.cr->restore();
   };
 
-  for (uint d = 0; d < D; ++d) {
+  for (uint d = 0; d < 2; ++d) {
     line(simplex.vertices[d], simplex.vertices[d + 1]);
   }
   // close the loop
-  line(simplex.vertices[D], simplex.vertices[0]);
+  line(simplex.vertices[2], simplex.vertices[0]);
 
   _log(simplex);
-}
-
-template <>
-void Painter<2>::draw(const dSimplices<2> &simplices, const dPoints<2> &points,
-                      bool drawInfinite) {
-
-  for (const auto &s : simplices)
-    draw(s, points, drawInfinite);
 }
 
 template <>
@@ -149,13 +136,6 @@ void Painter<2>::drawCircumSphere(const dSimplex<2> &s,
   data.cr->restore();
 }
 
-template <>
-void Painter<2>::drawCircumSphere(const dSimplices<2> &s,
-                                  const dPoints<2> &points, bool drawInfinite) {
-  for (const auto &x : s)
-    drawCircumSphere(x, points, drawInfinite);
-}
-
 template <> void Painter<2>::drawPartition(const dPoints<2> &points) {
   auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
 
@@ -181,14 +161,6 @@ void Painter<2>::drawNeighbors(const dSimplex<2> &simplex,
 }
 
 template <>
-void Painter<2>::drawNeighbors(const dSimplices<2> &simplices,
-                               const dSimplices<2> &neighbors,
-                               const dPoints<2> &points, bool drawInfinite) {
-  for (const auto &x : simplices)
-    drawNeighbors(x, neighbors, points, drawInfinite);
-}
-
-template <>
 void Painter<2>::save(
 #ifdef NO_OUTPUT
     __attribute((unused))
@@ -211,7 +183,7 @@ template <> void Painter<2>::_init(const dBox<2> &_bounds, uint _resolution) {
   dashed = false;
   data.logLine = 1;
 
-  for (uint d = 0; d < D; ++d) {
+  for (uint d = 0; d < 2; ++d) {
     data.offset[d] = data.bounds.dim[d]; // offset bounds in middle of image
 
     data.img.coords[d] = 0;                                 // image starts at 0
