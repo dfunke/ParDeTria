@@ -1,0 +1,37 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 14.09.0 ] */
+
+/* [wxMaxima: input   start ] */
+a: matrix(
+ [x1,y1,1], 
+ [x2,y2,1], 
+ [x3,y3,1]
+);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+bx: matrix(
+ [x1^2+y1^2,y1,1], 
+ [x2^2+y2^2,y2,1], 
+ [x3^2+y3^2,y3,1]
+);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+by: matrix(
+ [x1^2+y1^2,x1,1], 
+ [x2^2+y2^2,x2,1], 
+ [x3^2+y3^2,x3,1]
+);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ox: -determinant(bx)/(2*determinant(a));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+oy: -determinant(by)/(2*determinant(a));
+/* [wxMaxima: input   end   ] */
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
