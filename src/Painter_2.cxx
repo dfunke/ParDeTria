@@ -8,26 +8,27 @@
 constexpr uint DataHolder<2>::PADDING;
 constexpr uint DataHolder<2>::FONT_SIZE;
 
-template <> tCoordinate Painter<2>::imgDim(const uint dim) const {
+// helper functions
+tCoordinate imgDim(const uint dim, const DataHolder<2> &data) {
   return data.img.dim[dim] - data.img.coords[dim];
 }
 
-template <>
-tCoordinate Painter<2>::translatePoint(tCoordinate in, uint dim) const {
+tCoordinate translatePoint(tCoordinate in, uint dim,
+                           const DataHolder<2> &data) {
   return ((data.offset[dim] + in - data.bounds.coords[dim]) /
           (3 * data.bounds.dim[dim])) *
-         imgDim(dim);
+         imgDim(dim, data);
 }
 
-template <>
-tCoordinate Painter<2>::translateLength(tCoordinate in, uint dim) const {
-  return (in / (3 * data.bounds.dim[dim])) * imgDim(dim);
+tCoordinate translateLength(tCoordinate in, uint dim,
+                            const DataHolder<2> &data) {
+  return (in / (3 * data.bounds.dim[dim])) * imgDim(dim, data);
 }
 
 template <> template <typename Object> void Painter<2>::_log(const Object &o) {
   if (logging) {
-    data.cr->move_to(translatePoint(data.bounds.dim[0] + data.PADDING, 0),
-                     translatePoint(data.bounds.coords[1], 1) +
+    data.cr->move_to(translatePoint(data.bounds.dim[0] + data.PADDING, 0, data),
+                     translatePoint(data.bounds.coords[1], 1, data) +
                          1.5 * data.FONT_SIZE * data.logLine++);
     data.cr->show_text(to_string(o));
   }
@@ -50,12 +51,12 @@ template <> void Painter<2>::draw(const dPoint<2> &point, bool drawInfinite) {
     data.cr->set_source_rgb(1, 1, 0);
   }
 
-  data.cr->arc(translatePoint(point.coords[0], 0),
-               translatePoint(point.coords[1], 1), 5, 0, 2 * M_PI);
+  data.cr->arc(translatePoint(point.coords[0], 0, data),
+               translatePoint(point.coords[1], 1, data), 5, 0, 2 * M_PI);
   data.cr->fill();
 
-  data.cr->move_to(translatePoint(point.coords[0], 0) + 7,
-                   translatePoint(point.coords[1], 1) + 7);
+  data.cr->move_to(translatePoint(point.coords[0], 0, data) + 7,
+                   translatePoint(point.coords[1], 1, data) + 7);
   data.cr->set_font_size(10);
   data.cr->show_text(std::to_string(point.id));
   data.cr->set_font_size(data.FONT_SIZE);
@@ -89,10 +90,10 @@ void Painter<2>::draw(const dSimplex<2> &simplex, const dPoints<2> &points,
     else
       data.cr->unset_dash();
 
-    data.cr->move_to(translatePoint(A.coords[0], 0),
-                     translatePoint(A.coords[1], 1));
-    data.cr->line_to(translatePoint(B.coords[0], 0),
-                     translatePoint(B.coords[1], 1));
+    data.cr->move_to(translatePoint(A.coords[0], 0, data),
+                     translatePoint(A.coords[1], 1, data));
+    data.cr->line_to(translatePoint(B.coords[0], 0, data),
+                     translatePoint(B.coords[1], 1, data));
     data.cr->stroke();
 
     data.cr->restore();
@@ -119,8 +120,8 @@ void Painter<2>::drawCircumSphere(const dSimplex<2> &s,
   data.cr->save();
 
   // draw circumcenter
-  data.cr->arc(translatePoint(circumcircle.center[0], 0),
-               translatePoint(circumcircle.center[1], 1), 5, 0, 2 * M_PI);
+  data.cr->arc(translatePoint(circumcircle.center[0], 0, data),
+               translatePoint(circumcircle.center[1], 1, data), 5, 0, 2 * M_PI);
   data.cr->fill();
 
   if (dashed)
@@ -128,9 +129,9 @@ void Painter<2>::drawCircumSphere(const dSimplex<2> &s,
   else
     data.cr->unset_dash();
 
-  data.cr->arc(translatePoint(circumcircle.center[0], 0),
-               translatePoint(circumcircle.center[1], 1),
-               translateLength(circumcircle.radius, 0), 0, 2 * M_PI);
+  data.cr->arc(translatePoint(circumcircle.center[0], 0, data),
+               translatePoint(circumcircle.center[1], 1, data),
+               translateLength(circumcircle.radius, 0, data), 0, 2 * M_PI);
   data.cr->stroke();
 
   data.cr->restore();
@@ -140,11 +141,13 @@ template <> void Painter<2>::drawPartition(const dPoints<2> &points) {
   auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
 
   // draw partition borders
-  data.cr->move_to(translatePoint(stats.mid.coords[0], 0), 0);
-  data.cr->line_to(translatePoint(stats.mid.coords[0], 0), imgDim(1));
+  data.cr->move_to(translatePoint(stats.mid.coords[0], 0, data), 0);
+  data.cr->line_to(translatePoint(stats.mid.coords[0], 0, data),
+                   imgDim(1, data));
 
-  data.cr->move_to(0, translatePoint(stats.mid.coords[1], 1));
-  data.cr->line_to(imgDim(0), translatePoint(stats.mid.coords[1], 1));
+  data.cr->move_to(0, translatePoint(stats.mid.coords[1], 1, data));
+  data.cr->line_to(imgDim(0, data),
+                   translatePoint(stats.mid.coords[1], 1, data));
 
   data.cr->stroke();
 }
@@ -179,8 +182,8 @@ template <> void Painter<2>::_init(const dBox<2> &_bounds, uint _resolution) {
     data.img.dim[d] = 3 * data.bounds.dim[d] * _resolution; // 9 quadrants
   }
 
-  data.cs =
-      Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0), imgDim(1));
+  data.cs = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0, data),
+                                        imgDim(1, data));
   data.cr = Cairo::Context::create(data.cs);
 
   // draw background white
@@ -196,10 +199,10 @@ template <> void Painter<2>::_init(const dBox<2> &_bounds, uint _resolution) {
   data.cr->set_font_size(data.FONT_SIZE);
 
   // draw bounds
-  data.cr->rectangle(translatePoint(data.bounds.coords[0], 0),
-                     translatePoint(data.bounds.coords[1], 1),
-                     translateLength(data.bounds.dim[0], 0),
-                     translateLength(data.bounds.dim[1], 1));
+  data.cr->rectangle(translatePoint(data.bounds.coords[0], 0, data),
+                     translatePoint(data.bounds.coords[1], 1, data),
+                     translateLength(data.bounds.dim[0], 0, data),
+                     translateLength(data.bounds.dim[1], 1, data));
   data.cr->stroke();
 }
 
@@ -210,8 +213,8 @@ template <> void Painter<2>::_copy(const Painter<2> &a) {
   logging = a.logging;
   data.logLine = a.data.logLine;
 
-  data.cs =
-      Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0), imgDim(1));
+  data.cs = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0, data),
+                                        imgDim(1, data));
   data.cr = Cairo::Context::create(data.cs);
 
   // set font options

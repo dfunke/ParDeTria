@@ -22,22 +22,6 @@ constexpr uint DataHolder<3>::FONT_SIZE;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 
-template <> tCoordinate Painter<3>::imgDim(const uint dim) const {
-  return data.img.dim[dim] - data.img.coords[dim];
-}
-
-template <>
-tCoordinate Painter<3>::translatePoint(tCoordinate in, uint dim) const {
-  return ((data.offset[dim] + in - data.bounds.coords[dim]) /
-          (3 * data.bounds.dim[dim])) *
-         imgDim(dim);
-}
-
-template <>
-tCoordinate Painter<3>::translateLength(tCoordinate in, uint dim) const {
-  return (in / (3 * data.bounds.dim[dim])) * imgDim(dim);
-}
-
 template <> template <typename Object> void Painter<3>::_log(const Object &o) {
   if (logging) {
     // TODO logging
@@ -116,28 +100,15 @@ void Painter<3>::save(
 }
 
 template <> void Painter<3>::_init(const dBox<3> &_bounds, uint _resolution) {
-  data.bounds = _bounds;
   logging = false;
   dashed = false;
   data.logLine = 1;
 
   data.points = vtkSmartPointer<vtkPoints>::New();
   data.cells = vtkSmartPointer<vtkCellArray>::New();
-
-  for (uint d = 0; d < 3; ++d) {
-    data.offset[d] = data.bounds.dim[d]; // offset bounds in middle of image
-
-    data.img.coords[d] = 0;                                 // image starts at 0
-    data.img.dim[d] = 3 * data.bounds.dim[d] * _resolution; // 9 quadrants
-  }
-
-  // TODO init painter
 }
 
 template <> void Painter<3>::_copy(const Painter<3> &a) {
-  data.bounds = a.data.bounds;
-  data.img = a.data.img;
-  data.offset = a.data.offset;
   logging = a.logging;
   data.logLine = a.data.logLine;
 

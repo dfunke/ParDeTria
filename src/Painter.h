@@ -37,10 +37,6 @@ template <> struct DataHolder<2> {
 };
 
 template <> struct DataHolder<3> {
-  dBox<3> bounds;
-  dBox<3> img;
-  dVector<3> offset;
-
   uint logLine;
 
   static constexpr uint PADDING = 10;
@@ -132,12 +128,6 @@ public:
 private:
   void _init(const dBox<D> &_bounds, uint _resolution);
   void _copy(const Painter<D> &a);
-
-  tCoordinate imgDim(const uint dim) const;
-
-  tCoordinate translatePoint(tCoordinate in, uint dim) const;
-
-  tCoordinate translateLength(tCoordinate in, uint dim) const;
 
   template <typename Object> void _log(const Object &o);
 
