@@ -7,18 +7,12 @@
 #include <cairo/cairo.h>
 #include <cairomm/cairomm.h>
 
-// disable warnings in VTK library
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wextra-semi"
-
-#include <vtkSmartPointer.h>
-#include <vtkPoints.h>
-#include <vtkCellArray.h>
-
-#pragma clang diagnostic pop
-
 #include "Geometry.h"
 #include "utils/Logger.h"
+
+// define tuple for color
+typedef std::tuple<tCoordinate, tCoordinate, tCoordinate> tRGB;
+typedef std::tuple<tCoordinate, tCoordinate, tCoordinate, tCoordinate> tRGBa;
 
 template <uint D> struct DataHolder;
 
@@ -42,14 +36,30 @@ template <> struct DataHolder<3> {
   static constexpr uint PADDING = 10;
   static constexpr uint FONT_SIZE = 15;
 
-  vtkSmartPointer<vtkPoints> points;
-  vtkSmartPointer<vtkCellArray> cells;
+  template <class Object> class ColoredObject : public Object {
+
+  public:
+    ColoredObject() : Object() {}
+    ColoredObject(const Object &o) : Object(o) {}
+
+    ColoredObject &operator=(const Object &a) {
+
+      Object::operator=(a);
+
+      return *this;
+    }
+
+  public:
+    tRGBa color;
+  };
+
+  IndexedVector<ColoredObject<dSimplex<3>>> pSimplices;
+  IndexedVector<ColoredObject<dPoint<3>>> pPoints;
+  std::vector<ColoredObject<dSphere<3>>> pSpheres;
+  tRGBa cColor;
 };
 
 template <uint D> class Painter {
-
-public:
-  typedef std::tuple<tCoordinate, tCoordinate, tCoordinate> tRGB;
 
 public:
   Painter() : logging(false), dashed(false) {
@@ -109,6 +119,11 @@ public:
   }
 
   void drawPartition(const dPoints<D> &points);
+
+  void setColor(const tRGBa &rgba) {
+    setColor(std::get<0>(rgba), std::get<1>(rgba), std::get<2>(rgba),
+             std::get<3>(rgba));
+  }
 
   void setColor(const tRGB &rgb, tCoordinate alpha = 1.0) {
     setColor(std::get<0>(rgb), std::get<1>(rgb), std::get<2>(rgb), alpha);

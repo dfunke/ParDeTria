@@ -5,9 +5,14 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wextra-semi"
 
+#include <vtkSmartPointer.h>
+#include <vtkUnsignedCharArray.h>
+#include <vtkPoints.h>
+#include <vtkCellData.h>
+#include <vtkCellArray.h>
 #include <vtkTetra.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkXMLUnstructuredGridWriter.h>
+#include <vtkPolyData.h>
+#include <vtkXMLPolyDataWriter.h>
 
 #pragma clang diagnostic pop
 
@@ -31,14 +36,23 @@ template <> template <typename Object> void Painter<3>::_log(const Object &o) {
 template <>
 void Painter<3>::setColor(tCoordinate r, tCoordinate g, tCoordinate b,
                           tCoordinate alpha) {
-  // TODO set color
+  data.cColor = std::make_tuple(r, g, b, alpha);
 }
 
 //
 template <> void Painter<3>::draw(const dPoint<3> &point, bool drawInfinite) {
 
-  if (point.isFinite() && point.id > data.points->GetNumberOfPoints()) {
-    data.points->InsertPoint(point.id, point.coords.data());
+  if (point.isFinite() || drawInfinite) {
+
+    if (data.pPoints.contains(point)) {
+      data.pPoints[point.id].color = data.cColor; // update color of object
+      return;
+    }
+
+    DataHolder<3>::ColoredObject<dPoint<3>> p = point;
+    p.color = data.cColor;
+
+    data.pPoints[p.id] = p;
   }
 
   _log(point);
@@ -48,26 +62,33 @@ template <>
 void Painter<3>::draw(const dSimplex<3> &simplex, const dPoints<3> &points,
                       bool drawInfinite) {
 
-  if (simplex.isFinite() && simplex.id > data.cells->GetNumberOfCells()) {
-    auto tetra = vtkSmartPointer<vtkTetra>::New();
+  if (simplex.isFinite() || drawInfinite) {
 
-    for (uint d = 0; d < 3; ++d) {
-      draw(points[simplex.vertices[d]]); // ensure point is in the list of
-                                         // points
-      tetra->GetPointIds()->SetId(d, simplex.vertices[d]);
+    if (data.pSimplices.contains(simplex)) {
+      data.pSimplices[simplex.id].color = data.cColor; // update color of object
+      return;
     }
 
-    data.cells->InsertNextCell(tetra);
+    DataHolder<3>::ColoredObject<dSimplex<3>> p = simplex;
+    p.color = data.cColor;
+
+    data.pSimplices[p.id] = p;
   }
 
   _log(simplex);
 }
 
 template <>
-void Painter<3>::drawCircumSphere(const dSimplex<3> &s,
+void Painter<3>::drawCircumSphere(const dSimplex<3> &simplex,
                                   const dPoints<3> &points, bool drawInfinite) {
 
-  // TODO draw circumsphere
+  if (simplex.isFinite() || drawInfinite) {
+
+    DataHolder<3>::ColoredObject<dSphere<3>> s = simplex.circumsphere(points);
+    s.color = data.cColor;
+
+    data.pSpheres.push_back(s);
+  }
 }
 
 template <> void Painter<3>::drawPartition(const dPoints<3> &points) {
@@ -85,14 +106,42 @@ void Painter<3>::save(
 #ifndef NO_OUTPUT // disable png output
   CALLGRIND_STOP_INSTRUMENTATION;
 
-  auto grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-  grid->SetPoints(data.points);
-  grid->SetCells(VTK_TETRA, data.cells);
+  auto points = vtkSmartPointer<vtkPoints>::New();
 
-  vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer =
-      vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+  std::map<uint, uint> pointIdMap;
+
+  for (const auto &o : data.pPoints) {
+    pointIdMap[o.id] = points->InsertNextPoint(o.coords.data());
+  }
+
+  auto cellArray = vtkSmartPointer<vtkCellArray>::New();
+
+  auto colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
+  colors->SetNumberOfComponents(3);
+  colors->SetName("Colors");
+
+  for (const auto &o : data.pSimplices) {
+    auto tetra = vtkSmartPointer<vtkTetra>::New();
+
+    for (uint d = 0; d < 4; ++d) {
+      tetra->GetPointIds()->SetId(d, pointIdMap[o.vertices[d]]);
+    }
+
+    cellArray->InsertNextCell(tetra);
+    colors->InsertNextTuple3(255 * std::get<0>(o.color),
+                             255 * std::get<1>(o.color),
+                             255 * std::get<2>(o.color));
+  }
+
+  auto polyData = vtkSmartPointer<vtkPolyData>::New();
+  polyData->SetPoints(points);
+  polyData->SetPolys(cellArray);
+  polyData->GetCellData()->SetScalars(colors);
+
+  // Write file
+  auto writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
   writer->SetFileName((file + ".vtu").c_str());
-  writer->SetInputData(grid);
+  writer->SetInputData(polyData);
   writer->Write();
 
   CALLGRIND_START_INSTRUMENTATION;
@@ -103,20 +152,18 @@ template <> void Painter<3>::_init(const dBox<3> &_bounds, uint _resolution) {
   logging = false;
   dashed = false;
   data.logLine = 1;
-
-  data.points = vtkSmartPointer<vtkPoints>::New();
-  data.cells = vtkSmartPointer<vtkCellArray>::New();
 }
 
 template <> void Painter<3>::_copy(const Painter<3> &a) {
   logging = a.logging;
   data.logLine = a.data.logLine;
 
-  data.points = vtkSmartPointer<vtkPoints>::New();
-  data.cells = vtkSmartPointer<vtkCellArray>::New();
-
-  data.points->DeepCopy(a.data.points);
-  data.cells->DeepCopy(a.data.cells);
+  // copy data
+  data.cColor = a.data.cColor;
+  data.pPoints.insert(a.data.pPoints.begin(), a.data.pPoints.end());
+  data.pSimplices.insert(a.data.pSimplices.begin(), a.data.pSimplices.end());
+  data.pSpheres.insert(data.pSpheres.end(), a.data.pSpheres.begin(),
+                       a.data.pSpheres.end());
 }
 
 // TODO remove

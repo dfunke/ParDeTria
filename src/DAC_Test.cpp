@@ -187,4 +187,6 @@ int main(int argc, char *argv[]) {
 #endif // STUDY
 
   LOG << "Finished" << std::endl;
+
+  return EXIT_SUCCESS;
 }

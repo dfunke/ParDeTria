@@ -6,14 +6,14 @@
 #include <vtkSmartPointer.h>
 #include <vtkTetra.h>
 #include <vtkCellArray.h>
-#include <vtkXMLUnstructuredGridReader.h>
 #include <vtkDataSetMapper.h>
 #include <vtkActor.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
-#include <vtkXMLUnstructuredGridWriter.h>
-#include <vtkUnstructuredGrid.h>
+#include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkXMLPolyDataReader.h>
 #include <vtkPointData.h>
 #include <vtkVertexGlyphFilter.h>
 
@@ -29,28 +29,26 @@ int main(int argc, char *argv[]) {
   std::string filename = argv[1];
 
   // Read and display file for verification that it was written correclty
-  vtkSmartPointer<vtkXMLUnstructuredGridReader> reader =
-      vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
+  auto reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
   reader->SetFileName(filename.c_str());
   reader->Update();
 
-  vtkSmartPointer<vtkDataSetMapper> mapper =
-      vtkSmartPointer<vtkDataSetMapper>::New();
-  mapper->SetInputConnection(reader->GetOutputPort());
+  auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+  mapper->SetInputData(reader->GetOutput());
 
-  vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+  auto actor = vtkSmartPointer<vtkActor>::New();
   actor->SetMapper(mapper);
 
-  vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
-  vtkSmartPointer<vtkRenderWindow> renderWindow =
-      vtkSmartPointer<vtkRenderWindow>::New();
+  auto renderer = vtkSmartPointer<vtkRenderer>::New();
+  auto renderWindow = vtkSmartPointer<vtkRenderWindow>::New();
   renderWindow->AddRenderer(renderer);
-  vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+
+  auto renderWindowInteractor =
       vtkSmartPointer<vtkRenderWindowInteractor>::New();
   renderWindowInteractor->SetRenderWindow(renderWindow);
 
   renderer->AddActor(actor);
-  renderer->SetBackground(.3, .6, .3); // Background color green
+  renderer->SetBackground(255, 255, 255);
 
   renderWindow->Render();
   renderWindowInteractor->Start();
