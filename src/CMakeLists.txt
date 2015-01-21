@@ -12,6 +12,7 @@ find_package(ROOT REQUIRED COMPONENTS Hist)
 find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system filesystem)
 
 include_directories(${CMAKE_SOURCE_DIR}
   ${ROOT_INCLUDE_DIRS}
@@ -21,7 +22,7 @@ include_directories(${CMAKE_SOURCE_DIR}
 
 include(${VTK_USE_FILE})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror -Wno-extra-semi")
 
 if (CMAKE_CXX_COMPILER MATCHES ".*clang")
   add_definitions(-D_LIBCPP_VERSION)
@@ -62,4 +63,4 @@ add_executable (VTUShow
   utils/VTU_Show.cpp
 )
 
-target_link_libraries(VTUShow ${VTK_LIBRARIES})
+target_link_libraries(VTUShow ${VTK_LIBRARIES} ${Boost_LIBRARIES})
