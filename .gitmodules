@@ -1,3 +1,3 @@
 [submodule "src/cmake/clang-format"]
 	path = src/cmake/clang-format
-	url = https://github.com/kbenzie/git-cmake-format.git
+	url = https://github.com/dfunke/git-cmake-format.git
