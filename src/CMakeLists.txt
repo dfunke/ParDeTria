@@ -64,3 +64,6 @@ add_executable (VTUShow
 )
 
 target_link_libraries(VTUShow ${VTK_LIBRARIES} ${Boost_LIBRARIES})
+
+# add git-cmake-format
+add_subdirectory(${CMAKE_SOURCE_DIR}/cmake/clang-format)
