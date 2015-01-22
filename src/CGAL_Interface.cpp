@@ -58,6 +58,31 @@ public:
   }
 };
 
+template <uint D> class dPointCGALFactory {
+
+public:
+  template <class Tria>
+  static typename Tria::Point make_point(const dPoint<D> &p);
+};
+
+template <> class dPointCGALFactory<2> {
+
+public:
+  template <class Tria>
+  static typename Tria::Point make_point(const dPoint<2> &p) {
+    return typename Tria::Point(p.coords[0], p.coords[1]);
+  }
+};
+
+template <> class dPointCGALFactory<3> {
+
+public:
+  template <class Tria>
+  static typename Tria::Point make_point(const dPoint<3> &p) {
+    return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
+  }
+};
+
 template <uint D, class Tria>
 dSimplices<D> _delaunayCgal(dPoints<D> &points, const Ids *ids,
                             bool filterInfinite) {
@@ -71,7 +96,7 @@ dSimplices<D> _delaunayCgal(dPoints<D> &points, const Ids *ids,
         (filterInfinite && !p.isFinite()))
       continue;
 
-    typename Tria::Point cp(p.coords[0], p.coords[1], p.coords[2]);
+    auto cp = dPointCGALFactory<D>::template make_point<Tria>(p);
     cPoints.push_back(std::make_pair(cp, p.id));
   }
 
