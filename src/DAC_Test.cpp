@@ -90,7 +90,7 @@ void testGeometry3D() {
 //**************************
 
 #define D 3
-const uint N = 1e2;
+const uint N = 1e1;
 
 int main(int argc, char *argv[]) {
 
