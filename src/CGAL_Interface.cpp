@@ -22,15 +22,18 @@ template <uint D, class Handle> dSimplex<D> cmp(const Handle &f) {
   return a;
 }
 
-template <uint D> class dSimplexCGALIterator {
+template <uint D> class CGALHelper {
 
 public:
   template <class IT, class Tria> static IT begin(Tria &t);
 
   template <class IT, class Tria> static IT end(Tria &t);
+
+  template <class Tria>
+  static typename Tria::Point make_point(const dPoint<D> &p);
 };
 
-template <> class dSimplexCGALIterator<2> {
+template <> class CGALHelper<2> {
 
 public:
   template <class Tria>
@@ -42,9 +45,14 @@ public:
   static typename Tria::Finite_faces_iterator end(Tria &t) {
     return t.finite_faces_end();
   }
+
+  template <class Tria>
+  static typename Tria::Point make_point(const dPoint<2> &p) {
+    return typename Tria::Point(p.coords[0], p.coords[1]);
+  }
 };
 
-template <> class dSimplexCGALIterator<3> {
+template <> class CGALHelper<3> {
 
 public:
   template <class Tria>
@@ -56,27 +64,7 @@ public:
   static typename Tria::Finite_cells_iterator end(Tria &t) {
     return t.finite_cells_end();
   }
-};
 
-template <uint D> class dPointCGALFactory {
-
-public:
-  template <class Tria>
-  static typename Tria::Point make_point(const dPoint<D> &p);
-};
-
-template <> class dPointCGALFactory<2> {
-
-public:
-  template <class Tria>
-  static typename Tria::Point make_point(const dPoint<2> &p) {
-    return typename Tria::Point(p.coords[0], p.coords[1]);
-  }
-};
-
-template <> class dPointCGALFactory<3> {
-
-public:
   template <class Tria>
   static typename Tria::Point make_point(const dPoint<3> &p) {
     return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
@@ -96,7 +84,7 @@ dSimplices<D> _delaunayCgal(dPoints<D> &points, const Ids *ids,
         (filterInfinite && !p.isFinite()))
       continue;
 
-    auto cp = dPointCGALFactory<D>::template make_point<Tria>(p);
+    auto cp = CGALHelper<D>::template make_point<Tria>(p);
     cPoints.push_back(std::make_pair(cp, p.id));
   }
 
@@ -117,8 +105,7 @@ dSimplices<D> _delaunayCgal(dPoints<D> &points, const Ids *ids,
   INDENT
 
   dSimplices<D> tria;
-  for (auto it = dSimplexCGALIterator<D>::begin(t);
-       it != dSimplexCGALIterator<D>::end(t); ++it) {
+  for (auto it = CGALHelper<D>::begin(t); it != CGALHelper<D>::end(t); ++it) {
     dSimplex<D> a;
     a.id = tetrahedronID++;
 
@@ -135,8 +122,7 @@ dSimplices<D> _delaunayCgal(dPoints<D> &points, const Ids *ids,
   PLOG << "Collecting neighbors" << std::endl;
 
   INDENT
-  for (auto it = dSimplexCGALIterator<D>::begin(t);
-       it != dSimplexCGALIterator<D>::end(t); ++it) {
+  for (auto it = CGALHelper<D>::begin(t); it != CGALHelper<D>::end(t); ++it) {
     auto tet = std::find(tria.begin(), tria.end(), cmp<D>(it));
 
     for (uint i = 0; i < D + 1; ++i) {
