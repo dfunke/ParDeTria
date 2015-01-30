@@ -136,7 +136,9 @@ public:
   void setDashed(bool _dashed = true) { dashed = _dashed; }
 
 public:
-  static tRGB tetradicColor(uint i) { return tRGB(!(i & 2), i & 2, i & 1); }
+  static tRGB tetradicColor(uint i) {
+    return tRGB((bool)!(i & 2), (bool)i & 2, (bool)i & 1);
+  }
 
 private:
   void _init(const dBox<D> &_bounds, uint _resolution);
