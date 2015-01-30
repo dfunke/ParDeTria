@@ -14,45 +14,35 @@
 
 #include <valgrind/callgrind.h>
 
-// static variables
-
-constexpr uint DataHolder<3>::PADDING;
-constexpr uint DataHolder<3>::FONT_SIZE;
-
-// TODO remove
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-
 template <class ColoredObject>
 void updateColor(ColoredObject &o, const tRGBa &color) {
 
   tRGBa res;
   // alpha_0 = alpha_a + alpha_b (1 - alpha_a)
   std::get<3>(res) =
-      std::get<3>(o.color) + std::get<3>(color) * (std::get<3>(o.color));
+      std::get<3>(o.color) + std::get<3>(color) * (1 - std::get<3>(o.color));
+
+  tCoordinate invAlpha = 1 / std::get<3>(res);
 
   // color_0 = 1/alpha_0 (color_a * alpha_a + color_b * alpha_b (1 - alpha_a))
-  std::get<0>(res) =
-      1 / std::get<3>(res) *
-      (std::get<0>(o.color) * std::get<3>(o.color) + std::get<0>(color) +
-       std::get<3>(color) * (1 - std::get<3>(o.color)));
+  std::get<0>(res) = invAlpha * (std::get<0>(o.color) * std::get<3>(o.color) +
+                                 std::get<0>(color) * std::get<3>(color) *
+                                     (1 - std::get<3>(o.color)));
 
-  std::get<1>(res) =
-      1 / std::get<3>(res) *
-      (std::get<1>(o.color) * std::get<3>(o.color) + std::get<1>(color) +
-       std::get<3>(color) * (1 - std::get<3>(o.color)));
+  std::get<1>(res) = invAlpha * (std::get<1>(o.color) * std::get<3>(o.color) +
+                                 std::get<1>(color) * std::get<3>(color) *
+                                     (1 - std::get<3>(o.color)));
 
-  std::get<2>(res) =
-      1 / std::get<3>(res) *
-      (std::get<2>(o.color) * std::get<3>(o.color) + std::get<2>(color) +
-       std::get<3>(color) * (1 - std::get<3>(o.color)));
+  std::get<2>(res) = invAlpha * (std::get<2>(o.color) * std::get<3>(o.color) +
+                                 std::get<2>(color) * std::get<3>(color) *
+                                     (1 - std::get<3>(o.color)));
 
   o.color = res;
 }
 
 template <> template <typename Object> void Painter<3>::_log(const Object &o) {
   if (logging) {
-    // TODO logging
+    data.pLog.emplace_back(to_string(o), data.cColor);
   }
 }
 
@@ -82,7 +72,8 @@ template <> void Painter<3>::draw(const dPoint<3> &point, bool drawInfinite) {
 }
 
 template <>
-void Painter<3>::draw(const dSimplex<3> &simplex, const dPoints<3> &points,
+void Painter<3>::draw(const dSimplex<3> &simplex,
+                      __attribute((unused)) const dPoints<3> &points,
                       bool drawInfinite) {
 
   if (simplex.isFinite() || drawInfinite) {
@@ -114,7 +105,8 @@ void Painter<3>::drawCircumSphere(const dSimplex<3> &simplex,
   }
 }
 
-template <> void Painter<3>::drawPartition(const dPoints<3> &points) {
+template <>
+void Painter<3>::drawPartition(__attribute((unused)) const dPoints<3> &points) {
   // TODO draw partition
 }
 
@@ -183,15 +175,17 @@ void Painter<3>::save(
 #endif
 }
 
-template <> void Painter<3>::_init(const dBox<3> &_bounds, uint _resolution) {
+template <>
+void Painter<3>::_init(__attribute((unused)) const dBox<3> &_bounds,
+                       __attribute((unused)) uint _resolution) {
   logging = false;
   dashed = false;
-  data.logLine = 1;
+
+  data.cColor = std::make_tuple(0, 0, 0, 1);
 }
 
 template <> void Painter<3>::_copy(const Painter<3> &a) {
   logging = a.logging;
-  data.logLine = a.data.logLine;
 
   // copy data
   data.cColor = a.data.cColor;
@@ -199,7 +193,5 @@ template <> void Painter<3>::_copy(const Painter<3> &a) {
   data.pSimplices.insert(a.data.pSimplices.begin(), a.data.pSimplices.end());
   data.pSpheres.insert(data.pSpheres.end(), a.data.pSpheres.begin(),
                        a.data.pSpheres.end());
+  data.pLog.insert(data.pLog.end(), a.data.pLog.begin(), a.data.pLog.end());
 }
-
-// TODO remove
-#pragma clang diagnostic pop

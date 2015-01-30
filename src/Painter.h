@@ -31,16 +31,13 @@ template <> struct DataHolder<2> {
 };
 
 template <> struct DataHolder<3> {
-  uint logLine;
-
-  static constexpr uint PADDING = 10;
-  static constexpr uint FONT_SIZE = 15;
 
   template <class Object> class ColoredObject : public Object {
 
   public:
     ColoredObject() : Object() {}
     ColoredObject(const Object &o) : Object(o) {}
+    ColoredObject(const Object &o, const tRGBa &c) : Object(o), color(c) {}
 
     ColoredObject &operator=(const Object &a) {
 
@@ -56,6 +53,7 @@ template <> struct DataHolder<3> {
   IndexedVector<ColoredObject<dSimplex<3>>> pSimplices;
   IndexedVector<ColoredObject<dPoint<3>>> pPoints;
   std::vector<ColoredObject<dSphere<3>>> pSpheres;
+  std::vector<ColoredObject<std::string>> pLog;
   tRGBa cColor;
 };
 
