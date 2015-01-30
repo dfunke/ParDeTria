@@ -21,10 +21,7 @@
 
 //******************************************************************************
 
-vtkSmartPointer<vtkXMLPolyDataReader> reader;
-vtkSmartPointer<vtkRenderWindow> renderWindow;
-
-std::vector<boost::filesystem::path> files;
+typedef std::vector<boost::filesystem::path> tFiles;
 
 //******************************************************************************
 
@@ -51,14 +48,15 @@ public:
     }
 
     if (key == "Next" || key == "Prior") {
-      currentFile %= files.size();
+      currentFile %= (int)files->size();
+      currentFile += (currentFile >= 0 ? 0 : files->size());
 
-      reader->SetFileName(files[currentFile].native().c_str());
+      reader->SetFileName(files->at(currentFile).native().c_str());
 
       reader->Modified();
       reader->Update();
 
-      renderWindow->SetWindowName(files[currentFile].filename().c_str());
+      renderWindow->SetWindowName(files->at(currentFile).filename().c_str());
       renderWindow->Render();
     }
 
@@ -66,17 +64,29 @@ public:
     vtkInteractorStyleTrackballCamera::OnKeyPress();
   }
 
+  void SetFiles(const tFiles *_files) { files = _files; }
+  void SetReader(vtkSmartPointer<vtkXMLPolyDataReader> &_reader) {
+    reader = _reader;
+  }
+  void SetRenderWindow(vtkSmartPointer<vtkRenderWindow> &_wdw) {
+    renderWindow = _wdw;
+  }
+
 private:
-  uint currentFile = 0;
+  int currentFile = 0;
+
+  const tFiles *files;
+  vtkSmartPointer<vtkXMLPolyDataReader> reader;
+  vtkSmartPointer<vtkRenderWindow> renderWindow;
 };
 
 vtkStandardNewMacro(CustomInteractorStyle);
 
 //******************************************************************************
 
-void displayFiles() {
+void displayFiles(const tFiles &files) {
   // Read and display file for verification that it was written correclty
-  reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+  auto reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
   reader->SetFileName(files[0].native().c_str());
   reader->Update();
 
@@ -88,7 +98,7 @@ void displayFiles() {
   actor->GetProperty()->SetRepresentationToWireframe();
 
   auto renderer = vtkSmartPointer<vtkRenderer>::New();
-  renderWindow = vtkSmartPointer<vtkRenderWindow>::New();
+  auto renderWindow = vtkSmartPointer<vtkRenderWindow>::New();
   renderWindow->AddRenderer(renderer);
 
   auto renderWindowInteractor =
@@ -96,6 +106,10 @@ void displayFiles() {
   renderWindowInteractor->SetRenderWindow(renderWindow);
 
   auto interactor = vtkSmartPointer<CustomInteractorStyle>::New();
+  interactor->SetFiles(&files);
+  interactor->SetReader(reader);
+  interactor->SetRenderWindow(renderWindow);
+
   renderWindowInteractor->SetInteractorStyle(interactor);
 
   renderer->AddActor(actor);
@@ -114,6 +128,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::string p = argv[1];
+  tFiles files;
 
   try {
     if (boost::filesystem::exists(p)) // does p actually exist?
@@ -147,7 +162,7 @@ int main(int argc, char *argv[]) {
     std::cout << f << std::endl;
   }
 
-  displayFiles();
+  displayFiles(files);
 
   return EXIT_SUCCESS;
 }
