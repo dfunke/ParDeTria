@@ -5,6 +5,27 @@
 template <uint D> class Partition {
 
 public:
+  bool contains(const uint &p) const { return points.count(p) == 1; }
+
+  bool contains(const dPoint<D> &p) const { return points.count(p.id) == 1; }
+
+  bool contains(const dSimplex<D> &s, bool partially = false) const {
+    for (const auto &p : s.vertices) {
+      // store contains result
+      bool t = contains(p);
+
+      if (!partially && !t)
+        // we are looking for complete containment, but one point wasn't found
+        return false;
+      if (partially && t)
+        // we are looking for partial containment and found a point
+        return true;
+    }
+
+    return !partially;
+  }
+
+public:
   uint id;
   Ids points;
   dBox<D> bounds;
@@ -24,7 +45,8 @@ public:
         return part.id;
     }
 
-    return -1;
+    throw std::out_of_range("Partition of point " + std::to_string(p) +
+                            "not found");
   }
 
   uint partition(const dPoint<D> &p) const { return partition(p.id); }
