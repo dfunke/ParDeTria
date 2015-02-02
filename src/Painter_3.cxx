@@ -141,9 +141,9 @@ void Painter<3>::save(
         255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
         255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
 
-    PLOG << o.id << ": " << 255 * std::get<0>(o.color) << " "
+    /*PLOG << o.id << ": " << 255 * std::get<0>(o.color) << " "
          << 255 * std::get<1>(o.color) << " " << 255 * std::get<2>(o.color)
-         << " " << 255 * std::get<3>(o.color) << std::endl;
+         << " " << 255 * std::get<3>(o.color) << std::endl;*/
   }
 
   auto polyData = vtkSmartPointer<vtkPolyData>::New();
