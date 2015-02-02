@@ -15,7 +15,20 @@ template <uint D> std::string to_string(const Partition<D> &p);
 template <uint D>
 std::ostream &operator<<(std::ostream &o, const Partition<D> &p);
 
-template <uint D> using Partitioning = IndexedVector<Partition<D>>;
+template <uint D> class Partitioning : public IndexedVector<Partition<D>> {
+
+public:
+  uint partition(const uint p) const {
+    for (const auto &part : *this) {
+      if (part.points.count(p) > 0)
+        return part.id;
+    }
+
+    return -1;
+  }
+
+  uint partition(const dPoint<D> &p) const { return partition(p.id); }
+};
 
 template <uint D> struct dPointStats {
   dPoint<D> min;
