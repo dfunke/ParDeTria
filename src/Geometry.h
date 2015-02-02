@@ -363,9 +363,14 @@ public:
       }
 
       // check neighbors
-      if (mySimplex->neighbors != otherSimplex.neighbors) {
-        // this should never happen
-        return false;
+      for (const auto &n : mySimplex->neighbors) {
+        // TODO handle infinite neighbors better
+        if (dSimplex<D>::isFinite(n) && otherSimplex.neighbors.count(n) != 1) {
+          // the other triangulation does not contain n as neighbor
+          PLOG << "wrong neighbors: " << *mySimplex << " -- " << otherSimplex
+               << std::endl;
+          return false;
+        }
       }
     }
 
