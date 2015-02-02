@@ -212,6 +212,23 @@ public:
     return true;
   }
 
+  uint countSharedVertices(const dSimplex<D> &a) const {
+    uint count = 0;
+    for (uint i = 0; i < D + 1; ++i) {
+      bool found = false;
+      for (uint j = 0; j < D + 1; ++j) {
+        if (vertices[i] == a.vertices[j]) {
+          // std::cout << this->vertices[i] << " == " << a.vertices[j];
+          found = true;
+          break;
+        }
+      }
+      count += found;
+    }
+
+    return count;
+  }
+
   bool equalNeighbors(const dSimplex<D> &a) const {
     return neighbors != a.neighbors;
   }
