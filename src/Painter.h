@@ -50,8 +50,8 @@ template <> struct DataHolder<3> {
     tRGBa color;
   };
 
-  IndexedVector<ColoredObject<dSimplex<3>>> pSimplices;
-  IndexedVector<ColoredObject<dPoint<3>>> pPoints;
+  std::vector<ColoredObject<dSimplex<3>>> pSimplices;
+  std::vector<ColoredObject<dPoint<3>>> pPoints;
   std::vector<ColoredObject<dSphere<3>>> pSpheres;
   std::vector<ColoredObject<std::string>> pLog;
   tRGBa cColor;

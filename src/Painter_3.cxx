@@ -56,16 +56,7 @@ void Painter<3>::setColor(tCoordinate r, tCoordinate g, tCoordinate b,
 template <> void Painter<3>::draw(const dPoint<3> &point, bool drawInfinite) {
 
   if (point.isFinite() || drawInfinite) {
-
-    if (data.pPoints.contains(point)) {
-      updateColor(data.pPoints[point.id], data.cColor);
-      return;
-    }
-
-    DataHolder<3>::ColoredObject<dPoint<3>> p = point;
-    p.color = data.cColor;
-
-    data.pPoints[p.id] = p;
+    data.pPoints.emplace_back(point, data.cColor);
   }
 
   _log(point);
@@ -77,16 +68,7 @@ void Painter<3>::draw(const dSimplex<3> &simplex,
                       bool drawInfinite) {
 
   if (simplex.isFinite() || drawInfinite) {
-
-    if (data.pSimplices.contains(simplex)) {
-      updateColor(data.pSimplices[simplex.id], data.cColor);
-      return;
-    }
-
-    DataHolder<3>::ColoredObject<dSimplex<3>> p = simplex;
-    p.color = data.cColor;
-
-    data.pSimplices[p.id] = p;
+    data.pSimplices.emplace_back(simplex, data.cColor);
   }
 
   _log(simplex);
@@ -120,6 +102,8 @@ void Painter<3>::save(
 
 #ifndef NO_OUTPUT // disable png output
   CALLGRIND_STOP_INSTRUMENTATION;
+
+  PLOG << "Writing file " << (file + ".vtu") << std::endl;
 
   auto points = vtkSmartPointer<vtkPoints>::New();
 
@@ -156,6 +140,10 @@ void Painter<3>::save(
     colors->InsertNextTuple4(
         255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
         255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
+
+    PLOG << o.id << ": " << 255 * std::get<0>(o.color) << " "
+         << 255 * std::get<1>(o.color) << " " << 255 * std::get<2>(o.color)
+         << " " << 255 * std::get<3>(o.color) << std::endl;
   }
 
   auto polyData = vtkSmartPointer<vtkPolyData>::New();
@@ -189,8 +177,10 @@ template <> void Painter<3>::_copy(const Painter<3> &a) {
 
   // copy data
   data.cColor = a.data.cColor;
-  data.pPoints.insert(a.data.pPoints.begin(), a.data.pPoints.end());
-  data.pSimplices.insert(a.data.pSimplices.begin(), a.data.pSimplices.end());
+  data.pPoints.insert(data.pPoints.end(), a.data.pPoints.begin(),
+                      a.data.pPoints.end());
+  data.pSimplices.insert(data.pSimplices.end(), a.data.pSimplices.begin(),
+                         a.data.pSimplices.end());
   data.pSpheres.insert(data.pSpheres.end(), a.data.pSpheres.begin(),
                        a.data.pSpheres.end());
   data.pLog.insert(data.pLog.end(), a.data.pLog.begin(), a.data.pLog.end());
