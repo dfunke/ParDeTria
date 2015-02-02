@@ -243,26 +243,6 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
     std::vector<dSimplices<D>> &partialDTs, const Ids &edgeSimplices,
     const dSimplices<D> &edgeDT, const Partitioning<D> &partitioning,
     const std::string &provenance, const dSimplices<D> *realDT) {
-  auto partitionPoint = [&](const uint &point) -> uint {
-
-    for (uint p = 0; p < partitioning.size(); ++p) {
-      if (std::find(partitioning[p].points.begin(),
-                    partitioning[p].points.end(),
-                    point) != partitioning[p].points.end())
-        return p;
-    }
-
-    throw std::out_of_range(std::to_string(point) + "not found");
-
-  };
-
-  auto partitionContains = [&](const dSimplex<D> &simplex) -> bool {
-    uint p0 = partitionPoint(simplex.vertices[0]);
-    uint p1 = partitionPoint(simplex.vertices[1]);
-    uint p2 = partitionPoint(simplex.vertices[2]);
-
-    return p0 == p1 && p1 == p2;
-  };
 
   LOG << "Merging partial DTs into one triangulation" << std::endl;
   dSimplices<D> DT;
@@ -271,6 +251,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
+  //**********************
   auto paintMerging =
       [&](const dSimplices<D> &dt, const std::string &name) -> Painter<D> {
     Painter<D> painter(bounds);
@@ -294,6 +275,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
     return painter;
   };
+  //**********************
 
   paintMerging(DT, provenance + "_05a_merging_merged");
 
@@ -330,9 +312,15 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   // merge partial DTs and edge DT
   LOG << "Merging triangulations" << std::endl;
   for (const auto &edgeSimplex : edgeDT) {
-    if (!partitionContains(edgeSimplex)) {
+    // check whether edgeSimplex is completely contained in one partition
+    uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
+    bool inOnePartition = partitioning[p0].contains(edgeSimplex);
+
+    if (!inOnePartition) {
       DT.insert(edgeSimplex);
     } else {
+      // the simplex is completely in one partition -> it must have been found
+      // before
       auto it = std::find_if(
           deletedSimplices.begin(), deletedSimplices.end(),
           [&](const dSimplex<D> &s) { return s.equalVertices(edgeSimplex); });
@@ -557,20 +545,13 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
   if (partitionPoints.size() > BASE_CASE) {
     LOG << "Recursive case" << std::endl;
 
-    LOG << "Partioning" << std::endl;
-    INDENT
-    auto partioning =
-        partitioner->partition(partitionPoints, points, provenance);
-    DEDENT
-
+    // setup base painter
     Painter<D> basePainter(bounds);
     basePainter.draw(points.project(partitionPoints));
     basePainter.drawPartition(points.project(partitionPoints));
     basePainter.save(provenance + "_00_points");
 
-    for (auto &p : partioning)
-      PLOG << "Partition " << p << std::endl;
-
+    // perform real triangulation
     LOG << "Real triangulation" << std::endl;
     INDENT
     auto realDT = delaunayCgal(points, &partitionPoints, true);
@@ -585,6 +566,16 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     paintRealDT.setColor(0, 0, 0);
 
     paintRealDT.save(provenance + "_01_realDT");
+
+    // partition input
+    LOG << "Partioning" << std::endl;
+    INDENT
+    auto partioning =
+        partitioner->partition(partitionPoints, points, provenance);
+    DEDENT
+
+    for (auto &p : partioning)
+      PLOG << "Partition " << p << std::endl;
 
     std::vector<dSimplices<D>> partialDTs;
     partialDTs.resize(partioning.size());
@@ -619,7 +610,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     Painter<D> paintEdges = paintPartialDTs;
     paintEdges.setColor(1, 0, 0);
 
-    // ignore infinite vertices of this is the top most triangulation
+    // ignore infinite vertices if this is the top most triangulation
     bool ignoreInfinite = provenance == std::to_string(TOP);
 
     for (uint i = 0; i < partioning.size(); ++i) {
