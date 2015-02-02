@@ -139,8 +139,6 @@ dSphere<2> dSimplex<2>::circumsphere(const dPoints<2> &points) const {
   return sphere;
 }
 
-// TODO 3d implementation
-
 /*
  * return > 0: d below abc - abc counter-clockwise
  *             d above abc - abc clockwise
