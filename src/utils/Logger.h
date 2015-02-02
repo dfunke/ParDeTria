@@ -9,6 +9,8 @@
 
 #include <tbb/concurrent_vector.h>
 
+#include "ccolor.h"
+
 class Logger : private boost::noncopyable {
 
 #define LOGGER Logger::getInstance()

@@ -55,6 +55,7 @@ add_executable (DACTest
   utils/Timings.cpp
   utils/RSS.c
   utils/StringUtils.cxx
+  utils/ccolor.cpp
 )
 
 target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES} ${VTK_LIBRARIES})
