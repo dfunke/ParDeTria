@@ -379,7 +379,8 @@ void Triangulator<D>::evaluateVerificationReport(
 template <uint D>
 void Triangulator<D>::evaluateCrossCheckReport(
     const CrossCheckReport<D> &ccr, const std::string &provenance,
-    const dSimplices<D> &DT, const dSimplices<D> &realDT) const {
+    const dSimplices<D> &DT, const dSimplices<D> &realDT,
+    const Partitioning<D> *partitioning) const {
   if (IS_PROLIX) {
     Painter<D> basePainter(bounds);
     basePainter.draw(points);
@@ -387,6 +388,8 @@ void Triangulator<D>::evaluateCrossCheckReport(
     basePainter.setLogging();
 
     PainterBulkWriter<D> writer;
+    std::stringstream txt;
+
     for (const auto &missingSimplex : ccr.missing) {
       writer.add("img/" + provenance + "_missing_" +
                      std::to_string(missingSimplex.id),
@@ -399,6 +402,65 @@ void Triangulator<D>::evaluateCrossCheckReport(
 
       writer.top().setColor(1, 0, 0);
       writer.top().draw(missingSimplex, points, true);
+
+      // textual description of the missing simplex
+
+      // sort the simplices by descending number of shared vertices
+      std::priority_queue<std::pair<uint, uint>> pqSharedVertices;
+      for (const auto &s : mySimplices) {
+        pqSharedVertices.emplace(s.countSharedVertices(missingSimplex), s.id);
+      }
+
+      auto format = [&](const uint vertex) -> std::string {
+        std::stringstream s;
+        if (!missingSimplex.contains(vertex))
+          s << zkr::cc::fore::red;
+
+        s << vertex;
+
+        if (partitioning != nullptr) {
+          s << "-" << partitioning->partition(vertex);
+        }
+
+        s << zkr::cc::console;
+
+        return s.str();
+      };
+
+      txt << "Missing simplex: " << missingSimplex.id << ": V = ["
+          << format(missingSimplex.vertices[0]);
+      for (uint i = 1; i < D + 1; ++i)
+        txt << ", " << format(missingSimplex.vertices[i]);
+      txt << "]" << std::endl;
+
+      txt << "Possible candidates:" << std::endl;
+
+      while (!pqSharedVertices.empty()) {
+        // check whether we have a valid simplex
+        const auto &s = mySimplices[pqSharedVertices.top().second];
+        auto realS = realDT.findSimplices(s.vertices, true);
+
+        txt << "\t";
+
+        txt << s.id << ": V = [" << format(s.vertices[0]);
+        for (uint i = 1; i < D + 1; ++i)
+          txt << ", " << format(s.vertices[i]);
+        txt << "] - real";
+
+        assert(realS.empty() || realS.size() == 1);
+
+        if (realS.empty()) {
+          txt << " INVALID";
+        } else {
+          for (const auto &r : realS) {
+            txt << " " << r;
+          }
+        }
+        txt << std::endl;
+
+        pqSharedVertices.pop();
+      }
+      txt << std::endl;
     }
 
     for (const auto &invalidSimplex : ccr.invalid) {
@@ -413,6 +475,20 @@ void Triangulator<D>::evaluateCrossCheckReport(
 
       writer.top().setColor(1, 0, 0);
       writer.top().draw(invalidSimplex, points, true);
+
+      // textual description of the missing simplex
+      txt << "Invalid simplex: " << invalidSimplex << std::endl;
+      txt << "Possible real candidates:" << std::endl;
+      for (const auto &s : realSimplices) {
+        txt << "\t" << s << std::endl;
+      }
+      txt << std::endl;
+    }
+
+    if (!txt.str().empty()) {
+      std::ofstream o("log/" + provenance + "_CrossCheckReport.log",
+                      std::ios::out | std::ios::trunc);
+      o << txt.str();
     }
   }
 }
@@ -595,7 +671,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
 
     LOG << "Cross check with real triangulation" << std::endl;
     auto ccr = mergedDT.crossCheck(realDT);
-    evaluateCrossCheckReport(ccr, provenance, mergedDT, realDT);
+    evaluateCrossCheckReport(ccr, provenance, mergedDT, realDT, &partioning);
 
     TriangulationReportEntry rep;
     rep.provenance = provenance;

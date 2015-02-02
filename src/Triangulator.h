@@ -57,10 +57,11 @@ private:
   void evaluateVerificationReport(const VerificationReport<D> &vr,
                                   const std::string &provenance) const;
 
-  void evaluateCrossCheckReport(const CrossCheckReport<D> &ccr,
-                                const std::string &provenance,
-                                const dSimplices<D> &DT,
-                                const dSimplices<D> &realDT) const;
+  void
+  evaluateCrossCheckReport(const CrossCheckReport<D> &ccr,
+                           const std::string &provenance,
+                           const dSimplices<D> &DT, const dSimplices<D> &realDT,
+                           const Partitioning<D> *partitioning = nullptr) const;
 
 private:
   dBox<D> bounds;
