@@ -1,8 +1,10 @@
 #include "Timings.h"
 
+#include "utils/ASSERT.h"
+
 tMeas stats(const tDurations &meas) {
 
-  // assert(meas.size() > 0);
+  // ASSERT(meas.size() > 0);
 
   size_t N = 0;
   tMeas result;

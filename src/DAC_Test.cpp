@@ -9,6 +9,7 @@
 #include "utils/CSV.h"
 #include "utils/Timings.h"
 #include "utils/RSS.h"
+#include "utils/ASSERT.h"
 
 // boost
 #include <boost/progress.hpp>
@@ -90,7 +91,7 @@ void testGeometry3D() {
 //**************************
 
 #define D 3
-const uint N = 1e1;
+const uint N = 1e2;
 
 int main(int argc, char *argv[]) {
 
@@ -122,6 +123,9 @@ int main(int argc, char *argv[]) {
   // silence std::cout until STUDY is done - preserve log level
   LOGGER.setLogLevel(Logger::abs(LOGGER.getLogLevel()));
 
+  // abort flag if an exception occurred
+  bool abort = false;
+
   boost::progress_display progress(splitters.size() * (9 * (log10(N) - 1)),
                                    std::cout);
 
@@ -130,10 +134,12 @@ int main(int argc, char *argv[]) {
                 "valid", "nPoints", "nSimplices", "nEdgePoints",
                 "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
 
-  for (uint n = 10; n < N; n += pow(10, floor(log10(n)))) {
-    for (auto p : splitters) {
+  for (uint n = 10; n < N && !abort; n += pow(10, floor(log10(n)))) {
+    for (uint i = 0; i < splitters.size(); ++i) {
+
+      unsigned char p = splitters[i];
 #else  // STUDY
-  unsigned char p = 'd';
+  unsigned char p = '0';
   uint n = N;
 #endif // STUDY
 
@@ -150,17 +156,30 @@ int main(int argc, char *argv[]) {
       default:
         // p must be a dimension - subtract '0' to get integer value
         uint d = p - '0';
-        assert(0 <= d && d < D);
+        ASSERT(0 <= d && d < D);
         partitioner_ptr = std::make_unique<kPartitioner<D>>(d);
         break;
       }
 
       Triangulator<D> triangulator(bounds, points, std::move(partitioner_ptr));
 
+      Clock::time_point t1, t2;
       INDENT
-      auto t1 = Clock::now();
-      auto dt = triangulator.triangulate();
-      auto t2 = Clock::now();
+#ifdef STUDY
+      try {
+#endif
+
+        t1 = Clock::now();
+        auto dt = triangulator.triangulate();
+        t2 = Clock::now();
+
+#ifdef STUDY
+      } catch (AssertionException e) {
+        std::cerr << "Assertion failed - ABORTING - n =  " << n << " p = " << p
+                  << std::endl;
+        abort = true;
+      }
+#endif
 
       LOG << "Triangulating " << n << " points took "
           << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count()
@@ -188,5 +207,9 @@ int main(int argc, char *argv[]) {
 
   LOG << "Finished" << std::endl;
 
-  return EXIT_SUCCESS;
+#ifdef STUDY
+  return abort ? EXIT_FAILURE : EXIT_SUCCESS;
+#else
+      return EXIT_SUCCESS;
+#endif
 }

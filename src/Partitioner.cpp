@@ -35,7 +35,7 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 #endif
 
   for (auto &id : ids) {
-    assert(points.contains(id));
+    ASSERT(points.contains(id));
     const auto &p = points[id];
 
     if (!p.isFinite())
@@ -46,7 +46,7 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
       part |= (p.coords[dim] > stats.mid.coords[dim]) << dim;
     }
 
-    assert(inPartition(p, part));
+    ASSERT(inPartition(p, part));
 
     // LOG << "Adding " << p << " to " << part << std::endl;
     partitioning[part].points.insert(p.id);
@@ -103,7 +103,7 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 #endif
 
   for (auto &id : ids) {
-    assert(points.contains(id));
+    ASSERT(points.contains(id));
     const auto &p = points[id];
 
     if (!p.isFinite())
@@ -111,7 +111,7 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
     uint part = (p.coords[k] > stats.mid.coords[k]);
 
-    assert(inPartition(p, part));
+    ASSERT(inPartition(p, part));
 
     // LOG << "Adding " << p << " to " << part << std::endl;
     partitioning[part].points.insert(p.id);
@@ -171,7 +171,7 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 #endif
 
   for (auto &id : ids) {
-    assert(points.contains(id));
+    ASSERT(points.contains(id));
     const auto &p = points[id];
 
     if (!p.isFinite())
@@ -179,7 +179,7 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
     uint part = (p.coords[k] > stats.mid.coords[k]);
 
-    assert(inPartition(p, part));
+    ASSERT(inPartition(p, part));
 
     // LOG << "Adding " << p << " to " << part << std::endl;
     partitioning[part].points.insert(p.id);

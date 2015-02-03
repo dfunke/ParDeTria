@@ -21,6 +21,7 @@
 
 #include "utils/Timings.h"
 #include "utils/Logger.h"
+#include "utils/ASSERT.h"
 
 //**************************
 
@@ -61,11 +62,11 @@ Ids Triangulator<D>::getEdge(const dSimplices<D> &simplices,
 
   // we use the overflow of the uint to zero to abort the loop
   for (uint infVertex = dPoint<D>::cINF; infVertex != 0; ++infVertex) {
-    assert(
+    ASSERT(
         std::find(partition.points.begin(), partition.points.end(),
                   infVertex) !=
         partition.points.end()); // the infinite point must be in the partition
-    assert(points.contains(infVertex));
+    ASSERT(points.contains(infVertex));
 
     PLOG << "Vertex " << points[infVertex] << std::endl;
 
@@ -127,7 +128,7 @@ Ids Triangulator<D>::extractPoints(const Ids &edgeSimplices,
   std::set<uint> idx;
 
   for (const auto &id : edgeSimplices) {
-    assert(simplices.contains(id));
+    ASSERT(simplices.contains(id));
 
     for (uint i = 0; i < D + 1; ++i) {
       if (dPoint<D>::isFinite(simplices[id].vertices[i]) &&
@@ -183,7 +184,7 @@ void Triangulator<D>::updateNeighbors(dSimplices<D> &simplices,
 
           LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
 
-          // assert(simplex.neighbors.size() <= D+1);
+          // ASSERT(simplex.neighbors.size() <= D+1);
           // u will be updated in its own round;
         }
       }
@@ -226,7 +227,7 @@ void Triangulator<D>::updateNeighbors(dSimplices<D> &simplices,
       }
     }
 
-    // assert(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1);
+    // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1);
 
     // TODO it might be better NOT to save the infinite simplex as neighbor
     if (simplex.neighbors.size() < D + 1) { // if it is a simplex at the border,
@@ -284,7 +285,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   // delete all simplices belonging to the edge from DT
   LOG << "Striping triangulation from edge" << std::endl;
   for (const uint id : edgeSimplices) {
-    assert(DT.contains(id));
+    ASSERT(DT.contains(id));
 
     // remove simplex from where used list
     for (uint p = 0; p < D + 1; ++p) {
@@ -331,7 +332,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
   paintMerging(DT, provenance + "_05c_merging_edge");
 
-  assert(DT.countDuplicates() == 0);
+  ASSERT(DT.countDuplicates() == 0);
   updateNeighbors(DT, provenance);
 
   paintMerging(DT, provenance + "_05d_merging_finished");
@@ -435,7 +436,7 @@ void Triangulator<D>::evaluateCrossCheckReport(
           txt << ", " << format(s.vertices[i]);
         txt << "] - real";
 
-        assert(realS.empty() || realS.size() == 1);
+        ASSERT(realS.empty() || realS.size() == 1);
 
         if (realS.empty()) {
           txt << " INVALID";
@@ -520,7 +521,7 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   auto ccr = dt.crossCheck(realDT);
   evaluateCrossCheckReport(ccr, provenance, dt, realDT);
 
-  assert(saveDT == dt); // only performed if not NDEBUG
+  ASSERT(saveDT == dt); // only performed if not NDEBUG
 
   TriangulationReportEntry rep;
   rep.provenance = provenance;

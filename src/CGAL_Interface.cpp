@@ -1,5 +1,7 @@
 #include "CGAL_Interface.h"
 
+#include "utils/ASSERT.h"
+
 // define a static counter for the tetrahedronID
 uint tetrahedronID = 0;
 
@@ -94,7 +96,7 @@ dSimplices<D> _delaunayCgal(dPoints<D> &points, const Ids *ids,
   t.insert(cPoints.begin(), cPoints.end());
   // auto end = Clock::now();
 
-  assert(t.is_valid());
+  ASSERT(t.is_valid());
 
   // VLOG << "CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid"
   //     << std::endl;

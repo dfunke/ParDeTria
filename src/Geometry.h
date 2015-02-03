@@ -15,6 +15,7 @@
 
 #include "utils/IndexedVector.hxx"
 #include "utils/Logger.h"
+#include "utils/ASSERT.h"
 
 typedef float tCoordinate;
 typedef std::set<uint> Ids;
@@ -296,7 +297,7 @@ public:
       }
     }
 
-    assert(sharedVertices <= D || id == other.id);
+    ASSERT(sharedVertices <= D || id == other.id);
 
     // if(sharedVertices > 2 && id != other.id)
     //	PLOG << "Distinct vertices " << *this " and " << other << " share more

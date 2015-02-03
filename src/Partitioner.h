@@ -2,6 +2,8 @@
 
 #include "Geometry.h"
 
+#include "utils/ASSERT.h"
+
 template <uint D> class Partition {
 
 public:
@@ -72,7 +74,7 @@ dPointStats<D> getPointStats(const InputIt &first, const InputIt &last,
     for (auto it = first; it != last; ++it) {
 
       uint id = *it;
-      assert(points.contains(id));
+      ASSERT(points.contains(id));
 
       if (points[id].isFinite() || !ignoreInfinite) {
         stats.min.coords[dim] =
