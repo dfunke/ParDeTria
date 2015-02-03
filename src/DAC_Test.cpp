@@ -91,7 +91,7 @@ void testGeometry3D() {
 //**************************
 
 #define D 3
-const uint N = 1e2;
+const uint N = 1e3;
 
 int main(int argc, char *argv[]) {
 
@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
                 "valid", "nPoints", "nSimplices", "nEdgePoints",
                 "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
 
-  for (uint n = 10; n < N && !abort; n += pow(10, floor(log10(n)))) {
+  for (uint n = 10; n <= N && !abort; n += pow(10, floor(log10(n)))) {
     for (uint i = 0; i < splitters.size(); ++i) {
 
       unsigned char p = splitters[i];
