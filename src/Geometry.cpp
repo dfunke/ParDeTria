@@ -626,9 +626,8 @@ VerificationReport<D> dSimplices<D>::verify(const dPoints<D> &points) const {
       // point p of s not correctly flagged as used in s
       if (points[p].simplices.count(s.id) != 1) {
         LOG << "Point " << p << " NOT flagged as used in " << s << std::endl;
-        ;
-        Logger::getInstance().logContainer(
-            points[p].simplices, Logger::Verbosity::NORMAL, "p.simplices");
+        LOGGER.logContainer(points[p].simplices, Logger::Verbosity::NORMAL,
+                            "p.simplices:");
         result.valid = false;
       }
     }
@@ -643,8 +642,8 @@ VerificationReport<D> dSimplices<D>::verify(const dPoints<D> &points) const {
       if (std::find(s.vertices.begin(), s.vertices.end(), p.id) ==
           s.vertices.end()) {
         LOG << "Point " << p << " SHOULD be used in " << s << std::endl;
-        Logger::getInstance().logContainer(
-            p.simplices, Logger::Verbosity::NORMAL, "p.simplices");
+        LOGGER.logContainer(p.simplices, Logger::Verbosity::NORMAL,
+                            "p.simplices:");
         result.valid = false;
       }
     }

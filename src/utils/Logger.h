@@ -65,21 +65,29 @@ public:
   void incIndent() { ++indentLevel; }
   void decIndent() { --indentLevel; }
 
-  template <typename Container>
-  void logContainer(const Container &c, Verbosity level,
+  template <typename InputIt>
+  void logContainer(const InputIt &first, const InputIt &last, Verbosity level,
                     const std::string &prefix = "",
                     const std::string &sep = " ") {
     auto &stream = addLogEntry(level);
 
     if (prefix != "")
-      stream << prefix << ": ";
+      stream << prefix << sep;
 
-    for (auto it = c.begin(); it != c.end(); ++it) {
-      if (it != c.begin())
+    for (auto it = first; it != last; ++it) {
+      if (it != first)
         stream << sep;
       stream << *it;
     }
     stream << std::endl;
+  }
+
+  template <typename Container>
+  void logContainer(const Container &c, Verbosity level,
+                    const std::string &prefix = "",
+                    const std::string &sep = " ") {
+
+    logContainer(c.begin(), c.end(), level, prefix, sep);
   }
 
 private:

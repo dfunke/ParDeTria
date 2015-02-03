@@ -170,8 +170,8 @@ void Triangulator<D>::updateNeighbors(dSimplices<D> &simplices,
       const dPoint<D> &vertex = points[simplex.vertices[v]];
 
       if (IS_PROLIX) {
-        PLOG << "Vertex " << vertex << " used in ";
-        LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX);
+        LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
+                            "Vertex " + to_string(vertex) + " used in");
       }
 
       INDENT
@@ -182,7 +182,7 @@ void Triangulator<D>::updateNeighbors(dSimplices<D> &simplices,
 
           simplex.neighbors.insert(u);
 
-          LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
+          // LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
 
           // ASSERT(simplex.neighbors.size() <= D+1);
           // u will be updated in its own round;
@@ -295,6 +295,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
     DT.erase(id);
   }
 
+  //**********************
   auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
 
   painter.setColor(0, 0, 1, 0.4);
@@ -309,6 +310,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   painter.setDashed(false);
 
   painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
+  //**********************
 
   // merge partial DTs and edge DT
   LOG << "Merging triangulations" << std::endl;

@@ -56,7 +56,8 @@ template <uint D> struct dBox {
     // the center of the sphere is within the box
     for (uint d = 0; d < D; ++d) {
       auto p = sphere.center;
-      // project p to the bounday of box in dimension d closest to center of the
+      // project p to the boundary of box in dimension d closest to center of
+      // the
       // sphere
       p[d] = sphere.center[d] < coords[d] + (dim[d] / 2) ? coords[d]
                                                          : coords[d] + dim[d];
