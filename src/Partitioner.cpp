@@ -82,7 +82,7 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
                : stats.max.coords[d] - stats.min.coords[d];
   }
 
-  partitioning[1].id = 0;
+  partitioning[1].id = 1;
   for (uint d = 0; d < D; ++d) {
     partitioning[1].bounds.coords[d] =
         d == k ? stats.mid.coords[d] : stats.min.coords[d];
@@ -150,7 +150,7 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
                : stats.max.coords[d] - stats.min.coords[d];
   }
 
-  partitioning[1].id = 0;
+  partitioning[1].id = 1;
   for (uint d = 0; d < D; ++d) {
     partitioning[1].bounds.coords[d] =
         d == k ? stats.mid.coords[d] : stats.min.coords[d];
