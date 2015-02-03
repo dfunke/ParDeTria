@@ -327,8 +327,9 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
       auto it = std::find_if(
           deletedSimplices.begin(), deletedSimplices.end(),
           [&](const dSimplex<D> &s) { return s.equalVertices(edgeSimplex); });
-      if (it != deletedSimplices.end())
+      if (it != deletedSimplices.end()) {
         DT.insert(edgeSimplex);
+      }
     }
   }
 
