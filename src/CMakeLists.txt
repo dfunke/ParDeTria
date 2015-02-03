@@ -40,7 +40,7 @@ if (STUDY)
   if  (NOT FORCE_OUTPUT)
     add_definitions(-DNO_OUTPUT)
   else ()
-    message(STATUS "Forcing PNG output")
+    message(STATUS "Forcing debug output")
   endif ()
 endif ()
 
