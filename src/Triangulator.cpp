@@ -491,12 +491,16 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
-  LOG << "Real triangulation" << std::endl;
-  INDENT
-  auto realDT = delaunayCgal(points, &partitionPoints, true);
-  LOG << "Real triangulation contains " << realDT.size() << " tetrahedra"
-      << std::endl;
-  DEDENT
+  std::unique_ptr<dSimplices<D>> realDT = nullptr;
+  if (verify) {
+    LOG << "Real triangulation" << std::endl;
+    INDENT
+    realDT = std::make_unique<dSimplices<D>>(
+        delaunayCgal(points, &partitionPoints, true));
+    LOG << "Real triangulation contains " << realDT->size() << " tetrahedra"
+        << std::endl;
+    DEDENT
+  }
 
   // if this is the top-most triangulation, ignore infinite vertices
   bool ignoreInfinite = provenance == std::to_string(TOP);
@@ -506,8 +510,10 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
   DEDENT
 
-  LOG << "Verifying CGAL triangulation" << std::endl;
-  dt.verify(points.project(partitionPoints));
+  if (verify) {
+    LOG << "Verifying CGAL triangulation" << std::endl;
+    dt.verify(points.project(partitionPoints));
+  }
 
 #ifndef NDEBUG
   auto saveDT = dt;
@@ -516,25 +522,29 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   LOG << "Updating neighbors" << std::endl;
   updateNeighbors(dt, provenance);
 
-  LOG << "Consistency check of triangulation" << std::endl;
-  auto vr = dt.verify(points.project(partitionPoints));
-  evaluateVerificationReport(vr, provenance);
-
-  LOG << "Cross check with real triangulation" << std::endl;
-  auto ccr = dt.crossCheck(realDT);
-  evaluateCrossCheckReport(ccr, provenance, dt, realDT);
-
   ASSERT(saveDT == dt); // only performed if not NDEBUG
 
   TriangulationReportEntry rep;
   rep.provenance = provenance;
   rep.base_case = true;
   rep.edge_triangulation = provenance.find('e') != std::string::npos;
-  rep.valid = vr.valid && ccr.valid;
   rep.nPoints = partitionPoints.size();
   rep.nSimplices = dt.size();
   rep.nEdgePoints = 0;
   rep.nEdgeSimplices = 0;
+
+  if (verify) {
+    LOG << "Consistency check of triangulation" << std::endl;
+    auto vr = dt.verify(points.project(partitionPoints));
+    evaluateVerificationReport(vr, provenance);
+
+    LOG << "Cross check with real triangulation" << std::endl;
+    auto ccr = dt.crossCheck(*realDT);
+    evaluateCrossCheckReport(ccr, provenance, dt, *realDT);
+
+    rep.valid = vr.valid && ccr.valid;
+  }
+
   triangulationReport.push_back(rep);
 
   return dt;
@@ -555,21 +565,25 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     basePainter.drawPartition(points.project(partitionPoints));
     basePainter.save(provenance + "_00_points");
 
-    // perform real triangulation
-    LOG << "Real triangulation" << std::endl;
-    INDENT
-    auto realDT = delaunayCgal(points, &partitionPoints, true);
-    LOG << "Real triangulation contains " << realDT.size() << " tetrahedra"
-        << std::endl;
-    DEDENT
+    std::unique_ptr<dSimplices<D>> realDT = nullptr;
+    if (verify) {
+      // perform real triangulation
+      LOG << "Real triangulation" << std::endl;
+      INDENT
+      realDT = std::make_unique<dSimplices<D>>(
+          delaunayCgal(points, &partitionPoints, true));
+      LOG << "Real triangulation contains " << realDT->size() << " tetrahedra"
+          << std::endl;
+      DEDENT
 
-    Painter<D> paintRealDT = basePainter;
+      Painter<D> paintRealDT = basePainter;
 
-    paintRealDT.setColor(0, 0, 1);
-    paintRealDT.draw(realDT, points);
-    paintRealDT.setColor(0, 0, 0);
+      paintRealDT.setColor(0, 0, 1);
+      paintRealDT.draw(*realDT, points);
+      paintRealDT.setColor(0, 0, 0);
 
-    paintRealDT.save(provenance + "_01_realDT");
+      paintRealDT.save(provenance + "_01_realDT");
+    }
 
     // partition input
     LOG << "Partioning" << std::endl;
@@ -653,30 +667,34 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     paintEdgeDT.save(provenance + "_04_edgeDT");
 
     auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
-                                       partioning, provenance, &realDT);
+                                       partioning, provenance, realDT.get());
 
     Painter<D> paintFinal = basePainter;
     paintFinal.setColor(0, 1, 0);
     paintFinal.draw(mergedDT, points, true);
     paintFinal.save(provenance + "_06_final");
 
-    LOG << "Consistency check of triangulation" << std::endl;
-    auto vr = mergedDT.verify(points.project(partitionPoints));
-    evaluateVerificationReport(vr, provenance);
-
-    LOG << "Cross check with real triangulation" << std::endl;
-    auto ccr = mergedDT.crossCheck(realDT);
-    evaluateCrossCheckReport(ccr, provenance, mergedDT, realDT, &partioning);
-
     TriangulationReportEntry rep;
     rep.provenance = provenance;
     rep.base_case = false;
     rep.edge_triangulation = provenance.find('e') != std::string::npos;
-    rep.valid = vr.valid && ccr.valid;
     rep.nPoints = partitionPoints.size();
     rep.nSimplices = mergedDT.size();
     rep.nEdgePoints = edgePointIds.size();
     rep.nEdgeSimplices = edgeDT.size();
+
+    if (verify) {
+      LOG << "Consistency check of triangulation" << std::endl;
+      auto vr = mergedDT.verify(points.project(partitionPoints));
+      evaluateVerificationReport(vr, provenance);
+
+      LOG << "Cross check with real triangulation" << std::endl;
+      auto ccr = mergedDT.crossCheck(*realDT);
+      evaluateCrossCheckReport(ccr, provenance, mergedDT, *realDT, &partioning);
+
+      rep.valid = vr.valid && ccr.valid;
+    }
+
     triangulationReport.push_back(rep);
 
     return mergedDT;
