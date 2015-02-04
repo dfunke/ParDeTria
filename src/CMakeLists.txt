@@ -24,10 +24,6 @@ include(${VTK_USE_FILE})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror -Wno-extra-semi")
 
-if (CMAKE_CXX_COMPILER MATCHES ".*clang")
-  add_definitions(-D_LIBCPP_VERSION)
-endif ()
-
 if (VALGRIND)
   message(STATUS "Valgrind mode enabled")
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
