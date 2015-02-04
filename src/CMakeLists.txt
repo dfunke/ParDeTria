@@ -12,7 +12,7 @@ find_package(ROOT REQUIRED COMPONENTS Hist)
 find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system filesystem)
+find_package(Boost REQUIRED COMPONENTS system filesystem serialization)
 
 include_directories(${CMAKE_SOURCE_DIR}
   ${ROOT_INCLUDE_DIRS}
@@ -58,7 +58,7 @@ add_executable (DACTest
   utils/ccolor.cpp
 )
 
-target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES} ${VTK_LIBRARIES})
+target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES} ${VTK_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable (VTUShow
   utils/VTU_Show.cpp

@@ -11,8 +11,10 @@
 #include "utils/RSS.h"
 #include "utils/ASSERT.h"
 
-// boost
+#ifdef STUDY
+#include "utils/Serialization.h"
 #include <boost/progress.hpp>
+#endif
 
 /* Test the output of orient3D and inSphere3D
  */
@@ -126,7 +128,7 @@ int main(int argc, char *argv[]) {
   // abort flag if an exception occurred
   bool abort = false;
 
-  boost::progress_display progress(splitters.size() * (9 * (log10(N) - 1)),
+  boost::progress_display progress(splitters.size() * (9 * (log10(N) - 1) + 1),
                                    std::cout);
 
   std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
@@ -139,7 +141,7 @@ int main(int argc, char *argv[]) {
 
       unsigned char p = splitters[i];
 #else  // STUDY
-  unsigned char p = '0';
+  unsigned char p = 'c';
   uint n = N;
 #endif // STUDY
 
@@ -177,6 +179,13 @@ int main(int argc, char *argv[]) {
       } catch (AssertionException e) {
         std::cerr << "Assertion failed - ABORTING - n =  " << n << " p = " << p
                   << std::endl;
+        std::cerr << e.what() << std::endl;
+
+        // output points
+        storeObject(points, "testPoints_" + std::to_string(n) + "_" +
+                                std::to_string(p) + ".dat");
+
+        // set abort flag
         abort = true;
       }
 #endif
@@ -210,6 +219,6 @@ int main(int argc, char *argv[]) {
 #ifdef STUDY
   return abort ? EXIT_FAILURE : EXIT_SUCCESS;
 #else
-      return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 #endif
 }
