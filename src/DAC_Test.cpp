@@ -10,11 +10,10 @@
 #include "utils/Timings.h"
 #include "utils/RSS.h"
 #include "utils/ASSERT.h"
+#include "utils/Serialization.hxx"
 
-#ifdef STUDY
-#include "utils/Serialization.h"
+#include <boost/program_options.hpp>
 #include <boost/progress.hpp>
-#endif
 
 /* Test the output of orient3D and inSphere3D
  */
@@ -97,11 +96,48 @@ const uint N = 1e3;
 
 int main(int argc, char *argv[]) {
 
-  if (argc == 2) {
-    LOGGER.setLogLevel(static_cast<Logger::Verbosity>(std::stoi(argv[1])));
-    std::cout << "Output level set to " << argv[1] << std::endl;
-  } else
-    LOGGER.setLogLevel(Logger::Verbosity::LIVE);
+  // define program options
+
+  namespace po = boost::program_options;
+
+  int verbosity = -1;
+
+  std::string pointFile;
+  bool loadPoints = false;
+
+  std::string simplexFile;
+  bool loadSimplices = false;
+
+  po::options_description cCommandLine("Command Line Options");
+  cCommandLine.add_options()("verbosity", po::value<int>(&verbosity),
+                             "verbosity");
+  cCommandLine.add_options()("points", po::value<std::string>(&pointFile),
+                             "load points from file");
+  cCommandLine.add_options()("simplices", po::value<std::string>(&simplexFile),
+                             "load simplices from file");
+  cCommandLine.add_options()("help", "produce help message");
+
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
+  po::notify(vm);
+
+  if (vm.count("help")) {
+    std::cout << cCommandLine << std::endl;
+    return EXIT_SUCCESS;
+  }
+
+  // evaluate program options
+  LOGGER.setLogLevel(static_cast<Logger::Verbosity>(verbosity));
+
+  if (vm.count("points")) {
+    loadPoints = true; // filename will be in pointFile
+  }
+
+  if (vm.count("simplices")) {
+    loadSimplices = true; // filename will be in simplexFile
+  }
+
+  //***************************************************************************
 
   dBox<D> bounds;
   for (uint i = 0; i < D; ++i) {
@@ -137,7 +173,7 @@ int main(int argc, char *argv[]) {
                 "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
 
   for (uint n = 10; n <= N && !abort; n += pow(10, floor(log10(n)))) {
-    for (uint i = 0; i < splitters.size(); ++i) {
+    for (uint i = 0; i < splitters.size() && !abort; ++i) {
 
       unsigned char p = splitters[i];
 #else  // STUDY
@@ -145,7 +181,12 @@ int main(int argc, char *argv[]) {
   uint n = N;
 #endif // STUDY
 
-      auto points = genPoints(n, bounds, dice);
+      dPoints<D> points;
+      if (loadPoints) {
+        points = loadObject<dPoints<D>>(pointFile);
+      } else {
+        points = genPoints(n, bounds, dice);
+      }
 
       std::unique_ptr<Partitioner<D>> partitioner_ptr;
       switch (p) {
@@ -182,8 +223,8 @@ int main(int argc, char *argv[]) {
         std::cerr << e.what() << std::endl;
 
         // output points
-        storeObject(points, "testPoints_" + std::to_string(n) + "_" +
-                                std::to_string(p) + ".dat");
+        storeObject(points,
+                    "testPoints_" + std::to_string(n) + "_" + (char)p + ".dat");
 
         // set abort flag
         abort = true;
@@ -219,6 +260,6 @@ int main(int argc, char *argv[]) {
 #ifdef STUDY
   return abort ? EXIT_FAILURE : EXIT_SUCCESS;
 #else
-  return EXIT_SUCCESS;
+      return EXIT_SUCCESS;
 #endif
 }

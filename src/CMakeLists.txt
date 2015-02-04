@@ -12,7 +12,7 @@ find_package(ROOT REQUIRED COMPONENTS Hist)
 find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system filesystem serialization)
+find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
 
 include_directories(${CMAKE_SOURCE_DIR}
   ${ROOT_INCLUDE_DIRS}
