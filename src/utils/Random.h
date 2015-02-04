@@ -26,11 +26,15 @@ template <uint D>
 dPoints<D> genPoints(const uint n, const dBox<D> &bounds,
                      std::function<tCoordinate()> &dice) {
   dPoints<D> points;
+  dVector<D> dim = bounds.high;
+  for (uint d = 0; d < D; ++d) {
+    dim[d] -= bounds.low[d];
+  }
 
   for (uint i = 0; i < n; ++i) {
     points[i].id = i;
     for (uint d = 0; d < D; ++d) {
-      points[i].coords[d] = bounds.coords[d] + bounds.dim[d] * dice();
+      points[i].coords[d] = bounds.low[d] + dim[d] * dice();
     }
   }
 

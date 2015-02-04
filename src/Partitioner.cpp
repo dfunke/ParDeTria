@@ -15,20 +15,18 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
     partitioning[i].id = i;
 
     for (uint d = 0; d < D; ++d) {
-      partitioning[i].bounds.coords[d] =
+      partitioning[i].bounds.low[d] =
           i & (1 << d) ? stats.mid.coords[d] : stats.min.coords[d];
-      partitioning[i].bounds.dim[d] =
-          i & (1 << d) ? stats.max.coords[d] - stats.mid.coords[d]
-                       : stats.mid.coords[d] - stats.min.coords[d];
+      partitioning[i].bounds.high[d] =
+          i & (1 << d) ? stats.max.coords[d] : stats.mid.coords[d];
     }
   }
 
 #ifndef NDEBUG
   auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
     for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.coords[i] +
-                               partitioning[partition].bounds.dim[i]))
+      if (!(partitioning[partition].bounds.low[i] <= p.coords[i] &&
+            p.coords[i] <= partitioning[partition].bounds.high[i]))
         return false;
     return true;
   };
@@ -76,27 +74,23 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
-    partitioning[0].bounds.coords[d] = stats.min.coords[d];
-    partitioning[0].bounds.dim[d] =
-        d == k ? stats.mid.coords[d] - stats.min.coords[d]
-               : stats.max.coords[d] - stats.min.coords[d];
+    partitioning[0].bounds.low[d] = stats.min.coords[d];
+    partitioning[0].bounds.high[d] =
+        d == k ? stats.mid.coords[d] : stats.max.coords[d];
   }
 
   partitioning[1].id = 1;
   for (uint d = 0; d < D; ++d) {
-    partitioning[1].bounds.coords[d] =
+    partitioning[1].bounds.low[d] =
         d == k ? stats.mid.coords[d] : stats.min.coords[d];
-    partitioning[1].bounds.dim[d] =
-        d == k ? stats.max.coords[d] - stats.mid.coords[d]
-               : stats.max.coords[d] - stats.min.coords[d];
+    partitioning[1].bounds.high[d] = stats.max.coords[d];
   }
 
 #ifndef NDEBUG
   auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
     for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.coords[i] +
-                               partitioning[partition].bounds.dim[i]))
+      if (!(partitioning[partition].bounds.low[i] <= p.coords[i] &&
+            p.coords[i] <= partitioning[partition].bounds.high[i]))
         return false;
     return true;
   };
@@ -144,28 +138,26 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
-    partitioning[0].bounds.coords[d] = stats.min.coords[d];
-    partitioning[0].bounds.dim[d] =
-        d == k ? stats.mid.coords[d] - stats.min.coords[d]
-               : stats.max.coords[d] - stats.min.coords[d];
+    partitioning[0].bounds.low[d] = stats.min.coords[d];
+    partitioning[0].bounds.high[d] =
+        d == k ? stats.mid.coords[d] : stats.max.coords[d];
   }
 
   partitioning[1].id = 1;
   for (uint d = 0; d < D; ++d) {
-    partitioning[1].bounds.coords[d] =
+    partitioning[1].bounds.low[d] =
         d == k ? stats.mid.coords[d] : stats.min.coords[d];
-    partitioning[1].bounds.dim[d] =
-        d == k ? stats.max.coords[d] - stats.mid.coords[d]
-               : stats.max.coords[d] - stats.min.coords[d];
+    partitioning[1].bounds.high[d] = stats.max.coords[d];
   }
 
 #ifndef NDEBUG
   auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
     for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.coords[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.coords[i] +
-                               partitioning[partition].bounds.dim[i]))
+      if (!(partitioning[partition].bounds.low[i] <= p.coords[i] &&
+            p.coords[i] <= partitioning[partition].bounds.high[i])) {
+
         return false;
+      }
     return true;
   };
 #endif

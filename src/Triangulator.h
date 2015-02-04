@@ -64,7 +64,7 @@ private:
                            const Partitioning<D> *partitioning = nullptr) const;
 
 private:
-  bool verify = false;
+  bool verify = true;
   dBox<D> bounds;
   dPoints<D> points;
 

@@ -38,8 +38,8 @@ template <uint D> struct dSphere {
 
 // (hyper)-rectangle
 template <uint D> struct dBox {
-  dVector<D> coords;
-  dVector<D> dim;
+  dVector<D> low;
+  dVector<D> high;
 
   /* tests whether sphere is FULLY contained in box */
   bool contains(const dSphere<D> &sphere) const {
@@ -47,8 +47,7 @@ template <uint D> struct dBox {
     tCoordinate r2 = sphere.radius * sphere.radius;
 
     for (uint d = 0; d < D; ++d) {
-      if (!(coords[d] <= sphere.center[d] &&
-            sphere.center[d] <= coords[d] + dim[d])) {
+      if (!(low[d] <= sphere.center[d] && sphere.center[d] <= high[d])) {
         return false;
       }
     }
@@ -59,8 +58,7 @@ template <uint D> struct dBox {
       // project p to the boundary of box in dimension d closest to center of
       // the
       // sphere
-      p[d] = sphere.center[d] < coords[d] + (dim[d] / 2) ? coords[d]
-                                                         : coords[d] + dim[d];
+      p[d] = sphere.center[d] < (high[d] + low[d]) / 2 ? low[d] : high[d];
 
       tCoordinate dist = 0;
       for (uint i = 0; i < D; ++i)

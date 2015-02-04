@@ -29,9 +29,9 @@ template <uint D> std::string to_string(const dSimplex<D> &p) {
 
 template <uint D> std::string to_string(const dBox<D> &b) {
   std::stringstream o;
-  o << "[" << b.coords[0] << " - " << b.coords[0] + b.dim[0];
+  o << "[" << b.low[0] << " - " << b.high[0];
   for (uint i = 1; i < D; ++i)
-    o << ", " << b.coords[i] << " - " << b.coords[i] + b.dim[i];
+    o << ", " << b.low[i] << " - " << b.high[i];
   o << "]";
   return o.str();
 }

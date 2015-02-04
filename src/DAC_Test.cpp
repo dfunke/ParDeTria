@@ -141,8 +141,8 @@ int main(int argc, char *argv[]) {
 
   dBox<D> bounds;
   for (uint i = 0; i < D; ++i) {
-    bounds.coords[i] = 0;
-    bounds.dim[i] = 100;
+    bounds.low[i] = 0;
+    bounds.high[i] = 100;
   }
 
   std::uniform_real_distribution<tCoordinate> distribution(0, 1);

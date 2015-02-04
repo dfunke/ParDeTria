@@ -10,26 +10,28 @@ constexpr uint DataHolder<2>::FONT_SIZE;
 
 // helper functions
 tCoordinate imgDim(const uint dim, const DataHolder<2> &data) {
-  return data.img.dim[dim] - data.img.coords[dim];
+  return data.img.high[dim] - data.img.low[dim];
 }
 
 tCoordinate translatePoint(tCoordinate in, uint dim,
                            const DataHolder<2> &data) {
-  return ((data.offset[dim] + in - data.bounds.coords[dim]) /
-          (3 * data.bounds.dim[dim])) *
+  return ((data.offset[dim] + in - data.bounds.low[dim]) /
+          (3 * (data.bounds.high[dim] - data.bounds.low[dim]))) *
          imgDim(dim, data);
 }
 
 tCoordinate translateLength(tCoordinate in, uint dim,
                             const DataHolder<2> &data) {
-  return (in / (3 * data.bounds.dim[dim])) * imgDim(dim, data);
+  return (in / (3 * (data.bounds.high[dim] - data.bounds.low[dim]))) *
+         imgDim(dim, data);
 }
 
 template <> template <typename Object> void Painter<2>::_log(const Object &o) {
   if (logging) {
-    data.cr->move_to(translatePoint(data.bounds.dim[0] + data.PADDING, 0, data),
-                     translatePoint(data.bounds.coords[1], 1, data) +
-                         1.5 * data.FONT_SIZE * data.logLine++);
+    data.cr->move_to(
+        translatePoint(data.bounds.high[0] + data.PADDING, 0, data),
+        translatePoint(data.bounds.low[1], 1, data) +
+            1.5 * data.FONT_SIZE * data.logLine++);
     data.cr->show_text(to_string(o));
   }
 }
@@ -176,10 +178,13 @@ template <> void Painter<2>::_init(const dBox<2> &_bounds, uint _resolution) {
   data.logLine = 1;
 
   for (uint d = 0; d < 2; ++d) {
-    data.offset[d] = data.bounds.dim[d]; // offset bounds in middle of image
+    data.offset[d] = data.bounds.high[d] -
+                     data.bounds.low[d]; // offset bounds in middle of image
 
-    data.img.coords[d] = 0;                                 // image starts at 0
-    data.img.dim[d] = 3 * data.bounds.dim[d] * _resolution; // 9 quadrants
+    data.img.low[d] = 0; // image starts at 0
+    data.img.high[d] = data.img.low[d] +
+                       3 * (data.bounds.high[d] - data.bounds.low[d]) *
+                           _resolution; // 9 quadrants
   }
 
   data.cs = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0, data),
@@ -199,10 +204,11 @@ template <> void Painter<2>::_init(const dBox<2> &_bounds, uint _resolution) {
   data.cr->set_font_size(data.FONT_SIZE);
 
   // draw bounds
-  data.cr->rectangle(translatePoint(data.bounds.coords[0], 0, data),
-                     translatePoint(data.bounds.coords[1], 1, data),
-                     translateLength(data.bounds.dim[0], 0, data),
-                     translateLength(data.bounds.dim[1], 1, data));
+  data.cr->rectangle(
+      translatePoint(data.bounds.low[0], 0, data),
+      translatePoint(data.bounds.low[1], 1, data),
+      translateLength(data.bounds.high[0] - data.bounds.low[0], 0, data),
+      translateLength(data.bounds.high[1] - data.bounds.low[1], 1, data));
   data.cr->stroke();
 }
 
