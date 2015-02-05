@@ -10,3 +10,8 @@ data
 .clang-format
 
 *.swp
+
+.cproject
+.project
+.pydevproject
+.settings
