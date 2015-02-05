@@ -29,6 +29,9 @@ public:
 
   dSimplices<D> triangulate();
 
+  void setVerify(bool _verify = true) { verify = _verify; }
+  bool getVerify() const { return verify; }
+
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;
   }
@@ -67,11 +70,15 @@ private:
   bool verify = true;
   dBox<D> bounds;
   dPoints<D> points;
-
   TriangulationReport triangulationReport;
-
   std::unique_ptr<Partitioner<D>> &partitioner;
 
+public:
+  static bool isTOP(const std::string &provenance) {
+    return provenance == std::to_string(TOP);
+  }
+
+private:
   static constexpr tCoordinate SAFETY = 100;
   static constexpr uint BASE_CASE = 100;
   static constexpr char TOP = 0;
