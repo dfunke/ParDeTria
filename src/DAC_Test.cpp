@@ -100,7 +100,11 @@ int main(int argc, char *argv[]) {
 
   namespace po = boost::program_options;
 
+#ifdef STUDY
+  int verbosity = 0;
+#else
   int verbosity = -1;
+#endif
 
   std::string pointFile;
   bool loadPoints = false;
@@ -177,7 +181,7 @@ int main(int argc, char *argv[]) {
 
       unsigned char p = splitters[i];
 #else  // STUDY
-  unsigned char p = 'c';
+  unsigned char p = '1';
   uint n = N;
 #endif // STUDY
 
@@ -223,15 +227,15 @@ int main(int argc, char *argv[]) {
         std::cerr << e.what() << std::endl;
 
         // output points
-        storeObject(points,
-                    "testPoints_" + std::to_string(n) + "_" + (char)p + ".dat");
+        storeObject(points, "assertionFailed_" + std::to_string(n) + "_" +
+                                (char)p + ".dat");
 
         // set abort flag
-        abort = true;
+        // abort = true;
       }
 #endif
 
-      LOG << "Triangulating " << n << " points took "
+      LOG << "Triangulating " << points.size() << " points took "
           << std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count()
           << " s" << std::endl;
       DEDENT
@@ -246,6 +250,14 @@ int main(int argc, char *argv[]) {
                       tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
                       std::chrono::duration_cast<tDuration>(t2 - t1).count(),
                       getCurrentRSS(), getPeakRSS()) << std::endl;
+
+        if (triangulator.getVerify() && Triangulator<D>::isTOP(tr.provenance) &&
+            !tr.valid) {
+
+          // output points
+          storeObject(points,
+                      "invalid_" + std::to_string(n) + "_" + (char)p + ".dat");
+        }
       }
 
       ++progress;
@@ -253,6 +265,20 @@ int main(int argc, char *argv[]) {
   }
 
   std::cout << LOGGER << std::endl;
+#else  // STUDY
+  LOG << std::endl << "Triangulation report: " << std::endl;
+
+  const auto &trReport = triangulator.getTriangulationReport();
+  LOG << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
+                  "valid", "nPoints", "nSimplices", "nEdgePoints",
+                  "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
+  for (const auto &tr : trReport) {
+    LOG << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
+                    tr.edge_triangulation, tr.valid, tr.nPoints, tr.nSimplices,
+                    tr.nEdgePoints, tr.nEdgeSimplices,
+                    std::chrono::duration_cast<tDuration>(t2 - t1).count(),
+                    getCurrentRSS(), getPeakRSS()) << std::endl;
+  }
 #endif // STUDY
 
   LOG << "Finished" << std::endl;
@@ -260,6 +286,6 @@ int main(int argc, char *argv[]) {
 #ifdef STUDY
   return abort ? EXIT_FAILURE : EXIT_SUCCESS;
 #else
-      return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 #endif
 }
