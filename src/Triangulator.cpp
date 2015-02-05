@@ -247,8 +247,9 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
   LOG << "Merging partial DTs into one triangulation" << std::endl;
   dSimplices<D> DT;
-  for (uint i = 0; i < partialDTs.size(); ++i)
+  for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
+  }
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
@@ -329,6 +330,27 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
           [&](const dSimplex<D> &s) { return s.equalVertices(edgeSimplex); });
       if (it != deletedSimplices.end()) {
         DT.insert(edgeSimplex);
+      } else if (isTOP(provenance) && edgeSimplex.isFinite() &&
+                 edgeSimplex.neighbors.count(dSimplex<D>::cINF)) {
+        // we are in the TOP merging step and have a finite edgeSimplex
+        // at the edge of the edgeDT
+        // check whether it replaces a previously unfound simplex due to
+        // infinite points
+
+        Ids finitePoints;
+        for (const auto &s : deletedSimplices) {
+          if (!s.isFinite() && s.countSharedVertices(edgeSimplex) == D) {
+            for (const auto &p : s.vertices) {
+              if (dPoint<D>::isFinite(p))
+                finitePoints.insert(p);
+            }
+          }
+        }
+
+        if (finitePoints.size() == D + 1 &&
+            edgeSimplex.containsAll(finitePoints)) {
+          DT.insert(edgeSimplex);
+        }
       }
     }
   }
@@ -425,6 +447,14 @@ void Triangulator<D>::evaluateCrossCheckReport(
         txt << ", " << format(missingSimplex.vertices[i]);
       txt << "]" << std::endl;
 
+      txt << "Points:" << std::endl;
+      for (const auto &p : missingSimplex.vertices) {
+        txt << '\t' << points[p] << std::endl;
+      }
+
+      txt << "Cirumsphere: " << missingSimplex.circumsphere(points)
+          << std::endl;
+
       txt << "Possible candidates:" << std::endl;
 
       while (!pqSharedVertices.empty()) {
@@ -491,8 +521,10 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
+  bool isTOP = provenance == std::to_string(TOP);
+
   std::unique_ptr<dSimplices<D>> realDT = nullptr;
-  if (verify) {
+  if (isTOP && verify) {
     LOG << "Real triangulation" << std::endl;
     INDENT
     realDT = std::make_unique<dSimplices<D>>(
@@ -502,15 +534,13 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
     DEDENT
   }
 
-  // if this is the top-most triangulation, ignore infinite vertices
-  bool ignoreInfinite = provenance == std::to_string(TOP);
-
   INDENT
-  auto dt = delaunayCgal(points, &partitionPoints, ignoreInfinite);
+  // if this is the top-most triangulation, ignore infinite vertices
+  auto dt = delaunayCgal(points, &partitionPoints, isTOP);
   LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
   DEDENT
 
-  if (verify) {
+  if (isTOP && verify) {
     LOG << "Verifying CGAL triangulation" << std::endl;
     dt.verify(points.project(partitionPoints));
   }
@@ -527,13 +557,14 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   TriangulationReportEntry rep;
   rep.provenance = provenance;
   rep.base_case = true;
+  rep.valid = false;
   rep.edge_triangulation = provenance.find('e') != std::string::npos;
   rep.nPoints = partitionPoints.size();
   rep.nSimplices = dt.size();
   rep.nEdgePoints = 0;
   rep.nEdgeSimplices = 0;
 
-  if (verify) {
+  if (isTOP && verify) {
     LOG << "Consistency check of triangulation" << std::endl;
     auto vr = dt.verify(points.project(partitionPoints));
     evaluateVerificationReport(vr, provenance);
@@ -556,6 +587,8 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
   LOG << "triangulateDAC called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
+  bool isTOP = provenance == std::to_string(TOP);
+
   if (partitionPoints.size() > BASE_CASE) {
     LOG << "Recursive case" << std::endl;
 
@@ -566,7 +599,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     basePainter.save(provenance + "_00_points");
 
     std::unique_ptr<dSimplices<D>> realDT = nullptr;
-    if (verify) {
+    if (isTOP && verify) {
       // perform real triangulation
       LOG << "Real triangulation" << std::endl;
       INDENT
@@ -628,16 +661,14 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     Painter<D> paintEdges = paintPartialDTs;
     paintEdges.setColor(1, 0, 0);
 
-    // ignore infinite vertices if this is the top most triangulation
-    bool ignoreInfinite = provenance == std::to_string(TOP);
-
     for (uint i = 0; i < partioning.size(); ++i) {
       // points are in different partitions, there can be no overlap
 
       auto edge = getEdge(partialDTs[i], partioning[i]);
       edgeSimplexIds.insert(edge.begin(), edge.end());
 
-      auto ep = extractPoints(edge, partialDTs[i], ignoreInfinite);
+      // ignore infinite vertices if this is the top most triangulation
+      auto ep = extractPoints(edge, partialDTs[i], isTOP);
       edgePointIds.insert(ep.begin(), ep.end());
 
       paintEdges.draw(partialDTs[i].project(edge), points, false);
@@ -677,13 +708,14 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     TriangulationReportEntry rep;
     rep.provenance = provenance;
     rep.base_case = false;
+    rep.valid = false;
     rep.edge_triangulation = provenance.find('e') != std::string::npos;
     rep.nPoints = partitionPoints.size();
     rep.nSimplices = mergedDT.size();
     rep.nEdgePoints = edgePointIds.size();
     rep.nEdgeSimplices = edgeDT.size();
 
-    if (verify) {
+    if (isTOP & verify) {
       LOG << "Consistency check of triangulation" << std::endl;
       auto vr = mergedDT.verify(points.project(partitionPoints));
       evaluateVerificationReport(vr, provenance);
