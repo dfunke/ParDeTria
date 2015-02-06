@@ -179,6 +179,7 @@ int main(int argc, char *argv[]) {
       "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
   cCommandLine.add_options()("study", "study mode");
   cCommandLine.add_options()("no-verify", "don't verify triangulation");
+  cCommandLine.add_options()("no-output", "don't output triangulation");
   cCommandLine.add_options()("verbosity", po::value<int>(&verbosity),
                              "verbosity");
   cCommandLine.add_options()("points", po::value<std::string>(&pointFile),
@@ -213,6 +214,10 @@ int main(int argc, char *argv[]) {
 
   if (vm.count("no-verify")) {
     Triangulator<D>::VERIFY = false;
+  }
+
+  if (vm.count("no-output")) {
+    Painter<D>::ENABLED = false;
   }
 
   //***************************************************************************
