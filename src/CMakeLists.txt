@@ -29,17 +29,6 @@ if (VALGRIND)
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
 endif ()
 
-if (STUDY)
-  message(STATUS "Study mode enabled")
-  add_definitions(-DSTUDY)
-
-  if  (NOT FORCE_OUTPUT)
-    add_definitions(-DNO_OUTPUT)
-  else ()
-    message(STATUS "Forcing debug output")
-  endif ()
-endif ()
-
 add_executable (DACTest
   DAC_Test.cpp
   Geometry.cpp
