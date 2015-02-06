@@ -30,10 +30,12 @@ template <uint D> constexpr tCoordinate Triangulator<D>::SAFETY;
 template <uint D> constexpr uint Triangulator<D>::BASE_CASE;
 
 template <uint D> constexpr char Triangulator<D>::TOP;
+
+template <uint D> bool Triangulator<D>::VERIFY = true;
 //**************************
 
 template <uint D>
-Triangulator<D>::Triangulator(dBox<D> &_bounds, dPoints<D> &_points,
+Triangulator<D>::Triangulator(const dBox<D> &_bounds, dPoints<D> &_points,
                               std::unique_ptr<Partitioner<D>> &&_partitioner)
     : bounds(_bounds), points(_points), partitioner(_partitioner) {
   if (!points.contains(dPoint<D>::cINF)) {
@@ -524,7 +526,7 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   bool isTOP = provenance == std::to_string(TOP);
 
   std::unique_ptr<dSimplices<D>> realDT = nullptr;
-  if (isTOP && verify) {
+  if (isTOP && VERIFY) {
     LOG << "Real triangulation" << std::endl;
     INDENT
     realDT = std::make_unique<dSimplices<D>>(
@@ -540,7 +542,7 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
   DEDENT
 
-  if (isTOP && verify) {
+  if (isTOP && VERIFY) {
     LOG << "Verifying CGAL triangulation" << std::endl;
     dt.verify(points.project(partitionPoints));
   }
@@ -564,7 +566,7 @@ dSimplices<D> Triangulator<D>::triangulateBase(const Ids partitionPoints,
   rep.nEdgePoints = 0;
   rep.nEdgeSimplices = 0;
 
-  if (isTOP && verify) {
+  if (isTOP && VERIFY) {
     LOG << "Consistency check of triangulation" << std::endl;
     auto vr = dt.verify(points.project(partitionPoints));
     evaluateVerificationReport(vr, provenance);
@@ -599,7 +601,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     basePainter.save(provenance + "_00_points");
 
     std::unique_ptr<dSimplices<D>> realDT = nullptr;
-    if (isTOP && verify) {
+    if (isTOP && VERIFY) {
       // perform real triangulation
       LOG << "Real triangulation" << std::endl;
       INDENT
@@ -715,7 +717,7 @@ dSimplices<D> Triangulator<D>::triangulateDAC(const Ids partitionPoints,
     rep.nEdgePoints = edgePointIds.size();
     rep.nEdgeSimplices = edgeDT.size();
 
-    if (isTOP & verify) {
+    if (isTOP & VERIFY) {
       LOG << "Consistency check of triangulation" << std::endl;
       auto vr = mergedDT.verify(points.project(partitionPoints));
       evaluateVerificationReport(vr, provenance);

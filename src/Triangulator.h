@@ -24,13 +24,10 @@ typedef std::vector<TriangulationReportEntry> TriangulationReport;
 
 template <uint D> class Triangulator {
 public:
-  Triangulator(dBox<D> &_bounds, dPoints<D> &_points,
+  Triangulator(const dBox<D> &_bounds, dPoints<D> &_points,
                std::unique_ptr<Partitioner<D>> &&_partitioner);
 
   dSimplices<D> triangulate();
-
-  void setVerify(bool _verify = true) { verify = _verify; }
-  bool getVerify() const { return verify; }
 
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;
@@ -67,8 +64,7 @@ private:
                            const Partitioning<D> *partitioning = nullptr) const;
 
 private:
-  bool verify = true;
-  dBox<D> bounds;
+  const dBox<D> bounds;
   dPoints<D> points;
   TriangulationReport triangulationReport;
   std::unique_ptr<Partitioner<D>> &partitioner;
@@ -77,6 +73,8 @@ public:
   static bool isTOP(const std::string &provenance) {
     return provenance == std::to_string(TOP);
   }
+
+  static bool VERIFY;
 
 private:
   static constexpr tCoordinate SAFETY = 100;
