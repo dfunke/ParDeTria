@@ -135,11 +135,6 @@ public:
   void setLogging(bool _logging = true) { logging = _logging; }
   void setDashed(bool _dashed = true) { dashed = _dashed; }
 
-public:
-  static tRGB tetradicColor(uint i) {
-    return tRGB((bool)!(i & 2), (bool)i & 2, (bool)i & 1);
-  }
-
 private:
   void _init(const dBox<D> &_bounds, uint _resolution);
   void _copy(const Painter<D> &a);
@@ -150,6 +145,13 @@ private:
   DataHolder<D> data;
   bool logging;
   bool dashed;
+
+public:
+  static tRGB tetradicColor(uint i) {
+    return tRGB((bool)!(i & 2), (bool)i & 2, (bool)i & 1);
+  }
+
+  static bool ENABLED;
 };
 
 #include <boost/progress.hpp>

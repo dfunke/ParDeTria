@@ -5,6 +5,7 @@
 
 // static variables
 
+template <> bool Painter<2>::ENABLED = true;
 constexpr uint DataHolder<2>::PADDING;
 constexpr uint DataHolder<2>::FONT_SIZE;
 
@@ -154,21 +155,16 @@ template <> void Painter<2>::drawPartition(const dPoints<2> &points) {
   data.cr->stroke();
 }
 
-template <>
-void Painter<2>::save(
-#ifdef NO_OUTPUT
-    __attribute((unused))
-#endif
-    const std::string &file) const {
-// stop callgrind instrumentation for saving png
+template <> void Painter<2>::save(const std::string &file) const {
+  // stop callgrind instrumentation for saving png
 
-#ifndef NO_OUTPUT // disable png output
-  CALLGRIND_STOP_INSTRUMENTATION;
+  if (ENABLED) {
+    CALLGRIND_STOP_INSTRUMENTATION;
 
-  data.cs->write_to_png(file + ".png");
+    data.cs->write_to_png(file + ".png");
 
-  CALLGRIND_START_INSTRUMENTATION;
-#endif
+    CALLGRIND_START_INSTRUMENTATION;
+  }
 }
 
 template <> void Painter<2>::_init(const dBox<2> &_bounds, uint _resolution) {

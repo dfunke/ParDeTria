@@ -14,6 +14,11 @@
 
 #include <valgrind/callgrind.h>
 
+// static variables
+template <> bool Painter<3>::ENABLED = true;
+
+//
+
 template <class ColoredObject>
 void updateColor(ColoredObject &o, const tRGBa &color) {
 
@@ -92,75 +97,70 @@ void Painter<3>::drawPartition(__attribute((unused)) const dPoints<3> &points) {
   // TODO draw partition
 }
 
-template <>
-void Painter<3>::save(
-#ifdef NO_OUTPUT
-    __attribute((unused))
-#endif
-    const std::string &file) const {
-// stop callgrind instrumentation for saving VTU
+template <> void Painter<3>::save(const std::string &file) const {
+  // stop callgrind instrumentation for saving VTU
 
-#ifndef NO_OUTPUT // disable png output
-  CALLGRIND_STOP_INSTRUMENTATION;
+  if (ENABLED) {
+    CALLGRIND_STOP_INSTRUMENTATION;
 
-  PLOG << "Writing file " << (file + ".vtu") << std::endl;
+    PLOG << "Writing file " << (file + ".vtu") << std::endl;
 
-  auto points = vtkSmartPointer<vtkPoints>::New();
+    auto points = vtkSmartPointer<vtkPoints>::New();
 
-  auto colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
-  colors->SetNumberOfComponents(4);
-  colors->SetName("Colors");
+    auto colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
+    colors->SetNumberOfComponents(4);
+    colors->SetName("Colors");
 
-  std::map<uint, uint> pointIdMap;
+    std::map<uint, uint> pointIdMap;
 
-  for (const auto &o : data.pPoints) {
-    pointIdMap[o.id] = points->InsertNextPoint(o.coords.data());
-    colors->InsertNextTuple4(
-        255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
-        255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
-  }
-
-  auto pointsPolyData = vtkSmartPointer<vtkPolyData>::New();
-  pointsPolyData->SetPoints(points);
-
-  auto vertexFilter = vtkSmartPointer<vtkVertexGlyphFilter>::New();
-  vertexFilter->SetInputData(pointsPolyData);
-  vertexFilter->Update();
-
-  auto cellArray = vtkSmartPointer<vtkCellArray>::New();
-
-  for (const auto &o : data.pSimplices) {
-    auto tetra = vtkSmartPointer<vtkTetra>::New();
-
-    for (uint d = 0; d < 4; ++d) {
-      tetra->GetPointIds()->SetId(d, pointIdMap[o.vertices[d]]);
+    for (const auto &o : data.pPoints) {
+      pointIdMap[o.id] = points->InsertNextPoint(o.coords.data());
+      colors->InsertNextTuple4(
+          255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
+          255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
     }
 
-    cellArray->InsertNextCell(tetra);
-    colors->InsertNextTuple4(
-        255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
-        255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
+    auto pointsPolyData = vtkSmartPointer<vtkPolyData>::New();
+    pointsPolyData->SetPoints(points);
 
-    /*PLOG << o.id << ": " << 255 * std::get<0>(o.color) << " "
-         << 255 * std::get<1>(o.color) << " " << 255 * std::get<2>(o.color)
-         << " " << 255 * std::get<3>(o.color) << std::endl;*/
+    auto vertexFilter = vtkSmartPointer<vtkVertexGlyphFilter>::New();
+    vertexFilter->SetInputData(pointsPolyData);
+    vertexFilter->Update();
+
+    auto cellArray = vtkSmartPointer<vtkCellArray>::New();
+
+    for (const auto &o : data.pSimplices) {
+      auto tetra = vtkSmartPointer<vtkTetra>::New();
+
+      for (uint d = 0; d < 4; ++d) {
+        tetra->GetPointIds()->SetId(d, pointIdMap[o.vertices[d]]);
+      }
+
+      cellArray->InsertNextCell(tetra);
+      colors->InsertNextTuple4(
+          255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
+          255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
+
+      /*PLOG << o.id << ": " << 255 * std::get<0>(o.color) << " "
+           << 255 * std::get<1>(o.color) << " " << 255 * std::get<2>(o.color)
+           << " " << 255 * std::get<3>(o.color) << std::endl;*/
+    }
+
+    auto polyData = vtkSmartPointer<vtkPolyData>::New();
+    polyData->ShallowCopy(vertexFilter->GetOutput());
+    // polyData->SetPoints(points);
+    polyData->SetPolys(cellArray);
+    // polyData->GetPointData()->SetScalars(pColors);
+    polyData->GetCellData()->SetScalars(colors);
+
+    // Write file
+    auto writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+    writer->SetFileName((file + ".vtu").c_str());
+    writer->SetInputData(polyData);
+    writer->Write();
+
+    CALLGRIND_START_INSTRUMENTATION;
   }
-
-  auto polyData = vtkSmartPointer<vtkPolyData>::New();
-  polyData->ShallowCopy(vertexFilter->GetOutput());
-  // polyData->SetPoints(points);
-  polyData->SetPolys(cellArray);
-  // polyData->GetPointData()->SetScalars(pColors);
-  polyData->GetCellData()->SetScalars(colors);
-
-  // Write file
-  auto writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-  writer->SetFileName((file + ".vtu").c_str());
-  writer->SetInputData(polyData);
-  writer->Write();
-
-  CALLGRIND_START_INSTRUMENTATION;
-#endif
 }
 
 template <>
