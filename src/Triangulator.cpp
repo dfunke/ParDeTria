@@ -334,7 +334,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
   /*/ debug
   auto debugIDs =
-      edgeDT.findSimplices(std::vector<uint>({194, 301, 54, 118}), true);
+      edgeDT.findSimplices(std::vector<uint>({1501, 974, 1927, 987}), true);
   std::cout << "contains real 1786: " << debugIDs.size() << std::endl;
   if (debugIDs.size() > 0) {
     for (const auto &s : debugIDs) {
@@ -353,7 +353,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   LOG << "Merging triangulations" << std::endl;
   for (const auto &edgeSimplex : edgeDT) {
 
-    /*/ debug
+    // debug
 
     auto format = [&](const uint vertex) -> std::string {
       std::stringstream s;
@@ -366,7 +366,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
       return s.str();
     };
 
-    if (edgeSimplex.id == 11151) {
+    if (edgeSimplex.id == 104583) {
       // sort the simplices by descending number of shared vertices
       std::priority_queue<std::pair<uint, uint>> pqSharedVertices;
       for (const auto &s : deletedSimplices) {
@@ -386,7 +386,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
         pqSharedVertices.pop();
       }
     }
-    /*/
+    //
 
     /*/ debug
      if (edgeSimplex.id == 5539)
@@ -414,16 +414,16 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
         // check whether it replaces a previously unfound simplex due to
         // infinite points
 
-        /*/ debug
+        // debug
         std::cout << "Considering " << edgeSimplex << std::endl;
-        /*/
+        //
 
         Ids finitePoints;
         for (const auto &s : deletedSimplices) {
           if (!s.isFinite() && s.countSharedVertices(edgeSimplex) == D) {
-            /*/ debug
+            // debug
             std::cout << "Found " << s << std::endl;
-            /*/
+            //
             for (const auto &p : s.vertices) {
               if (dPoint<D>::isFinite(p))
                 finitePoints.insert(p);
@@ -441,7 +441,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
 
   paintMerging(DT, provenance + "_05c_merging_edge");
 
-  /*/ debug
+  // debug
   if (DT.countDuplicates() > 0) {
     auto format = [&](const uint vertex) -> std::string {
       std::stringstream s;
@@ -468,7 +468,7 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
       }
     }
   }
-  /*/
+  //
 
   ASSERT(DT.countDuplicates() == 0);
   updateNeighbors(DT, provenance);
