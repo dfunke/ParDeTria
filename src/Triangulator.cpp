@@ -253,6 +253,63 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
   }
 
+  // debug
+  if (edgeDT.contains(49602) || DT.contains(49602)) {
+    std::cout << "Edge DT contains 49602: " << edgeDT.contains(49602)
+              << std::endl;
+    std::cout << "Merged DT contains 49602: " << DT.contains(49602)
+              << std::endl;
+    std::cout << "Edge Simplices contains 49602: " << edgeSimplices.count(49602)
+              << std::endl;
+
+    const auto &s = DT[49602];
+
+    uint p = partitioning.partition(s.vertices[0]);
+    const auto &pp = partitioning[p];
+    std::cout << "Partition of 49602: " << p
+              << " in partition: " << pp.contains(s) << std::endl;
+    auto cc = s.circumsphere(points);
+    std::cout << "Circumsphere: " << cc << std::endl;
+    std::cout << "Contained in partition: " << pp.bounds.contains(cc)
+              << std::endl;
+
+    for (uint d = 0; d < D; ++d) {
+      auto p = cc.center;
+      // project p to the boundary of box in dimension d closest to center of
+      // the
+      // sphere
+      p[d] = cc.center[d] < (pp.bounds.high[d] + pp.bounds.low[d]) / 2
+                 ? pp.bounds.low[d]
+                 : pp.bounds.high[d];
+
+      tCoordinate dist = 0;
+      for (uint i = 0; i < D; ++i)
+        dist += (cc.center[i] - p[i]) * (cc.center[i] - p[i]);
+
+      std::cout << "Dimension " << d << ": " << (dist - (cc.radius * cc.radius))
+                << std::endl;
+    }
+
+    const auto &cp = points[2410];
+    tCoordinate dist = 0;
+    for (uint i = 0; i < D; ++i)
+      dist += (cc.center[i] - cp.coords[i]) * (cc.center[i] - cp.coords[i]);
+
+    std::cout << "Conflicting point: " << cp << " partition "
+              << partitioning.partition(cp)
+              << " in circle: " << s.inSphere(cp, points)
+              << " distance to center " << std::sqrt(dist) << std::endl;
+
+    std::cout << "INFOS" << std::endl;
+    std::cout << s << std::endl;
+    for (const auto &p : s.vertices) {
+      std::cout << points[p] << std::endl;
+    }
+    std::cout << pp.bounds << std::endl;
+    std::cout << cp << std::endl;
+  }
+  //
+
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
   //**********************
@@ -298,6 +355,11 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
     DT.erase(id);
   }
 
+  /*/ debug
+  std::cout << "Stripped DT contains 4081: " << DT.contains(4081) << std::endl;
+  std::cout << "Stripped DT contains 5539: " << DT.contains(5539) << std::endl;
+  /*/
+
   //**********************
   auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
 
@@ -315,9 +377,67 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
   //**********************
 
+  /*/ debug
+  auto debugIDs =
+      edgeDT.findSimplices(std::vector<uint>({1501, 974, 1927, 987}), true);
+  std::cout << "contains real 1786: " << debugIDs.size() << std::endl;
+  if (debugIDs.size() > 0) {
+    for (const auto &s : debugIDs) {
+      std::cout << s << std::endl;
+
+      std::cout << "Neighbors" << std::endl;
+      for (const auto &n : s.neighbors) {
+        if (dSimplex<D>::isFinite(n))
+          std::cout << edgeDT[n] << std::endl;
+      }
+    }
+  }
+  /*/
+
   // merge partial DTs and edge DT
   LOG << "Merging triangulations" << std::endl;
   for (const auto &edgeSimplex : edgeDT) {
+
+    // debug
+
+    auto format = [&](const uint vertex) -> std::string {
+      std::stringstream s;
+      if (!edgeSimplex.contains(vertex))
+        s << zkr::cc::fore::red;
+
+      s << vertex;
+      s << zkr::cc::console;
+
+      return s.str();
+    };
+
+    if (edgeSimplex.id == 104583) {
+      // sort the simplices by descending number of shared vertices
+      std::priority_queue<std::pair<uint, uint>> pqSharedVertices;
+      for (const auto &s : deletedSimplices) {
+        uint count = s.countSharedVertices(edgeSimplex);
+        if (count > 0)
+          pqSharedVertices.emplace(count, s.id);
+      }
+
+      while (!pqSharedVertices.empty()) {
+        const auto &s = deletedSimplices[pqSharedVertices.top().second];
+
+        std::cout << s.id << ": V = [" << format(s.vertices[0]);
+        for (uint i = 1; i < D + 1; ++i)
+          std::cout << ", " << format(s.vertices[i]);
+        std::cout << "]" << std::endl;
+
+        pqSharedVertices.pop();
+      }
+    }
+    //
+
+    /*/ debug
+     if (edgeSimplex.id == 5539)
+      raise(SIGINT);
+    /*/
+
     // check whether edgeSimplex is completely contained in one partition
     uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
     bool inOnePartition = partitioning[p0].contains(edgeSimplex);
@@ -339,9 +459,16 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
         // check whether it replaces a previously unfound simplex due to
         // infinite points
 
+        // debug
+        std::cout << "Considering " << edgeSimplex << std::endl;
+        //
+
         Ids finitePoints;
         for (const auto &s : deletedSimplices) {
           if (!s.isFinite() && s.countSharedVertices(edgeSimplex) == D) {
+            // debug
+            std::cout << "Found " << s << std::endl;
+            //
             for (const auto &p : s.vertices) {
               if (dPoint<D>::isFinite(p))
                 finitePoints.insert(p);
@@ -358,6 +485,35 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
   }
 
   paintMerging(DT, provenance + "_05c_merging_edge");
+
+  // debug
+  if (DT.countDuplicates() > 0) {
+    auto format = [&](const uint vertex) -> std::string {
+      std::stringstream s;
+      s << vertex;
+      s << "-" << partitioning.partition(vertex);
+
+      return s.str();
+    };
+
+    std::cout << "Found duplicates in step " << provenance << std::endl;
+    for (const auto &s : DT) {
+      auto simplices = DT.findSimplices(s.vertices, true);
+      if (simplices.size() > 1) {
+        std::cout << "Duplicate found" << std::endl;
+        for (const auto &s : simplices) {
+          std::cout << s.id << ": V = [" << format(s.vertices[0]);
+          for (uint i = 1; i < D + 1; ++i)
+            std::cout << ", " << format(s.vertices[i]);
+          std::cout << "] ";
+          std::cout << " in EdgeDT: " << edgeDT.contains(s);
+          std::cout << " in edgeSimplices: " << edgeSimplices.count(s.id);
+          std::cout << std::endl;
+        }
+      }
+    }
+  }
+  //
 
   ASSERT(DT.countDuplicates() == 0);
   updateNeighbors(DT, provenance);

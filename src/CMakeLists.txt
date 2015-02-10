@@ -3,6 +3,9 @@ cmake_policy(VERSION 3.0)
 
 project (Delaunay)
 
+enable_testing()
+find_package(GTest)
+
 # adds the project-specific cmake module directory cmake/Modules to the cmake
 # search path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -29,21 +32,53 @@ if (VALGRIND)
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
 endif ()
 
-add_executable (DACTest
-  DAC_Test.cpp
-  Geometry.cpp
-  Painter.cpp
-  CGAL_Interface.cpp
-  Triangulator.cpp
-  Partitioner.cpp
+add_library (Logging
   utils/Logger.cpp
-  utils/Timings.cpp
-  utils/RSS.c
-  utils/StringUtils.cxx
   utils/ccolor.cpp
+  utils/StringUtils.cxx
 )
 
-target_link_libraries(DACTest ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${Cairomm_LIBRARIES} ${TBB_LIBRARIES} ${VTK_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(Logging ${TBB_LIBRARIES})
+
+add_library (Geometry
+  Geometry.cpp
+)
+
+target_link_libraries(Geometry Logging)
+
+add_library(InterfaceCGAL
+  CGAL_Interface.cpp
+)
+
+target_link_libraries(InterfaceCGAL Logging Geometry ${CGAL_LIBRARY} ${GMP_LIBRARIES})
+
+add_library(Painting
+  Painter.cpp
+)
+
+target_link_libraries(Painting Logging Geometry ${Cairomm_LIBRARIES} ${VTK_LIBRARIES} ${Boost_LIBRARIES})
+
+add_library(Triangulate
+  Triangulator.cpp
+  Partitioner.cpp
+)
+
+target_link_libraries(Triangulate Painting Logging Geometry)
+
+add_executable (DACTest
+  DAC_Test.cpp
+  utils/Timings.cpp
+  utils/RSS.c
+)
+
+target_link_libraries(DACTest
+  Logging
+  Geometry
+  Triangulate
+  Painting
+  InterfaceCGAL
+  ${Boost_LIBRARIES}
+)
 
 add_executable (VTUShow
   utils/VTU_Show.cpp
@@ -53,3 +88,6 @@ target_link_libraries(VTUShow ${VTK_LIBRARIES} ${Boost_LIBRARIES})
 
 # add git-cmake-format
 add_subdirectory(${CMAKE_SOURCE_DIR}/cmake/clang-format)
+
+# add testing subdirectory
+add_subdirectory(${CMAKE_SOURCE_DIR}/test)
