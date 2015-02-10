@@ -253,17 +253,62 @@ dSimplices<D> Triangulator<D>::mergeTriangulation(
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
   }
 
-  /*/ debug
-  if (isTOP(provenance)) {
-    std::cout << "Merged DT contains 4081: " << DT.contains(4081) << std::endl;
-    std::cout << "Merged DT contains 5539: " << DT.contains(5539) << std::endl;
-    uint p = partitioning.partition(DT[4081].vertices[0]);
-    std::cout << "Partition of 4081: " << p << std::endl;
-    std::cout << "Contained in partition: "
-              << partitioning[p].bounds.contains(DT[4081].circumsphere(points))
+  // debug
+  if (edgeDT.contains(49602) || DT.contains(49602)) {
+    std::cout << "Edge DT contains 49602: " << edgeDT.contains(49602)
               << std::endl;
+    std::cout << "Merged DT contains 49602: " << DT.contains(49602)
+              << std::endl;
+    std::cout << "Edge Simplices contains 49602: " << edgeSimplices.count(49602)
+              << std::endl;
+
+    const auto &s = DT[49602];
+
+    uint p = partitioning.partition(s.vertices[0]);
+    const auto &pp = partitioning[p];
+    std::cout << "Partition of 49602: " << p
+              << " in partition: " << pp.contains(s) << std::endl;
+    auto cc = s.circumsphere(points);
+    std::cout << "Circumsphere: " << cc << std::endl;
+    std::cout << "Contained in partition: " << pp.bounds.contains(cc)
+              << std::endl;
+
+    for (uint d = 0; d < D; ++d) {
+      auto p = cc.center;
+      // project p to the boundary of box in dimension d closest to center of
+      // the
+      // sphere
+      p[d] = cc.center[d] < (pp.bounds.high[d] + pp.bounds.low[d]) / 2
+                 ? pp.bounds.low[d]
+                 : pp.bounds.high[d];
+
+      tCoordinate dist = 0;
+      for (uint i = 0; i < D; ++i)
+        dist += (cc.center[i] - p[i]) * (cc.center[i] - p[i]);
+
+      std::cout << "Dimension " << d << ": " << (dist - (cc.radius * cc.radius))
+                << std::endl;
+    }
+
+    const auto &cp = points[2410];
+    tCoordinate dist = 0;
+    for (uint i = 0; i < D; ++i)
+      dist += (cc.center[i] - cp.coords[i]) * (cc.center[i] - cp.coords[i]);
+
+    std::cout << "Conflicting point: " << cp << " partition "
+              << partitioning.partition(cp)
+              << " in circle: " << s.inSphere(cp, points)
+              << " distance to center " << std::sqrt(dist) << std::endl;
+
+    std::cout << "INFOS" << std::endl;
+    std::cout << s << std::endl;
+    for (const auto &p : s.vertices) {
+      std::cout << points[p] << std::endl;
+    }
+    std::cout << pp.bounds << std::endl;
+    std::cout << cp << std::endl;
   }
-  /*/
+  //
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
