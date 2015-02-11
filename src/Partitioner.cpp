@@ -22,16 +22,6 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
     }
   }
 
-#ifndef NDEBUG
-  auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
-    for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.low[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.high[i]))
-        return false;
-    return true;
-  };
-#endif
-
   for (auto &id : ids) {
     ASSERT(points.contains(id));
     const auto &p = points[id];
@@ -44,7 +34,7 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
       part |= (p.coords[dim] > stats.mid.coords[dim]) << dim;
     }
 
-    ASSERT(inPartition(p, part));
+    ASSERT(partitioning[part].bounds.contains(p.coords));
 
     // LOG << "Adding " << p << " to " << part << std::endl;
     partitioning[part].points.insert(p.id);
@@ -86,16 +76,6 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
     partitioning[1].bounds.high[d] = stats.max.coords[d];
   }
 
-#ifndef NDEBUG
-  auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
-    for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.low[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.high[i]))
-        return false;
-    return true;
-  };
-#endif
-
   for (auto &id : ids) {
     ASSERT(points.contains(id));
     const auto &p = points[id];
@@ -105,7 +85,7 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
     uint part = (p.coords[k] > stats.mid.coords[k]);
 
-    ASSERT(inPartition(p, part));
+    ASSERT(partitioning[part].bounds.contains(p.coords));
 
     // LOG << "Adding " << p << " to " << part << std::endl;
     partitioning[part].points.insert(p.id);
@@ -150,18 +130,6 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
     partitioning[1].bounds.high[d] = stats.max.coords[d];
   }
 
-#ifndef NDEBUG
-  auto inPartition = [&](const dPoint<D> &p, const uint partition) -> bool {
-    for (uint i = 0; i < D; ++i)
-      if (!(partitioning[partition].bounds.low[i] <= p.coords[i] &&
-            p.coords[i] <= partitioning[partition].bounds.high[i])) {
-
-        return false;
-      }
-    return true;
-  };
-#endif
-
   for (auto &id : ids) {
     ASSERT(points.contains(id));
     const auto &p = points[id];
@@ -171,7 +139,7 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
     uint part = (p.coords[k] > stats.mid.coords[k]);
 
-    ASSERT(inPartition(p, part));
+    ASSERT(partitioning[part].bounds.contains(p.coords));
 
     // LOG << "Adding " << p << " to " << part << std::endl;
     partitioning[part].points.insert(p.id);
