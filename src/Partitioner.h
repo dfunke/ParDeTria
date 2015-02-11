@@ -9,7 +9,10 @@ template <uint D> class Partition {
 public:
   bool contains(const uint &p) const { return points.count(p) == 1; }
 
-  bool contains(const dPoint<D> &p) const { return points.count(p.id) == 1; }
+  bool contains(const dPoint<D> &p) const {
+    assert(points.count(p.id) == 0 || bounds.contains(p.coords));
+    return points.count(p.id) == 1 && bounds.contains(p.coords);
+  }
 
   bool contains(const dSimplex<D> &s, bool partially = false) const {
     for (const auto &p : s.vertices) {
