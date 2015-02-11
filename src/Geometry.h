@@ -41,6 +41,15 @@ template <uint D> struct dBox {
   dVector<D> low;
   dVector<D> high;
 
+  bool contains(const dVector<D> &p) const {
+    for (uint d = 0; d < D; ++d) {
+      if (!(low[d] <= p[d] && p[d] <= high[d]))
+        return false;
+    }
+
+    return true;
+  }
+
   /* tests whether sphere is FULLY contained in box */
   bool contains(const dSphere<D> &sphere) const {
 
