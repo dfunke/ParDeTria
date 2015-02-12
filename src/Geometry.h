@@ -17,31 +17,30 @@
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
 
-typedef float tCoordinate;
 typedef std::set<uint> Ids;
 
 // dimensionality of our problem
 // const uint D = 2;
 
 // basic data structure for d-dimensional data
-template <uint D> using dVector = std::array<tCoordinate, D>;
+template <uint D, typename Precision> using dVector = std::array<Precision, D>;
 
 //#############################################################################
 
 // sphere
-template <uint D> struct dSphere {
-  dVector<D> center;
-  tCoordinate radius;
+template <uint D, typename Precision> struct dSphere {
+  dVector<D, Precision> center;
+  Precision radius;
 };
 
 //#############################################################################
 
 // (hyper)-rectangle
-template <uint D> struct dBox {
-  dVector<D> low;
-  dVector<D> high;
+template <uint D, typename Precision> struct dBox {
+  dVector<D, Precision> low;
+  dVector<D, Precision> high;
 
-  bool contains(const dVector<D> &p) const {
+  bool contains(const dVector<D, Precision> &p) const {
     for (uint d = 0; d < D; ++d) {
       if (!(low[d] <= p[d] && p[d] <= high[d]))
         return false;
@@ -51,9 +50,9 @@ template <uint D> struct dBox {
   }
 
   /* tests whether sphere is FULLY contained in box */
-  bool contains(const dSphere<D> &sphere) const {
+  bool contains(const dSphere<D, Precision> &sphere) const {
 
-    tCoordinate r2 = sphere.radius * sphere.radius;
+    Precision r2 = sphere.radius * sphere.radius;
 
     for (uint d = 0; d < D; ++d) {
       if (!(low[d] <= sphere.center[d] && sphere.center[d] <= high[d])) {
@@ -69,7 +68,7 @@ template <uint D> struct dBox {
       // sphere
       p[d] = sphere.center[d] < (high[d] + low[d]) / 2 ? low[d] : high[d];
 
-      tCoordinate dist = 0;
+      Precision dist = 0;
       for (uint i = 0; i < D; ++i)
         dist += (sphere.center[i] - p[i]) * (sphere.center[i] - p[i]);
 
@@ -85,10 +84,10 @@ template <uint D> struct dBox {
 
 // point with ID and simplices list
 
-template <uint D> class dPoint {
+template <uint D, typename Precision> class dPoint {
 
 public:
-  bool operator==(const dPoint<D> &a) const {
+  bool operator==(const dPoint<D, Precision> &a) const {
 
     // COUT << "Comparing POINTS THIS " << *this << " and OTHER " << a << ": ";
 
@@ -117,7 +116,7 @@ public:
 
 public:
   uint id;
-  dVector<D> coords;
+  dVector<D, Precision> coords;
   Ids simplices;
 
 public:
@@ -136,13 +135,14 @@ public:
 
 // IndexedVector of dPoints
 
-template <uint D> class dPoints : public IndexedVector<dPoint<D>> {
+template <uint D, typename Precision>
+class dPoints : public IndexedVector<dPoint<D, Precision>> {
 
 public:
-  dPoints() : IndexedVector<dPoint<D>>() {}
+  dPoints() : IndexedVector<dPoint<D, Precision>>() {}
 
-  dPoints(const IndexedVector<dPoint<D>> &other)
-      : IndexedVector<dPoint<D>>(other) {}
+  dPoints(const IndexedVector<dPoint<D, Precision>> &other)
+      : IndexedVector<dPoint<D, Precision>>(other) {}
 
   bool operator==(const Ids &other) const {
     if (this->size() != other.size())
@@ -163,10 +163,10 @@ public:
 
 // d-Simplex
 
-template <uint D> class dSimplex {
+template <uint D, typename Precision> class dSimplex {
 
 public:
-  bool operator==(const dSimplex<D> &a) const {
+  bool operator==(const dSimplex<D, Precision> &a) const {
 
     // COUT << "Comparing SIMPLICES THIS " << *this << " and OTHER " << a << ":
     // ";
@@ -199,9 +199,9 @@ public:
   }
 
   // for use as map key
-  bool operator<(const dSimplex<D> &a) const { return id < a.id; }
+  bool operator<(const dSimplex<D, Precision> &a) const { return id < a.id; }
 
-  bool equalVertices(const dSimplex<D> &a) const {
+  bool equalVertices(const dSimplex<D, Precision> &a) const {
     // compare vertices
     for (uint i = 0; i < D + 1; ++i) {
       bool found = false;
@@ -221,7 +221,7 @@ public:
     return true;
   }
 
-  uint countSharedVertices(const dSimplex<D> &a) const {
+  uint countSharedVertices(const dSimplex<D, Precision> &a) const {
     uint count = 0;
     for (uint i = 0; i < D + 1; ++i) {
       bool found = false;
@@ -238,7 +238,7 @@ public:
     return count;
   }
 
-  bool equalNeighbors(const dSimplex<D> &a) const {
+  bool equalNeighbors(const dSimplex<D, Precision> &a) const {
     return neighbors != a.neighbors;
   }
 
@@ -253,7 +253,7 @@ public:
     return false;
   }
 
-  bool contains(const dPoint<D> &p) const {
+  bool contains(const dPoint<D, Precision> &p) const {
     for (uint d = 0; d < D + 1; ++d) {
       if (p == vertices[d])
         return true;
@@ -284,7 +284,7 @@ public:
     bool finite = true;
 
     for (uint i = 0; i < D + 1; ++i) {
-      if (!dPoint<D>::isFinite(vertices[i]))
+      if (!dPoint<D, Precision>::isFinite(vertices[i]))
         finite = false;
     }
 
@@ -292,11 +292,12 @@ public:
   }
 
   // dimension specific implementations in cpp file
-  tCoordinate orientation(const dPoints<D> &points) const;
-  bool inSphere(const dPoint<D> &p, const dPoints<D> &points) const;
-  dSphere<D> circumsphere(const dPoints<D> &points) const;
+  Precision orientation(const dPoints<D, Precision> &points) const;
+  bool inSphere(const dPoint<D, Precision> &p,
+                const dPoints<D, Precision> &points) const;
+  dSphere<D, Precision> circumsphere(const dPoints<D, Precision> &points) const;
 
-  bool isNeighbor(const dSimplex<D> &other) const {
+  bool isNeighbor(const dSimplex<D, Precision> &other) const {
     uint sharedVertices = 0;
 
     for (uint i = 0; i < D + 1; ++i) {
@@ -325,37 +326,44 @@ public:
   static constexpr uint cINF = ~(0);
 };
 
-template <uint D> std::string to_string(const dPoint<D> &p);
+template <uint D, typename Precision>
+std::string to_string(const dPoint<D, Precision> &p);
 
-template <uint D> std::string to_string(const dSimplex<D> &p);
+template <uint D, typename Precision>
+std::string to_string(const dSimplex<D, Precision> &p);
 
-template <uint D> std::string to_string(const dSphere<D> &p);
+template <uint D, typename Precision>
+std::string to_string(const dSphere<D, Precision> &p);
 
-template <uint D> std::string to_string(const dBox<D> &b);
+template <uint D, typename Precision>
+std::string to_string(const dBox<D, Precision> &b);
 
-template <uint D> std::ostream &operator<<(std::ostream &o, const dPoint<D> &p);
+template <uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dPoint<D, Precision> &p);
 
-template <uint D>
-std::ostream &operator<<(std::ostream &o, const dSphere<D> &p);
+template <uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dSphere<D, Precision> &p);
 
-template <uint D>
-std::ostream &operator<<(std::ostream &o, const dSimplex<D> &p);
+template <uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dSimplex<D, Precision> &p);
 
-template <uint D> std::ostream &operator<<(std::ostream &o, const dBox<D> &b);
+template <uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dBox<D, Precision> &b);
 
-template <uint D> struct CrossCheckReport;
+template <uint D, typename Precision> struct CrossCheckReport;
 
-template <uint D> struct VerificationReport;
+template <uint D, typename Precision> struct VerificationReport;
 
-template <uint D> class dSimplices : public IndexedVector<dSimplex<D>> {
+template <uint D, typename Precision>
+class dSimplices : public IndexedVector<dSimplex<D, Precision>> {
 
 public:
-  dSimplices() : IndexedVector<dSimplex<D>>() {}
+  dSimplices() : IndexedVector<dSimplex<D, Precision>>() {}
 
-  dSimplices(const IndexedVector<dSimplex<D>> &other)
-      : IndexedVector<dSimplex<D>>(other) {}
+  dSimplices(const IndexedVector<dSimplex<D, Precision>> &other)
+      : IndexedVector<dSimplex<D, Precision>>(other) {}
 
-  bool operator==(const dSimplices<D> &other) const {
+  bool operator==(const dSimplices<D, Precision> &other) const {
     if (this->size() != other.size()) {
       PLOG << "my size: " << this->size() << " other size: " << other.size()
            << std::endl;
@@ -374,7 +382,8 @@ public:
       // check neighbors
       for (const auto &n : mySimplex->neighbors) {
         // TODO handle infinite neighbors better
-        if (dSimplex<D>::isFinite(n) && otherSimplex.neighbors.count(n) != 1) {
+        if (dSimplex<D, Precision>::isFinite(n) &&
+            otherSimplex.neighbors.count(n) != 1) {
           // the other triangulation does not contain n as neighbor
           PLOG << "wrong neighbors: " << *mySimplex << " -- " << otherSimplex
                << std::endl;
@@ -386,13 +395,15 @@ public:
     return true;
   }
 
-  bool operator!=(const dSimplices<D> &other) const {
+  bool operator!=(const dSimplices<D, Precision> &other) const {
     return !operator==(other);
   }
 
-  VerificationReport<D> verify(const dPoints<D> &points) const;
+  VerificationReport<D, Precision>
+  verify(const dPoints<D, Precision> &points) const;
 
-  CrossCheckReport<D> crossCheck(const dSimplices<D> &realDT) const;
+  CrossCheckReport<D, Precision>
+  crossCheck(const dSimplices<D, Precision> &realDT) const;
 
   uint countDuplicates() const {
     uint duplicates = 0;
@@ -408,10 +419,10 @@ public:
   }
 
   template <typename Container>
-  dSimplices<D> findSimplices(const Container &points,
-                              const bool all = false) const {
+  dSimplices<D, Precision> findSimplices(const Container &points,
+                                         const bool all = false) const {
 
-    dSimplices<D> result;
+    dSimplices<D, Precision> result;
 
     if (all) {
       for (const auto &s : *this) {
@@ -429,15 +440,15 @@ public:
   }
 };
 
-template <uint D> struct CrossCheckReport {
+template <uint D, typename Precision> struct CrossCheckReport {
   bool valid;
-  dSimplices<D> missing;
-  dSimplices<D> invalid;
+  dSimplices<D, Precision> missing;
+  dSimplices<D, Precision> invalid;
 };
 
-template <uint D> struct VerificationReport {
+template <uint D, typename Precision> struct VerificationReport {
   bool valid;
-  std::map<dSimplex<D>, Ids> inCircle;
+  std::map<dSimplex<D, Precision>, Ids> inCircle;
 };
 
 //#############################################################################

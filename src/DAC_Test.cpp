@@ -19,6 +19,7 @@
 //**************************
 
 #define D 3
+#define Precision float
 
 //**************************
 
@@ -30,25 +31,27 @@ struct TriangulateReturn {
 
 //**************************
 
-TriangulateReturn triangulate(const dBox<D> &bounds, dPoints<D> &points,
+TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
+                              dPoints<D, Precision> &points,
                               const unsigned char splitter) {
-  std::unique_ptr<Partitioner<D>> partitioner_ptr;
+  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
   switch (splitter) {
   case 'd':
-    partitioner_ptr = std::make_unique<dPartitioner<D>>();
+    partitioner_ptr = std::make_unique<dPartitioner<D, Precision>>();
     break;
   case 'c':
-    partitioner_ptr = std::make_unique<CyclePartitioner<D>>();
+    partitioner_ptr = std::make_unique<CyclePartitioner<D, Precision>>();
     break;
   default:
     // p must be a dimension - subtract '0' to get integer value
     uint d = splitter - '0';
     ASSERT(0 <= d && d < D);
-    partitioner_ptr = std::make_unique<kPartitioner<D>>(d);
+    partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
     break;
   }
 
-  Triangulator<D> triangulator(bounds, points, std::move(partitioner_ptr));
+  Triangulator<D, Precision> triangulator(bounds, points,
+                                          std::move(partitioner_ptr));
 
   TriangulateReturn ret;
 
@@ -139,23 +142,23 @@ int main(int argc, char *argv[]) {
   }
 
   if (vm.count("no-verify")) {
-    Triangulator<D>::VERIFY = false;
+    Triangulator<D, Precision>::VERIFY = false;
   }
 
   if (vm.count("no-output")) {
-    Painter<D>::ENABLED = false;
+    Painter<D, Precision>::ENABLED = false;
   }
 
   //***************************************************************************
 
-  dBox<D> bounds;
+  dBox<D, Precision> bounds;
   for (uint i = 0; i < D; ++i) {
     bounds.low[i] = 0;
     bounds.high[i] = 100;
   }
 
-  std::uniform_real_distribution<tCoordinate> distribution(0, 1);
-  std::function<tCoordinate()> dice = std::bind(distribution, generator);
+  std::uniform_real_distribution<Precision> distribution(0, 1);
+  std::function<Precision()> dice = std::bind(distribution, generator);
 
   /*
    * File format for triangulation report
@@ -175,7 +178,7 @@ int main(int argc, char *argv[]) {
       LOGGER.setLogLevel(Logger::Verbosity::SILENT);
     }
 
-    Painter<D>::ENABLED = false;
+    Painter<D, Precision>::ENABLED = false;
 
     // abort flag if an exception occurred
     bool abort = false;
@@ -194,9 +197,9 @@ int main(int argc, char *argv[]) {
 
         unsigned char p = splitters[i];
 
-        dPoints<D> points;
+        dPoints<D, Precision> points;
         if (loadPoints) {
-          points = loadObject<dPoints<D>>(pointFile);
+          points = loadObject<dPoints<D, Precision>>(pointFile);
         } else {
           points = genPoints(n, bounds, dice);
         }
@@ -216,8 +219,8 @@ int main(int argc, char *argv[]) {
                         ret.time.count(), getCurrentRSS(), getPeakRSS())
             << std::endl;
 
-          if (Triangulator<D>::VERIFY &&
-              Triangulator<D>::isTOP(tr.provenance) && !tr.valid) {
+          if (Triangulator<D, Precision>::VERIFY &&
+              Triangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
 
             // output points
             storeObject(points, "invalid_" + std::to_string(n) + "_" + (char)p +
@@ -237,9 +240,9 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    dPoints<D> points;
+    dPoints<D, Precision> points;
     if (loadPoints) {
-      points = loadObject<dPoints<D>>(pointFile);
+      points = loadObject<dPoints<D, Precision>>(pointFile);
     } else {
       points = genPoints(N, bounds, dice);
     }

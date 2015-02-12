@@ -1,16 +1,15 @@
 #include "Partitioner.h"
 
-template <uint D>
-Partitioning<D>
-dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
-                           __attribute((unused))
-                           const std::string &provenance) const {
+template <uint D, typename Precision>
+Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
+    const Ids &ids, const dPoints<D, Precision> &points,
+    __attribute((unused)) const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
   PLOG << "Midpoint is " << stats.mid << std::endl;
 
-  Partitioning<D> partitioning;
+  Partitioning<D, Precision> partitioning;
   for (uint i = 0; i < pow(2, D); ++i) {
     partitioning[i].id = i;
 
@@ -42,7 +41,7 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
   // add infinite points
   for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D, Precision>::cINF; k != 0; ++k) {
       partitioning[i].points.insert(k);
     }
   }
@@ -50,17 +49,16 @@ dPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
   return partitioning;
 }
 
-template <uint D>
-Partitioning<D>
-kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
-                           __attribute((unused))
-                           const std::string &provenance) const {
+template <uint D, typename Precision>
+Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
+    const Ids &ids, const dPoints<D, Precision> &points,
+    __attribute((unused)) const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
   PLOG << "Midpoint is " << stats.mid << std::endl;
 
-  Partitioning<D> partitioning;
+  Partitioning<D, Precision> partitioning;
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
@@ -93,7 +91,7 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
   // add infinite points
   for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D, Precision>::cINF; k != 0; ++k) {
       partitioning[i].points.insert(k);
     }
   }
@@ -101,10 +99,11 @@ kPartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
   return partitioning;
 }
 
-template <uint D>
-Partitioning<D>
-CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
-                               const std::string &provenance) const {
+template <uint D, typename Precision>
+Partitioning<D, Precision>
+CyclePartitioner<D, Precision>::partition(const Ids &ids,
+                                          const dPoints<D, Precision> &points,
+                                          const std::string &provenance) const {
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
@@ -114,7 +113,7 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
   PLOG << "Midpoint is " << stats.mid << std::endl;
   PLOG << "Splitting dimension is " << k << std::endl;
 
-  Partitioning<D> partitioning;
+  Partitioning<D, Precision> partitioning;
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
@@ -147,7 +146,7 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 
   // add infinite points
   for (uint i = 0; i < partitioning.size(); ++i) {
-    for (uint k = dPoint<D>::cINF; k != 0; ++k) {
+    for (uint k = dPoint<D, Precision>::cINF; k != 0; ++k) {
       partitioning[i].points.insert(k);
     }
   }
@@ -156,10 +155,10 @@ CyclePartitioner<D>::partition(const Ids &ids, const dPoints<D> &points,
 }
 
 // specializations
-template class dPartitioner<2>;
-template class kPartitioner<2>;
-template class CyclePartitioner<2>;
+template class dPartitioner<2, float>;
+template class kPartitioner<2, float>;
+template class CyclePartitioner<2, float>;
 
-template class dPartitioner<3>;
-template class kPartitioner<3>;
-template class CyclePartitioner<3>;
+template class dPartitioner<3, float>;
+template class kPartitioner<3, float>;
+template class CyclePartitioner<3, float>;

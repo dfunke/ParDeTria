@@ -22,52 +22,57 @@ struct TriangulationReportEntry {
 
 typedef std::vector<TriangulationReportEntry> TriangulationReport;
 
-template <uint D> class Triangulator {
+template <uint D, typename Precision> class Triangulator {
 public:
-  Triangulator(const dBox<D> &_bounds, dPoints<D> &_points,
-               std::unique_ptr<Partitioner<D>> &&_partitioner);
+  Triangulator(const dBox<D, Precision> &_bounds,
+               dPoints<D, Precision> &_points,
+               std::unique_ptr<Partitioner<D, Precision>> &&_partitioner);
 
-  dSimplices<D> triangulate();
+  dSimplices<D, Precision> triangulate();
 
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;
   }
 
 private:
-  dSimplices<D> triangulateBase(const Ids partitionPoints,
-                                const std::string provenance);
+  dSimplices<D, Precision> triangulateBase(const Ids partitionPoints,
+                                           const std::string provenance);
 
-  dSimplices<D> triangulateDAC(const Ids partitionPoints,
-                               const std::string provenance);
+  dSimplices<D, Precision> triangulateDAC(const Ids partitionPoints,
+                                          const std::string provenance);
 
-  Ids getEdge(const dSimplices<D> &simplices, const Partition<D> &partition);
+  Ids getEdge(const dSimplices<D, Precision> &simplices,
+              const Partition<D, Precision> &partition);
 
-  Ids extractPoints(const Ids &edgeSimplices, const dSimplices<D> &simplices,
+  Ids extractPoints(const Ids &edgeSimplices,
+                    const dSimplices<D, Precision> &simplices,
                     bool ignoreInfinite = false);
 
-  void updateNeighbors(dSimplices<D> &simplices, const std::string &provenance);
+  void updateNeighbors(dSimplices<D, Precision> &simplices,
+                       const std::string &provenance);
 
-  dSimplices<D> mergeTriangulation(std::vector<dSimplices<D>> &partialDTs,
-                                   const Ids &edgeSimplices,
-                                   const dSimplices<D> &edgeDT,
-                                   const Partitioning<D> &partitioning,
-                                   const std::string &provenance,
-                                   const dSimplices<D> *realDT = nullptr);
+  dSimplices<D, Precision>
+  mergeTriangulation(std::vector<dSimplices<D, Precision>> &partialDTs,
+                     const Ids &edgeSimplices,
+                     const dSimplices<D, Precision> &edgeDT,
+                     const Partitioning<D, Precision> &partitioning,
+                     const std::string &provenance,
+                     const dSimplices<D, Precision> *realDT = nullptr);
 
-  void evaluateVerificationReport(const VerificationReport<D> &vr,
+  void evaluateVerificationReport(const VerificationReport<D, Precision> &vr,
                                   const std::string &provenance) const;
 
-  void
-  evaluateCrossCheckReport(const CrossCheckReport<D> &ccr,
-                           const std::string &provenance,
-                           const dSimplices<D> &DT, const dSimplices<D> &realDT,
-                           const Partitioning<D> *partitioning = nullptr) const;
+  void evaluateCrossCheckReport(
+      const CrossCheckReport<D, Precision> &ccr, const std::string &provenance,
+      const dSimplices<D, Precision> &DT,
+      const dSimplices<D, Precision> &realDT,
+      const Partitioning<D, Precision> *partitioning = nullptr) const;
 
 private:
-  const dBox<D> bounds;
-  dPoints<D> points;
+  const dBox<D, Precision> bounds;
+  dPoints<D, Precision> points;
   TriangulationReport triangulationReport;
-  std::unique_ptr<Partitioner<D>> &partitioner;
+  std::unique_ptr<Partitioner<D, Precision>> &partitioner;
 
 public:
   static bool isTOP(const std::string &provenance) {
@@ -77,7 +82,7 @@ public:
   static bool VERIFY;
 
 private:
-  static constexpr tCoordinate SAFETY = 100;
+  static constexpr Precision SAFETY = 100;
   static constexpr uint BASE_CASE = 100;
   static constexpr char TOP = 0;
 };

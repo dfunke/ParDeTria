@@ -32,6 +32,9 @@ if (VALGRIND)
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
 endif ()
 
+# add git-cmake-format
+add_subdirectory(${CMAKE_SOURCE_DIR}/cmake/clang-format)
+
 add_library (Logging
   utils/Logger.cpp
   utils/ccolor.cpp
@@ -85,9 +88,6 @@ add_executable (VTUShow
 )
 
 target_link_libraries(VTUShow ${VTK_LIBRARIES} ${Boost_LIBRARIES})
-
-# add git-cmake-format
-add_subdirectory(${CMAKE_SOURCE_DIR}/cmake/clang-format)
 
 # add testing subdirectory
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)

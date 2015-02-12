@@ -3,7 +3,7 @@
 
 TEST(Geometry3D, SimpleInSphere) {
 
-  dPoints<3> points;
+  dPoints<3, float> points;
 
   const uint A = 0;
   const uint B = 1;
@@ -44,7 +44,7 @@ TEST(Geometry3D, SimpleInSphere) {
   points[O].coords = {{5, 5, 5}};
 
   auto test = [&](const std::array<uint, 4> &v) {
-    dSimplex<3> s;
+    dSimplex<3, float> s;
     s.vertices = v;
 
     EXPECT_TRUE(s.inSphere(points[I], points));

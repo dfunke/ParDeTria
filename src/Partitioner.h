@@ -4,17 +4,17 @@
 
 #include "utils/ASSERT.h"
 
-template <uint D> class Partition {
+template <uint D, typename Precision> class Partition {
 
 public:
   bool contains(const uint &p) const { return points.count(p) == 1; }
 
-  bool contains(const dPoint<D> &p) const {
+  bool contains(const dPoint<D, Precision> &p) const {
     assert(points.count(p.id) == 0 || bounds.contains(p.coords));
     return points.count(p.id) == 1 && bounds.contains(p.coords);
   }
 
-  bool contains(const dSimplex<D> &s, bool partially = false) const {
+  bool contains(const dSimplex<D, Precision> &s, bool partially = false) const {
     for (const auto &p : s.vertices) {
       // store contains result
       bool t = contains(p);
@@ -33,15 +33,17 @@ public:
 public:
   uint id;
   Ids points;
-  dBox<D> bounds;
+  dBox<D, Precision> bounds;
 };
 
-template <uint D> std::string to_string(const Partition<D> &p);
+template <uint D, typename Precision>
+std::string to_string(const Partition<D, Precision> &p);
 
-template <uint D>
-std::ostream &operator<<(std::ostream &o, const Partition<D> &p);
+template <uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const Partition<D, Precision> &p);
 
-template <uint D> class Partitioning : public IndexedVector<Partition<D>> {
+template <uint D, typename Precision>
+class Partitioning : public IndexedVector<Partition<D, Precision>> {
 
 public:
   uint partition(const uint p) const {
@@ -54,25 +56,28 @@ public:
                             "not found");
   }
 
-  uint partition(const dPoint<D> &p) const { return partition(p.id); }
+  uint partition(const dPoint<D, Precision> &p) const {
+    return partition(p.id);
+  }
 };
 
-template <uint D> struct dPointStats {
-  dPoint<D> min;
-  dPoint<D> mid;
-  dPoint<D> max;
+template <uint D, typename Precision> struct dPointStats {
+  dPoint<D, Precision> min;
+  dPoint<D, Precision> mid;
+  dPoint<D, Precision> max;
 };
 
-template <uint D, class InputIt>
-dPointStats<D> getPointStats(const InputIt &first, const InputIt &last,
-                             const dPoints<D> &points,
-                             const bool ignoreInfinite = true) {
+template <uint D, typename Precision, class InputIt>
+dPointStats<D, Precision> getPointStats(const InputIt &first,
+                                        const InputIt &last,
+                                        const dPoints<D, Precision> &points,
+                                        const bool ignoreInfinite = true) {
 
-  dPointStats<D> stats;
+  dPointStats<D, Precision> stats;
 
   for (uint dim = 0; dim < D; ++dim) {
-    stats.min.coords[dim] = std::numeric_limits<tCoordinate>::max();
-    stats.max.coords[dim] = std::numeric_limits<tCoordinate>::min();
+    stats.min.coords[dim] = std::numeric_limits<Precision>::max();
+    stats.max.coords[dim] = std::numeric_limits<Precision>::min();
 
     for (auto it = first; it != last; ++it) {
 
@@ -93,37 +98,44 @@ dPointStats<D> getPointStats(const InputIt &first, const InputIt &last,
   return stats;
 }
 
-template <uint D> class Partitioner {
+template <uint D, typename Precision> class Partitioner {
 
 public:
   virtual ~Partitioner() {}
 
-  virtual Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
-                                    const std::string &provenance) const = 0;
+  virtual Partitioning<D, Precision>
+  partition(const Ids &ids, const dPoints<D, Precision> &points,
+            const std::string &provenance) const = 0;
 };
 
-template <uint D> class dPartitioner : public Partitioner<D> {
+template <uint D, typename Precision>
+class dPartitioner : public Partitioner<D, Precision> {
 
 public:
-  Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
-                            const std::string &provenance) const;
+  Partitioning<D, Precision> partition(const Ids &ids,
+                                       const dPoints<D, Precision> &points,
+                                       const std::string &provenance) const;
 };
 
-template <uint D> class kPartitioner : public Partitioner<D> {
+template <uint D, typename Precision>
+class kPartitioner : public Partitioner<D, Precision> {
 
 public:
   kPartitioner(uint _k) : k(_k) {}
 
-  Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
-                            const std::string &provenance) const;
+  Partitioning<D, Precision> partition(const Ids &ids,
+                                       const dPoints<D, Precision> &points,
+                                       const std::string &provenance) const;
 
 private:
   uint k; // dimension to partition
 };
 
-template <uint D> class CyclePartitioner : public Partitioner<D> {
+template <uint D, typename Precision>
+class CyclePartitioner : public Partitioner<D, Precision> {
 
 public:
-  Partitioning<D> partition(const Ids &ids, const dPoints<D> &points,
-                            const std::string &provenance) const;
+  Partitioning<D, Precision> partition(const Ids &ids,
+                                       const dPoints<D, Precision> &points,
+                                       const std::string &provenance) const;
 };

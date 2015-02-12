@@ -31,21 +31,21 @@ template <class Object> Object loadObject(const std::string &file) {
 namespace boost {
 namespace serialization {
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dVector<D> &v,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dVector<D, Precision> &v,
                __attribute((unused)) const unsigned int version) {
   ar &v;
 }
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dBox<D> &b,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dBox<D, Precision> &b,
                __attribute((unused)) const unsigned int version) {
   ar &b.coords;
   ar &b.dim;
 }
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dSphere<D> &s,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dSphere<D, Precision> &s,
                __attribute((unused)) const unsigned int version) {
   ar &s.center;
   ar &s.radius;
@@ -59,50 +59,53 @@ void serialize(Archive &ar, IndexedVector<V, K> &v,
 
 // points
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dPoint<D> &p,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dPoint<D, Precision> &p,
                __attribute((unused)) const unsigned int version) {
   ar &p.id;
   ar &p.coords;
   ar &p.simplices;
 }
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dPoints<D> &ps,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dPoints<D, Precision> &ps,
                __attribute((unused)) const unsigned int version) {
-  ar &boost::serialization::base_object<IndexedVector<dPoint<D>>>(ps);
+  ar &boost::serialization::base_object<IndexedVector<dPoint<D, Precision>>>(
+      ps);
 }
 
 // simplices
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dSimplex<D> &s,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dSimplex<D, Precision> &s,
                __attribute((unused)) const unsigned int version) {
   ar &s.id;
   ar &s.vertices;
   ar &s.neighbors;
 }
 
-template <class Archive, uint D>
-void serialize(Archive &ar, dSimplices<D> &ss,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, dSimplices<D, Precision> &ss,
                __attribute((unused)) const unsigned int version) {
-  ar &boost::serialization::base_object<IndexedVector<dSimplex<D>>>(ss);
+  ar &boost::serialization::base_object<IndexedVector<dSimplex<D, Precision>>>(
+      ss);
 }
 
 // partitions
 
-template <class Archive, uint D>
-void serialize(Archive &ar, Partition<D> &p,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, Partition<D, Precision> &p,
                __attribute((unused)) const unsigned int version) {
   ar &p.id;
   ar &p.bounds;
   ar &p.points;
 }
 
-template <class Archive, uint D>
-void serialize(Archive &ar, Partitioning<D> &ps,
+template <class Archive, uint D, typename Precision>
+void serialize(Archive &ar, Partitioning<D, Precision> &ps,
                __attribute((unused)) const unsigned int version) {
-  ar &boost::serialization::base_object<IndexedVector<Partition<D>>>(ps);
+  ar &boost::serialization::base_object<IndexedVector<Partition<D, Precision>>>(
+      ps);
 }
 }
 }
