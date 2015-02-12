@@ -185,3 +185,6 @@ public:
 // specializations
 template class CGALInterface<2, float>;
 template class CGALInterface<3, float>;
+
+template class CGALInterface<2, double>;
+template class CGALInterface<3, double>;

@@ -921,3 +921,6 @@ dSimplices<D, Precision> Triangulator<D, Precision>::triangulate() {
 
 template class Triangulator<2, float>;
 template class Triangulator<3, float>;
+
+template class Triangulator<2, double>;
+template class Triangulator<3, double>;

@@ -119,7 +119,7 @@ public:
   circumsphere(const dSimplex<2, Precision> &simplex,
                const dPoints<2, Precision> &points) {
 
-    dSphere<2, float> sphere;
+    dSphere<2, Precision> sphere;
 
     Precision den = 2 * (points[simplex.vertices[0]].coords[0] *
                              (points[simplex.vertices[1]].coords[1] -
@@ -278,10 +278,11 @@ public:
     return orientation(simplex, points) * det >= 0;
   }
 
-  static dSphere<3, float> circumsphere(const dSimplex<3, Precision> &simplex,
-                                        const dPoints<3, Precision> &points) {
+  static dSphere<3, Precision>
+  circumsphere(const dSimplex<3, Precision> &simplex,
+               const dPoints<3, Precision> &points) {
 
-    dSphere<3, float> sphere;
+    dSphere<3, Precision> sphere;
 
     Precision den = 2 * (points[simplex.vertices[0]].coords[0] *
                              (points[simplex.vertices[2]].coords[1] *
@@ -802,6 +803,8 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
 // specialiations
 
+// float
+
 template class dPoint<2, float>;
 template class dPoint<3, float>;
 
@@ -810,3 +813,14 @@ template class dSimplex<3, float>;
 
 template class dSimplices<2, float>;
 template class dSimplices<3, float>;
+
+// double
+
+template class dPoint<2, double>;
+template class dPoint<3, double>;
+
+template class dSimplex<2, double>;
+template class dSimplex<3, double>;
+
+template class dSimplices<2, double>;
+template class dSimplices<3, double>;

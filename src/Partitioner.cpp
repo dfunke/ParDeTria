@@ -162,3 +162,11 @@ template class CyclePartitioner<2, float>;
 template class dPartitioner<3, float>;
 template class kPartitioner<3, float>;
 template class CyclePartitioner<3, float>;
+
+template class dPartitioner<2, double>;
+template class kPartitioner<2, double>;
+template class CyclePartitioner<2, double>;
+
+template class dPartitioner<3, double>;
+template class kPartitioner<3, double>;
+template class CyclePartitioner<3, double>;

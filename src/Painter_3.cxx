@@ -124,7 +124,7 @@ void PainterImplementation<3, Precision>::save(const std::string &file) const {
     pointIdMap[o.id] = points->InsertNextPoint(o.coords.data());
     colors->InsertNextTuple4(
         255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
-        255 * std::get<2>(o.color), 255 * std::get<3, Precision>(o.color));
+        255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
   }
 
   auto pointsPolyData = vtkSmartPointer<vtkPolyData>::New();
@@ -146,7 +146,7 @@ void PainterImplementation<3, Precision>::save(const std::string &file) const {
     cellArray->InsertNextCell(tetra);
     colors->InsertNextTuple4(
         255 * std::get<0>(o.color), 255 * std::get<1>(o.color),
-        255 * std::get<2>(o.color), 255 * std::get<3, Precision>(o.color));
+        255 * std::get<2>(o.color), 255 * std::get<3>(o.color));
 
     /*PLOG << o.id << ": " << 255 * std::get<0>(o.color) << " "
          << 255 * std::get<1>(o.color) << " " << 255 * std::get<2>(o.color)
