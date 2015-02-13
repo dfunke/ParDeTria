@@ -49,12 +49,13 @@ Triangulator<D, Precision>::Triangulator(
       VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - "
            << stats.max << std::endl;
 
-      dPoint<D, Precision> p = stats.mid;
+      dPoint<D, Precision> p;
       p.id = dPoint<D, Precision>::cINF | i;
+      p.coords = stats.mid;
 
       for (uint d = 0; d < D; ++d)
         p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * SAFETY *
-                       (stats.max.coords[d] - stats.min.coords[d]);
+                       (stats.max[d] - stats.min[d]);
 
       points.insert(p);
     }

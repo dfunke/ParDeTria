@@ -15,9 +15,9 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
 
     for (uint d = 0; d < D; ++d) {
       partitioning[i].bounds.low[d] =
-          i & (1 << d) ? stats.mid.coords[d] : stats.min.coords[d];
+          i & (1 << d) ? stats.mid[d] : stats.min[d];
       partitioning[i].bounds.high[d] =
-          i & (1 << d) ? stats.max.coords[d] : stats.mid.coords[d];
+          i & (1 << d) ? stats.max[d] : stats.mid[d];
     }
   }
 
@@ -30,7 +30,7 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
 
     uint part = 0;
     for (uint dim = 0; dim < D; ++dim) {
-      part |= (p.coords[dim] > stats.mid.coords[dim]) << dim;
+      part |= (p.coords[dim] > stats.mid[dim]) << dim;
     }
 
     ASSERT(partitioning[part].bounds.contains(p.coords));
@@ -62,16 +62,14 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
-    partitioning[0].bounds.low[d] = stats.min.coords[d];
-    partitioning[0].bounds.high[d] =
-        d == k ? stats.mid.coords[d] : stats.max.coords[d];
+    partitioning[0].bounds.low[d] = stats.min[d];
+    partitioning[0].bounds.high[d] = d == k ? stats.mid[d] : stats.max[d];
   }
 
   partitioning[1].id = 1;
   for (uint d = 0; d < D; ++d) {
-    partitioning[1].bounds.low[d] =
-        d == k ? stats.mid.coords[d] : stats.min.coords[d];
-    partitioning[1].bounds.high[d] = stats.max.coords[d];
+    partitioning[1].bounds.low[d] = d == k ? stats.mid[d] : stats.min[d];
+    partitioning[1].bounds.high[d] = stats.max[d];
   }
 
   for (auto &id : ids) {
@@ -81,7 +79,7 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
     if (!p.isFinite())
       continue; // skip infinite points, they will be added later
 
-    uint part = (p.coords[k] > stats.mid.coords[k]);
+    uint part = (p.coords[k] > stats.mid[k]);
 
     ASSERT(partitioning[part].bounds.contains(p.coords));
 
@@ -117,16 +115,14 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
-    partitioning[0].bounds.low[d] = stats.min.coords[d];
-    partitioning[0].bounds.high[d] =
-        d == k ? stats.mid.coords[d] : stats.max.coords[d];
+    partitioning[0].bounds.low[d] = stats.min[d];
+    partitioning[0].bounds.high[d] = d == k ? stats.mid[d] : stats.max[d];
   }
 
   partitioning[1].id = 1;
   for (uint d = 0; d < D; ++d) {
-    partitioning[1].bounds.low[d] =
-        d == k ? stats.mid.coords[d] : stats.min.coords[d];
-    partitioning[1].bounds.high[d] = stats.max.coords[d];
+    partitioning[1].bounds.low[d] = d == k ? stats.mid[d] : stats.min[d];
+    partitioning[1].bounds.high[d] = stats.max[d];
   }
 
   for (auto &id : ids) {
@@ -136,7 +132,7 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
     if (!p.isFinite())
       continue; // skip infinite points, they will be added later
 
-    uint part = (p.coords[k] > stats.mid.coords[k]);
+    uint part = (p.coords[k] > stats.mid[k]);
 
     ASSERT(partitioning[part].bounds.contains(p.coords));
 

@@ -62,9 +62,9 @@ public:
 };
 
 template <uint D, typename Precision> struct dPointStats {
-  dPoint<D, Precision> min;
-  dPoint<D, Precision> mid;
-  dPoint<D, Precision> max;
+  dVector<D, Precision> min;
+  dVector<D, Precision> mid;
+  dVector<D, Precision> max;
 };
 
 template <uint D, typename Precision, class InputIt>
@@ -76,8 +76,8 @@ dPointStats<D, Precision> getPointStats(const InputIt &first,
   dPointStats<D, Precision> stats;
 
   for (uint dim = 0; dim < D; ++dim) {
-    stats.min.coords[dim] = std::numeric_limits<Precision>::max();
-    stats.max.coords[dim] = std::numeric_limits<Precision>::min();
+    stats.min[dim] = std::numeric_limits<Precision>::max();
+    stats.max[dim] = std::numeric_limits<Precision>::min();
 
     for (auto it = first; it != last; ++it) {
 
@@ -85,14 +85,12 @@ dPointStats<D, Precision> getPointStats(const InputIt &first,
       ASSERT(points.contains(id));
 
       if (points[id].isFinite() || !ignoreInfinite) {
-        stats.min.coords[dim] =
-            std::min(stats.min.coords[dim], points[id].coords[dim]);
-        stats.max.coords[dim] =
-            std::max(stats.max.coords[dim], points[id].coords[dim]);
+        stats.min[dim] = std::min(stats.min[dim], points[id].coords[dim]);
+        stats.max[dim] = std::max(stats.max[dim], points[id].coords[dim]);
       }
     }
 
-    stats.mid.coords[dim] = (stats.max.coords[dim] + stats.min.coords[dim]) / 2;
+    stats.mid[dim] = (stats.max[dim] + stats.min[dim]) / 2;
   }
 
   return stats;

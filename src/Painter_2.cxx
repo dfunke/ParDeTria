@@ -81,8 +81,8 @@ PainterImplementation<2, Precision>::draw(const dSimplex<2, Precision> &simplex,
 
   auto line = [&](uint a, uint b) {
 
-    auto A = points[a];
-    auto B = points[b];
+    const auto &A = points[a];
+    const auto &B = points[b];
 
     cr->save();
 
@@ -150,11 +150,11 @@ void PainterImplementation<2, Precision>::drawPartition(
   auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
 
   // draw partition borders
-  cr->move_to(translatePoint(stats.mid.coords[0], 0), 0);
-  cr->line_to(translatePoint(stats.mid.coords[0], 0), imgDim(1));
+  cr->move_to(translatePoint(stats.mid[0], 0), 0);
+  cr->line_to(translatePoint(stats.mid[0], 0), imgDim(1));
 
-  cr->move_to(0, translatePoint(stats.mid.coords[1], 1));
-  cr->line_to(imgDim(0), translatePoint(stats.mid.coords[1], 1));
+  cr->move_to(0, translatePoint(stats.mid[1], 1));
+  cr->line_to(imgDim(0), translatePoint(stats.mid[1], 1));
 
   cr->stroke();
 }

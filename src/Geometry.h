@@ -23,7 +23,8 @@ typedef std::set<uint> Ids;
 // const uint D = 2;
 
 // basic data structure for d-dimensional data
-template <uint D, typename Precision> using dVector = std::array<Precision, D>;
+template <std::size_t D, typename Precision>
+using dVector = std::array<Precision, D>;
 
 //#############################################################################
 
@@ -326,6 +327,9 @@ public:
   static constexpr uint cINF = ~(0);
 };
 
+template <std::size_t D, typename Precision>
+std::string to_string(const dVector<D, Precision> &p);
+
 template <uint D, typename Precision>
 std::string to_string(const dPoint<D, Precision> &p);
 
@@ -337,6 +341,9 @@ std::string to_string(const dSphere<D, Precision> &p);
 
 template <uint D, typename Precision>
 std::string to_string(const dBox<D, Precision> &b);
+
+template <std::size_t D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dVector<D, Precision> &p);
 
 template <uint D, typename Precision>
 std::ostream &operator<<(std::ostream &o, const dPoint<D, Precision> &p);

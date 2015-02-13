@@ -3,6 +3,16 @@
 
 #include <sstream>
 
+template <std::size_t D, typename Precision>
+std::string to_string(const dVector<D, Precision> &p) {
+  std::stringstream o;
+  o << "[" << p[0];
+  for (uint i = 1; i < D; ++i)
+    o << ", " << p[i];
+  o << "]";
+  return o.str();
+}
+
 template <uint D, typename Precision>
 std::string to_string(const dPoint<D, Precision> &p) {
   std::stringstream o;
@@ -62,6 +72,11 @@ std::string to_string(const Partition<D, Precision> &p) {
   return o.str();
 }
 
+template <std::size_t D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dVector<D, Precision> &p) {
+  return o << to_string(p);
+}
+
 template <uint D, typename Precision>
 std::ostream &operator<<(std::ostream &o, const dPoint<D, Precision> &p) {
   return o << to_string(p);
@@ -92,12 +107,14 @@ std::ostream &operator<<(std::ostream &o, const Partition<D, Precision> &p) {
 // float
 
 // 2D
+template std::string to_string(const dVector<2, float> &p);
 template std::string to_string(const dPoint<2, float> &p);
 template std::string to_string(const dSimplex<2, float> &p);
 template std::string to_string(const dBox<2, float> &p);
 template std::string to_string(const dSphere<2, float> &p);
 template std::string to_string(const Partition<2, float> &p);
 
+template std::ostream &operator<<(std::ostream &o, const dVector<2, float> &p);
 template std::ostream &operator<<(std::ostream &o, const dPoint<2, float> &p);
 template std::ostream &operator<<(std::ostream &o, const dSimplex<2, float> &p);
 template std::ostream &operator<<(std::ostream &o, const dSphere<2, float> &p);
@@ -106,12 +123,14 @@ template std::ostream &operator<<(std::ostream &o,
                                   const Partition<2, float> &p);
 
 // 3D
+template std::string to_string(const dVector<3, float> &p);
 template std::string to_string(const dPoint<3, float> &p);
 template std::string to_string(const dSimplex<3, float> &p);
 template std::string to_string(const dBox<3, float> &p);
 template std::string to_string(const dSphere<3, float> &p);
 template std::string to_string(const Partition<3, float> &p);
 
+template std::ostream &operator<<(std::ostream &o, const dVector<3, float> &p);
 template std::ostream &operator<<(std::ostream &o, const dPoint<3, float> &p);
 template std::ostream &operator<<(std::ostream &o, const dSimplex<3, float> &p);
 template std::ostream &operator<<(std::ostream &o, const dBox<3, float> &p);
@@ -122,12 +141,14 @@ template std::ostream &operator<<(std::ostream &o,
 // double
 
 // 2D
+template std::string to_string(const dVector<2, double> &p);
 template std::string to_string(const dPoint<2, double> &p);
 template std::string to_string(const dSimplex<2, double> &p);
 template std::string to_string(const dBox<2, double> &p);
 template std::string to_string(const dSphere<2, double> &p);
 template std::string to_string(const Partition<2, double> &p);
 
+template std::ostream &operator<<(std::ostream &o, const dVector<2, double> &p);
 template std::ostream &operator<<(std::ostream &o, const dPoint<2, double> &p);
 template std::ostream &operator<<(std::ostream &o,
                                   const dSimplex<2, double> &p);
@@ -137,12 +158,14 @@ template std::ostream &operator<<(std::ostream &o,
                                   const Partition<2, double> &p);
 
 // 3D
+template std::string to_string(const dVector<3, double> &p);
 template std::string to_string(const dPoint<3, double> &p);
 template std::string to_string(const dSimplex<3, double> &p);
 template std::string to_string(const dBox<3, double> &p);
 template std::string to_string(const dSphere<3, double> &p);
 template std::string to_string(const Partition<3, double> &p);
 
+template std::ostream &operator<<(std::ostream &o, const dVector<3, double> &p);
 template std::ostream &operator<<(std::ostream &o, const dPoint<3, double> &p);
 template std::ostream &operator<<(std::ostream &o,
                                   const dSimplex<3, double> &p);
