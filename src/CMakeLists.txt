@@ -89,5 +89,11 @@ add_executable (VTUShow
 
 target_link_libraries(VTUShow ${VTK_LIBRARIES} ${Boost_LIBRARIES})
 
+add_executable (archiveConverter
+  utils/ArchiveConverter.cpp
+)
+
+target_link_libraries(archiveConverter ${Boost_LIBRARIES})
+
 # add testing subdirectory
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)
