@@ -19,7 +19,7 @@
 //**************************
 
 #define D 3
-#define Precision float
+#define Precision double
 
 //**************************
 
