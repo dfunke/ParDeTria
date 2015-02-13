@@ -408,7 +408,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   LOG << "Merging triangulations" << std::endl;
   for (const auto &edgeSimplex : edgeDT) {
 
-    // debug
+    /*/ debug
 
     auto format = [&](const uint vertex) -> std::string {
       std::stringstream s;
@@ -441,7 +441,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
         pqSharedVertices.pop();
       }
     }
-    //
+    /*/
 
     /*/ debug
      if (edgeSimplex.id == 5539)
@@ -470,16 +470,16 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
         // check whether it replaces a previously unfound simplex due to
         // infinite points
 
-        // debug
+        /*/ debug
         std::cout << "Considering " << edgeSimplex << std::endl;
-        //
+        /*/
 
         Ids finitePoints;
         for (const auto &s : deletedSimplices) {
           if (!s.isFinite() && s.countSharedVertices(edgeSimplex) == D) {
-            // debug
+            /*/ debug
             std::cout << "Found " << s << std::endl;
-            //
+            /*/
             for (const auto &p : s.vertices) {
               if (dPoint<D, Precision>::isFinite(p))
                 finitePoints.insert(p);
@@ -497,7 +497,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   paintMerging(DT, provenance + "_05c_merging_edge");
 
-  // debug
+  /*/ debug
   if (DT.countDuplicates() > 0) {
     auto format = [&](const uint vertex) -> std::string {
       std::stringstream s;
@@ -524,7 +524,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
       }
     }
   }
-  //
+  /*/
 
   ASSERT(DT.countDuplicates() == 0);
   updateNeighbors(DT, provenance);
