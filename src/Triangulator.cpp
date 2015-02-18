@@ -263,7 +263,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
   }
 
-  // debug
+  /*/ debug
   if (edgeDT.contains(49602) || DT.contains(49602)) {
     std::cout << "Edge DT contains 49602: " << edgeDT.contains(49602)
               << std::endl;
@@ -318,7 +318,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     std::cout << pp.bounds << std::endl;
     std::cout << cp << std::endl;
   }
-  //
+  /*/
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
