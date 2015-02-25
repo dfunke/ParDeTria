@@ -11,7 +11,6 @@ find_package(GTest)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 find_package(CGAL REQUIRED)
-find_package(ROOT REQUIRED COMPONENTS Hist)
 find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
