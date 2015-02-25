@@ -94,5 +94,16 @@ add_executable (archiveConverter
 
 target_link_libraries(archiveConverter ${Boost_LIBRARIES})
 
+add_executable(EdgeStudy
+  EdgeStudy.cpp
+)
+
+target_link_libraries(EdgeStudy
+  Logging
+  Geometry
+  Triangulate
+  InterfaceCGAL
+)
+
 # add testing subdirectory
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)

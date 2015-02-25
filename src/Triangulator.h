@@ -34,7 +34,7 @@ public:
     return triangulationReport;
   }
 
-private:
+protected:
   dSimplices<D, Precision> triangulateBase(const Ids partitionPoints,
                                            const std::string provenance);
 
@@ -68,7 +68,7 @@ private:
       const dSimplices<D, Precision> &realDT,
       const Partitioning<D, Precision> *partitioning = nullptr) const;
 
-private:
+protected:
   const dBox<D, Precision> bounds;
   dPoints<D, Precision> points;
   TriangulationReport triangulationReport;
@@ -81,7 +81,7 @@ public:
 
   static bool VERIFY;
 
-private:
+protected:
   static constexpr Precision SAFETY = 100;
   static constexpr uint BASE_CASE = 100;
   static constexpr char TOP = 0;
