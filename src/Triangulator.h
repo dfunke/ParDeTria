@@ -42,7 +42,7 @@ private:
                                           const std::string provenance);
 
   Ids getEdge(const dSimplices<D, Precision> &simplices,
-              const Partition<D, Precision> &partition);
+              const dBox<D, Precision> &bounds);
 
   Ids extractPoints(const Ids &edgeSimplices,
                     const dSimplices<D, Precision> &simplices,

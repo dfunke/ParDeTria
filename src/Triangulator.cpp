@@ -65,20 +65,19 @@ Triangulator<D, Precision>::Triangulator(
 template <uint D, typename Precision>
 Ids
 Triangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simplices,
-                                    const Partition<D, Precision> &partition) {
+                                    const dBox<D, Precision> &pBounds) {
   Ids edgeSimplices;
   std::set<uint> wqa; // set of already checked simplices
 
   // we use the overflow of the uint to zero to abort the loop
   for (uint infVertex = dPoint<D, Precision>::cINF; infVertex != 0;
        ++infVertex) {
-    ASSERT(
-        std::find(partition.points.begin(), partition.points.end(),
-                  infVertex) !=
-        partition.points.end()); // the infinite point must be in the partition
+
     ASSERT(points.contains(infVertex));
 
-    PLOG << "Vertex " << points[infVertex] << std::endl;
+    PLOG << "Infinite vertex " << points[infVertex] << std::endl;
+    LOGGER.logContainer(points[infVertex].simplices, Logger::Verbosity::PROLIX,
+                        "Used in simplices: ");
 
     INDENT
     for (const auto &s : points[infVertex].simplices) {
@@ -109,7 +108,7 @@ Triangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simplices,
         wq.pop_front();
 
         if (simplices.contains(x) &&
-            !partition.bounds.contains(simplices[x].circumsphere(points))) {
+            !pBounds.contains(simplices[x].circumsphere(points))) {
           PLOG << "Adding " << simplices[x]
                << " to edge -> circumcircle criterion" << std::endl;
           edgeSimplices.insert(simplices[x].id);
@@ -840,7 +839,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     for (uint i = 0; i < partioning.size(); ++i) {
       // points are in different partitions, there can be no overlap
 
-      auto edge = getEdge(partialDTs[i], partioning[i]);
+      auto edge = getEdge(partialDTs[i], partioning[i].bounds);
       edgeSimplexIds.insert(edge.begin(), edge.end());
 
       // ignore infinite vertices if this is the top most triangulation
