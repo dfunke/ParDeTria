@@ -79,6 +79,26 @@ template <uint D, typename Precision> struct dBox {
 
     return true;
   }
+
+  /* Tests whehter a sphere intersects with the box */
+  bool intersects(const dSphere<D, Precision> &sphere) const {
+
+    Precision r2 = sphere.radius * sphere.radius;
+
+    Precision dist = 0;
+    for (uint d = 0; d < D; ++d) {
+      Precision e = std::max(low[d] - sphere.center[d], (Precision)0) +
+                    std::max(sphere.center[d] - high[d], (Precision)0);
+      if (e <= sphere.radius)
+        return false;
+      dist += e * e;
+    }
+
+    if (dist <= r2)
+      return true;
+
+    return false;
+  }
 };
 
 //#############################################################################
