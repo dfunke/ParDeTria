@@ -688,6 +688,9 @@ template <uint D, typename Precision>
 dSimplices<D, Precision>
 Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
                                             const std::string provenance) {
+
+  LOGGER.setIndent(provenance.length());
+
   LOG << "triangulateBASE called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 
@@ -757,6 +760,9 @@ template <uint D, typename Precision>
 dSimplices<D, Precision>
 Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                                            const std::string provenance) {
+
+  LOGGER.setIndent(provenance.length());
+
   LOG << "triangulateDAC called on level " << provenance << " with "
       << partitionPoints.size() << " points" << std::endl;
 

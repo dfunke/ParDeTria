@@ -75,6 +75,7 @@ public:
   std::string indent() const;
   void incIndent() { ++indentLevel; }
   void decIndent() { --indentLevel; }
+  void setIndent(const uint i) { indentLevel = i; }
 
   template <typename InputIt>
   void logContainer(const InputIt &first, const InputIt &last, Verbosity level,
@@ -103,13 +104,13 @@ public:
 
 private:
   Logger()
-      : logLevel(Logger::Verbosity::NORMAL), indentLevel(0),
+      : logLevel(Logger::Verbosity::NORMAL),
         nullStream((boost::iostreams::null_sink())){};
 
   LogEntries logEntries;
 
   Verbosity logLevel;
-  uint indentLevel;
+  static thread_local uint indentLevel;
 
   boost::iostreams::stream<boost::iostreams::null_sink> nullStream;
 

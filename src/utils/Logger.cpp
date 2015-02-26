@@ -13,6 +13,8 @@ Logger &Logger::getInstance() {
   return instance;
 }
 
+thread_local uint Logger::indentLevel = 0;
+
 thread_local Logger::Verbosity
     Logger::contVerbosity; // continue log level for LIVE
 thread_local Logger::LogEntries::iterator
