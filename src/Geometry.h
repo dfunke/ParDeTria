@@ -89,7 +89,8 @@ template <uint D, typename Precision> struct dBox {
     for (uint d = 0; d < D; ++d) {
       Precision e = std::max(low[d] - sphere.center[d], (Precision)0) +
                     std::max(sphere.center[d] - high[d], (Precision)0);
-      if (e <= sphere.radius)
+
+      if (sphere.radius < e)
         return false;
       dist += e * e;
     }
