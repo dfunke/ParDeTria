@@ -42,7 +42,8 @@ protected:
                                           const std::string provenance);
 
   Ids getEdge(const dSimplices<D, Precision> &simplices,
-              const dBox<D, Precision> &bounds);
+              const Partitioning<D, Precision> &partitioning,
+              const uint &partition);
 
   Ids extractPoints(const Ids &edgeSimplices,
                     const dSimplices<D, Precision> &simplices,
