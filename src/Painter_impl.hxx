@@ -6,6 +6,7 @@
 
 #include <cairo/cairo.h>
 #include <cairomm/cairomm.h>
+#include <bits/atomic_base.h>
 
 #include "Geometry.h"
 #include "utils/Logger.h"
@@ -41,6 +42,7 @@ private:
   float imgDim(const uint dim);
   float translatePoint(float in, uint dim);
   float translateLength(float in, uint dim);
+  void stroke();
 
 private:
   dBox<2, Precision> bounds;
@@ -48,6 +50,7 @@ private:
   dVector<2, Precision> offset;
 
   uint logLine;
+  std::atomic_flag strokeMtx = ATOMIC_FLAG_INIT;
 
 public:
   bool logging;

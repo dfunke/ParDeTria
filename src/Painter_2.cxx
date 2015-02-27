@@ -28,6 +28,15 @@ float PainterImplementation<2, Precision>::translateLength(float in, uint dim) {
 }
 
 template <typename Precision>
+void PainterImplementation<2, Precision>::stroke() {
+  while (strokeMtx.test_and_set(std::memory_order_acquire)) // acquire lock
+    ;                                                       // spin
+  cr->stroke();
+
+  strokeMtx.clear(std::memory_order_release); // release lock
+}
+
+template <typename Precision>
 template <typename Object>
 void PainterImplementation<2, Precision>::_log(const Object &o) {
   if (logging) {
@@ -95,13 +104,12 @@ PainterImplementation<2, Precision>::draw(const dSimplex<2, Precision> &simplex,
 
     if (dashed)
       cr->set_dash(std::vector<double>({2, 2}), 0);
-    else
-      cr->unset_dash();
 
     cr->move_to(translatePoint(A.coords[0], 0), translatePoint(A.coords[1], 1));
     cr->line_to(translatePoint(B.coords[0], 0), translatePoint(B.coords[1], 1));
-    cr->stroke();
+    stroke();
 
+    cr->unset_dash();
     cr->restore();
   };
 
@@ -133,14 +141,13 @@ void PainterImplementation<2, Precision>::drawCircumSphere(
 
   if (dashed)
     cr->set_dash(std::vector<double>({2, 2}), 0);
-  else
-    cr->unset_dash();
 
   cr->arc(translatePoint(circumcircle.center[0], 0),
           translatePoint(circumcircle.center[1], 1),
           translateLength(circumcircle.radius, 0), 0, 2 * M_PI);
-  cr->stroke();
+  stroke();
 
+  cr->unset_dash();
   cr->restore();
 }
 
@@ -156,7 +163,7 @@ void PainterImplementation<2, Precision>::drawPartition(
   cr->move_to(0, translatePoint(stats.mid[1], 1));
   cr->line_to(imgDim(0), translatePoint(stats.mid[1], 1));
 
-  cr->stroke();
+  stroke();
 }
 
 template <typename Precision>
@@ -209,7 +216,7 @@ PainterImplementation<2, Precision>::_init(const dBox<2, Precision> &_bounds,
                 translatePoint(bounds.low[1], 1),
                 translateLength(bounds.high[0] - bounds.low[0], 0),
                 translateLength(bounds.high[1] - bounds.low[1], 1));
-  cr->stroke();
+  stroke();
 }
 
 template <typename Precision>
@@ -219,6 +226,7 @@ PainterImplementation<2, Precision>::_copy(const Painter<2, Precision> &a) {
   img = a.impl.img;
   offset = a.impl.offset;
   logging = a.impl.logging;
+  dashed = a.impl.dashed;
   logLine = a.impl.logLine;
 
   cs = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0), imgDim(1));
@@ -232,6 +240,12 @@ PainterImplementation<2, Precision>::_copy(const Painter<2, Precision> &a) {
   // copy a's surface
   cr->save();
   cr->set_source(a.impl.cs, 0, 0);
+
+  while (strokeMtx.test_and_set(std::memory_order_acquire)) // acquire lock
+    ;                                                       // spin
   cr->paint();
+
+  strokeMtx.clear(std::memory_order_release); // release lock
+
   cr->restore();
 }
