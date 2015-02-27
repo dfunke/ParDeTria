@@ -12,13 +12,17 @@
 #include "utils/RSS.h"
 #include "utils/ASSERT.h"
 #include "utils/Serialization.hxx"
+#include "utils/ProgressDisplay.h"
 
 #include <boost/program_options.hpp>
-#include <boost/progress.hpp>
+#include <boost/utility/in_place_factory.hpp>
+
+#include <mutex>
+#include <tbb/parallel_for.h>
 
 //**************************
 
-#define D 3
+#define D 2
 #define Precision double
 
 //**************************
@@ -82,6 +86,70 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
 //**************************
 
+int doStudy(const uint N, const dBox<D, Precision> &bounds,
+            std::function<Precision()> &&dice) {
+  // define splitter test cases
+  std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
+
+  LOGGER.setLogLevel(Logger::Verbosity::SILENT);
+
+  Painter<D, Precision>::ENABLED = false;
+
+  uint nIterations = 9 * (log10(N) - 1) + 1;
+  ProgressDisplay progress(splitters.size() * nIterations, std::cout);
+
+  std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
+  f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
+                "valid", "nPoints", "nSimplices", "nEdgePoints",
+                "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
+
+  // generate test points deterministically
+  std::vector<dPoints<D, Precision>> pointss;
+  for (uint i = 0; i < nIterations; ++i) {
+    uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+    pointss.push_back(genPoints(n, bounds, dice));
+  }
+
+  std::mutex mtx;
+  tbb::parallel_for(std::size_t(0), pointss.size(), [&](const uint i) {
+    tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint j) {
+
+      auto &points = pointss[i];
+      unsigned char p = splitters[j];
+
+      auto ret = triangulate(bounds, points, p);
+
+      // evaluate the triangulation report
+
+      for (const auto &tr : ret.tr) {
+        {
+          std::lock_guard<std::mutex> lock(mtx);
+          f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
+                        tr.edge_triangulation, tr.valid, tr.nPoints,
+                        tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
+                        ret.time.count(), getCurrentRSS(), getPeakRSS())
+            << std::endl;
+        }
+        if (Triangulator<D, Precision>::VERIFY &&
+            Triangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
+
+          // output points
+          storeObject(points, "invalid_" + std::to_string(points.size()) + "_" +
+                                  (char)p + ".dat");
+        }
+      }
+
+      ++progress;
+    });
+  });
+
+  std::cout << LOGGER << std::endl;
+
+  LOG << "Finished" << std::endl;
+
+  return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[]) {
 
   // define program options
@@ -91,7 +159,7 @@ int main(int argc, char *argv[]) {
   int verbosity = -1;
 
   unsigned char p = 'd';
-  uint N = 1e3;
+  uint N = 1e4;
 
   bool study = false;
 
@@ -168,76 +236,7 @@ int main(int argc, char *argv[]) {
    */
 
   if (study) {
-    // define splitter test cases
-    std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
-
-    if (vm.count("verbosity")) {
-      // silence std::cout until STUDY is done - preserve log level
-      LOGGER.setLogLevel(Logger::abs(LOGGER.getLogLevel()));
-    } else {
-      LOGGER.setLogLevel(Logger::Verbosity::SILENT);
-    }
-
-    Painter<D, Precision>::ENABLED = false;
-
-    // abort flag if an exception occurred
-    bool abort = false;
-
-    boost::progress_display progress(
-        splitters.size() * (9 * (log10(N) - 1) + 1), std::cout);
-
-    std::ofstream f("triangulation_report.csv",
-                    std::ios::out | std::ios::trunc);
-    f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
-                  "valid", "nPoints", "nSimplices", "nEdgePoints",
-                  "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
-
-    for (uint n = 10; n <= N && !abort; n += pow(10, floor(log10(n)))) {
-      for (uint i = 0; i < splitters.size() && !abort; ++i) {
-
-        unsigned char p = splitters[i];
-
-        dPoints<D, Precision> points;
-        if (loadPoints) {
-          points = loadObject<dPoints<D, Precision>>(pointFile);
-        } else {
-          points = genPoints(n, bounds, dice);
-        }
-
-        auto ret = triangulate(bounds, points, p);
-
-        if (ret.exception) {
-          abort = true;
-        }
-
-        // evaluate the triangulation report
-
-        for (const auto &tr : ret.tr) {
-          f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                        tr.edge_triangulation, tr.valid, tr.nPoints,
-                        tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
-                        ret.time.count(), getCurrentRSS(), getPeakRSS())
-            << std::endl;
-
-          if (Triangulator<D, Precision>::VERIFY &&
-              Triangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
-
-            // output points
-            storeObject(points, "invalid_" + std::to_string(n) + "_" + (char)p +
-                                    ".dat");
-          }
-        }
-
-        ++progress;
-      }
-    }
-
-    std::cout << LOGGER << std::endl;
-
-    LOG << "Finished" << std::endl;
-
-    return abort ? EXIT_FAILURE : EXIT_SUCCESS;
-
+    return doStudy(N, bounds, std::move(dice));
   } else {
 
     dPoints<D, Precision> points;
