@@ -654,14 +654,11 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
   }
 
   // check for own simplices that are not in real DT
-  uint infSimplices = 0;
   for (const auto &mySimplex : *this) {
     auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
                                     [&](const dSimplex<D, Precision> &s) {
       return s.equalVertices(mySimplex);
     });
-
-    infSimplices += !mySimplex.isFinite();
 
     if (realSimplex == realDT.end() && mySimplex.isFinite()) {
       LOG << "simplex " << mySimplex << " does not exist in real triangulation"
@@ -672,9 +669,9 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
   }
 
   // check whether sizes are equal, account for infinite simplices
-  if (dSimplices<D, Precision>::size() - infSimplices != realDT.size()) {
-    LOG << "my size: " << dSimplices<D, Precision>::size() << " - "
-        << infSimplices << " other size: " << realDT.size() << std::endl;
+  if (dSimplices<D, Precision>::size() != realDT.size()) {
+    LOG << "my size: " << dSimplices<D, Precision>::size()
+        << " other size: " << realDT.size() << std::endl;
     result.valid = false;
   }
 

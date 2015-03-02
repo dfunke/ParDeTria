@@ -536,8 +536,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
     LOG << "Real triangulation" << std::endl;
     INDENT
     realDT = std::make_unique<dSimplices<D, Precision>>(
-        CGALInterface<D, Precision>::triangulate(points, &partitionPoints,
-                                                 true));
+        CGALInterface<D, Precision>::triangulate(points, &partitionPoints));
     LOG << "Real triangulation contains " << realDT->size() << " tetrahedra"
         << std::endl;
     DEDENT
@@ -545,8 +544,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 
   INDENT
   // if this is the top-most triangulation, ignore infinite vertices
-  auto dt =
-      CGALInterface<D, Precision>::triangulate(points, &partitionPoints, isTOP);
+  auto dt = CGALInterface<D, Precision>::triangulate(points, &partitionPoints);
   LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
   DEDENT
 
@@ -619,8 +617,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       INDENT
 
       realDT = std::make_unique<dSimplices<D, Precision>>(
-          CGALInterface<D, Precision>::triangulate(points, &partitionPoints,
-                                                   true));
+          CGALInterface<D, Precision>::triangulate(points, &partitionPoints));
       LOG << "Real triangulation contains " << realDT->size() << " tetrahedra"
           << std::endl;
       DEDENT
@@ -684,7 +681,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       edgeSimplexIds.insert(edge.begin(), edge.end());
 
       // ignore infinite vertices if this is the top most triangulation
-      auto ep = extractPoints(edge, partialDTs[i], isTOP);
+      auto ep = extractPoints(edge, partialDTs[i]);
       edgePointIds.insert(ep.begin(), ep.end());
 
       paintEdges.draw(partialDTs[i].project(edge), points, false);
