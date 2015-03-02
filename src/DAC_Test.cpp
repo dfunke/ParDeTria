@@ -22,7 +22,7 @@
 
 //**************************
 
-#define D 2
+#define D 3
 #define Precision double
 
 //**************************
