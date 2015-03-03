@@ -21,6 +21,8 @@ public:
 
   template <class IT, class Tria> static IT end(Tria &t);
 
+  template <class Tria> static uint size(Tria &t);
+
   template <class Tria>
   static typename Tria::Point make_point(const dPoint<D, Precision> &p);
 };
@@ -36,6 +38,10 @@ public:
   template <class Tria>
   static typename Tria::Finite_faces_iterator end(Tria &t) {
     return t.finite_faces_end();
+  }
+
+  template <class Tria> static uint size(Tria &t) {
+    return t.number_of_faces();
   }
 
   template <class Tria>
@@ -55,6 +61,10 @@ public:
   template <class Tria>
   static typename Tria::Finite_cells_iterator end(Tria &t) {
     return t.finite_cells_end();
+  }
+
+  template <class Tria> static uint size(Tria &t) {
+    return t.number_of_finite_cells();
   }
 
   template <class Tria>
@@ -97,6 +107,7 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
   INDENT
 
   dSimplices<D, Precision> tria;
+  tria.reserve(CGALHelper<D, Precision>::size(t));
   for (auto it = CGALHelper<D, Precision>::begin(t);
        it != CGALHelper<D, Precision>::end(t); ++it) {
     dSimplex<D, Precision> a;
