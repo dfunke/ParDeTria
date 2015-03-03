@@ -8,6 +8,9 @@
 #include <set>
 #include <stdexcept>
 #include <queue>
+#include <thread>
+
+#include <tbb/parallel_for.h>
 
 // debug
 #ifndef NDEBUG
@@ -645,18 +648,22 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partioning.size());
-    Painter<D, Precision> paintPartialDTs = basePainter;
 
-    INDENT
-    for (uint i = 0; i < partioning.size(); ++i) {
-      LOG("Partition " << i << std::endl);
+    tbb::parallel_for(std::size_t(0), partioning.size(), [&](const uint i) {
+      LOGGER.setIndent(
+          provenance.length()); // new thread, initialize Logger indent
       INDENT
+      LOG("Partition " << i << " on thread " << std::this_thread::get_id()
+                       << std::endl);
       partialDTs[i] =
           triangulateDAC(partioning[i].points, provenance + std::to_string(i));
       LOG("Triangulation " << i << " contains " << partialDTs[i].size()
                            << " tetrahedra" << std::endl);
       DEDENT
+    });
 
+    Painter<D, Precision> paintPartialDTs = basePainter;
+    for (uint i = 0; i < partioning.size(); ++i) {
       paintPartialDTs.setColor(Painter<D, Precision>::tetradicColor(i), 0.4);
       paintPartialDTs.draw(partialDTs[i], points);
 
@@ -664,7 +671,6 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       paintPartialDT.draw(partialDTs[i], points, true);
       paintPartialDT.save(provenance + "_02_partialDT_" + std::to_string(i));
     }
-    DEDENT
 
     paintPartialDTs.save(provenance + "_02_partialDTs");
 
