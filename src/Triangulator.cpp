@@ -698,7 +698,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
     LOG("Triangulating edges" << std::endl);
     INDENT
-    auto edgeDT = triangulateBase(edgePointIds, provenance + "e");
+    auto edgeDT = triangulateDAC(edgePointIds, provenance + "e");
     LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
                                        << std::endl << std::endl);
     DEDENT
