@@ -17,7 +17,8 @@ public:
       std::ofstream &_out, std::mutex &_outMtx,
       const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
       std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
-      : Triangulator<D, Precision>(_bounds, _points, std::move(_partitioner)),
+      : Triangulator<D, Precision>(_bounds, 0, _points,
+                                   std::move(_partitioner)),
         out(_out), outMtx(_outMtx) {
 
     Ids allPoints(this->points.begin_keys(), this->points.end_keys());

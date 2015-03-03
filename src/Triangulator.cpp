@@ -29,9 +29,6 @@ template <uint D, typename Precision>
 constexpr Precision Triangulator<D, Precision>::SAFETY;
 
 template <uint D, typename Precision>
-constexpr uint Triangulator<D, Precision>::BASE_CASE;
-
-template <uint D, typename Precision>
 constexpr char Triangulator<D, Precision>::TOP;
 
 template <uint D, typename Precision>
@@ -40,9 +37,11 @@ bool Triangulator<D, Precision>::VERIFY = true;
 
 template <uint D, typename Precision>
 Triangulator<D, Precision>::Triangulator(
-    const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
+    const dBox<D, Precision> &_bounds, const uint _baseThreshold,
+    dPoints<D, Precision> &_points,
     std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
-    : bounds(_bounds), points(_points), partitioner(_partitioner) {
+    : bounds(_bounds), baseThreshold(_baseThreshold), points(_points),
+      partitioner(_partitioner) {
   if (!points.contains(dPoint<D, Precision>::cINF)) {
     auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
     for (uint i = 0; i < pow(2, D); ++i) {
@@ -604,7 +603,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
   bool isTOP = provenance == std::to_string(TOP);
 
-  if (partitionPoints.size() > BASE_CASE) {
+  if (partitionPoints.size() > baseThreshold) {
     LOG("Recursive case" << std::endl);
 
     // setup base painter

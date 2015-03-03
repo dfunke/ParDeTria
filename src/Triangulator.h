@@ -24,7 +24,7 @@ typedef std::vector<TriangulationReportEntry> TriangulationReport;
 
 template <uint D, typename Precision> class Triangulator {
 public:
-  Triangulator(const dBox<D, Precision> &_bounds,
+  Triangulator(const dBox<D, Precision> &_bounds, const uint _baseThreshold,
                dPoints<D, Precision> &_points,
                std::unique_ptr<Partitioner<D, Precision>> &&_partitioner);
 
@@ -71,6 +71,8 @@ protected:
 
 protected:
   const dBox<D, Precision> bounds;
+  const uint baseThreshold;
+
   dPoints<D, Precision> points;
   TriangulationReport triangulationReport;
   std::unique_ptr<Partitioner<D, Precision>> &partitioner;
@@ -84,6 +86,5 @@ public:
 
 protected:
   static constexpr Precision SAFETY = 100;
-  static constexpr uint BASE_CASE = 100;
   static constexpr char TOP = 0;
 };

@@ -36,6 +36,7 @@ struct TriangulateReturn {
 //**************************
 
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
+                              const uint baseCase,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter) {
   std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
@@ -54,7 +55,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     break;
   }
 
-  Triangulator<D, Precision> triangulator(bounds, points,
+  Triangulator<D, Precision> triangulator(bounds, baseCase, points,
                                           std::move(partitioner_ptr));
 
   TriangulateReturn ret;
@@ -86,7 +87,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
 //**************************
 
-int doStudy(const uint N, const dBox<D, Precision> &bounds,
+int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
             std::function<Precision()> &&dice) {
   // define splitter test cases
   std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
@@ -117,7 +118,7 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds,
       auto &points = pointss[i];
       unsigned char p = splitters[j];
 
-      auto ret = triangulate(bounds, points, p);
+      auto ret = triangulate(bounds, baseCase, points, p);
 
       // evaluate the triangulation report
 
@@ -158,8 +159,9 @@ int main(int argc, char *argv[]) {
 
   int verbosity = -1;
 
-  unsigned char p = 'd';
-  uint N = 1e4;
+  unsigned char p;
+  uint N;
+  uint baseCase;
 
   bool study = false;
 
@@ -171,6 +173,8 @@ int main(int argc, char *argv[]) {
 
   po::options_description cCommandLine("Command Line Options");
   cCommandLine.add_options()("n", po::value<uint>(&N), "number of points");
+  cCommandLine.add_options()("basecase", po::value<uint>(&baseCase),
+                             "threshold for base case");
   cCommandLine.add_options()(
       "splitter", po::value<unsigned char>(&p),
       "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
@@ -196,6 +200,26 @@ int main(int argc, char *argv[]) {
 
   // evaluate program options
   LOGGER.setLogLevel(static_cast<Logger::Verbosity>(verbosity));
+
+  // plausability checks
+  bool valid = true;
+  if ((!vm.count("basecase"))) {
+    std::cout << "Please specify basecase threshold" << std::endl;
+    valid = false;
+  }
+
+  if ((!vm.count("study") && !vm.count("splitter"))) {
+    std::cout << "Please specify splitter" << std::endl;
+    valid = false;
+  }
+
+  if ((!vm.count("study") && !(vm.count("n") || vm.count("points")))) {
+    std::cout << "Please specify number of points or point file" << std::endl;
+    valid = false;
+  }
+
+  if (!valid)
+    return EXIT_FAILURE;
 
   if (vm.count("points")) {
     loadPoints = true; // filename will be in pointFile
@@ -236,7 +260,7 @@ int main(int argc, char *argv[]) {
    */
 
   if (study) {
-    return doStudy(N, bounds, std::move(dice));
+    return doStudy(N, bounds, baseCase, std::move(dice));
   } else {
 
     dPoints<D, Precision> points;
@@ -246,7 +270,7 @@ int main(int argc, char *argv[]) {
       points = genPoints(N, bounds, dice);
     }
 
-    auto ret = triangulate(bounds, points, p);
+    auto ret = triangulate(bounds, baseCase, points, p);
 
     LOG("Triangulating " << points.size() << " points took "
                          << std::chrono::duration_cast<std::chrono::seconds>(
