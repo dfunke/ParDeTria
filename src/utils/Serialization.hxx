@@ -6,7 +6,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/array.hpp>
-#include <boost/serialization/map.hpp>
+#include <boost/serialization/unordered_map.hpp>
 #include <boost/serialization/set.hpp>
 #include <boost/serialization/base_object.hpp>
 
@@ -54,7 +54,7 @@ void serialize(Archive &ar, dSphere<D, Precision> &s,
 template <class Archive, typename V, typename K>
 void serialize(Archive &ar, IndexedVector<V, K> &v,
                __attribute((unused)) const unsigned int version) {
-  ar &boost::serialization::base_object<std::map<K, V>>(v);
+  ar &boost::serialization::base_object<std::unordered_map<K, V>>(v);
 }
 
 // points

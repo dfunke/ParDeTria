@@ -1,14 +1,14 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <iterator>
 
 template <typename V, typename K = uint>
-class IndexedVector : public std::map<K, V> {
+class IndexedVector : public std::unordered_map<K, V> {
 
 public:
-  typedef typename std::map<K, V> map;
+  typedef typename std::unordered_map<K, V> map;
 
 public:
   struct const_iterator; // forward declare for friend declaration
