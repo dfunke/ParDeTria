@@ -21,22 +21,32 @@ template <uint D, typename Precision> struct PainterImplementation;
 
 template <typename Precision> struct PainterImplementation<2, Precision> {
 public:
-  void draw(const dPoint<2, Precision> &point, bool drawInfinite = false);
-  void draw(const dSimplex<2, Precision> &simplex,
-            const dPoints<2, Precision> &points, bool drawInfinite = false);
-  void drawCircumSphere(const dSimplex<2, Precision> &simplex,
-                        const dPoints<2, Precision> &points,
-                        bool drawInfinite = false);
-  void drawPartition(const dPoints<2, Precision> &points);
+  __attribute__((noinline)) void draw(const dPoint<2, Precision> &point,
+                                      bool drawInfinite = false);
 
-  void setColor(float r, float g, float b, float alpha = 1.0);
+  __attribute__((noinline)) void draw(const dSimplex<2, Precision> &simplex,
+                                      const dPoints<2, Precision> &points,
+                                      bool drawInfinite = false);
 
-  void save(const std::string &file) const;
+  __attribute__((noinline)) void drawCircumSphere(
+      const dSimplex<2, Precision> &simplex,
+      const dPoints<2, Precision> &points, bool drawInfinite = false);
 
-  void _init(const dBox<2, Precision> &_bounds, uint _resolution);
-  void _copy(const Painter<2, Precision> &a);
+  __attribute__((noinline)) void drawPartition(
+      const dPoints<2, Precision> &points);
 
-  template <typename Object> void _log(const Object &o);
+  __attribute__((noinline)) void setColor(float r, float g, float b,
+                                          float alpha = 1.0);
+
+  __attribute__((noinline)) void save(const std::string &file) const;
+
+  __attribute__((noinline)) void _init(const dBox<2, Precision> &_bounds,
+                                       uint _resolution);
+
+  __attribute__((noinline)) void _copy(const Painter<2, Precision> &a);
+
+  template <typename Object>
+  __attribute__((noinline)) void _log(const Object &o);
 
 private:
   float imgDim(const uint dim);
@@ -85,22 +95,28 @@ template <typename Precision> struct PainterImplementation<3, Precision> {
   };
 
 public:
-  void draw(const dPoint<3, Precision> &point, bool drawInfinite = false);
-  void draw(const dSimplex<3, Precision> &simplex,
-            const dPoints<3, Precision> &points, bool drawInfinite = false);
-  void drawCircumSphere(const dSimplex<3, Precision> &simplex,
-                        const dPoints<3, Precision> &points,
-                        bool drawInfinite = false);
-  void drawPartition(const dPoints<3, Precision> &points);
+  __attribute__((noinline)) void draw(const dPoint<3, Precision> &point,
+                                      bool drawInfinite = false);
+  __attribute__((noinline)) void draw(const dSimplex<3, Precision> &simplex,
+                                      const dPoints<3, Precision> &points,
+                                      bool drawInfinite = false);
+  __attribute__((noinline)) void drawCircumSphere(
+      const dSimplex<3, Precision> &simplex,
+      const dPoints<3, Precision> &points, bool drawInfinite = false);
+  __attribute__((noinline)) void drawPartition(
+      const dPoints<3, Precision> &points);
 
-  void setColor(float r, float g, float b, float alpha = 1.0);
+  __attribute__((noinline)) void setColor(float r, float g, float b,
+                                          float alpha = 1.0);
 
-  void save(const std::string &file) const;
+  __attribute__((noinline)) void save(const std::string &file) const;
 
-  void _init(const dBox<3, Precision> &_bounds, uint _resolution);
-  void _copy(const Painter<3, Precision> &a);
+  __attribute__((noinline)) void _init(const dBox<3, Precision> &_bounds,
+                                       uint _resolution);
+  __attribute__((noinline)) void _copy(const Painter<3, Precision> &a);
 
-  template <typename Object> void _log(const Object &o);
+  template <typename Object>
+  __attribute__((noinline)) void _log(const Object &o);
 
 public:
   bool logging;

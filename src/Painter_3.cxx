@@ -100,8 +100,10 @@ void PainterImplementation<3, Precision>::drawCircumSphere(
 
 template <typename Precision>
 void PainterImplementation<3, Precision>::drawPartition(
-    __attribute((unused)) const dPoints<3, Precision> &points) {
-  // TODO draw partition
+    const dPoints<3, Precision> &points) {
+
+  auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
+  pPoints.emplace_back(stats.mid, std::make_tuple(1, 0, 0, 1));
 }
 
 template <typename Precision>
