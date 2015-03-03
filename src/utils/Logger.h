@@ -5,6 +5,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "utils/ASSERT.h"
+
 // fix bug in TBB where emplaced_back is only defined when LIBCPP is defined
 #ifndef _LIBCPP_VERSION
 #define _LIBCPP_VERSION 1
@@ -75,7 +77,10 @@ public:
 
   std::string indent() const;
   void incIndent() { ++indentLevel; }
-  void decIndent() { --indentLevel; }
+  void decIndent() {
+    ASSERT(indentLevel > 0);
+    --indentLevel;
+  }
   void setIndent(const uint i) { indentLevel = i; }
 
   template <typename InputIt>
