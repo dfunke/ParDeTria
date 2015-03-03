@@ -1,9 +1,11 @@
 #include "CGAL_Interface.h"
 
+#include <atomic>
+
 #include "utils/ASSERT.h"
 
 // define a static counter for the tetrahedronID
-uint tetrahedronID = 0;
+std::atomic<uint> tetrahedronID(0);
 
 // CGAL
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
