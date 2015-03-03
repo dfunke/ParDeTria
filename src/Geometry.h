@@ -109,6 +109,11 @@ template <uint D, typename Precision> struct dBox {
 template <uint D, typename Precision> class dPoint {
 
 public:
+  dPoint() : id(dPoint<D, Precision>::cINF) {}
+
+  dPoint(const dVector<D, Precision> &_coords)
+      : id(dPoint<D, Precision>::cINF), coords(_coords) {}
+
   bool operator==(const dPoint<D, Precision> &a) const {
 
     // COUT << "Comparing POINTS THIS " << *this << " and OTHER " << a << ": ";
@@ -188,6 +193,11 @@ public:
 template <uint D, typename Precision> class dSimplex {
 
 public:
+  dSimplex() : id(dSimplex<D, Precision>::cINF) {}
+
+  dSimplex(const std::array<uint, D + 1> &_vertices)
+      : id(dSimplex<D, Precision>::cINF), vertices(_vertices) {}
+
   bool operator==(const dSimplex<D, Precision> &a) const {
 
     // COUT << "Comparing SIMPLICES THIS " << *this << " and OTHER " << a << ":
