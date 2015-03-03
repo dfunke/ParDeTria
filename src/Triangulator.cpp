@@ -46,8 +46,8 @@ Triangulator<D, Precision>::Triangulator(
   if (!points.contains(dPoint<D, Precision>::cINF)) {
     auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
     for (uint i = 0; i < pow(2, D); ++i) {
-      VLOG << "Point stats: " << stats.min << " - " << stats.mid << " - "
-           << stats.max << std::endl;
+      VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
+                           << stats.max << std::endl);
 
       dPoint<D, Precision> p;
       p.id = dPoint<D, Precision>::cINF | i;
@@ -75,7 +75,7 @@ Ids Triangulator<D, Precision>::getEdge(
 
     ASSERT(points.contains(infVertex));
 
-    PLOG << "Infinite vertex " << points[infVertex] << std::endl;
+    PLOG("Infinite vertex " << points[infVertex] << std::endl);
     LOGGER.logContainer(points[infVertex].simplices, Logger::Verbosity::PROLIX,
                         "Used in simplices: ");
 
@@ -84,7 +84,7 @@ Ids Triangulator<D, Precision>::getEdge(
       if (!simplices.contains(s))
         continue;
 
-      PLOG << "Adding " << simplices[s] << " to edge" << std::endl;
+      PLOG("Adding " << simplices[s] << " to edge" << std::endl);
       edgeSimplices.insert(simplices[s].id);
 
       /* Walk along the neighbors,
@@ -116,8 +116,9 @@ Ids Triangulator<D, Precision>::getEdge(
           }
           if (intersectsBounds) {
 
-            PLOG << "Adding " << simplices[x]
-                 << " to edge -> circumcircle criterion" << std::endl;
+            PLOG("Adding " << simplices[x]
+                           << " to edge -> circumcircle criterion"
+                           << std::endl);
             edgeSimplices.insert(simplices[x].id);
 
             for (const auto &n : simplices[x].neighbors) {
@@ -172,7 +173,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
 
   INDENT
   for (dSimplex<D, Precision> &simplex : simplices) {
-    PLOG << "Updating neighbors of " << simplex << std::endl;
+    PLOG("Updating neighbors of " << simplex << std::endl);
 
 #ifndef NDEBUG
     dSimplex<D, Precision> saveSimplex = simplex;
@@ -196,7 +197,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
       for (const uint u : vertex.simplices) {
         if (u != simplex.id && simplices.contains(u) &&
             simplex.isNeighbor(simplices[u])) {
-          PLOG << "Neighbor with " << simplices[u] << std::endl;
+          PLOG("Neighbor with " << simplices[u] << std::endl);
 
           simplex.neighbors.insert(u);
 
@@ -211,8 +212,8 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
     DEDENT
 
     if (!(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D + 1)) {
-      LOG << "Error: wrong number of neighbors for simplex " << simplex
-          << std::endl;
+      LOG("Error: wrong number of neighbors for simplex " << simplex
+                                                          << std::endl);
 
       if (IS_PROLIX) {
         paintWriter.add("img/" + provenance + "_neighbors_" +
@@ -232,7 +233,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
 #ifndef NDEBUG
         if (!(simplex.equalVertices(saveSimplex) &&
               simplex.equalNeighbors(saveSimplex))) {
-          LOG << "Error: was before " << saveSimplex << std::endl;
+          LOG("Error: was before " << saveSimplex << std::endl);
 
           paintWriter.top().setColor(0, 0, 1); // old simplex in blue
           paintWriter.top().draw(saveSimplex, points, true);
@@ -264,7 +265,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     const Partitioning<D, Precision> &partitioning,
     const std::string &provenance, const dSimplices<D, Precision> *realDT) {
 
-  LOG << "Merging partial DTs into one triangulation" << std::endl;
+  LOG("Merging partial DTs into one triangulation" << std::endl);
   dSimplices<D, Precision> DT;
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
@@ -306,7 +307,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
 
   // delete all simplices belonging to the edge from DT
-  LOG << "Striping triangulation from edge" << std::endl;
+  LOG("Striping triangulation from edge" << std::endl);
   for (const uint id : edgeSimplices) {
     ASSERT(DT.contains(id));
 
@@ -336,7 +337,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   //**********************
 
   // merge partial DTs and edge DT
-  LOG << "Merging triangulations" << std::endl;
+  LOG("Merging triangulations" << std::endl);
   for (const auto &edgeSimplex : edgeDT) {
 
     // check whether edgeSimplex is completely contained in one partition
@@ -526,30 +527,31 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 
   LOGGER.setIndent(provenance.length());
 
-  LOG << "triangulateBASE called on level " << provenance << " with "
-      << partitionPoints.size() << " points" << std::endl;
+  LOG("triangulateBASE called on level " << provenance << " with "
+                                         << partitionPoints.size() << " points"
+                                         << std::endl);
 
   bool isTOP = provenance == std::to_string(TOP);
 
   std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
   if (isTOP && VERIFY) {
-    LOG << "Real triangulation" << std::endl;
+    LOG("Real triangulation" << std::endl);
     INDENT
     realDT = std::make_unique<dSimplices<D, Precision>>(
         CGALInterface<D, Precision>::triangulate(points, &partitionPoints));
-    LOG << "Real triangulation contains " << realDT->size() << " tetrahedra"
-        << std::endl;
+    LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
+                                       << std::endl);
     DEDENT
   }
 
   INDENT
   // if this is the top-most triangulation, ignore infinite vertices
   auto dt = CGALInterface<D, Precision>::triangulate(points, &partitionPoints);
-  LOG << "Triangulation contains " << dt.size() << " tetrahedra" << std::endl;
+  LOG("Triangulation contains " << dt.size() << " tetrahedra" << std::endl);
   DEDENT
 
   if (isTOP && VERIFY) {
-    LOG << "Verifying CGAL triangulation" << std::endl;
+    LOG("Verifying CGAL triangulation" << std::endl);
     dt.verify(points.project(partitionPoints));
   }
 
@@ -557,7 +559,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
   auto saveDT = dt;
 #endif
 
-  LOG << "Updating neighbors" << std::endl;
+  LOG("Updating neighbors" << std::endl);
   updateNeighbors(dt, provenance);
 
   ASSERT(saveDT == dt); // only performed if not NDEBUG
@@ -573,11 +575,11 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
   rep.nEdgeSimplices = 0;
 
   if (isTOP && VERIFY) {
-    LOG << "Consistency check of triangulation" << std::endl;
+    LOG("Consistency check of triangulation" << std::endl);
     auto vr = dt.verify(points.project(partitionPoints));
     evaluateVerificationReport(vr, provenance);
 
-    LOG << "Cross check with real triangulation" << std::endl;
+    LOG("Cross check with real triangulation" << std::endl);
     auto ccr = dt.crossCheck(*realDT);
     evaluateCrossCheckReport(ccr, provenance, dt, *realDT);
 
@@ -596,13 +598,14 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
   LOGGER.setIndent(provenance.length());
 
-  LOG << "triangulateDAC called on level " << provenance << " with "
-      << partitionPoints.size() << " points" << std::endl;
+  LOG("triangulateDAC called on level " << provenance << " with "
+                                        << partitionPoints.size() << " points"
+                                        << std::endl);
 
   bool isTOP = provenance == std::to_string(TOP);
 
   if (partitionPoints.size() > BASE_CASE) {
-    LOG << "Recursive case" << std::endl;
+    LOG("Recursive case" << std::endl);
 
     // setup base painter
     Painter<D, Precision> basePainter(bounds);
@@ -613,13 +616,13 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
     if (isTOP && VERIFY) {
       // perform real triangulation
-      LOG << "Real triangulation" << std::endl;
+      LOG("Real triangulation" << std::endl);
       INDENT
 
       realDT = std::make_unique<dSimplices<D, Precision>>(
           CGALInterface<D, Precision>::triangulate(points, &partitionPoints));
-      LOG << "Real triangulation contains " << realDT->size() << " tetrahedra"
-          << std::endl;
+      LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
+                                         << std::endl);
       DEDENT
 
       Painter<D, Precision> paintRealDT = basePainter;
@@ -632,14 +635,14 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     }
 
     // partition input
-    LOG << "Partioning" << std::endl;
+    LOG("Partioning" << std::endl);
     INDENT
     auto partioning =
         partitioner->partition(partitionPoints, points, provenance);
     DEDENT
 
     for (auto &p : partioning)
-      PLOG << "Partition " << p << std::endl;
+      PLOG("Partition " << p << std::endl);
 
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partioning.size());
@@ -647,12 +650,12 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
     INDENT
     for (uint i = 0; i < partioning.size(); ++i) {
-      LOG << "Partition " << i << std::endl;
+      LOG("Partition " << i << std::endl);
       INDENT
       partialDTs[i] =
           triangulateDAC(partioning[i].points, provenance + std::to_string(i));
-      LOG << "Triangulation " << i << " contains " << partialDTs[i].size()
-          << " tetrahedra" << std::endl;
+      LOG("Triangulation " << i << " contains " << partialDTs[i].size()
+                           << " tetrahedra" << std::endl);
       DEDENT
 
       paintPartialDTs.setColor(Painter<D, Precision>::tetradicColor(i), 0.4);
@@ -666,7 +669,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
     paintPartialDTs.save(provenance + "_02_partialDTs");
 
-    LOG << "Extracting edges" << std::endl;
+    LOG("Extracting edges" << std::endl);
     INDENT
 
     Ids edgePointIds;
@@ -688,17 +691,17 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     }
     DEDENT
 
-    LOG << "Edge has " << edgeSimplexIds.size() << " simplices with "
-        << edgePointIds.size() << " points" << std::endl;
+    LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
+                    << edgePointIds.size() << " points" << std::endl);
 
     paintEdges.draw(points.project(edgePointIds));
     paintEdges.save(provenance + "_03_edgeMarked");
 
-    LOG << "Triangulating edges" << std::endl;
+    LOG("Triangulating edges" << std::endl);
     INDENT
     auto edgeDT = triangulateBase(edgePointIds, provenance + "e");
-    LOG << "Edge triangulation contains " << edgeDT.size() << " tetrahedra"
-        << std::endl << std::endl;
+    LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
+                                       << std::endl << std::endl);
     DEDENT
 
     Painter<D, Precision> paintEdgeDT = basePainter;
@@ -729,11 +732,11 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     rep.nEdgeSimplices = edgeDT.size();
 
     if (isTOP & VERIFY) {
-      LOG << "Consistency check of triangulation" << std::endl;
+      LOG("Consistency check of triangulation" << std::endl);
       auto vr = mergedDT.verify(points.project(partitionPoints));
       evaluateVerificationReport(vr, provenance);
 
-      LOG << "Cross check with real triangulation" << std::endl;
+      LOG("Cross check with real triangulation" << std::endl);
       auto ccr = mergedDT.crossCheck(*realDT);
       evaluateCrossCheckReport(ccr, provenance, mergedDT, *realDT, &partioning);
 

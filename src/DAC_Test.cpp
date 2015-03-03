@@ -145,7 +145,7 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds,
 
   std::cout << LOGGER << std::endl;
 
-  LOG << "Finished" << std::endl;
+  LOG("Finished" << std::endl);
 
   return EXIT_SUCCESS;
 }
@@ -248,21 +248,21 @@ int main(int argc, char *argv[]) {
 
     auto ret = triangulate(bounds, points, p);
 
-    LOG << "Triangulating " << points.size() << " points took "
-        << std::chrono::duration_cast<std::chrono::seconds>(ret.time).count()
-        << " s" << std::endl;
+    LOG("Triangulating " << points.size() << " points took "
+                         << std::chrono::duration_cast<std::chrono::seconds>(
+                                ret.time).count() << " s" << std::endl);
 
-    VLOG << std::endl << "Triangulation report: " << std::endl;
+    VLOG(std::endl << "Triangulation report: " << std::endl);
 
-    VLOG << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
-                     "valid", "nPoints", "nSimplices", "nEdgePoints",
-                     "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
+    VLOG(CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
+                  "valid", "nPoints", "nSimplices", "nEdgePoints",
+                  "nEdgeSimplices", "time", "mem", "max_mem"));
+
     for (const auto &tr : ret.tr) {
-      VLOG << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                       tr.edge_triangulation, tr.valid, tr.nPoints,
-                       tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
-                       ret.time.count(), getCurrentRSS(), getPeakRSS())
-           << std::endl;
+      VLOG(CSV::csv(points.size(), p, tr.provenance, tr.base_case,
+                    tr.edge_triangulation, tr.valid, tr.nPoints, tr.nSimplices,
+                    tr.nEdgePoints, tr.nEdgeSimplices, ret.time.count(),
+                    getCurrentRSS(), getPeakRSS()));
     }
 
     return EXIT_SUCCESS;

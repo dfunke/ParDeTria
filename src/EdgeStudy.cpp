@@ -47,7 +47,7 @@ public:
     auto s =
         CSV::csv(this->points.size(), edgeSimplices.size(), edgePoints.size());
 
-    LOG << s << std::endl;
+    LOG(s << std::endl);
     {
       std::lock_guard<std::mutex> lock(outMtx);
       out << s << std::endl;
@@ -98,7 +98,7 @@ void studyPartitionEdgeSize(const uint N, const char splitter) {
   tbb::parallel_for(std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)),
                     [&](const uint i) {
     uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
-    LOG << "Testing with " << n << " points" << std::endl;
+    LOG("Testing with " << n << " points" << std::endl);
     auto points = genPoints(n, bounds, dice);
     PartitionEdgeSizeStudy<D, Precision> es(f, mtx, bounds, points,
                                             std::move(partitioner_ptr));
@@ -114,22 +114,22 @@ int main() {
   std::vector<unsigned char> splitters = {'d', 'c'};
 
   std::async(std::launch::async, [&]() {
-    LOG << "2D" << std::endl;
+    LOG("2D" << std::endl);
     INDENT
     tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint i) {
       const auto s = splitters[i];
-      LOG << "Splitter " << s << std::endl;
+      LOG("Splitter " << s << std::endl);
       studyPartitionEdgeSize<2, Precision>(N, s);
     });
     DEDENT
   });
 
   std::async(std::launch::async, [&]() {
-    LOG << "3D" << std::endl;
+    LOG("3D" << std::endl);
     INDENT
     tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint i) {
       const auto s = splitters[i];
-      LOG << "Splitter " << s << std::endl;
+      LOG("Splitter " << s << std::endl);
       studyPartitionEdgeSize<3, Precision>(N, s);
     });
     DEDENT

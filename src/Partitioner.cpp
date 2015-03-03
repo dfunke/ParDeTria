@@ -7,7 +7,7 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
-  PLOG << "Midpoint is " << stats.mid << std::endl;
+  PLOG("Midpoint is " << stats.mid << std::endl);
 
   Partitioning<D, Precision> partitioning;
   for (uint i = 0; i < pow(2, D); ++i) {
@@ -35,7 +35,7 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
 
     ASSERT(partitioning[part].bounds.contains(p.coords));
 
-    // LOG << "Adding " << p << " to " << part << std::endl;
+    // LOG("Adding " << p << " to " << part << std::endl);
     partitioning[part].points.insert(p.id);
   }
 
@@ -56,7 +56,7 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
   // do mid-point based partitioning for now
   auto stats = getPointStats(ids.begin(), ids.end(), points);
 
-  PLOG << "Midpoint is " << stats.mid << std::endl;
+  PLOG("Midpoint is " << stats.mid << std::endl);
 
   Partitioning<D, Precision> partitioning;
 
@@ -83,7 +83,7 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
 
     ASSERT(partitioning[part].bounds.contains(p.coords));
 
-    // LOG << "Adding " << p << " to " << part << std::endl;
+    // LOG("Adding " << p << " to " << part << std::endl);
     partitioning[part].points.insert(p.id);
   }
 
@@ -108,8 +108,8 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
   // cycle is lenght of provenance - 1 modulo D
   uint k = (provenance.size() - 1) % D;
 
-  PLOG << "Midpoint is " << stats.mid << std::endl;
-  PLOG << "Splitting dimension is " << k << std::endl;
+  PLOG("Midpoint is " << stats.mid << std::endl);
+  PLOG("Splitting dimension is " << k << std::endl);
 
   Partitioning<D, Precision> partitioning;
 
@@ -136,7 +136,7 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
 
     ASSERT(partitioning[part].bounds.contains(p.coords));
 
-    // LOG << "Adding " << p << " to " << part << std::endl;
+    // LOG("Adding " << p << " to " << part << std::endl);
     partitioning[part].points.insert(p.id);
   }
 

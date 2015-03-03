@@ -154,9 +154,10 @@ private:
   void flush() {
 
     if (!m_items.empty()) {
-      LOG << "Writing " << m_items.size() << " items" << std::endl;
+      LOG("Writing " << m_items.size() << " items" << std::endl);
 
-      boost::progress_display progress(m_items.size(), LOG);
+      boost::progress_display progress(
+          m_items.size(), LOGGER.addLogEntry(Logger::Verbosity::NORMAL));
 
       while (!m_items.empty()) {
         m_items.back().second.save(m_items.back().first);

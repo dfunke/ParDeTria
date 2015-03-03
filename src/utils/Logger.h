@@ -4,8 +4,6 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
-#include <boost/iostreams/stream.hpp>
-#include <boost/iostreams/device/null.hpp>
 
 // fix bug in TBB where emplaced_back is only defined when LIBCPP is defined
 #ifndef _LIBCPP_VERSION
@@ -24,22 +22,26 @@
 
 class Logger : private boost::noncopyable {
 
-#define LOGGER Logger::getInstance()
-#define LOG Logger::getInstance().addLogEntry(Logger::Verbosity::NORMAL)
-#define VLOG Logger::getInstance().addLogEntry(Logger::Verbosity::VERBOSE)
-#define PLOG Logger::getInstance().addLogEntry(Logger::Verbosity::PROLIX)
-#define LLOG std::cout << Logger::getInstance().indent()
-
-#define CONT Logger::getInstance().continueLogEntry()
-#define LCONT std::cout
-
-#define INDENT Logger::getInstance().incIndent();
-#define DEDENT Logger::getInstance().decIndent();
-
+#define IS_NORMAL                                                              \
+  Logger::abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::NORMAL
 #define IS_VERBOSE                                                             \
   Logger::abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::VERBOSE
 #define IS_PROLIX                                                              \
   Logger::abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::PROLIX
+
+#define LOGGER Logger::getInstance()
+#define LOG(msg)                                                               \
+  if (IS_NORMAL)                                                               \
+  Logger::getInstance().addLogEntry(Logger::Verbosity::NORMAL) << msg
+#define VLOG(msg)                                                              \
+  if (IS_VERBOSE)                                                              \
+  Logger::getInstance().addLogEntry(Logger::Verbosity::VERBOSE) << msg
+#define PLOG(msg)                                                              \
+  if (IS_PROLIX)                                                               \
+  Logger::getInstance().addLogEntry(Logger::Verbosity::PROLIX) << msg
+
+#define INDENT Logger::getInstance().incIndent();
+#define DEDENT Logger::getInstance().decIndent();
 
 public:
   enum class Verbosity : short {
@@ -66,7 +68,6 @@ public:
   void setLogLevel(const Verbosity &l) { logLevel = l; }
 
   std::ostream &addLogEntry(Verbosity level);
-  std::ostream &continueLogEntry();
 
   std::ostream &printLog(std::ostream &out) const;
 
@@ -81,17 +82,20 @@ public:
   void logContainer(const InputIt &first, const InputIt &last, Verbosity level,
                     const std::string &prefix = "",
                     const std::string &sep = " ") {
-    auto &stream = addLogEntry(level);
 
-    if (prefix != "")
-      stream << prefix << sep;
+    if (Logger::abs(Logger::getInstance().getLogLevel()) >= level) {
+      auto &stream = addLogEntry(level);
 
-    for (auto it = first; it != last; ++it) {
-      if (it != first)
-        stream << sep;
-      stream << *it;
+      if (prefix != "")
+        stream << prefix << sep;
+
+      for (auto it = first; it != last; ++it) {
+        if (it != first)
+          stream << sep;
+        stream << *it;
+      }
+      stream << std::endl;
     }
-    stream << std::endl;
   }
 
   template <typename Container>
@@ -103,20 +107,12 @@ public:
   }
 
 private:
-  Logger()
-      : logLevel(Logger::Verbosity::NORMAL),
-        nullStream((boost::iostreams::null_sink())){};
+  Logger() : logLevel(Logger::Verbosity::NORMAL){};
 
   LogEntries logEntries;
 
   Verbosity logLevel;
   static thread_local uint indentLevel;
-
-  boost::iostreams::stream<boost::iostreams::null_sink> nullStream;
-
-  static thread_local Verbosity contVerbosity; // continue log level for LIVE
-  static thread_local LogEntries::iterator
-      contIt; // continue stream for non-live
 };
 
 std::ostream &operator<<(std::ostream &s, const Logger &log);

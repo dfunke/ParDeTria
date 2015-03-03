@@ -99,12 +99,12 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
 
   ASSERT(t.is_valid());
 
-  // VLOG << "CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid"
-  //     << std::endl;
-  // VLOG << "finite cells/vertices " << t.number_of_finite_cells() << "/"
-  //     << t.number_of_vertices() << std::endl;
+  // VLOG("CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid"
+  //     << std::endl);
+  // VLOG("finite cells/vertices " << t.number_of_finite_cells() << "/"
+  //     << t.number_of_vertices() << std::endl);
 
-  PLOG << "Collecting simplices" << std::endl;
+  PLOG("Collecting simplices" << std::endl);
   INDENT
 
   dSimplices<D, Precision> tria;
@@ -118,12 +118,12 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
       points[a.vertices[i]].simplices.insert(a.id);
     }
 
-    PLOG << a << std::endl;
+    PLOG(a << std::endl);
     tria.insert(a);
   }
   DEDENT
 
-  PLOG << "Collecting neighbors" << std::endl;
+  PLOG("Collecting neighbors" << std::endl);
 
   INDENT
   for (auto it = CGALHelper<D, Precision>::begin(t);
@@ -143,7 +143,7 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
       }
     }
 
-    PLOG << *tet << std::endl;
+    PLOG(*tet << std::endl);
   }
   DEDENT
 

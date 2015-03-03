@@ -625,7 +625,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     if (mySimplex == this->end()) {
-      LOG << "did not find simplex " << realSimplex << std::endl;
+      LOG("did not find simplex " << realSimplex << std::endl);
       result.valid = false;
       result.missing.insert(realSimplex);
       continue;
@@ -646,8 +646,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
       }
 
       if (!found) {
-        LOG << "did not find neighbor " << realDT[n] << " of simplex "
-            << realSimplex << std::endl;
+        LOG("did not find neighbor " << realDT[n] << " of simplex "
+                                     << realSimplex << std::endl);
         result.valid = false;
       }
     }
@@ -661,8 +661,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     if (realSimplex == realDT.end() && mySimplex.isFinite()) {
-      LOG << "simplex " << mySimplex << " does not exist in real triangulation"
-          << std::endl;
+      LOG("simplex " << mySimplex << " does not exist in real triangulation"
+                     << std::endl);
       result.valid = false;
       result.invalid.insert(mySimplex);
     }
@@ -670,13 +670,14 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
   // check whether sizes are equal, account for infinite simplices
   if (dSimplices<D, Precision>::size() != realDT.size()) {
-    LOG << "my size: " << dSimplices<D, Precision>::size()
-        << " other size: " << realDT.size() << std::endl;
+    LOG("my size: " + std::to_string(dSimplices<D, Precision>::size()) +
+            " other size: "
+        << std::to_string(realDT.size()) + "\n");
     result.valid = false;
   }
 
-  LOG << "cross check " << (result.valid ? "" : "NOT ") << "successful"
-      << std::endl;
+  LOG("cross check " << (result.valid ? "" : "NOT ") << "successful"
+                     << std::endl);
 
   return result;
 }
@@ -688,7 +689,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   result.valid = true;
 
   // verify that every input point is used
-  LOG << "Checking points" << std::endl;
+  LOG("Checking points" << std::endl);
   std::set<uint> usedPoints;
   for (const auto &s : *this) {
     usedPoints.insert(s.vertices.begin(), s.vertices.end());
@@ -703,7 +704,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
       }
     }
     if (!result.valid) {
-      LOG << "Points of input not used: " << sNotUsed << std::endl;
+      LOG("Points of input not used: " << sNotUsed << std::endl);
     }
 
     std::stringstream sInvalidP;
@@ -714,17 +715,17 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
       }
     }
     if (!result.valid) {
-      LOG << "Used points not in input: " << sInvalidP << std::endl;
+      LOG("Used points not in input: " << sInvalidP << std::endl);
     }
   }
 
   // verify where-used data structure
-  LOG << "Checking where-used relation" << std::endl;
+  LOG("Checking where-used relation" << std::endl);
   for (const auto &s : *this) {
     for (const auto &p : s.vertices) {
       // point p of s not correctly flagged as used in s
       if (points[p].simplices.count(s.id) != 1) {
-        LOG << "Point " << p << " NOT flagged as used in " << s << std::endl;
+        LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
         LOGGER.logContainer(points[p].simplices, Logger::Verbosity::NORMAL,
                             "p.simplices:");
         result.valid = false;
@@ -740,7 +741,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
       const auto &s = this->operator[](id);
       if (std::find(s.vertices.begin(), s.vertices.end(), p.id) ==
           s.vertices.end()) {
-        LOG << "Point " << p << " SHOULD be used in " << s << std::endl;
+        LOG("Point " << p << " SHOULD be used in " << s << std::endl);
         LOGGER.logContainer(p.simplices, Logger::Verbosity::NORMAL,
                             "p.simplices:");
         result.valid = false;
@@ -749,7 +750,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   }
 
   // verify that all simplices with a shared D-1 simplex are neighbors
-  LOG << "Checking neighbors" << std::endl;
+  LOG("Checking neighbors" << std::endl);
   for (const auto &a : *this) {
     for (const auto &b : *this) {
       // a and b are neighbors: the neighbor property is symmetric and the
@@ -764,15 +765,15 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
           (!a.isNeighbor(b) &&
            (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
             b.neighbors.count(a.id) != 0))) {
-        LOG << "Wrong neighbor relation between " << a << " and " << b
-            << std::endl;
+        LOG("Wrong neighbor relation between " << a << " and " << b
+                                               << std::endl);
         result.valid = false;
       }
     }
   }
 
   // check in circle criterion
-  LOG << "Checking empty circle criterion" << std::endl;
+  LOG("Checking empty circle criterion" << std::endl);
   for (const auto &s : *this) {
     for (const auto &p : points) {
       if (!p.isFinite())
@@ -781,9 +782,9 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
       bool contains = s.contains(p);
       bool inCircle = s.inSphere(p, points);
       if (contains != inCircle) {
-        LOG << "Point " << p << " is " << (inCircle ? "" : "NOT ")
-            << "in circle of " << s << " but should "
-            << (contains ? "" : "NOT ") << "be" << std::endl;
+        LOG("Point " << p << " is " << (inCircle ? "" : "NOT ")
+                     << "in circle of " << s << " but should "
+                     << (contains ? "" : "NOT ") << "be" << std::endl);
         result.valid = false;
 
         result.inCircle[s].insert(p.id);
@@ -792,8 +793,8 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   }
   DEDENT
 
-  LOG << "Triangulation is " << (result.valid ? "" : "NOT ") << "valid"
-      << std::endl;
+  LOG("Triangulation is " << (result.valid ? "" : "NOT ") << "valid"
+                          << std::endl);
 
   return result;
 }

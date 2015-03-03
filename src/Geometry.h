@@ -121,18 +121,18 @@ public:
     if (!(isFinite() ^ a.isFinite())) {
       // either none or both points are infinity
       // compare ids
-      // std::cout << (this->id == a.id) << std::endl;
+      // std::cout << (this->id == a.id) << std::endl);
       return id == a.id;
     } else {
       // either one is infinity
       // compare coordinates
       for (uint i = 0; i < D; ++i) {
         if (coords[i] != a.coords[i]) {
-          // std::cout << false << std::endl;
+          // std::cout << false << std::endl);
           return false;
         }
       }
-      // std::cout << true << std::endl;
+      // std::cout << true << std::endl);
       return true;
     }
   }
@@ -149,8 +149,8 @@ public:
 public:
   static inline bool isFinite(const uint &i) {
     // INDENT
-    // PLOG << i << " -> " << (i & cINF) << " != " << cINF << ": " << !((i &
-    // cINF) == cINF) << std::endl;
+    // PLOG(i << " -> " << (i & cINF) << " != " << cINF << ": " << !((i &
+    // cINF) == cINF) << std::endl);
     // DEDENT
     return !((i & cINF) == cINF);
   }
@@ -206,7 +206,7 @@ public:
     if (!((id == cINF) ^ (a.id == cINF))) {
       // either none or both simplices are infinity
       // compare ids
-      // std::cout << (this->id == a.id) << std::endl;
+      // std::cout << (this->id == a.id) << std::endl);
       return id == a.id;
     } else {
       // either one is infinity
@@ -221,11 +221,11 @@ public:
           }
         }
         if (!found) {
-          // std::cout << false << std::endl;
+          // std::cout << false << std::endl);
           return false;
         }
       }
-      // std::cout << true << std::endl;
+      // std::cout << true << std::endl);
       return true;
     }
   }
@@ -245,7 +245,7 @@ public:
         }
       }
       if (!found) {
-        // std::cout << false << std::endl;
+        // std::cout << false << std::endl);
         return false;
       }
     }
@@ -341,8 +341,8 @@ public:
     ASSERT(sharedVertices <= D || id == other.id);
 
     // if(sharedVertices > 2 && id != other.id)
-    //	PLOG << "Distinct vertices " << *this " and " << other << " share more
-    // than 2 hits";
+    //	PLOG("Distinct vertices " << *this " and " << other << " share more
+    // than 2 hits" << std::endl);
 
     return sharedVertices == D;
   }
@@ -403,8 +403,8 @@ public:
 
   bool operator==(const dSimplices<D, Precision> &other) const {
     if (this->size() != other.size()) {
-      PLOG << "my size: " << this->size() << " other size: " << other.size()
-           << std::endl;
+      PLOG("my size: " << this->size() << " other size: " << other.size()
+                       << std::endl);
       return false;
     }
 
@@ -413,7 +413,7 @@ public:
       auto mySimplex = std::find(this->begin(), this->end(), otherSimplex);
 
       if (mySimplex == this->end()) {
-        PLOG << "did not find simplex" << otherSimplex << std::endl;
+        PLOG("did not find simplex" << otherSimplex << std::endl);
         return false;
       }
 
@@ -423,8 +423,8 @@ public:
         if (dSimplex<D, Precision>::isFinite(n) &&
             otherSimplex.neighbors.count(n) != 1) {
           // the other triangulation does not contain n as neighbor
-          PLOG << "wrong neighbors: " << *mySimplex << " -- " << otherSimplex
-               << std::endl;
+          PLOG("wrong neighbors: " << *mySimplex << " -- " << otherSimplex
+                                   << std::endl);
           return false;
         }
       }
@@ -451,7 +451,7 @@ public:
       duplicates += simplices.size() - 1;
     }
 
-    PLOG << "Found " << duplicates << " duplicates" << std::endl;
+    PLOG("Found " << duplicates << " duplicates" << std::endl);
 
     return duplicates;
   }

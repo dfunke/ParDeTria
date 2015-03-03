@@ -15,45 +15,16 @@ Logger &Logger::getInstance() {
 
 thread_local uint Logger::indentLevel = 0;
 
-thread_local Logger::Verbosity
-    Logger::contVerbosity; // continue log level for LIVE
-thread_local Logger::LogEntries::iterator
-    Logger::contIt; // continue stream for non-live
-
 std::ostream &Logger::addLogEntry(Verbosity level) {
 
   if (logLevel <= Logger::Verbosity::LIVE) {
-    contVerbosity = level; // thread local
-    if (level <= abs(logLevel)) {
-      return std::cout << indent();
-    } else {
-      return nullStream;
-    }
+    return std::cout << indent();
   }
 
-  if (logLevel == Logger::Verbosity::SILENT)
-    return nullStream;
-
-  contIt = logEntries.emplace_back(
+  auto it = logEntries.emplace_back(
       level, std::make_unique<std::stringstream>()); // thread local
 
-  return *(contIt->second) << indent();
-}
-
-std::ostream &Logger::continueLogEntry() {
-
-  if (logLevel <= Logger::Verbosity::LIVE) {
-    if (contVerbosity <= abs(logLevel)) {
-      return std::cout;
-    } else {
-      return nullStream;
-    }
-  }
-
-  if (logLevel == Logger::Verbosity::SILENT)
-    return nullStream;
-
-  return *(contIt->second);
+  return *(it->second) << indent();
 }
 
 std::ostream &Logger::printLog(std::ostream &out) const {
