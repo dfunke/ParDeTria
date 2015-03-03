@@ -16,6 +16,7 @@
 #include "utils/IndexedVector.hxx"
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
+#include "utils/SpinMutex.h"
 
 typedef std::set<uint> Ids;
 
@@ -114,6 +115,20 @@ public:
   dPoint(const dVector<D, Precision> &_coords)
       : id(dPoint<D, Precision>::cINF), coords(_coords) {}
 
+  dPoint(const dPoint<D, Precision> &a)
+      : id(a.id), coords(a.coords), simplices(a.simplices) {}
+
+  dPoint &operator=(const dPoint<D, Precision> &a) {
+    // acquire lock, as we are modifying the point
+    std::lock_guard<SpinMutex> lock(mtx);
+
+    id = a.id;
+    coords = a.coords;
+    simplices = a.simplices;
+
+    return *this;
+  }
+
   bool operator==(const dPoint<D, Precision> &a) const {
 
     // COUT << "Comparing POINTS THIS " << *this << " and OTHER " << a << ": ";
@@ -145,6 +160,7 @@ public:
   uint id;
   dVector<D, Precision> coords;
   Ids simplices;
+  SpinMutex mtx;
 
 public:
   static inline bool isFinite(const uint &i) {
@@ -197,6 +213,20 @@ public:
 
   dSimplex(const std::array<uint, D + 1> &_vertices)
       : id(dSimplex<D, Precision>::cINF), vertices(_vertices) {}
+
+  dSimplex(const dSimplex<D, Precision> &a)
+      : id(a.id), vertices(a.vertices), neighbors(a.neighbors) {}
+
+  dSimplex &operator=(const dSimplex<D, Precision> &a) {
+    // acquire lock, as we are modifying the point
+    std::lock_guard<SpinMutex> lock(mtx);
+
+    id = a.id;
+    vertices = a.vertices;
+    neighbors = a.neighbors;
+
+    return *this;
+  }
 
   bool operator==(const dSimplex<D, Precision> &a) const {
 
@@ -351,6 +381,7 @@ public:
   uint id;
   std::array<uint, D + 1> vertices;
   Ids neighbors;
+  SpinMutex mtx;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }
