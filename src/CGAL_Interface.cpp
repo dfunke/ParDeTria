@@ -14,17 +14,6 @@ uint tetrahedronID = 0;
 #include <CGAL/Delaunay_triangulation_3.h>
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
-template <uint D, typename Precision, class Handle>
-dSimplex<D, Precision> cmp(const Handle &f) {
-  dSimplex<D, Precision> a;
-  a.id = dSimplex<D, Precision>::cINF;
-  for (uint i = 0; i < D + 1; ++i) {
-    a.vertices[i] = f->vertex(i)->info();
-  }
-
-  return a;
-}
-
 template <uint D, typename Precision> class CGALHelper {
 
 public:
@@ -120,30 +109,6 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
 
     PLOG(a << std::endl);
     tria.insert(a);
-  }
-  DEDENT
-
-  PLOG("Collecting neighbors" << std::endl);
-
-  INDENT
-  for (auto it = CGALHelper<D, Precision>::begin(t);
-       it != CGALHelper<D, Precision>::end(t); ++it) {
-    auto tet = std::find(tria.begin(), tria.end(), cmp<D, Precision>(it));
-
-    for (uint i = 0; i < D + 1; ++i) {
-      auto n = it->neighbor(i);
-      auto nn = std::find(tria.begin(), tria.end(), cmp<D, Precision>(n));
-
-      if (nn != tria.end()) {
-        if (nn->id != tet->id) {
-          tet->neighbors.insert(nn->id);
-        }
-      } else {
-        tet->neighbors.insert(dSimplex<D, Precision>::cINF);
-      }
-    }
-
-    PLOG(*tet << std::endl);
   }
   DEDENT
 
