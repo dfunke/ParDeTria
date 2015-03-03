@@ -3,6 +3,10 @@
 // stl
 #include <functional>
 #include <vector>
+#include <memory>
+
+// tbb
+#include <tbb/concurrent_vector.h>
 
 // own
 #include "Geometry.h"
@@ -20,7 +24,7 @@ struct TriangulationReportEntry {
   uint nEdgeSimplices;
 };
 
-typedef std::vector<TriangulationReportEntry> TriangulationReport;
+typedef tbb::concurrent_vector<TriangulationReportEntry> TriangulationReport;
 
 template <uint D, typename Precision> class Triangulator {
 public:
