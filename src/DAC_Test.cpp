@@ -272,9 +272,10 @@ int main(int argc, char *argv[]) {
 
     auto ret = triangulate(bounds, baseCase, points, p);
 
-    LOG("Triangulating " << points.size() << " points took "
-                         << std::chrono::duration_cast<std::chrono::seconds>(
-                                ret.time).count() << " s" << std::endl);
+    LOG("Triangulating "
+        << points.size() << " points took "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
+               .count() << " ms" << std::endl);
 
     VLOG(std::endl << "Triangulation report: " << std::endl);
 
