@@ -82,6 +82,7 @@ public:
     --indentLevel;
   }
   void setIndent(const uint i) { indentLevel = i; }
+  uint getIndent() { return indentLevel; }
 
   template <typename InputIt>
   void logContainer(const InputIt &first, const InputIt &last, Verbosity level,
