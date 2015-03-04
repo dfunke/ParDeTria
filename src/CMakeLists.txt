@@ -25,11 +25,18 @@ include_directories(${CMAKE_SOURCE_DIR}
 include(${VTK_USE_FILE})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror -Wno-extra-semi")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror -Wno-extra-semi")
 
 if (VALGRIND)
   message(STATUS "Valgrind mode enabled")
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
 endif ()
+
+if (SANITIZE)
+  message(WARNING "ThreadSanitizer is enabled")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread")
+endif()
 
 # add git-cmake-format
 add_subdirectory(${CMAKE_SOURCE_DIR}/cmake/clang-format)
