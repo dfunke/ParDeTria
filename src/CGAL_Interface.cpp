@@ -122,6 +122,8 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
       std::lock_guard<SpinMutex> lock(point.mtx);
       point.simplices.insert(a.id);
     }
+    // sort vertices by ascending point id
+    std::sort(a.vertices.begin(), a.vertices.end());
 
     PLOG(a << std::endl);
     tria.insert(a);

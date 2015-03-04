@@ -241,22 +241,7 @@ public:
     } else {
       // either one is infinity
       // compare vertices
-      for (uint i = 0; i < D + 1; ++i) {
-        bool found = false;
-        for (uint j = 0; j < D + 1; ++j) {
-          if (vertices[i] == a.vertices[j]) {
-            // std::cout << this->vertices[i] << " == " << a.vertices[j];
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          // std::cout << false << std::endl);
-          return false;
-        }
-      }
-      // std::cout << true << std::endl);
-      return true;
+      return equalVertices(a);
     }
   }
 
@@ -265,17 +250,10 @@ public:
 
   bool equalVertices(const dSimplex<D, Precision> &a) const {
     // compare vertices
+    // both vertex arrays are sorted by vertex id
+
     for (uint i = 0; i < D + 1; ++i) {
-      bool found = false;
-      for (uint j = 0; j < D + 1; ++j) {
-        if (vertices[i] == a.vertices[j]) {
-          // std::cout << this->vertices[i] << " == " << a.vertices[j];
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // std::cout << false << std::endl);
+      if (vertices[i] != a.vertices[i]) {
         return false;
       }
     }
@@ -284,20 +262,25 @@ public:
   }
 
   uint countSharedVertices(const dSimplex<D, Precision> &a) const {
-    uint count = 0;
-    for (uint i = 0; i < D + 1; ++i) {
-      bool found = false;
-      for (uint j = 0; j < D + 1; ++j) {
-        if (vertices[i] == a.vertices[j]) {
-          // std::cout << this->vertices[i] << " == " << a.vertices[j];
-          found = true;
-          break;
-        }
+    uint sharedVertices = 0;
+
+    uint i = 0;
+    uint j = 0;
+    while (i < D + 1 && j < D + 1) {
+      if (vertices[i] > a.vertices[j]) {
+        ++j;
+      } else if (vertices[i] == a.vertices[j]) {
+        ++sharedVertices;
+        ++i;
+        ++j;
+      } else { // vertices[i] < a.vertices[j]
+        ++i;
       }
-      count += found;
     }
 
-    return count;
+    ASSERT(0 <= sharedVertices && sharedVertices <= D + 1);
+
+    return sharedVertices;
   }
 
   bool equalNeighbors(const dSimplex<D, Precision> &a) const {
@@ -360,13 +343,7 @@ public:
   dSphere<D, Precision> circumsphere(const dPoints<D, Precision> &points) const;
 
   bool isNeighbor(const dSimplex<D, Precision> &other) const {
-    uint sharedVertices = 0;
-
-    for (uint i = 0; i < D + 1; ++i) {
-      for (uint j = 0; j < D + 1; ++j) {
-        sharedVertices += (vertices[i] == other.vertices[j]);
-      }
-    }
+    uint sharedVertices = countSharedVertices(other);
 
     ASSERT(sharedVertices <= D || id == other.id);
 
