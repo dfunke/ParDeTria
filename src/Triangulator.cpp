@@ -145,14 +145,12 @@ Ids Triangulator<D, Precision>::extractPoints(
     const Ids &edgeSimplices, const dSimplices<D, Precision> &simplices,
     bool ignoreInfinite) {
   Ids outPoints;
-  std::set<uint> idx;
 
   for (const auto &id : edgeSimplices) {
     ASSERT(simplices.contains(id));
 
     for (uint i = 0; i < D + 1; ++i) {
-      if (dPoint<D, Precision>::isFinite(simplices[id].vertices[i]) &&
-          idx.insert(simplices[id].vertices[i]).second)
+      if (dPoint<D, Precision>::isFinite(simplices[id].vertices[i]))
         outPoints.insert(simplices[id].vertices[i]);
     }
   }
