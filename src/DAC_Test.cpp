@@ -259,8 +259,9 @@ int main(int argc, char *argv[]) {
    * nEdgePoints nEdgeSimplices
    */
 
+  uint returnCode = 0;
   if (study) {
-    return doStudy(N, bounds, baseCase, std::move(dice));
+    returnCode = doStudy(N, bounds, baseCase, std::move(dice));
   } else {
 
     dPoints<D, Precision> points;
@@ -290,6 +291,12 @@ int main(int argc, char *argv[]) {
                     getCurrentRSS(), getPeakRSS()));
     }
 
-    return EXIT_SUCCESS;
+    returnCode = EXIT_SUCCESS;
   }
+
+  if (LOGGER.getLogLevel() >= Logger::Verbosity::NORMAL) {
+    LOGGER.printLog(std::cout);
+  }
+
+  return returnCode;
 }
