@@ -174,89 +174,105 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
   PainterBulkWriter<D, Precision> paintWriter;
 
   INDENT
-  for (dSimplex<D, Precision> &simplex : simplices) {
-    PLOG("Updating neighbors of " << simplex << std::endl);
+  const uint saveIndent = LOGGER.getIndent();
+
+  tbb::parallel_for(std::size_t(0), simplices.bucket_count(),
+                    [&](const uint i) {
+
+    LOGGER.setIndent(saveIndent);
+
+    for (auto it = simplices.begin(i); it != simplices.end(i); ++it) {
+
+      dSimplex<D, Precision> &simplex = *it;
+
+      PLOG("Updating neighbors of " << simplex << std::endl);
 
 #ifndef NDEBUG
-    dSimplex<D, Precision> saveSimplex = simplex;
+      dSimplex<D, Precision> saveSimplex = simplex;
 #endif
 
-    simplex.neighbors.clear();
-
-    INDENT
-    for (uint v = 0; v < D + 1; ++v) {
-      // for every point, look where else its used
-      // if the other simplex shares a second point -> it is a neighbor
-
-      const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
-
-      if (IS_PROLIX) {
-        LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
-                            "Vertex " + to_string(vertex) + " used in");
-      }
+      simplex.neighbors.clear();
 
       INDENT
-      for (const uint u : vertex.simplices) {
-        if (u != simplex.id && simplices.contains(u) &&
-            simplex.isNeighbor(simplices[u])) {
-          PLOG("Neighbor with " << simplices[u] << std::endl);
+      for (uint v = 0; v < D + 1; ++v) {
+        // for every point, look where else its used
+        // if the other simplex shares a second point -> it is a neighbor
 
-          simplex.neighbors.insert(u);
+        const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
 
-          // LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
-
-          // ASSERT(simplex.neighbors.size() <= D+1);
-          // u will be updated in its own round;
+        if (IS_PROLIX) {
+          LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
+                              "Vertex " + to_string(vertex) + " used in");
         }
+
+        INDENT
+        for (const uint u : vertex.simplices) {
+          if (u != simplex.id && simplices.contains(u) &&
+              simplex.isNeighbor(simplices[u])) {
+            PLOG("Neighbor with " << simplices[u] << std::endl);
+
+            simplex.neighbors.insert(u);
+
+            // LOGGER.logContainer(simplex.neighbors,
+            // Logger::Verbosity::PROLIX);
+
+            // ASSERT(simplex.neighbors.size() <= D+1);
+            // u will be updated in its own round;
+          }
+        }
+        DEDENT
       }
       DEDENT
-    }
-    DEDENT
 
-    if (!(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D + 1)) {
-      LOG("Error: wrong number of neighbors for simplex " << simplex
-                                                          << std::endl);
+      if (!(simplex.neighbors.size() > 0 &&
+            simplex.neighbors.size() <= D + 1)) {
+        LOG("Error: wrong number of neighbors for simplex " << simplex
+                                                            << std::endl);
 
-      if (IS_PROLIX) {
-        paintWriter.add("img/" + provenance + "_neighbors_" +
-                            std::to_string(simplex.id),
-                        bounds);
-        paintWriter.top().draw(points);
-        paintWriter.top().drawPartition(points);
+        if (IS_PROLIX) {
+          paintWriter.add("img/" + provenance + "_neighbors_" +
+                              std::to_string(simplex.id),
+                          bounds);
+          paintWriter.top().draw(points);
+          paintWriter.top().drawPartition(points);
 
-        paintWriter.top().setColor(0, 0, 0, 0.4);
-        paintWriter.top().draw(simplices, points, true);
+          paintWriter.top().setColor(0, 0, 0, 0.4);
+          paintWriter.top().draw(simplices, points, true);
 
-        paintWriter.top().setColor(1, 0, 0); // simplex in red
-        paintWriter.top().draw(simplex, points, true);
+          paintWriter.top().setColor(1, 0, 0); // simplex in red
+          paintWriter.top().draw(simplex, points, true);
 
-        paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
-        paintWriter.top().drawNeighbors(simplex, simplices, points, true);
+          paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
+          paintWriter.top().drawNeighbors(simplex, simplices, points, true);
 #ifndef NDEBUG
-        if (!(simplex.equalVertices(saveSimplex) &&
-              simplex.equalNeighbors(saveSimplex))) {
-          LOG("Error: was before " << saveSimplex << std::endl);
+          if (!(simplex.equalVertices(saveSimplex) &&
+                simplex.equalNeighbors(saveSimplex))) {
+            LOG("Error: was before " << saveSimplex << std::endl);
 
-          paintWriter.top().setColor(0, 0, 1); // old simplex in blue
-          paintWriter.top().draw(saveSimplex, points, true);
+            paintWriter.top().setColor(0, 0, 1); // old simplex in blue
+            paintWriter.top().draw(saveSimplex, points, true);
 
-          paintWriter.top().setColor(0, 1, 1,
-                                     0.4); // old simplex neighbors in cyan
-          paintWriter.top().drawNeighbors(saveSimplex, simplices, points, true);
-        }
+            paintWriter.top().setColor(0, 1, 1,
+                                       0.4); // old simplex neighbors in cyan
+            paintWriter.top().drawNeighbors(saveSimplex, simplices, points,
+                                            true);
+          }
 #endif
+        }
+      }
+
+      // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
+      // D+1);
+
+      // TODO it might be better NOT to save the infinite simplex as neighbor
+      if (simplex.neighbors.size() <
+          D + 1) { // if it is a simplex at the border,
+        // it might have one infinite
+        // simplex as neighbor
+        simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
       }
     }
-
-    // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1);
-
-    // TODO it might be better NOT to save the infinite simplex as neighbor
-    if (simplex.neighbors.size() < D + 1) { // if it is a simplex at the border,
-                                            // it might have one infinite
-                                            // simplex as neighbor
-      simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
-    }
-  }
+  });
   DEDENT
 }
 
