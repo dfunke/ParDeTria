@@ -237,4 +237,11 @@ public:
   iterator<typename map::local_iterator> end(const uint i) {
     return iterator<typename map::local_iterator>(map::end(i));
   }
+
+  const_iterator<typename map::const_local_iterator> begin(const uint i) const {
+    return const_iterator<typename map::const_local_iterator>(map::begin(i));
+  }
+  const_iterator<typename map::const_local_iterator> end(const uint i) const {
+    return const_iterator<typename map::const_local_iterator>(map::end(i));
+  }
 };
