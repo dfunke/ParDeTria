@@ -283,6 +283,9 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   LOG("Merging partial DTs into one triangulation" << std::endl);
   dSimplices<D, Precision> DT;
+  // use the first partition as estimator for the size of the triangulation
+  DT.reserve(partialDTs.size() * partialDTs[0].size());
+
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
   }
@@ -318,7 +321,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   paintMerging(DT, provenance + "_05a_merging_merged");
 
-  auto deletedSimplices = DT.project(edgeSimplices);
+  const auto deletedSimplices = DT.project(edgeSimplices);
 
   paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
 
@@ -357,26 +360,34 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   // merge partial DTs and edge DT
   LOG("Merging triangulations" << std::endl);
-  for (const auto &edgeSimplex : edgeDT) {
+  SpinMutex insertMtx;
+  tbb::parallel_for(std::size_t(0), edgeDT.bucket_count(), [&](const uint i) {
 
-    // check whether edgeSimplex is completely contained in one partition
-    uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
-    bool inOnePartition = partitioning[p0].contains(edgeSimplex);
+    for (auto it = edgeDT.begin(i); it != edgeDT.end(i); ++it) {
 
-    if (!inOnePartition) {
-      DT.insert(edgeSimplex);
-    } else {
-      // the simplex is completely in one partition -> it must have been found
-      // before
-      auto it = std::find_if(deletedSimplices.begin(), deletedSimplices.end(),
-                             [&](const dSimplex<D, Precision> &s) {
-        return s.equalVertices(edgeSimplex);
-      });
-      if (it != deletedSimplices.end()) {
+      const dSimplex<D, Precision> &edgeSimplex = *it;
+
+      // check whether edgeSimplex is completely contained in one partition
+      uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
+      bool inOnePartition = partitioning[p0].contains(edgeSimplex);
+
+      if (!inOnePartition) {
+        std::lock_guard<SpinMutex> lock(insertMtx);
         DT.insert(edgeSimplex);
+      } else {
+        // the simplex is completely in one partition -> it must have been found
+        // before
+        auto it = std::find_if(deletedSimplices.begin(), deletedSimplices.end(),
+                               [&](const dSimplex<D, Precision> &s) {
+          return s.equalVertices(edgeSimplex);
+        });
+        if (it != deletedSimplices.end()) {
+          std::lock_guard<SpinMutex> lock(insertMtx);
+          DT.insert(edgeSimplex);
+        }
       }
     }
-  }
+  });
 
   paintMerging(DT, provenance + "_05c_merging_edge");
 
