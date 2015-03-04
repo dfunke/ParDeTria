@@ -315,7 +315,10 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
     // remove simplex from where used list
     for (uint p = 0; p < D + 1; ++p) {
-      points[DT[id].vertices[p]].simplices.erase(id);
+      dPoint<D, Precision> &point = points[DT[id].vertices[p]];
+
+      std::lock_guard<SpinMutex> lock(point.mtx);
+      point.simplices.erase(id);
     }
 
     DT.erase(id);

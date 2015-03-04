@@ -117,7 +117,10 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
 
     for (uint i = 0; i < D + 1; ++i) {
       a.vertices[i] = it->vertex(i)->info();
-      points[a.vertices[i]].simplices.insert(a.id);
+      dPoint<D, Precision> &point = points[a.vertices[i]];
+
+      std::lock_guard<SpinMutex> lock(point.mtx);
+      point.simplices.insert(a.id);
     }
 
     PLOG(a << std::endl);
