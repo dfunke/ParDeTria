@@ -266,16 +266,13 @@ public:
 
     uint i = 0;
     uint j = 0;
+    uint tmp = 0;
     while (i < D + 1 && j < D + 1) {
-      if (vertices[i] > a.vertices[j]) {
-        ++j;
-      } else if (vertices[i] == a.vertices[j]) {
-        ++sharedVertices;
-        ++i;
-        ++j;
-      } else { // vertices[i] < a.vertices[j]
-        ++i;
-      }
+      sharedVertices += vertices[i] == a.vertices[j];
+
+      tmp = i;
+      i += vertices[i] <= a.vertices[j];
+      j += vertices[tmp] >= a.vertices[j];
     }
 
     ASSERT(0 <= sharedVertices && sharedVertices <= D + 1);
