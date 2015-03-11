@@ -38,9 +38,14 @@ class Logger : private boost::noncopyable {
 #define VLOG(msg)                                                              \
   if (IS_VERBOSE)                                                              \
   Logger::getInstance().addLogEntry(Logger::Verbosity::VERBOSE) << msg
+
+#ifndef NDEBUG
 #define PLOG(msg)                                                              \
   if (IS_PROLIX)                                                               \
   Logger::getInstance().addLogEntry(Logger::Verbosity::PROLIX) << msg
+#else // NDEBUG
+#define PLOG(msg) ((void)(0))
+#endif
 
 #define INDENT Logger::getInstance().incIndent();
 #define DEDENT Logger::getInstance().decIndent();
