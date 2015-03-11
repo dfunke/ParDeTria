@@ -168,8 +168,13 @@ Ids Triangulator<D, Precision>::extractPoints(
 template <uint D, typename Precision>
 void
 Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
+#ifdef NDEBUG
+                                            __attribute__((unused))
+#endif
                                             const std::string &provenance) {
+#ifndef NDEBUG
   PainterBulkWriter<D, Precision> paintWriter;
+#endif
 
   INDENT
   const uint saveIndent = LOGGER.getIndent();
@@ -222,6 +227,9 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
       }
       DEDENT
 
+      ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
+
+#ifndef NDEBUG
       if (!(simplex.neighbors.size() > 0 &&
             simplex.neighbors.size() <= D + 1)) {
         LOG("Error: wrong number of neighbors for simplex " << simplex
@@ -242,7 +250,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
 
           paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
           paintWriter.top().drawNeighbors(simplex, simplices, points, true);
-#ifndef NDEBUG
+
           if (!(simplex.equalVertices(saveSimplex) &&
                 simplex.equalNeighbors(saveSimplex))) {
             LOG("Error: was before " << saveSimplex << std::endl);
@@ -255,9 +263,9 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
             paintWriter.top().drawNeighbors(saveSimplex, simplices, points,
                                             true);
           }
-#endif
         }
       }
+#endif
 
       // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
       // D+1);
@@ -670,9 +678,6 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     auto partioning =
         partitioner->partition(partitionPoints, points, provenance);
     DEDENT
-
-    for (auto &p : partioning)
-      PLOG("Partition " << p << std::endl);
 
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partioning.size());
