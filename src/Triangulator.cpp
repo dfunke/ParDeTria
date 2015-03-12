@@ -195,6 +195,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
 #endif
 
       simplex.neighbors.clear();
+      simplex.neighbors.reserve(D + 1);
 
       INDENT
       for (uint v = 0; v < D + 1; ++v) {

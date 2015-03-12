@@ -8,7 +8,7 @@
 #pragma once
 
 #include <iostream>
-#include <set>
+#include <unordered_set>
 #include <map>
 #include <array>
 #include <cmath>
@@ -18,7 +18,7 @@
 #include "utils/ASSERT.h"
 #include "utils/SpinMutex.h"
 
-typedef std::set<uint> Ids;
+typedef std::unordered_set<uint> Ids;
 
 // dimensionality of our problem
 // const uint D = 2;

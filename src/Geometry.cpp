@@ -693,7 +693,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   SpinMutex mtx;
   // verify that every input point is used
   LOG("Checking points" << std::endl);
-  std::set<uint> usedPoints;
+  Ids usedPoints;
   for (const auto &s : *this) {
     usedPoints.insert(s.vertices.begin(), s.vertices.end());
   }
