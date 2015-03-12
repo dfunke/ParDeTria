@@ -176,9 +176,9 @@ public:
     }
   }
 
-  bool contains(const V &value) const { return map::count(value.id) == 1; }
+  bool contains(const V &value) const { return map::count(value.id); }
 
-  bool contains(const K &key) const { return map::count(key) == 1; }
+  bool contains(const K &key) const { return map::count(key); }
 
   template <class Container>
   const IndexedVector project(const Container &ids) const {
