@@ -12,6 +12,7 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_do.h>
+#include <tbb/concurrent_unordered_set.h>
 
 // debug
 #ifndef NDEBUG
@@ -307,35 +308,36 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
   INDENT
   const uint saveIndent = LOGGER.getIndent();
 
-  std::deque<uint> wq(toCheck.begin(), toCheck.end());
-  Ids wqa;
-  uint checked = 0;
-  uint updated = 0;
+  tbb::concurrent_unordered_set<uint> wqa;
 
-  // tbb::parallel_do(toCheck,
-  //                 [&](const uint &id, tbb::parallel_do_feeder<uint> &feeder)
+#ifndef NDEBUG
+  std::atomic<uint> checked = 0;
+  std::atomic<uint> updated = 0;
+#endif
 
-  while (!wq.empty()) {
+  tbb::parallel_do(toCheck,
+                   [&](const uint &id, tbb::parallel_do_feeder<uint> &feeder) {
 
     LOGGER.setIndent(saveIndent);
 
-    const uint id = wq.front();
-    wq.pop_front();
-
     if (!wqa.insert(id).second) {
-      continue;
+      return;
     }
 
     dSimplex<D, Precision> &simplex = simplices[id];
 
     PLOG("Checking neighbors of " << simplex << std::endl);
+#ifndef NDEBUG
     ++checked;
+#endif
 
     bool requiresUpdate = false;
     for (const auto &n : simplex.neighbors) {
       if (dSimplex<D, Precision>::isFinite(n) &&
-          (!simplices.contains(n) || !simplex.isNeighbor(simplices[n])))
+          (!simplices.contains(n) || !simplex.isNeighbor(simplices[n]))) {
         requiresUpdate = true;
+        break;
+      }
     }
 
     if (!requiresUpdate) {
@@ -343,11 +345,13 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
       PLOG("No update necessary" << std::endl);
       DEDENT
 
-      continue;
+      return;
     }
 
     PLOG("Updating neighbors of " << simplex << std::endl);
+#ifndef NDEBUG
     ++updated;
+#endif
 
 #ifndef NDEBUG
     dSimplex<D, Precision> saveSimplex = simplex;
@@ -383,7 +387,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
               PLOG("Neighbor with " << simplices[it.first] << std::endl);
 
               simplex.neighbors.insert(it.first);
-              wq.push_back(it.first);
+              feeder.add(it.first);
 
               // LOGGER.logContainer(simplex.neighbors,
               // Logger::Verbosity::PROLIX);
@@ -443,11 +447,13 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
       // simplex as neighbor
       simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
     }
-  } //);
+  });
 
+#ifndef NDEBUG
   LOG("Updating neighbors - checked: " << checked << " updated: " << updated
                                        << " simplices: " << simplices.size()
                                        << std::endl);
+#endif
 
   DEDENT
 }
