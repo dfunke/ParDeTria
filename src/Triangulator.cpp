@@ -69,7 +69,7 @@ Ids Triangulator<D, Precision>::getEdge(
     const dSimplices<D, Precision> &simplices,
     const Partitioning<D, Precision> &partitioning, const uint &partition) {
   Ids edgeSimplices;
-  std::set<uint> wqa; // set of already checked simplices
+  Ids wqa; // set of already checked simplices
 
   // we use the overflow of the uint to zero to abort the loop
   for (uint infVertex = dPoint<D, Precision>::cINF; infVertex != 0;
