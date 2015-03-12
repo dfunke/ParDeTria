@@ -775,6 +775,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
           LOG("Wrong neighbor relation between " << a << " and " << b
                                                  << std::endl);
           std::lock_guard<SpinMutex> lock(mtx);
+          result.wrongNeighbors.emplace_back(a, b);
           result.valid = false;
         }
       }

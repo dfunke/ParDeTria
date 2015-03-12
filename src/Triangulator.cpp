@@ -439,6 +439,19 @@ void Triangulator<D, Precision>::evaluateVerificationReport(
       writer.top().setColor(1, 0, 0);
       writer.top().draw(points.project(inCircle.second));
     }
+
+    for (const auto &neighbors : vr.wrongNeighbors) {
+      writer.add("img/" + provenance + "_wrongNeighbors_" +
+                     std::to_string(neighbors.first.id) + "_" +
+                     std::to_string(neighbors.second.id),
+                 basePainter);
+
+      writer.top().setColor(0, 1, 0);
+      writer.top().draw(neighbors.first, points, true);
+
+      writer.top().setColor(1, 0, 0);
+      writer.top().draw(neighbors.second, points, true);
+    }
   }
 }
 

@@ -492,6 +492,8 @@ template <uint D, typename Precision> struct CrossCheckReport {
 template <uint D, typename Precision> struct VerificationReport {
   bool valid;
   std::map<dSimplex<D, Precision>, Ids> inCircle;
+  std::vector<std::pair<dSimplex<D, Precision>, dSimplex<D, Precision>>>
+      wrongNeighbors;
 };
 
 //#############################################################################
