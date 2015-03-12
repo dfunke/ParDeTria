@@ -197,7 +197,8 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
       simplex.neighbors.clear();
       simplex.neighbors.reserve(D + 1);
 
-      std::map<uint, uint> counters;
+      std::unordered_map<uint, uint> counters;
+      counters.reserve((D + 1) * (D + 1) * (D + 1));
 
       INDENT
       for (uint v = 0; v < D + 1; ++v) {
@@ -220,16 +221,16 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
           if (it.first != simplex.id)
             if (it.second == D)
               if (simplices.contains(it.first)) {
-            PLOG("Neighbor with " << simplices[u] << std::endl);
+                PLOG("Neighbor with " << simplices[u] << std::endl);
 
                 simplex.neighbors.insert(it.first);
 
-            // LOGGER.logContainer(simplex.neighbors,
-            // Logger::Verbosity::PROLIX);
+                // LOGGER.logContainer(simplex.neighbors,
+                // Logger::Verbosity::PROLIX);
 
-            // ASSERT(simplex.neighbors.size() <= D+1);
-            // u will be updated in its own round;
-          }
+                // ASSERT(simplex.neighbors.size() <= D+1);
+                // u will be updated in its own round;
+              }
         }
         DEDENT
       }
