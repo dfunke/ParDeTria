@@ -53,7 +53,10 @@ protected:
                     const dSimplices<D, Precision> &simplices,
                     bool ignoreInfinite = false);
 
-  void updateNeighbors(dSimplices<D, Precision> &simplices,
+  void findNeighbors(dSimplices<D, Precision> &simplices,
+                     const std::string &provenance);
+
+  void updateNeighbors(dSimplices<D, Precision> &simplices, const Ids &toCheck,
                        const std::string &provenance);
 
   dSimplices<D, Precision>
