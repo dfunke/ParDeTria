@@ -87,6 +87,7 @@ target_link_libraries(DACTest
   Painting
   InterfaceCGAL
   ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
 add_executable (Benchmark
