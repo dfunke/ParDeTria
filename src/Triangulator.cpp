@@ -221,7 +221,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
           if (it.first != simplex.id)
             if (it.second == D)
               if (simplices.contains(it.first)) {
-                PLOG("Neighbor with " << simplices[u] << std::endl);
+                PLOG("Neighbor with " << simplices[it.first] << std::endl);
 
                 simplex.neighbors.insert(it.first);
 
