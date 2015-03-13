@@ -309,7 +309,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
   INDENT
   const uint saveIndent = LOGGER.getIndent();
 
-  tbb::concurrent_unordered_set<uint> wqa;
+  tbb::concurrent_unordered_set<uint> wqa(toCheck.size());
 
 #ifndef NDEBUG
   std::atomic<uint> checked = 0;
@@ -361,8 +361,13 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
     simplex.neighbors.clear();
     simplex.neighbors.reserve(D + 1);
 
+    std::size_t maxSize = 0;
+    for (uint d = 0; d < D + 1; ++d) {
+      maxSize = std::max(maxSize, points[simplex.vertices[d]].simplices.size());
+    }
+
     std::unordered_map<uint, uint> counters;
-    counters.reserve((D + 1) * (D + 1) * (D + 1));
+    counters.reserve(maxSize);
 
     INDENT
     for (uint v = 0; v < D + 1; ++v) {
