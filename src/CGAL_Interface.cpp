@@ -136,6 +136,7 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
     }
     // sort vertices by ascending point id
     std::sort(a.vertices.begin(), a.vertices.end());
+    a.fingerprint();
 
     PLOG(a << std::endl);
     tria.insert(a);

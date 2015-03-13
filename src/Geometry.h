@@ -215,7 +215,8 @@ public:
       : id(dSimplex<D, Precision>::cINF), vertices(_vertices) {}
 
   dSimplex(const dSimplex<D, Precision> &a)
-      : id(a.id), vertices(a.vertices), neighbors(a.neighbors) {}
+      : id(a.id), vertices(a.vertices), vertexFingerprint(a.vertexFingerprint),
+        neighbors(a.neighbors) {}
 
   dSimplex &operator=(const dSimplex<D, Precision> &a) {
     // acquire lock, as we are modifying the point
@@ -223,6 +224,7 @@ public:
 
     id = a.id;
     vertices = a.vertices;
+    vertexFingerprint = a.vertexFingerprint;
     neighbors = a.neighbors;
 
     return *this;
@@ -351,9 +353,19 @@ public:
     return sharedVertices == D;
   }
 
+  uint fingerprint() {
+    vertexFingerprint = 0;
+    for (uint i = 0; i < D + 1; ++i) {
+      vertexFingerprint ^= vertices[i];
+    }
+
+    return vertexFingerprint;
+  }
+
 public:
   uint id;
   std::array<uint, D + 1> vertices;
+  uint vertexFingerprint;
   Ids neighbors;
   SpinMutex mtx;
 

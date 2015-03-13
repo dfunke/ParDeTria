@@ -13,6 +13,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_do.h>
 #include <tbb/concurrent_unordered_set.h>
+#include <tbb/parallel_sort.h>
 
 // debug
 #ifndef NDEBUG
@@ -513,7 +514,18 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   paintMerging(DT, provenance + "_05a_merging_merged");
 #endif
 
-  const auto deletedSimplices = DT.project(edgeSimplices);
+  auto cmpFingerprint =
+      [](const dSimplex<D, Precision> &a, const dSimplex<D, Precision> &b) {
+    return a.vertexFingerprint < b.vertexFingerprint;
+  };
+
+  std::vector<dSimplex<D, Precision>> deletedSimplices;
+  deletedSimplices.reserve(edgeSimplices.size());
+  for (const auto &id : edgeSimplices) {
+    deletedSimplices.emplace_back(DT[id]);
+  }
+  tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(),
+                     cmpFingerprint);
 
 #ifndef NDEBUG
   paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
@@ -576,14 +588,16 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
       } else {
         // the simplex is completely in one partition -> it must have been found
         // before
-        auto it = std::find_if(deletedSimplices.begin(), deletedSimplices.end(),
-                               [&](const dSimplex<D, Precision> &s) {
-          return s.equalVertices(edgeSimplex);
-        });
-        if (it != deletedSimplices.end()) {
-          std::lock_guard<SpinMutex> lock(insertMtx);
-          DT.insert(edgeSimplex);
-          insertedSimplices.insert(edgeSimplex.id);
+        auto range =
+            std::equal_range(deletedSimplices.begin(), deletedSimplices.end(),
+                             edgeSimplex, cmpFingerprint);
+
+        for (auto it = range.first; it != range.second; ++it) {
+          if (edgeSimplex.equalVertices(*it)) {
+            std::lock_guard<SpinMutex> lock(insertMtx);
+            DT.insert(edgeSimplex);
+            insertedSimplices.insert(edgeSimplex.id);
+          }
         }
       }
     }
