@@ -533,19 +533,29 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   // delete all simplices belonging to the edge from DT
   LOG("Striping triangulation from edge" << std::endl);
-  for (const uint id : edgeSimplices) {
-    ASSERT(DT.contains(id));
 
-    // remove simplex from where used list
-    for (uint p = 0; p < D + 1; ++p) {
-      dPoint<D, Precision> &point = points[DT[id].vertices[p]];
+  SpinMutex eraseMtx;
+  tbb::parallel_for(std::size_t(0), edgeSimplices.bucket_count(),
+                    [&](const uint i) {
 
-      std::lock_guard<SpinMutex> lock(point.mtx);
-      point.simplices.erase(id);
+    for (auto it = edgeSimplices.begin(i); it != edgeSimplices.end(i); ++it) {
+
+      const uint id = *it;
+
+      ASSERT(DT.contains(id));
+
+      // remove simplex from where used list
+      for (uint p = 0; p < D + 1; ++p) {
+        dPoint<D, Precision> &point = points[DT[id].vertices[p]];
+
+        std::lock_guard<SpinMutex> lock(point.mtx);
+        point.simplices.erase(id);
+      }
+
+      std::lock_guard<SpinMutex> lock(eraseMtx);
+      DT.erase(id);
     }
-
-    DT.erase(id);
-  }
+  });
 
 //**********************
 #ifndef NDEBUG
