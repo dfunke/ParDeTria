@@ -362,12 +362,16 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
     simplex.neighbors.reserve(D + 1);
 
     std::size_t maxSize = 0;
+    std::size_t max2Size = 0;
     for (uint d = 0; d < D + 1; ++d) {
-      maxSize = std::max(maxSize, points[simplex.vertices[d]].simplices.size());
+      if (points[simplex.vertices[d]].simplices.size() > maxSize) {
+        max2Size = maxSize;
+        maxSize = points[simplex.vertices[d]].simplices.size();
+      }
     }
 
     std::unordered_map<uint, uint> counters;
-    counters.reserve(maxSize);
+    counters.reserve(maxSize + max2Size);
 
     INDENT
     for (uint v = 0; v < D + 1; ++v) {
@@ -380,31 +384,28 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
         LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
                             "Vertex " + to_string(vertex) + " used in");
       }
-
-      INDENT
       for (const uint u : vertex.simplices) {
-        counters[u] += 1;
+        ++counters[u];
       }
-
-      for (const auto &it : counters) {
-        if (it.first != simplex.id)
-          if (it.second == D)
-            if (simplices.contains(it.first)) {
-              PLOG("Neighbor with " << simplices[it.first] << std::endl);
-
-              simplex.neighbors.insert(it.first);
-              feeder.add(it.first);
-
-              // LOGGER.logContainer(simplex.neighbors,
-              // Logger::Verbosity::PROLIX);
-
-              // ASSERT(simplex.neighbors.size() <= D+1);
-              // u will be updated in its own round;
-            }
-      }
-      DEDENT
     }
     DEDENT
+
+    for (const auto &it : counters) {
+      if (it.first != simplex.id)
+        if (it.second == D)
+          if (simplices.contains(it.first)) {
+            PLOG("Neighbor with " << simplices[it.first] << std::endl);
+
+            simplex.neighbors.insert(it.first);
+            feeder.add(it.first);
+
+            // LOGGER.logContainer(simplex.neighbors,
+            // Logger::Verbosity::PROLIX);
+
+            // ASSERT(simplex.neighbors.size() <= D+1);
+            // u will be updated in its own round;
+          }
+    }
 
     ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
 
