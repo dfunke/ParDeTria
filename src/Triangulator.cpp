@@ -463,7 +463,11 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     std::vector<dSimplices<D, Precision>> &partialDTs, const Ids &edgeSimplices,
     const dSimplices<D, Precision> &edgeDT,
     const Partitioning<D, Precision> &partitioning,
-    const std::string &provenance, const dSimplices<D, Precision> *realDT) {
+    const std::string &provenance,
+#ifdef NDEBUG
+    __attribute__((unused))
+#endif
+    const dSimplices<D, Precision> *realDT) {
 
   LOG("Merging partial DTs into one triangulation" << std::endl);
   dSimplices<D, Precision> DT;
@@ -476,7 +480,8 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
-  //**********************
+//**********************
+#ifndef NDEBUG
   auto paintMerging = [&](const dSimplices<D, Precision> &dt,
                           const std::string &name,
                           bool drawInfinite = false) -> Painter<D, Precision> {
@@ -501,13 +506,18 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
     return painter;
   };
-  //**********************
+#endif
+//**********************
 
+#ifndef NDEBUG
   paintMerging(DT, provenance + "_05a_merging_merged");
+#endif
 
   const auto deletedSimplices = DT.project(edgeSimplices);
 
+#ifndef NDEBUG
   paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
+#endif
 
   // delete all simplices belonging to the edge from DT
   LOG("Striping triangulation from edge" << std::endl);
@@ -525,7 +535,8 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     DT.erase(id);
   }
 
-  //**********************
+//**********************
+#ifndef NDEBUG
   auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
 
   painter.setColor(0, 0, 1, 0.4);
@@ -540,6 +551,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   painter.setDashed(false);
 
   painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
+#endif
   //**********************
 
   // merge partial DTs and edge DT
@@ -577,14 +589,18 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     }
   });
 
+#ifndef NDEBUG
   paintMerging(DT, provenance + "_05c_merging_edge");
+#endif
 
   ASSERT(DT.countDuplicates() == 0);
 
   LOG("Updating neighbors" << std::endl);
   updateNeighbors(DT, insertedSimplices, provenance);
 
+#ifndef NDEBUG
   paintMerging(DT, provenance + "_05d_merging_finished");
+#endif
 
   return DT;
 }
@@ -840,11 +856,13 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
   if (partitionPoints.size() > baseThreshold) {
     LOG("Recursive case" << std::endl);
 
+#ifndef NDEBUG
     // setup base painter
     Painter<D, Precision> basePainter(bounds);
     basePainter.draw(points.project(partitionPoints));
     basePainter.drawPartition(points.project(partitionPoints));
     basePainter.save(provenance + "_00_points");
+#endif
 
     std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
     if (isTOP && VERIFY) {
@@ -858,6 +876,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                                          << std::endl);
       DEDENT
 
+#ifndef NDEBUG
       Painter<D, Precision> paintRealDT = basePainter;
 
       paintRealDT.setColor(0, 0, 1);
@@ -865,6 +884,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       paintRealDT.setColor(0, 0, 0);
 
       paintRealDT.save(provenance + "_01_realDT");
+#endif
     }
 
     // partition input
@@ -890,6 +910,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       DEDENT
     });
 
+#ifndef NDEBUG
     Painter<D, Precision> paintPartialDTs = basePainter;
     for (uint i = 0; i < partioning.size(); ++i) {
       paintPartialDTs.setColor(Painter<D, Precision>::tetradicColor(i), 0.4);
@@ -901,14 +922,18 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     }
 
     paintPartialDTs.save(provenance + "_02_partialDTs");
+#endif
 
     LOG("Extracting edges" << std::endl);
     INDENT
 
     Ids edgePointIds;
     Ids edgeSimplexIds;
+
+#ifndef NDEBUG
     Painter<D, Precision> paintEdges = paintPartialDTs;
     paintEdges.setColor(1, 0, 0);
+#endif
 
     for (uint i = 0; i < partioning.size(); ++i) {
       // points are in different partitions, there can be no overlap
@@ -920,15 +945,19 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       auto ep = extractPoints(edge, partialDTs[i]);
       edgePointIds.insert(ep.begin(), ep.end());
 
+#ifndef NDEBUG
       paintEdges.draw(partialDTs[i].project(edge), points, false);
+#endif
     }
     DEDENT
 
     LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
                     << edgePointIds.size() << " points" << std::endl);
 
+#ifndef NDEBUG
     paintEdges.draw(points.project(edgePointIds));
     paintEdges.save(provenance + "_03_edgeMarked");
+#endif
 
     LOG("Triangulating edges" << std::endl);
     INDENT
@@ -937,6 +966,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                                        << std::endl << std::endl);
     DEDENT
 
+#ifndef NDEBUG
     Painter<D, Precision> paintEdgeDT = basePainter;
 
     paintEdgeDT.setColor(0, 1, 0);
@@ -945,14 +975,17 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     paintEdgeDT.draw(points.project(edgePointIds));
 
     paintEdgeDT.save(provenance + "_04_edgeDT");
+#endif
 
     auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                        partioning, provenance, realDT.get());
 
+#ifndef NDEBUG
     Painter<D, Precision> paintFinal = basePainter;
     paintFinal.setColor(0, 1, 0);
     paintFinal.draw(mergedDT, points, true);
     paintFinal.save(provenance + "_06_final");
+#endif
 
     TriangulationReportEntry rep;
     rep.provenance = provenance;
