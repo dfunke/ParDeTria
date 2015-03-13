@@ -126,12 +126,10 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
     dSimplex<D, Precision> a;
     a.id = tetrahedronID++;
 
-    uint key = 0;
     for (uint i = 0; i < D + 1; ++i) {
       dPoint<D, Precision> &point = points[it->vertex(i)->info()];
 
       a.vertices[i] = point.id;
-      key ^= point.id;
 
       std::lock_guard<SpinMutex> lock(point.mtx);
       point.simplices.insert(a.id);
