@@ -16,6 +16,8 @@ std::atomic<uint> tetrahedronID(0);
 #include <CGAL/Delaunay_triangulation_3.h>
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
+#include <CGAL/Unique_hash_map.h>
+
 template <uint D, typename Precision> class CGALHelper {
 
 public:
@@ -50,6 +52,8 @@ public:
   static typename Tria::Point make_point(const dPoint<2, Precision> &p) {
     return typename Tria::Point(p.coords[0], p.coords[1]);
   }
+
+  template <class Tria> using Handle = typename Tria::Face_handle;
 };
 
 template <typename Precision> class CGALHelper<3, Precision> {
@@ -73,6 +77,8 @@ public:
   static typename Tria::Point make_point(const dPoint<3, Precision> &p) {
     return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
   }
+
+  template <class Tria> using Handle = typename Tria::Cell_handle;
 };
 
 template <uint D, typename Precision, class Tria>
@@ -110,14 +116,22 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
 
   dSimplices<D, Precision> tria;
   tria.reserve(CGALHelper<D, Precision>::size(t));
+
+  CGAL::Unique_hash_map<
+      typename CGALHelper<D, Precision>::template Handle<Tria>, uint>
+      simplexLookup(0, CGALHelper<D, Precision>::size(t));
+
   for (auto it = CGALHelper<D, Precision>::begin(t);
        it != CGALHelper<D, Precision>::end(t); ++it) {
     dSimplex<D, Precision> a;
     a.id = tetrahedronID++;
 
+    uint key = 0;
     for (uint i = 0; i < D + 1; ++i) {
-      a.vertices[i] = it->vertex(i)->info();
-      dPoint<D, Precision> &point = points[a.vertices[i]];
+      dPoint<D, Precision> &point = points[it->vertex(i)->info()];
+
+      a.vertices[i] = point.id;
+      key ^= point.id;
 
       std::lock_guard<SpinMutex> lock(point.mtx);
       point.simplices.insert(a.id);
@@ -127,6 +141,30 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
 
     PLOG(a << std::endl);
     tria.insert(a);
+    simplexLookup[it] = a.id;
+  }
+  DEDENT
+
+  PLOG("Collecting neighbors" << std::endl);
+
+  INDENT
+  for (auto it = CGALHelper<D, Precision>::begin(t);
+       it != CGALHelper<D, Precision>::end(t); ++it) {
+    auto &tet = tria[simplexLookup[it]];
+    tet.neighbors.reserve(D + 1);
+
+    for (uint i = 0; i < D + 1; ++i) {
+      if (simplexLookup.is_defined(it->neighbor(i))) {
+        const auto &n = tria[simplexLookup[it->neighbor(i)]];
+        if (n.id != tet.id) {
+          tet.neighbors.insert(n.id);
+        }
+      } else {
+        tet.neighbors.insert(dSimplex<D, Precision>::cINF);
+      }
+    }
+
+    PLOG(*tet << std::endl);
   }
   DEDENT
 

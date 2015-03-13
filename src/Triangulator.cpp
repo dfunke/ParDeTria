@@ -792,8 +792,8 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
   auto saveDT = dt;
 #endif
 
-  LOG("Updating neighbors" << std::endl);
-  findNeighbors(dt, provenance);
+  // LOG("Updating neighbors" << std::endl);
+  // findNeighbors(dt, provenance);
 
   ASSERT(saveDT == dt); // only performed if not NDEBUG
 
