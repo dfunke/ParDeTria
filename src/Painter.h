@@ -31,69 +31,83 @@ public:
 
   Painter(const dBox<D, Precision> &_bounds, uint _resolution = 10) {
 
-    impl._init(_bounds, _resolution);
+    if (ENABLED)
+      impl._init(_bounds, _resolution);
   }
 
-  Painter(const Painter<D, Precision> &a) { impl._copy(a); }
+  Painter(const Painter<D, Precision> &a) {
+    if (ENABLED)
+      impl._copy(a);
+  }
 
   Painter &operator=(const Painter<D, Precision> &a) {
 
-    impl._copy(a);
+    if (ENABLED)
+      impl._copy(a);
 
     return *this;
   }
 
   void draw(const dPoint<D, Precision> &point, bool drawInfinite = false) {
-    impl.draw(point, drawInfinite);
+    if (ENABLED)
+      impl.draw(point, drawInfinite);
   }
   void draw(const dPoints<D, Precision> &points, bool drawInfinite = false) {
-    for (const auto &p : points)
-      draw(p, drawInfinite);
+    if (ENABLED)
+      for (const auto &p : points)
+        draw(p, drawInfinite);
   }
 
   void draw(const dSimplex<D, Precision> &simplex,
             const dPoints<D, Precision> &points, bool drawInfinite = false) {
-    impl.draw(simplex, points, drawInfinite);
+    if (ENABLED)
+      impl.draw(simplex, points, drawInfinite);
   }
   void draw(const dSimplices<D, Precision> &simplices,
             const dPoints<D, Precision> &points, bool drawInfinite = false) {
-    for (const auto &s : simplices)
-      draw(s, points, drawInfinite);
+    if (ENABLED)
+      for (const auto &s : simplices)
+        draw(s, points, drawInfinite);
   }
 
   void drawCircumSphere(const dSimplex<D, Precision> &simplex,
                         const dPoints<D, Precision> &points,
                         bool drawInfinite = false) {
-    impl.drawCircumSphere(simplex, points, drawInfinite);
+    if (ENABLED)
+      impl.drawCircumSphere(simplex, points, drawInfinite);
   }
   void drawCircumSphere(const dSimplices<D, Precision> &simplices,
                         const dPoints<D, Precision> &points,
                         bool drawInfinite = false) {
-    for (const auto &x : simplices)
-      drawCircumSphere(x, points, drawInfinite);
+    if (ENABLED)
+      for (const auto &x : simplices)
+        drawCircumSphere(x, points, drawInfinite);
   }
 
   void drawNeighbors(const dSimplex<D, Precision> &simplex,
                      const dSimplices<D, Precision> &neighbors,
                      const dPoints<D, Precision> &points,
                      bool drawInfinite = false) {
-    for (uint n : simplex.neighbors) {
-      if (dSimplex<D, Precision>::isFinite(n) && neighbors.contains(n)) {
-        draw(neighbors[n], points, drawInfinite);
+    if (ENABLED)
+      for (uint n : simplex.neighbors) {
+        if (dSimplex<D, Precision>::isFinite(n) && neighbors.contains(n)) {
+          draw(neighbors[n], points, drawInfinite);
+        }
       }
-    }
   }
 
   void drawNeighbors(const dSimplices<D, Precision> &simplices,
                      const dSimplices<D, Precision> &neighbors,
                      const dPoints<D, Precision> &points,
                      bool drawInfinite = false) {
-    for (const auto &x : simplices)
-      drawNeighbors(x, neighbors, points, drawInfinite);
+    if (ENABLED)
+      for (const auto &x : simplices)
+        drawNeighbors(x, neighbors, points, drawInfinite);
   }
 
   void drawPartition(const dPoints<D, Precision> &points) {
-    impl.drawPartition(points);
+    if (ENABLED)
+      impl.drawPartition(points);
   }
 
   void setColor(const tRGBa &rgba) {
@@ -106,7 +120,8 @@ public:
   }
 
   void setColor(float r, float g, float b, float alpha = 1.0) {
-    impl.setColor(r, g, b, alpha);
+    if (ENABLED)
+      impl.setColor(r, g, b, alpha);
   }
 
   void save(const std::string &file) const {

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <sstream>
 
+#include <tbb/parallel_for.h>
+
 // static variables
 template <uint D, typename Precision> constexpr uint dPoint<D, Precision>::cINF;
 
@@ -688,9 +690,10 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   VerificationReport<D, Precision> result;
   result.valid = true;
 
+  SpinMutex mtx;
   // verify that every input point is used
   LOG("Checking points" << std::endl);
-  std::set<uint> usedPoints;
+  Ids usedPoints;
   for (const auto &s : *this) {
     usedPoints.insert(s.vertices.begin(), s.vertices.end());
   }
@@ -751,46 +754,60 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
   // verify that all simplices with a shared D-1 simplex are neighbors
   LOG("Checking neighbors" << std::endl);
-  for (const auto &a : *this) {
-    for (const auto &b : *this) {
-      // a and b are neighbors: the neighbor property is symmetric and the
-      // corresponding simplices must be present in the neighbors arrays
-      // accordingly
-      if ((a.isNeighbor(b) &&
-           (!b.isNeighbor(a) || a.neighbors.count(b.id) != 1 ||
-            b.neighbors.count(a.id) != 1))
-          // a and b are NOT neighbors: must be symmetric and simplices NOT be
-          // present in neighbors arrays
-          ||
-          (!a.isNeighbor(b) &&
-           (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
-            b.neighbors.count(a.id) != 0))) {
-        LOG("Wrong neighbor relation between " << a << " and " << b
-                                               << std::endl);
-        result.valid = false;
+  tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+
+    for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+      const dSimplex<D, Precision> &a = *it;
+      for (const auto &b : *this) {
+        // a and b are neighbors: the neighbor property is symmetric and the
+        // corresponding simplices must be present in the neighbors arrays
+        // accordingly
+        if ((a.isNeighbor(b) &&
+             (!b.isNeighbor(a) || a.neighbors.count(b.id) != 1 ||
+              b.neighbors.count(a.id) != 1))
+            // a and b are NOT neighbors: must be symmetric and simplices NOT be
+            // present in neighbors arrays
+            ||
+            (!a.isNeighbor(b) &&
+             (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
+              b.neighbors.count(a.id) != 0))) {
+          LOG("Wrong neighbor relation between " << a << " and " << b
+                                                 << std::endl);
+          std::lock_guard<SpinMutex> lock(mtx);
+          result.wrongNeighbors.emplace_back(a, b);
+          result.valid = false;
+        }
       }
     }
-  }
+  });
 
   // check in circle criterion
   LOG("Checking empty circle criterion" << std::endl);
-  for (const auto &s : *this) {
-    for (const auto &p : points) {
-      if (!p.isFinite())
-        continue; // skip infinite points
+  tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
-      bool contains = s.contains(p);
-      bool inCircle = s.inSphere(p, points);
-      if (contains != inCircle) {
-        LOG("Point " << p << " is " << (inCircle ? "" : "NOT ")
-                     << "in circle of " << s << " but should "
-                     << (contains ? "" : "NOT ") << "be" << std::endl);
-        result.valid = false;
+    for (auto it = this->begin(i); it != this->end(i); ++it) {
 
-        result.inCircle[s].insert(p.id);
+      const dSimplex<D, Precision> &s = *it;
+      for (const auto &p : points) {
+        if (!p.isFinite())
+          continue; // skip infinite points
+
+        bool contains = s.contains(p);
+        bool inCircle = s.inSphere(p, points);
+        if (contains != inCircle) {
+          LOG("Point " << p << " is " << (inCircle ? "" : "NOT ")
+                       << "in circle of " << s << " but should "
+                       << (contains ? "" : "NOT ") << "be" << std::endl);
+
+          std::lock_guard<SpinMutex> lock(mtx);
+          result.valid = false;
+
+          result.inCircle[s].insert(p.id);
+        }
       }
     }
-  }
+  });
   DEDENT
 
   LOG("Triangulation is " << (result.valid ? "" : "NOT ") << "valid"

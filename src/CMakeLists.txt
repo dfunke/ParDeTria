@@ -90,6 +90,21 @@ target_link_libraries(DACTest
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
+add_executable (Benchmark
+  Benchmark.cpp
+  utils/Timings.cpp
+  utils/RSS.c
+)
+
+target_link_libraries(Benchmark
+  Logging
+  Geometry
+  Triangulate
+  Painting
+  InterfaceCGAL
+  ${Boost_LIBRARIES}
+)
+
 add_executable (VTUShow
   utils/VTU_Show.cpp
 )

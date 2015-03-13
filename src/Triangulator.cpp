@@ -8,6 +8,11 @@
 #include <set>
 #include <stdexcept>
 #include <queue>
+#include <thread>
+
+#include <tbb/parallel_for.h>
+#include <tbb/parallel_do.h>
+#include <tbb/concurrent_unordered_set.h>
 
 // debug
 #ifndef NDEBUG
@@ -66,7 +71,7 @@ Ids Triangulator<D, Precision>::getEdge(
     const dSimplices<D, Precision> &simplices,
     const Partitioning<D, Precision> &partitioning, const uint &partition) {
   Ids edgeSimplices;
-  std::set<uint> wqa; // set of already checked simplices
+  Ids wqa; // set of already checked simplices
 
   // we use the overflow of the uint to zero to abort the loop
   for (uint infVertex = dPoint<D, Precision>::cINF; infVertex != 0;
@@ -142,14 +147,12 @@ Ids Triangulator<D, Precision>::extractPoints(
     const Ids &edgeSimplices, const dSimplices<D, Precision> &simplices,
     bool ignoreInfinite) {
   Ids outPoints;
-  std::set<uint> idx;
 
   for (const auto &id : edgeSimplices) {
     ASSERT(simplices.contains(id));
 
     for (uint i = 0; i < D + 1; ++i) {
-      if (dPoint<D, Precision>::isFinite(simplices[id].vertices[i]) &&
-          idx.insert(simplices[id].vertices[i]).second)
+      if (dPoint<D, Precision>::isFinite(simplices[id].vertices[i]))
         outPoints.insert(simplices[id].vertices[i]);
     }
   }
@@ -166,19 +169,199 @@ Ids Triangulator<D, Precision>::extractPoints(
 
 template <uint D, typename Precision>
 void
-Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
-                                            const std::string &provenance) {
+Triangulator<D, Precision>::findNeighbors(dSimplices<D, Precision> &simplices,
+#ifdef NDEBUG
+                                          __attribute__((unused))
+#endif
+                                          const std::string &provenance) {
+#ifndef NDEBUG
   PainterBulkWriter<D, Precision> paintWriter;
+#endif
 
   INDENT
-  for (dSimplex<D, Precision> &simplex : simplices) {
+  const uint saveIndent = LOGGER.getIndent();
+
+  tbb::parallel_for(std::size_t(0), simplices.bucket_count(),
+                    [&](const uint i) {
+
+    LOGGER.setIndent(saveIndent);
+
+    for (auto it = simplices.begin(i); it != simplices.end(i); ++it) {
+
+      dSimplex<D, Precision> &simplex = *it;
+
+      PLOG("Updating neighbors of " << simplex << std::endl);
+
+#ifndef NDEBUG
+      dSimplex<D, Precision> saveSimplex = simplex;
+#endif
+
+      simplex.neighbors.clear();
+      simplex.neighbors.reserve(D + 1);
+
+      std::unordered_map<uint, uint> counters;
+      counters.reserve((D + 1) * (D + 1) * (D + 1));
+
+      INDENT
+      for (uint v = 0; v < D + 1; ++v) {
+        // for every point, look where else its used
+        // if the other simplex shares a second point -> it is a neighbor
+
+        const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
+
+        if (IS_PROLIX) {
+          LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
+                              "Vertex " + to_string(vertex) + " used in");
+        }
+
+        INDENT
+        for (const uint u : vertex.simplices) {
+          counters[u] += 1;
+        }
+
+        for (const auto &it : counters) {
+          if (it.first != simplex.id)
+            if (it.second == D)
+              if (simplices.contains(it.first)) {
+                PLOG("Neighbor with " << simplices[it.first] << std::endl);
+
+                simplex.neighbors.insert(it.first);
+
+                // LOGGER.logContainer(simplex.neighbors,
+                // Logger::Verbosity::PROLIX);
+
+                // ASSERT(simplex.neighbors.size() <= D+1);
+                // u will be updated in its own round;
+              }
+        }
+        DEDENT
+      }
+      DEDENT
+
+      ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
+
+#ifndef NDEBUG
+      if (!(simplex.neighbors.size() > 0 &&
+            simplex.neighbors.size() <= D + 1)) {
+        LOG("Error: wrong number of neighbors for simplex " << simplex
+                                                            << std::endl);
+
+        if (IS_PROLIX) {
+          paintWriter.add("img/" + provenance + "_neighbors_" +
+                              std::to_string(simplex.id),
+                          bounds);
+          paintWriter.top().draw(points);
+          paintWriter.top().drawPartition(points);
+
+          paintWriter.top().setColor(0, 0, 0, 0.4);
+          paintWriter.top().draw(simplices, points, true);
+
+          paintWriter.top().setColor(1, 0, 0); // simplex in red
+          paintWriter.top().draw(simplex, points, true);
+
+          paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
+          paintWriter.top().drawNeighbors(simplex, simplices, points, true);
+
+          if (!(simplex.equalVertices(saveSimplex) &&
+                simplex.equalNeighbors(saveSimplex))) {
+            LOG("Error: was before " << saveSimplex << std::endl);
+
+            paintWriter.top().setColor(0, 0, 1); // old simplex in blue
+            paintWriter.top().draw(saveSimplex, points, true);
+
+            paintWriter.top().setColor(0, 1, 1,
+                                       0.4); // old simplex neighbors in cyan
+            paintWriter.top().drawNeighbors(saveSimplex, simplices, points,
+                                            true);
+          }
+        }
+      }
+#endif
+
+      // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
+      // D+1);
+
+      // TODO it might be better NOT to save the infinite simplex as neighbor
+      if (simplex.neighbors.size() <
+          D + 1) { // if it is a simplex at the border,
+        // it might have one infinite
+        // simplex as neighbor
+        simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
+      }
+    }
+  });
+  DEDENT
+}
+
+template <uint D, typename Precision>
+void
+Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
+                                            const Ids &toCheck,
+#ifdef NDEBUG
+                                            __attribute__((unused))
+#endif
+                                            const std::string &provenance) {
+#ifndef NDEBUG
+  PainterBulkWriter<D, Precision> paintWriter;
+#endif
+
+  INDENT
+  const uint saveIndent = LOGGER.getIndent();
+
+  tbb::concurrent_unordered_set<uint> wqa;
+
+#ifndef NDEBUG
+  std::atomic<uint> checked = 0;
+  std::atomic<uint> updated = 0;
+#endif
+
+  tbb::parallel_do(toCheck,
+                   [&](const uint &id, tbb::parallel_do_feeder<uint> &feeder) {
+
+    LOGGER.setIndent(saveIndent);
+
+    if (!wqa.insert(id).second) {
+      return;
+    }
+
+    dSimplex<D, Precision> &simplex = simplices[id];
+
+    PLOG("Checking neighbors of " << simplex << std::endl);
+#ifndef NDEBUG
+    ++checked;
+#endif
+
+    bool requiresUpdate = false;
+    for (const auto &n : simplex.neighbors) {
+      if (dSimplex<D, Precision>::isFinite(n) &&
+          (!simplices.contains(n) || !simplex.isNeighbor(simplices[n]))) {
+        requiresUpdate = true;
+        break;
+      }
+    }
+
+    if (!requiresUpdate) {
+      INDENT
+      PLOG("No update necessary" << std::endl);
+      DEDENT
+
+      return;
+    }
+
     PLOG("Updating neighbors of " << simplex << std::endl);
+#ifndef NDEBUG
+    ++updated;
+#endif
 
 #ifndef NDEBUG
     dSimplex<D, Precision> saveSimplex = simplex;
 #endif
 
     simplex.neighbors.clear();
+    simplex.neighbors.reserve(D + 1);
+
+    std::unordered_map<uint, uint> counters;
+    counters.reserve((D + 1) * (D + 1) * (D + 1));
 
     INDENT
     for (uint v = 0; v < D + 1; ++v) {
@@ -194,22 +377,32 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
 
       INDENT
       for (const uint u : vertex.simplices) {
-        if (u != simplex.id && simplices.contains(u) &&
-            simplex.isNeighbor(simplices[u])) {
-          PLOG("Neighbor with " << simplices[u] << std::endl);
+        counters[u] += 1;
+      }
 
-          simplex.neighbors.insert(u);
+      for (const auto &it : counters) {
+        if (it.first != simplex.id)
+          if (it.second == D)
+            if (simplices.contains(it.first)) {
+              PLOG("Neighbor with " << simplices[it.first] << std::endl);
 
-          // LOGGER.logContainer(simplex.neighbors, Logger::Verbosity::PROLIX);
+              simplex.neighbors.insert(it.first);
+              feeder.add(it.first);
 
-          // ASSERT(simplex.neighbors.size() <= D+1);
-          // u will be updated in its own round;
-        }
+              // LOGGER.logContainer(simplex.neighbors,
+              // Logger::Verbosity::PROLIX);
+
+              // ASSERT(simplex.neighbors.size() <= D+1);
+              // u will be updated in its own round;
+            }
       }
       DEDENT
     }
     DEDENT
 
+    ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
+
+#ifndef NDEBUG
     if (!(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D + 1)) {
       LOG("Error: wrong number of neighbors for simplex " << simplex
                                                           << std::endl);
@@ -229,7 +422,7 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
 
         paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
         paintWriter.top().drawNeighbors(simplex, simplices, points, true);
-#ifndef NDEBUG
+
         if (!(simplex.equalVertices(saveSimplex) &&
               simplex.equalNeighbors(saveSimplex))) {
           LOG("Error: was before " << saveSimplex << std::endl);
@@ -241,19 +434,27 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
                                      0.4); // old simplex neighbors in cyan
           paintWriter.top().drawNeighbors(saveSimplex, simplices, points, true);
         }
-#endif
       }
     }
+#endif
 
-    // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D+1);
+    // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
+    // D+1);
 
     // TODO it might be better NOT to save the infinite simplex as neighbor
     if (simplex.neighbors.size() < D + 1) { // if it is a simplex at the border,
-                                            // it might have one infinite
-                                            // simplex as neighbor
+      // it might have one infinite
+      // simplex as neighbor
       simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
     }
-  }
+  });
+
+#ifndef NDEBUG
+  LOG("Updating neighbors - checked: " << checked << " updated: " << updated
+                                       << " simplices: " << simplices.size()
+                                       << std::endl);
+#endif
+
   DEDENT
 }
 
@@ -262,17 +463,25 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
     std::vector<dSimplices<D, Precision>> &partialDTs, const Ids &edgeSimplices,
     const dSimplices<D, Precision> &edgeDT,
     const Partitioning<D, Precision> &partitioning,
-    const std::string &provenance, const dSimplices<D, Precision> *realDT) {
+    const std::string &provenance,
+#ifdef NDEBUG
+    __attribute__((unused))
+#endif
+    const dSimplices<D, Precision> *realDT) {
 
   LOG("Merging partial DTs into one triangulation" << std::endl);
   dSimplices<D, Precision> DT;
+  // use the first partition as estimator for the size of the triangulation
+  DT.reserve(partialDTs.size() * partialDTs[0].size());
+
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
   }
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
 
-  //**********************
+//**********************
+#ifndef NDEBUG
   auto paintMerging = [&](const dSimplices<D, Precision> &dt,
                           const std::string &name,
                           bool drawInfinite = false) -> Painter<D, Precision> {
@@ -297,13 +506,18 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
     return painter;
   };
-  //**********************
+#endif
+//**********************
 
+#ifndef NDEBUG
   paintMerging(DT, provenance + "_05a_merging_merged");
+#endif
 
-  auto deletedSimplices = DT.project(edgeSimplices);
+  const auto deletedSimplices = DT.project(edgeSimplices);
 
+#ifndef NDEBUG
   paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
+#endif
 
   // delete all simplices belonging to the edge from DT
   LOG("Striping triangulation from edge" << std::endl);
@@ -312,13 +526,17 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
     // remove simplex from where used list
     for (uint p = 0; p < D + 1; ++p) {
-      points[DT[id].vertices[p]].simplices.erase(id);
+      dPoint<D, Precision> &point = points[DT[id].vertices[p]];
+
+      std::lock_guard<SpinMutex> lock(point.mtx);
+      point.simplices.erase(id);
     }
 
     DT.erase(id);
   }
 
-  //**********************
+//**********************
+#ifndef NDEBUG
   auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
 
   painter.setColor(0, 0, 1, 0.4);
@@ -333,37 +551,56 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   painter.setDashed(false);
 
   painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
+#endif
   //**********************
 
   // merge partial DTs and edge DT
   LOG("Merging triangulations" << std::endl);
-  for (const auto &edgeSimplex : edgeDT) {
+  SpinMutex insertMtx;
+  Ids insertedSimplices;
 
-    // check whether edgeSimplex is completely contained in one partition
-    uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
-    bool inOnePartition = partitioning[p0].contains(edgeSimplex);
+  tbb::parallel_for(std::size_t(0), edgeDT.bucket_count(), [&](const uint i) {
 
-    if (!inOnePartition) {
-      DT.insert(edgeSimplex);
-    } else {
-      // the simplex is completely in one partition -> it must have been found
-      // before
-      auto it = std::find_if(deletedSimplices.begin(), deletedSimplices.end(),
-                             [&](const dSimplex<D, Precision> &s) {
-        return s.equalVertices(edgeSimplex);
-      });
-      if (it != deletedSimplices.end()) {
+    for (auto it = edgeDT.begin(i); it != edgeDT.end(i); ++it) {
+
+      const dSimplex<D, Precision> &edgeSimplex = *it;
+
+      // check whether edgeSimplex is completely contained in one partition
+      uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
+      bool inOnePartition = partitioning[p0].contains(edgeSimplex);
+
+      if (!inOnePartition) {
+        std::lock_guard<SpinMutex> lock(insertMtx);
         DT.insert(edgeSimplex);
+        insertedSimplices.insert(edgeSimplex.id);
+      } else {
+        // the simplex is completely in one partition -> it must have been found
+        // before
+        auto it = std::find_if(deletedSimplices.begin(), deletedSimplices.end(),
+                               [&](const dSimplex<D, Precision> &s) {
+          return s.equalVertices(edgeSimplex);
+        });
+        if (it != deletedSimplices.end()) {
+          std::lock_guard<SpinMutex> lock(insertMtx);
+          DT.insert(edgeSimplex);
+          insertedSimplices.insert(edgeSimplex.id);
+        }
       }
     }
-  }
+  });
 
+#ifndef NDEBUG
   paintMerging(DT, provenance + "_05c_merging_edge");
+#endif
 
   ASSERT(DT.countDuplicates() == 0);
-  updateNeighbors(DT, provenance);
 
+  LOG("Updating neighbors" << std::endl);
+  updateNeighbors(DT, insertedSimplices, provenance);
+
+#ifndef NDEBUG
   paintMerging(DT, provenance + "_05d_merging_finished");
+#endif
 
   return DT;
 }
@@ -390,6 +627,19 @@ void Triangulator<D, Precision>::evaluateVerificationReport(
 
       writer.top().setColor(1, 0, 0);
       writer.top().draw(points.project(inCircle.second));
+    }
+
+    for (const auto &neighbors : vr.wrongNeighbors) {
+      writer.add("img/" + provenance + "_wrongNeighbors_" +
+                     std::to_string(neighbors.first.id) + "_" +
+                     std::to_string(neighbors.second.id),
+                 basePainter);
+
+      writer.top().setColor(0, 1, 0);
+      writer.top().draw(neighbors.first, points, true);
+
+      writer.top().setColor(1, 0, 0);
+      writer.top().draw(neighbors.second, points, true);
     }
   }
 }
@@ -558,8 +808,8 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
   auto saveDT = dt;
 #endif
 
-  LOG("Updating neighbors" << std::endl);
-  updateNeighbors(dt, provenance);
+  // LOG("Updating neighbors" << std::endl);
+  // findNeighbors(dt, provenance);
 
   ASSERT(saveDT == dt); // only performed if not NDEBUG
 
@@ -606,11 +856,13 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
   if (partitionPoints.size() > baseThreshold) {
     LOG("Recursive case" << std::endl);
 
+#ifndef NDEBUG
     // setup base painter
     Painter<D, Precision> basePainter(bounds);
     basePainter.draw(points.project(partitionPoints));
     basePainter.drawPartition(points.project(partitionPoints));
     basePainter.save(provenance + "_00_points");
+#endif
 
     std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
     if (isTOP && VERIFY) {
@@ -624,6 +876,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                                          << std::endl);
       DEDENT
 
+#ifndef NDEBUG
       Painter<D, Precision> paintRealDT = basePainter;
 
       paintRealDT.setColor(0, 0, 1);
@@ -631,6 +884,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       paintRealDT.setColor(0, 0, 0);
 
       paintRealDT.save(provenance + "_01_realDT");
+#endif
     }
 
     // partition input
@@ -640,23 +894,25 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
         partitioner->partition(partitionPoints, points, provenance);
     DEDENT
 
-    for (auto &p : partioning)
-      PLOG("Partition " << p << std::endl);
-
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partioning.size());
-    Painter<D, Precision> paintPartialDTs = basePainter;
 
-    INDENT
-    for (uint i = 0; i < partioning.size(); ++i) {
-      LOG("Partition " << i << std::endl);
+    tbb::parallel_for(std::size_t(0), partioning.size(), [&](const uint i) {
+      LOGGER.setIndent(
+          provenance.length()); // new thread, initialize Logger indent
       INDENT
+      LOG("Partition " << i << " on thread " << std::this_thread::get_id()
+                       << std::endl);
       partialDTs[i] =
           triangulateDAC(partioning[i].points, provenance + std::to_string(i));
       LOG("Triangulation " << i << " contains " << partialDTs[i].size()
                            << " tetrahedra" << std::endl);
       DEDENT
+    });
 
+#ifndef NDEBUG
+    Painter<D, Precision> paintPartialDTs = basePainter;
+    for (uint i = 0; i < partioning.size(); ++i) {
       paintPartialDTs.setColor(Painter<D, Precision>::tetradicColor(i), 0.4);
       paintPartialDTs.draw(partialDTs[i], points);
 
@@ -664,17 +920,20 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       paintPartialDT.draw(partialDTs[i], points, true);
       paintPartialDT.save(provenance + "_02_partialDT_" + std::to_string(i));
     }
-    DEDENT
 
     paintPartialDTs.save(provenance + "_02_partialDTs");
+#endif
 
     LOG("Extracting edges" << std::endl);
     INDENT
 
     Ids edgePointIds;
     Ids edgeSimplexIds;
+
+#ifndef NDEBUG
     Painter<D, Precision> paintEdges = paintPartialDTs;
     paintEdges.setColor(1, 0, 0);
+#endif
 
     for (uint i = 0; i < partioning.size(); ++i) {
       // points are in different partitions, there can be no overlap
@@ -686,15 +945,19 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       auto ep = extractPoints(edge, partialDTs[i]);
       edgePointIds.insert(ep.begin(), ep.end());
 
+#ifndef NDEBUG
       paintEdges.draw(partialDTs[i].project(edge), points, false);
+#endif
     }
     DEDENT
 
     LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
                     << edgePointIds.size() << " points" << std::endl);
 
+#ifndef NDEBUG
     paintEdges.draw(points.project(edgePointIds));
     paintEdges.save(provenance + "_03_edgeMarked");
+#endif
 
     LOG("Triangulating edges" << std::endl);
     INDENT
@@ -703,6 +966,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                                        << std::endl << std::endl);
     DEDENT
 
+#ifndef NDEBUG
     Painter<D, Precision> paintEdgeDT = basePainter;
 
     paintEdgeDT.setColor(0, 1, 0);
@@ -711,14 +975,17 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     paintEdgeDT.draw(points.project(edgePointIds));
 
     paintEdgeDT.save(provenance + "_04_edgeDT");
+#endif
 
     auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                        partioning, provenance, realDT.get());
 
+#ifndef NDEBUG
     Painter<D, Precision> paintFinal = basePainter;
     paintFinal.setColor(0, 1, 0);
     paintFinal.draw(mergedDT, points, true);
     paintFinal.save(provenance + "_06_final");
+#endif
 
     TriangulationReportEntry rep;
     rep.provenance = provenance;

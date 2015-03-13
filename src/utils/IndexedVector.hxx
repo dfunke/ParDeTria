@@ -11,15 +11,17 @@ public:
   typedef typename std::unordered_map<K, V> map;
 
 public:
+  template <class IT>
   struct const_iterator; // forward declare for friend declaration
 
+  template <class IT>
   struct iterator : public std::iterator<std::bidirectional_iterator_tag, V> {
 
-    friend struct const_iterator;
+    friend struct const_iterator<IT>;
 
   public:
     iterator() {}
-    iterator(typename map::iterator j) : i(j) {}
+    iterator(IT j) : i(j) {}
 
     iterator &operator++() {
       ++i;
@@ -57,18 +59,19 @@ public:
     V *operator->() { return &i->second; }
 
   protected:
-    typename map::iterator i;
+    IT i;
   };
 
+  template <class IT>
   struct const_iterator
       : public std::iterator<std::bidirectional_iterator_tag, V> {
 
   public:
     const_iterator() {}
 
-    const_iterator(typename map::const_iterator j) : i(j) {}
+    const_iterator(IT j) : i(j) {}
 
-    const_iterator(iterator &o) : i(o.i) {}
+    const_iterator(iterator<IT> &o) : i(o.i) {}
 
     const_iterator &operator++() {
       ++i;
@@ -98,7 +101,7 @@ public:
       return *this;
     }
 
-    const_iterator &operator=(const iterator &other) {
+    const_iterator &operator=(const iterator<IT> &other) {
       i = other.i;
 
       return *this;
@@ -113,16 +116,17 @@ public:
     const V *operator->() const { return &i->second; }
 
   protected:
-    typename map::const_iterator i;
+    IT i;
   };
 
+  template <class IT>
   struct const_key_iterator
       : public std::iterator<std::bidirectional_iterator_tag, K> {
 
   public:
     const_key_iterator() {}
 
-    const_key_iterator(typename map::const_iterator j) : i(j) {}
+    const_key_iterator(IT j) : i(j) {}
 
     const_key_iterator &operator++() {
       ++i;
@@ -155,7 +159,7 @@ public:
     const K *operator->() const { return &i->first; }
 
   protected:
-    typename map::const_iterator i;
+    IT i;
   };
 
 public:
@@ -172,9 +176,9 @@ public:
     }
   }
 
-  bool contains(const V &value) const { return map::count(value.id) == 1; }
+  bool contains(const V &value) const { return map::count(value.id); }
 
-  bool contains(const K &key) const { return map::count(key) == 1; }
+  bool contains(const K &key) const { return map::count(key); }
 
   template <class Container>
   const IndexedVector project(const Container &ids) const {
@@ -206,17 +210,38 @@ public:
     return res;
   }
 
-  iterator begin() { return iterator(map::begin()); }
-
-  iterator end() { return iterator(map::end()); }
-
-  const_iterator begin() const { return const_iterator(map::begin()); }
-
-  const_iterator end() const { return const_iterator(map::end()); }
-
-  const_key_iterator begin_keys() const {
-    return const_key_iterator(map::begin());
+  iterator<typename map::iterator> begin() {
+    return iterator<typename map::iterator>(map::begin());
+  }
+  iterator<typename map::iterator> end() {
+    return iterator<typename map::iterator>(map::end());
   }
 
-  const_key_iterator end_keys() const { return const_key_iterator(map::end()); }
+  const_iterator<typename map::const_iterator> begin() const {
+    return const_iterator<typename map::const_iterator>(map::begin());
+  }
+  const_iterator<typename map::const_iterator> end() const {
+    return const_iterator<typename map::const_iterator>(map::end());
+  }
+
+  const_key_iterator<typename map::const_iterator> begin_keys() const {
+    return const_key_iterator<typename map::const_iterator>(map::begin());
+  }
+  const_key_iterator<typename map::const_iterator> end_keys() const {
+    return const_key_iterator<typename map::const_iterator>(map::end());
+  }
+
+  iterator<typename map::local_iterator> begin(const uint i) {
+    return iterator<typename map::local_iterator>(map::begin(i));
+  }
+  iterator<typename map::local_iterator> end(const uint i) {
+    return iterator<typename map::local_iterator>(map::end(i));
+  }
+
+  const_iterator<typename map::const_local_iterator> begin(const uint i) const {
+    return const_iterator<typename map::const_local_iterator>(map::begin(i));
+  }
+  const_iterator<typename map::const_local_iterator> end(const uint i) const {
+    return const_iterator<typename map::const_local_iterator>(map::end(i));
+  }
 };

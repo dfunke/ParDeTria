@@ -8,7 +8,7 @@
 #pragma once
 
 #include <iostream>
-#include <set>
+#include <unordered_set>
 #include <map>
 #include <array>
 #include <cmath>
@@ -16,8 +16,9 @@
 #include "utils/IndexedVector.hxx"
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
+#include "utils/SpinMutex.h"
 
-typedef std::set<uint> Ids;
+typedef std::unordered_set<uint> Ids;
 
 // dimensionality of our problem
 // const uint D = 2;
@@ -114,6 +115,20 @@ public:
   dPoint(const dVector<D, Precision> &_coords)
       : id(dPoint<D, Precision>::cINF), coords(_coords) {}
 
+  dPoint(const dPoint<D, Precision> &a)
+      : id(a.id), coords(a.coords), simplices(a.simplices) {}
+
+  dPoint &operator=(const dPoint<D, Precision> &a) {
+    // acquire lock, as we are modifying the point
+    std::lock_guard<SpinMutex> lock(mtx);
+
+    id = a.id;
+    coords = a.coords;
+    simplices = a.simplices;
+
+    return *this;
+  }
+
   bool operator==(const dPoint<D, Precision> &a) const {
 
     // COUT << "Comparing POINTS THIS " << *this << " and OTHER " << a << ": ";
@@ -145,6 +160,7 @@ public:
   uint id;
   dVector<D, Precision> coords;
   Ids simplices;
+  SpinMutex mtx;
 
 public:
   static inline bool isFinite(const uint &i) {
@@ -198,6 +214,20 @@ public:
   dSimplex(const std::array<uint, D + 1> &_vertices)
       : id(dSimplex<D, Precision>::cINF), vertices(_vertices) {}
 
+  dSimplex(const dSimplex<D, Precision> &a)
+      : id(a.id), vertices(a.vertices), neighbors(a.neighbors) {}
+
+  dSimplex &operator=(const dSimplex<D, Precision> &a) {
+    // acquire lock, as we are modifying the point
+    std::lock_guard<SpinMutex> lock(mtx);
+
+    id = a.id;
+    vertices = a.vertices;
+    neighbors = a.neighbors;
+
+    return *this;
+  }
+
   bool operator==(const dSimplex<D, Precision> &a) const {
 
     // COUT << "Comparing SIMPLICES THIS " << *this << " and OTHER " << a << ":
@@ -211,22 +241,7 @@ public:
     } else {
       // either one is infinity
       // compare vertices
-      for (uint i = 0; i < D + 1; ++i) {
-        bool found = false;
-        for (uint j = 0; j < D + 1; ++j) {
-          if (vertices[i] == a.vertices[j]) {
-            // std::cout << this->vertices[i] << " == " << a.vertices[j];
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          // std::cout << false << std::endl);
-          return false;
-        }
-      }
-      // std::cout << true << std::endl);
-      return true;
+      return equalVertices(a);
     }
   }
 
@@ -235,17 +250,10 @@ public:
 
   bool equalVertices(const dSimplex<D, Precision> &a) const {
     // compare vertices
+    // both vertex arrays are sorted by vertex id
+
     for (uint i = 0; i < D + 1; ++i) {
-      bool found = false;
-      for (uint j = 0; j < D + 1; ++j) {
-        if (vertices[i] == a.vertices[j]) {
-          // std::cout << this->vertices[i] << " == " << a.vertices[j];
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // std::cout << false << std::endl);
+      if (vertices[i] != a.vertices[i]) {
         return false;
       }
     }
@@ -254,20 +262,22 @@ public:
   }
 
   uint countSharedVertices(const dSimplex<D, Precision> &a) const {
-    uint count = 0;
-    for (uint i = 0; i < D + 1; ++i) {
-      bool found = false;
-      for (uint j = 0; j < D + 1; ++j) {
-        if (vertices[i] == a.vertices[j]) {
-          // std::cout << this->vertices[i] << " == " << a.vertices[j];
-          found = true;
-          break;
-        }
-      }
-      count += found;
+    uint sharedVertices = 0;
+
+    uint i = 0;
+    uint j = 0;
+    uint tmp = 0;
+    while (i < D + 1 && j < D + 1) {
+      sharedVertices += vertices[i] == a.vertices[j];
+
+      tmp = i;
+      i += vertices[i] <= a.vertices[j];
+      j += vertices[tmp] >= a.vertices[j];
     }
 
-    return count;
+    ASSERT(0 <= sharedVertices && sharedVertices <= D + 1);
+
+    return sharedVertices;
   }
 
   bool equalNeighbors(const dSimplex<D, Precision> &a) const {
@@ -330,13 +340,7 @@ public:
   dSphere<D, Precision> circumsphere(const dPoints<D, Precision> &points) const;
 
   bool isNeighbor(const dSimplex<D, Precision> &other) const {
-    uint sharedVertices = 0;
-
-    for (uint i = 0; i < D + 1; ++i) {
-      for (uint j = 0; j < D + 1; ++j) {
-        sharedVertices += (vertices[i] == other.vertices[j]);
-      }
-    }
+    uint sharedVertices = countSharedVertices(other);
 
     ASSERT(sharedVertices <= D || id == other.id);
 
@@ -351,6 +355,7 @@ public:
   uint id;
   std::array<uint, D + 1> vertices;
   Ids neighbors;
+  SpinMutex mtx;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }
@@ -487,6 +492,8 @@ template <uint D, typename Precision> struct CrossCheckReport {
 template <uint D, typename Precision> struct VerificationReport {
   bool valid;
   std::map<dSimplex<D, Precision>, Ids> inCircle;
+  std::vector<std::pair<dSimplex<D, Precision>, dSimplex<D, Precision>>>
+      wrongNeighbors;
 };
 
 //#############################################################################
