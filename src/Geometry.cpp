@@ -747,7 +747,8 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   for (const auto &s : *this) {
     for (const auto &p : s.vertices) {
       // point p of s not correctly flagged as used in s
-      if (points[p].simplices.count(s.id) != 1) {
+      if (std::find(points[p].simplices.begin(), points[p].simplices.end(),
+                    s.id) == points[p].simplices.end()) {
         LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
         LOGGER.logContainer(points[p].simplices, Logger::Verbosity::NORMAL,
                             "p.simplices:");

@@ -18,8 +18,6 @@
 #include "utils/ASSERT.h"
 #include "utils/SpinMutex.h"
 
-#include <tbb/concurrent_unordered_set.h>
-
 typedef std::unordered_set<uint> Ids;
 
 // dimensionality of our problem
@@ -161,7 +159,7 @@ public:
 public:
   uint id;
   dVector<D, Precision> coords;
-  tbb::concurrent_unordered_set<uint> simplices;
+  std::vector<uint> simplices;
   SpinMutex mtx;
 
 public:

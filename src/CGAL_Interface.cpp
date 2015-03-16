@@ -132,7 +132,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
       a.vertices[i] = point.id;
 
       std::lock_guard<SpinMutex> lock(point.mtx);
-      point.simplices.insert(a.id);
+      point.simplices.emplace_back(a.id);
     }
     // sort vertices by ascending point id
     std::sort(a.vertices.begin(), a.vertices.end());
