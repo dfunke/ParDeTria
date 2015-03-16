@@ -19,6 +19,7 @@
 
 #include <mutex>
 #include <tbb/parallel_for.h>
+#include <tbb/task_scheduler_init.h>
 
 //**************************
 
@@ -162,6 +163,7 @@ int main(int argc, char *argv[]) {
   unsigned char p;
   uint N;
   uint baseCase;
+  uint threads = tbb::task_scheduler_init::default_num_threads();
 
   bool study = false;
 
@@ -187,6 +189,8 @@ int main(int argc, char *argv[]) {
                              "load points from file");
   cCommandLine.add_options()("simplices", po::value<std::string>(&simplexFile),
                              "load simplices from file");
+  cCommandLine.add_options()("threads", po::value<uint>(&threads),
+                             "specify number of threads");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -241,6 +245,9 @@ int main(int argc, char *argv[]) {
     Painter<D, Precision>::ENABLED = false;
   }
 
+  // load scheduler with specified number of threads
+  tbb::task_scheduler_init init(threads);
+
   //***************************************************************************
 
   dBox<D, Precision> bounds;
@@ -278,7 +285,8 @@ int main(int argc, char *argv[]) {
         << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
                .count() << " ms" << std::endl);
 
-    VLOG(std::endl << "Triangulation report: " << std::endl);
+    VLOG(std::endl
+         << "Triangulation report: " << std::endl);
 
     VLOG(CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
                   "valid", "nPoints", "nSimplices", "nEdgePoints",
