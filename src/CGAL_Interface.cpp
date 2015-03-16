@@ -163,7 +163,7 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
       }
     }
 
-    PLOG(*tet << std::endl);
+    PLOG(tet << std::endl);
   }
   DEDENT
 

@@ -312,8 +312,8 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
   tbb::concurrent_unordered_set<uint> wqa(toCheck.size());
 
 #ifndef NDEBUG
-  std::atomic<uint> checked = 0;
-  std::atomic<uint> updated = 0;
+  std::atomic<uint> checked(0);
+  std::atomic<uint> updated(0);
 #endif
 
   tbb::parallel_do(toCheck,
@@ -534,7 +534,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
                      cmpFingerprint);
 
 #ifndef NDEBUG
-  paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
+// paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
 #endif
 
   // delete all simplices belonging to the edge from DT
@@ -575,7 +575,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   painter.setColor(1, 0, 0, 0.4);
   painter.setDashed();
-  painter.draw(deletedSimplices, points);
+  // painter.draw(deletedSimplices, points);
   painter.setDashed(false);
 
   painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
