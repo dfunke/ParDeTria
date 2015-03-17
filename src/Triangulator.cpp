@@ -169,12 +169,12 @@ Ids Triangulator<D, Precision>::extractPoints(
 }
 
 template <uint D, typename Precision>
-void
-Triangulator<D, Precision>::findNeighbors(dSimplices<D, Precision> &simplices,
+void Triangulator<D, Precision>::findNeighbors(
+    dSimplices<D, Precision> &simplices,
 #ifdef NDEBUG
-                                          __attribute__((unused))
+    __attribute__((unused))
 #endif
-                                          const std::string &provenance) {
+    const std::string &provenance) {
 #ifndef NDEBUG
   PainterBulkWriter<D, Precision> paintWriter;
 #endif
@@ -182,126 +182,128 @@ Triangulator<D, Precision>::findNeighbors(dSimplices<D, Precision> &simplices,
   INDENT
   const uint saveIndent = LOGGER.getIndent();
 
-  tbb::parallel_for(std::size_t(0), simplices.bucket_count(),
-                    [&](const uint i) {
+  tbb::parallel_for(
+      std::size_t(0), simplices.bucket_count(), [&](const uint i) {
 
-    LOGGER.setIndent(saveIndent);
+        LOGGER.setIndent(saveIndent);
 
-    for (auto it = simplices.begin(i); it != simplices.end(i); ++it) {
+        for (auto it = simplices.begin(i); it != simplices.end(i); ++it) {
 
-      dSimplex<D, Precision> &simplex = *it;
+          dSimplex<D, Precision> &simplex = *it;
 
-      PLOG("Updating neighbors of " << simplex << std::endl);
+          PLOG("Updating neighbors of " << simplex << std::endl);
 
 #ifndef NDEBUG
-      dSimplex<D, Precision> saveSimplex = simplex;
+          dSimplex<D, Precision> saveSimplex = simplex;
 #endif
 
-      simplex.neighbors.clear();
-      simplex.neighbors.reserve(D + 1);
+          simplex.neighbors.clear();
+          simplex.neighbors.reserve(D + 1);
 
-      std::unordered_map<uint, uint> counters;
-      counters.reserve((D + 1) * (D + 1) * (D + 1));
+          std::unordered_map<uint, uint> counters;
+          counters.reserve((D + 1) * (D + 1) * (D + 1));
 
-      INDENT
-      for (uint v = 0; v < D + 1; ++v) {
-        // for every point, look where else its used
-        // if the other simplex shares a second point -> it is a neighbor
+          INDENT
+          for (uint v = 0; v < D + 1; ++v) {
+            // for every point, look where else its used
+            // if the other simplex shares a second point -> it is a neighbor
 
-        const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
+            const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
 
-        if (IS_PROLIX) {
-          LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
-                              "Vertex " + to_string(vertex) + " used in");
-        }
+            if (IS_PROLIX) {
+              LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
+                                  "Vertex " + to_string(vertex) + " used in");
+            }
 
-        INDENT
-        for (const uint u : vertex.simplices) {
-          counters[u] += 1;
-        }
+            INDENT
+            for (const uint u : vertex.simplices) {
+              counters[u] += 1;
+            }
 
-        for (const auto &it : counters) {
-          if (it.first != simplex.id)
-            if (it.second == D)
-              if (simplices.contains(it.first)) {
-                PLOG("Neighbor with " << simplices[it.first] << std::endl);
+            for (const auto &it : counters) {
+              if (it.first != simplex.id)
+                if (it.second == D)
+                  if (simplices.contains(it.first)) {
+                    PLOG("Neighbor with " << simplices[it.first] << std::endl);
 
-                simplex.neighbors.insert(it.first);
+                    simplex.neighbors.insert(it.first);
 
-                // LOGGER.logContainer(simplex.neighbors,
-                // Logger::Verbosity::PROLIX);
+                    // LOGGER.logContainer(simplex.neighbors,
+                    // Logger::Verbosity::PROLIX);
 
-                // ASSERT(simplex.neighbors.size() <= D+1);
-                // u will be updated in its own round;
-              }
-        }
-        DEDENT
-      }
-      DEDENT
+                    // ASSERT(simplex.neighbors.size() <= D+1);
+                    // u will be updated in its own round;
+                  }
+            }
+            DEDENT
+          }
+          DEDENT
 
-      ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
+          ASSERT(0 < simplex.neighbors.size() &&
+                 simplex.neighbors.size() <= D + 1);
 
 #ifndef NDEBUG
-      if (!(simplex.neighbors.size() > 0 &&
-            simplex.neighbors.size() <= D + 1)) {
-        LOG("Error: wrong number of neighbors for simplex " << simplex
-                                                            << std::endl);
+          if (!(simplex.neighbors.size() > 0 &&
+                simplex.neighbors.size() <= D + 1)) {
+            LOG("Error: wrong number of neighbors for simplex " << simplex
+                                                                << std::endl);
 
-        if (IS_PROLIX) {
-          paintWriter.add("img/" + provenance + "_neighbors_" +
-                              std::to_string(simplex.id),
-                          bounds);
-          paintWriter.top().draw(points);
-          paintWriter.top().drawPartition(points);
+            if (IS_PROLIX) {
+              paintWriter.add("img/" + provenance + "_neighbors_" +
+                                  std::to_string(simplex.id),
+                              bounds);
+              paintWriter.top().draw(points);
+              paintWriter.top().drawPartition(points);
 
-          paintWriter.top().setColor(0, 0, 0, 0.4);
-          paintWriter.top().draw(simplices, points, true);
+              paintWriter.top().setColor(0, 0, 0, 0.4);
+              paintWriter.top().draw(simplices, points, true);
 
-          paintWriter.top().setColor(1, 0, 0); // simplex in red
-          paintWriter.top().draw(simplex, points, true);
+              paintWriter.top().setColor(1, 0, 0); // simplex in red
+              paintWriter.top().draw(simplex, points, true);
 
-          paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
-          paintWriter.top().drawNeighbors(simplex, simplices, points, true);
+              paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
+              paintWriter.top().drawNeighbors(simplex, simplices, points, true);
 
-          if (!(simplex.equalVertices(saveSimplex) &&
-                simplex.equalNeighbors(saveSimplex))) {
-            LOG("Error: was before " << saveSimplex << std::endl);
+              if (!(simplex.equalVertices(saveSimplex) &&
+                    simplex.equalNeighbors(saveSimplex))) {
+                LOG("Error: was before " << saveSimplex << std::endl);
 
-            paintWriter.top().setColor(0, 0, 1); // old simplex in blue
-            paintWriter.top().draw(saveSimplex, points, true);
+                paintWriter.top().setColor(0, 0, 1); // old simplex in blue
+                paintWriter.top().draw(saveSimplex, points, true);
 
-            paintWriter.top().setColor(0, 1, 1,
-                                       0.4); // old simplex neighbors in cyan
-            paintWriter.top().drawNeighbors(saveSimplex, simplices, points,
-                                            true);
+                paintWriter.top().setColor(
+                    0, 1, 1,
+                    0.4); // old simplex neighbors in cyan
+                paintWriter.top().drawNeighbors(saveSimplex, simplices, points,
+                                                true);
+              }
+            }
+          }
+#endif
+
+          // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
+          // D+1);
+
+          // TODO it might be better NOT to save the infinite simplex as
+          // neighbor
+          if (simplex.neighbors.size() <
+              D + 1) { // if it is a simplex at the border,
+            // it might have one infinite
+            // simplex as neighbor
+            simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
           }
         }
-      }
-#endif
-
-      // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
-      // D+1);
-
-      // TODO it might be better NOT to save the infinite simplex as neighbor
-      if (simplex.neighbors.size() <
-          D + 1) { // if it is a simplex at the border,
-        // it might have one infinite
-        // simplex as neighbor
-        simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
-      }
-    }
-  });
+      });
   DEDENT
 }
 
 template <uint D, typename Precision>
-void
-Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
-                                            const Ids &toCheck,
+void Triangulator<D, Precision>::updateNeighbors(
+    dSimplices<D, Precision> &simplices, const Ids &toCheck,
 #ifdef NDEBUG
-                                            __attribute__((unused))
+    __attribute__((unused))
 #endif
-                                            const std::string &provenance) {
+    const std::string &provenance) {
 #ifndef NDEBUG
   PainterBulkWriter<D, Precision> paintWriter;
 #endif
@@ -316,8 +318,8 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
   std::atomic<uint> updated(0);
 #endif
 
-  tbb::parallel_do(toCheck,
-                   [&](const uint &id, tbb::parallel_do_feeder<uint> &feeder) {
+  tbb::parallel_do(toCheck, [&](const uint &id,
+                                tbb::parallel_do_feeder<uint> &feeder) {
 
     LOGGER.setIndent(saveIndent);
 
@@ -361,51 +363,62 @@ Triangulator<D, Precision>::updateNeighbors(dSimplices<D, Precision> &simplices,
     simplex.neighbors.clear();
     simplex.neighbors.reserve(D + 1);
 
-    std::size_t maxSize = 0;
-    std::size_t max2Size = 0;
-    for (uint d = 0; d < D + 1; ++d) {
-      if (points[simplex.vertices[d]].simplices.size() > maxSize) {
-        max2Size = maxSize;
-        maxSize = points[simplex.vertices[d]].simplices.size();
-      }
+    std::array<uint, D + 1> indices;
+    for (uint i = 0; i < D + 1; ++i) {
+      indices[i] = 0;
     }
 
-    std::unordered_map<uint, uint> counters;
-    counters.reserve(maxSize + max2Size);
+    uint currentMax = 0;
+    uint currentV = 0;
+    bool cont = true;
 
     INDENT
-    for (uint v = 0; v < D + 1; ++v) {
-      // for every point, look where else its used
-      // if the other simplex shares a second point -> it is a neighbor
+    while (cont) {
+      uint currentMin = std::numeric_limits<uint>::max();
+      uint countOver = 0;
+      uint count = 0;
 
-      const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
+      for (uint i = 0; i < D + 1; ++i) {
+        if (indices[i] < points[simplex.vertices[i]].simplices.size()) {
+          const auto &v = points[simplex.vertices[i]].simplices[indices[i]];
 
-      if (IS_PROLIX) {
-        LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
-                            "Vertex " + to_string(vertex) + " used in");
+          if (v < currentMin) {
+            currentMin = v;
+          }
+
+          if (v > currentMax) {
+            currentMax = v;
+          }
+
+          if (v == currentV) {
+            ++count;
+            ++indices[i];
+            continue;
+          }
+
+          if (v <= currentV) {
+            ++indices[i];
+            continue;
+          }
+        } else {
+          ++countOver;
+        }
       }
-      for (const uint u : vertex.simplices) {
-        ++counters[u];
+      if (count == D && simplices.contains(currentV)) {
+        PLOG("Neighbor with " << simplices[currentV] << std::endl);
+
+        simplex.neighbors.insert(currentV);
+        feeder.add(currentV);
       }
+
+      if (currentV == currentMin)
+        ++currentV;
+      else
+        currentV = currentMin;
+
+      cont = countOver <= 2;
     }
     DEDENT
-
-    for (const auto &it : counters) {
-      if (it.first != simplex.id)
-        if (it.second == D)
-          if (simplices.contains(it.first)) {
-            PLOG("Neighbor with " << simplices[it.first] << std::endl);
-
-            simplex.neighbors.insert(it.first);
-            feeder.add(it.first);
-
-            // LOGGER.logContainer(simplex.neighbors,
-            // Logger::Verbosity::PROLIX);
-
-            // ASSERT(simplex.neighbors.size() <= D+1);
-            // u will be updated in its own round;
-          }
-    }
 
     ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
 
@@ -489,30 +502,30 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
 //**********************
 #ifndef NDEBUG
-  auto paintMerging = [&](const dSimplices<D, Precision> &dt,
-                          const std::string &name,
-                          bool drawInfinite = false) -> Painter<D, Precision> {
-    Painter<D, Precision> painter(bounds);
+  auto paintMerging =
+      [&](const dSimplices<D, Precision> &dt, const std::string &name,
+          bool drawInfinite = false) -> Painter<D, Precision> {
+        Painter<D, Precision> painter(bounds);
 
-    painter.draw(points);
-    painter.drawPartition(points);
+        painter.draw(points);
+        painter.drawPartition(points);
 
-    painter.setColor(0, 1, 0, 0.4);
-    painter.draw(dt, points, drawInfinite);
+        painter.setColor(0, 1, 0, 0.4);
+        painter.draw(dt, points, drawInfinite);
 
-    painter.setColor(1, 0, 0);
-    painter.draw(points.project(edgePointIds));
-    painter.save(name);
+        painter.setColor(1, 0, 0);
+        painter.draw(points.project(edgePointIds));
+        painter.save(name);
 
-    if (realDT != nullptr) {
-      painter.setColor(0, 0, 0, 0.1);
-      painter.draw(*realDT, points);
-    }
+        if (realDT != nullptr) {
+          painter.setColor(0, 0, 0, 0.1);
+          painter.draw(*realDT, points);
+        }
 
-    painter.save(name + "_overlay");
+        painter.save(name + "_overlay");
 
-    return painter;
-  };
+        return painter;
+      };
 #endif
 //**********************
 
@@ -522,8 +535,8 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   auto cmpFingerprint =
       [](const dSimplex<D, Precision> &a, const dSimplex<D, Precision> &b) {
-    return a.vertexFingerprint < b.vertexFingerprint;
-  };
+        return a.vertexFingerprint < b.vertexFingerprint;
+      };
 
   std::vector<dSimplex<D, Precision>> deletedSimplices;
   deletedSimplices.reserve(edgeSimplices.size());
@@ -541,29 +554,31 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   LOG("Striping triangulation from edge" << std::endl);
 
   SpinMutex eraseMtx;
-  tbb::parallel_for(std::size_t(0), edgeSimplices.bucket_count(),
-                    [&](const uint i) {
+  tbb::parallel_for(
+      std::size_t(0), edgeSimplices.bucket_count(), [&](const uint i) {
 
-    for (auto it = edgeSimplices.begin(i); it != edgeSimplices.end(i); ++it) {
+        for (auto it = edgeSimplices.begin(i); it != edgeSimplices.end(i);
+             ++it) {
 
-      const uint id = *it;
+          const uint id = *it;
 
-      ASSERT(DT.contains(id));
+          ASSERT(DT.contains(id));
 
-      // remove simplex from where used list
-      for (uint p = 0; p < D + 1; ++p) {
-        dPoint<D, Precision> &point = points[DT[id].vertices[p]];
+          // remove simplex from where used list
+          for (uint p = 0; p < D + 1; ++p) {
+            dPoint<D, Precision> &point = points[DT[id].vertices[p]];
 
-        std::lock_guard<SpinMutex> lock(point.mtx);
-        auto it = std::find(point.simplices.begin(), point.simplices.end(), id);
-        ASSERT(it != point.simplices.end());
-        point.simplices.erase(it);
-      }
+            std::lock_guard<SpinMutex> lock(point.mtx);
+            auto it =
+                std::find(point.simplices.begin(), point.simplices.end(), id);
+            ASSERT(it != point.simplices.end());
+            point.simplices.erase(it);
+          }
 
-      std::lock_guard<SpinMutex> lock(eraseMtx);
-      DT.erase(id);
-    }
-  });
+          std::lock_guard<SpinMutex> lock(eraseMtx);
+          DT.erase(id);
+        }
+      });
 
 //**********************
 #ifndef NDEBUG
@@ -995,7 +1010,8 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     INDENT
     auto edgeDT = triangulateDAC(edgePointIds, provenance + "e");
     LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
-                                       << std::endl << std::endl);
+                                       << std::endl
+                                       << std::endl);
     DEDENT
 
 #ifndef NDEBUG
