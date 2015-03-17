@@ -405,7 +405,7 @@ void Triangulator<D, Precision>::updateNeighbors(
         }
       }
       if (count == D && simplices.contains(currentV)) {
-        PLOG("Neighbor with " << simplices[currentV] << std::endl);
+        PLOG("Neighbor with " << simplices.at(currentV) << std::endl);
 
         simplex.neighbors.insert(currentV);
         feeder.add(currentV);
