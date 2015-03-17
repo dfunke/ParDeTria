@@ -31,9 +31,9 @@ class CustomInteractorStyle : public vtkInteractorStyleTrackballCamera {
 public:
   static CustomInteractorStyle *New();
 
-  vtkTypeMacro(CustomInteractorStyle, vtkInteractorStyleTrackballCamera);
+  vtkTypeMacro(CustomInteractorStyle, vtkInteractorStyleTrackballCamera)
 
-  virtual void OnKeyPress() {
+      virtual void OnKeyPress() {
     // Get the keypress
     vtkRenderWindowInteractor *rwi = this->Interactor;
     std::string key = rwi->GetKeySym();
@@ -80,11 +80,11 @@ private:
   vtkSmartPointer<vtkRenderWindow> renderWindow;
 };
 
-vtkStandardNewMacro(CustomInteractorStyle);
+vtkStandardNewMacro(CustomInteractorStyle)
 
-//******************************************************************************
+    //******************************************************************************
 
-void displayFiles(const tFiles &files) {
+    void displayFiles(const tFiles &files) {
   // Read and display file for verification that it was written correclty
   auto reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
   reader->SetFileName(files[0].native().c_str());

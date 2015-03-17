@@ -16,7 +16,10 @@ find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
 
-include_directories(${CMAKE_SOURCE_DIR}
+include_directories(${CMAKE_SOURCE_DIR})
+
+include_directories(
+  SYSTEM
   ${ROOT_INCLUDE_DIRS}
   ${CGAL_INCLUDE_DIRS}
   ${Cairomm_INCLUDE_DIRS}
@@ -24,8 +27,8 @@ include_directories(${CMAKE_SOURCE_DIR}
 
 include(${VTK_USE_FILE})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror -Wno-extra-semi")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror -Wno-extra-semi")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror")
 
 if (VALGRIND)
   message(STATUS "Valgrind mode enabled")

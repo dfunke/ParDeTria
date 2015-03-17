@@ -170,9 +170,6 @@ int main(int argc, char *argv[]) {
   std::string pointFile;
   bool loadPoints = false;
 
-  std::string simplexFile;
-  bool loadSimplices = false;
-
   po::options_description cCommandLine("Command Line Options");
   cCommandLine.add_options()("n", po::value<uint>(&N), "number of points");
   cCommandLine.add_options()("basecase", po::value<uint>(&baseCase),
@@ -187,8 +184,6 @@ int main(int argc, char *argv[]) {
                              "verbosity");
   cCommandLine.add_options()("points", po::value<std::string>(&pointFile),
                              "load points from file");
-  cCommandLine.add_options()("simplices", po::value<std::string>(&simplexFile),
-                             "load simplices from file");
   cCommandLine.add_options()("threads", po::value<uint>(&threads),
                              "specify number of threads");
   cCommandLine.add_options()("help", "produce help message");
@@ -227,10 +222,6 @@ int main(int argc, char *argv[]) {
 
   if (vm.count("points")) {
     loadPoints = true; // filename will be in pointFile
-  }
-
-  if (vm.count("simplices")) {
-    loadSimplices = true; // filename will be in simplexFile
   }
 
   if (vm.count("study")) {
