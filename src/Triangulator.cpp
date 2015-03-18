@@ -932,7 +932,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     // partition input
     LOG("Partioning" << std::endl);
     INDENT
-    auto partioning =
+    const auto partioning =
         partitioner->partition(partitionPoints, points, provenance);
     DEDENT
 
