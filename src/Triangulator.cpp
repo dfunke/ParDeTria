@@ -86,7 +86,7 @@ Ids Triangulator<D, Precision>::getEdge(
 
     INDENT
     for (const auto &s : points[infVertex].simplices) {
-      if (!simplices.contains(s))
+      if (!dSimplex<D, Precision>::isFinite(s) || !simplices.contains(s))
         continue;
 
       PLOG("Adding " << simplices[s] << " to edge" << std::endl);
@@ -217,7 +217,8 @@ void Triangulator<D, Precision>::findNeighbors(
 
             INDENT
             for (const uint u : vertex.simplices) {
-              counters[u] += 1;
+              if (dSimplex<D, Precision>::isFinite(u))
+                counters[u] += 1;
             }
 
             for (const auto &it : counters) {
@@ -364,8 +365,10 @@ void Triangulator<D, Precision>::updateNeighbors(
     simplex.neighbors.reserve(D + 1);
 
     std::array<uint, D + 1> indices;
+    std::array<const tbb::concurrent_vector<uint> *, D + 1> vertices;
     for (uint i = 0; i < D + 1; ++i) {
       indices[i] = 0;
+      vertices[i] = &points[simplex.vertices[i]].simplices;
     }
 
     uint currentMax = 0;
@@ -379,27 +382,19 @@ void Triangulator<D, Precision>::updateNeighbors(
       uint count = 0;
 
       for (uint i = 0; i < D + 1; ++i) {
-        if (indices[i] < points[simplex.vertices[i]].simplices.size()) {
-          const auto &v = points[simplex.vertices[i]].simplices[indices[i]];
+        while (indices[i] < vertices[i]->size() &&
+               !dSimplex<D, Precision>::isFinite(vertices[i]->at(indices[i]))) {
+          ++indices[i];
+        }
 
-          if (v < currentMin) {
-            currentMin = v;
-          }
+        if (indices[i] < vertices[i]->size()) {
+          auto v = vertices[i]->at(indices[i]);
 
-          if (v > currentMax) {
-            currentMax = v;
-          }
+          currentMin = std::min(v, currentMin);
+          currentMax = std::max(v, currentMax);
+          count += v == currentV;
 
-          if (v == currentV) {
-            ++count;
-            ++indices[i];
-            continue;
-          }
-
-          if (v <= currentV) {
-            ++indices[i];
-            continue;
-          }
+          indices[i] += v <= currentV;
         } else {
           ++countOver;
         }
@@ -568,11 +563,11 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
           for (uint p = 0; p < D + 1; ++p) {
             dPoint<D, Precision> &point = points[DT[id].vertices[p]];
 
-            std::lock_guard<SpinMutex> lock(point.mtx);
             auto it =
                 std::find(point.simplices.begin(), point.simplices.end(), id);
             ASSERT(it != point.simplices.end());
-            point.simplices.erase(it);
+            std::lock_guard<SpinMutex> lock(point.mtx);
+            *it = dSimplex<D, Precision>::cINF;
           }
 
           std::lock_guard<SpinMutex> lock(eraseMtx);

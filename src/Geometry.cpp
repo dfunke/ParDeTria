@@ -758,7 +758,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   }
   for (const auto &p : points) {
     for (const auto &id : p.simplices) {
-      if (!this->contains(id))
+      if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
         continue; // simplex of another triangulation
 
       // p is flagged as being used in s, but its not

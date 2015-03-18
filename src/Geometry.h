@@ -159,7 +159,7 @@ public:
 public:
   uint id;
   dVector<D, Precision> coords;
-  std::vector<uint> simplices;
+  tbb::concurrent_vector<uint> simplices;
   SpinMutex mtx;
 
 public:
