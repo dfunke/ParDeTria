@@ -128,5 +128,16 @@ target_link_libraries(EdgeStudy
   InterfaceCGAL
 )
 
+add_executable(WhereUsedStudy
+  WhereUsedStudy.cpp
+)
+
+target_link_libraries(WhereUsedStudy
+  Logging
+  Geometry
+  Triangulate
+  InterfaceCGAL
+)
+
 # add testing subdirectory
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)

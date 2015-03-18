@@ -41,4 +41,4 @@ dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
   // TODO checks for colliding points, straight lines, etc.
 
   return points;
-};
+}
