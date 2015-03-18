@@ -65,7 +65,7 @@ void serialize(Archive &ar, dPoint<D, Precision> &p,
                __attribute((unused)) const unsigned int version) {
   ar &p.id;
   ar &p.coords;
-  ar &p.simplices;
+  // ar &p.simplices;
 }
 
 template <class Archive, uint D, typename Precision>

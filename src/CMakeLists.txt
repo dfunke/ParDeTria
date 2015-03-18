@@ -115,7 +115,7 @@ add_executable (archiveConverter
   utils/ArchiveConverter.cpp
 )
 
-target_link_libraries(archiveConverter ${Boost_LIBRARIES})
+target_link_libraries(archiveConverter ${Boost_LIBRARIES} ${TBB_LIBRARIES})
 
 add_executable(EdgeStudy
   EdgeStudy.cpp
