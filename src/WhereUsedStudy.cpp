@@ -11,6 +11,8 @@
 #include "utils/CSV.h"
 #include "Painter.h"
 
+#define LLOG(msg) std::cout << msg;
+
 template <uint D, typename Precision>
 class WhereUsedListSizeStudy : Triangulator<D, Precision> {
 
@@ -34,12 +36,12 @@ public:
       }
 
       ss << CSV::csv(this->points.size(), p.simplices.size(), countInfiniteS)
-         << std::endl;
+         << '\n';
     }
 
     {
       std::lock_guard<std::mutex> lock(outMtx);
-      out << ss << std::endl;
+      out << ss.str() << std::endl;
     }
   }
 
@@ -85,16 +87,14 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
   }
 
   std::mutex mtx;
-  // tbb::parallel_for(std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)),
-  //                  [&](const uint i)
-  for (uint i = 0; i < (9 * (log10(N) - 1) + 1); ++i) {
-    uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
-    LOG("Testing with " << n << " points" << std::endl);
-    auto points = genPoints(n, bounds, dice);
-    WhereUsedListSizeStudy<D, Precision> es(f, mtx, bounds, points,
-                                            std::move(partitioner_ptr));
-  }
-  //);
+  tbb::parallel_for(
+      std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)), [&](const uint i) {
+        uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+        LLOG("Testing with " << n << " points" << std::endl);
+        auto points = genPoints(n, bounds, dice);
+        WhereUsedListSizeStudy<D, Precision> es(f, mtx, bounds, points,
+                                                std::move(partitioner_ptr));
+      });
 }
 
 #define Precision double
@@ -102,26 +102,22 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
 
 int main() {
 
-  LOGGER.setLogLevel(Logger::Verbosity::LIVE);
+  LOGGER.setLogLevel(Logger::Verbosity::SILENT);
   const unsigned char splitter = 'c';
 
-  // std::async(std::launch::async, [&]()
-  {
-    LOG("2D" << std::endl);
+  std::async(std::launch::async, [&]() {
+    LLOG("2D" << std::endl);
     INDENT
     studyWhereUsedListSize<2, Precision>(N, splitter);
     DEDENT
-  }
-  //);
+  });
 
-  // std::async(std::launch::async, [&]()
-  {
-    LOG("3D" << std::endl);
+  std::async(std::launch::async, [&]() {
+    LLOG("3D" << std::endl);
     INDENT
     studyWhereUsedListSize<3, Precision>(N, splitter);
     DEDENT
-  }
-  //);
+  });
 
   return EXIT_SUCCESS;
 }
