@@ -58,9 +58,8 @@ void PainterImplementation<3, Precision>::setColor(float r, float g, float b,
 
 //
 template <typename Precision>
-void
-PainterImplementation<3, Precision>::draw(const dPoint<3, Precision> &point,
-                                          bool drawInfinite) {
+void PainterImplementation<3, Precision>::draw(
+    const dPoint<3, Precision> &point, bool drawInfinite) {
 
   if (point.isFinite() || drawInfinite) {
     pPoints.emplace_back(point, cColor);
@@ -70,11 +69,10 @@ PainterImplementation<3, Precision>::draw(const dPoint<3, Precision> &point,
 }
 
 template <typename Precision>
-void
-PainterImplementation<3, Precision>::draw(const dSimplex<3, Precision> &simplex,
-                                          __attribute((unused))
-                                          const dPoints<3, Precision> &points,
-                                          bool drawInfinite) {
+void PainterImplementation<3, Precision>::draw(
+    const dSimplex<3, Precision> &simplex,
+    __attribute((unused)) const dPoints<3, Precision> &points,
+    bool drawInfinite) {
 
   if (simplex.isFinite() || drawInfinite) {
     pSimplices.emplace_back(simplex, cColor);
@@ -173,17 +171,20 @@ void PainterImplementation<3, Precision>::save(const std::string &file) const {
 
 template <typename Precision>
 void PainterImplementation<3, Precision>::_init(
-    __attribute((unused)) const dBox<3, Precision> &_bounds,
-    __attribute((unused)) uint _resolution) {
+    const dBox<3, Precision> &_bounds, __attribute((unused)) uint _resolution) {
+
   logging = false;
   dashed = false;
+
+  pPoints.emplace_back(_bounds.low, std::make_tuple(1, 0, 0, 1));
+  pPoints.emplace_back(_bounds.high, std::make_tuple(1, 0, 0, 1));
 
   cColor = std::make_tuple(0, 0, 0, 1);
 }
 
 template <typename Precision>
-void
-PainterImplementation<3, Precision>::_copy(const Painter<3, Precision> &a) {
+void PainterImplementation<3, Precision>::_copy(
+    const Painter<3, Precision> &a) {
   logging = a.impl.logging;
 
   // copy data
