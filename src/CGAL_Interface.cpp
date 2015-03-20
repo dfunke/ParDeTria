@@ -131,7 +131,8 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
       a.vertices[i] = point.id;
 
-      std::lock_guard<SpinMutex> lock(point.mtx);
+      // no writer lock required, emplace_back does not invalidate iterators
+      tbb::spin_rw_mutex::scoped_lock lock(point.mtx, false);
       point.simplices.emplace_back(a.id);
     }
     // sort vertices by ascending point id

@@ -710,7 +710,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
   VerificationReport<D, Precision> result;
   result.valid = true;
 
-  SpinMutex mtx;
+  tbb::spin_mutex mtx;
   // verify that every input point is used
   LOG("Checking points" << std::endl);
   Ids usedPoints;
@@ -794,7 +794,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
               b.neighbors.count(a.id) != 0))) {
           LOG("Wrong neighbor relation between " << a << " and " << b
                                                  << std::endl);
-          std::lock_guard<SpinMutex> lock(mtx);
+          tbb::spin_mutex::scoped_lock lock(mtx);
           result.wrongNeighbors.emplace_back(a, b);
           result.valid = false;
         }
@@ -820,7 +820,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
                        << "in circle of " << s << " but should "
                        << (contains ? "" : "NOT ") << "be" << std::endl);
 
-          std::lock_guard<SpinMutex> lock(mtx);
+          tbb::spin_mutex::scoped_lock lock(mtx);
           result.valid = false;
 
           result.inCircle[s].insert(p.id);

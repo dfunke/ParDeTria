@@ -5,12 +5,10 @@
 #include <vector>
 #include <memory>
 
-// tbb
-#include <tbb/concurrent_vector.h>
-
 // own
 #include "Geometry.h"
 #include "Partitioner.h"
+#include "utils/TBB_Containers.h"
 
 struct TriangulationReportEntry {
   std::string provenance;

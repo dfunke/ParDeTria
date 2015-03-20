@@ -13,10 +13,12 @@
 #include <array>
 #include <cmath>
 
+#include <tbb/spin_mutex.h>
+#include <tbb/spin_rw_mutex.h>
+
 #include "utils/IndexedVector.hxx"
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
-#include "utils/SpinMutex.h"
 
 typedef std::unordered_set<uint> Ids;
 
@@ -120,7 +122,7 @@ public:
 
   dPoint &operator=(const dPoint<D, Precision> &a) {
     // acquire lock, as we are modifying the point
-    std::lock_guard<SpinMutex> lock(mtx);
+    tbb::spin_rw_mutex::scoped_lock lock(mtx, true);
 
     id = a.id;
     coords = a.coords;
@@ -160,7 +162,7 @@ public:
   uint id;
   dVector<D, Precision> coords;
   tbb::concurrent_vector<uint> simplices;
-  SpinMutex mtx;
+  tbb::spin_rw_mutex mtx;
 
 public:
   static inline bool isFinite(const uint &i) {
@@ -220,7 +222,7 @@ public:
 
   dSimplex &operator=(const dSimplex<D, Precision> &a) {
     // acquire lock, as we are modifying the point
-    std::lock_guard<SpinMutex> lock(mtx);
+    tbb::spin_mutex::scoped_lock lock(mtx);
 
     id = a.id;
     vertices = a.vertices;
@@ -367,7 +369,7 @@ public:
   std::array<uint, D + 1> vertices;
   uint vertexFingerprint;
   Ids neighbors;
-  SpinMutex mtx;
+  tbb::spin_mutex mtx;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }

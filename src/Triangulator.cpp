@@ -8,11 +8,11 @@
 #include <set>
 #include <stdexcept>
 #include <queue>
+#include <atomic>
 #include <thread>
 
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_do.h>
-#include <tbb/concurrent_unordered_set.h>
 #include <tbb/parallel_sort.h>
 
 // debug
@@ -79,6 +79,8 @@ Ids Triangulator<D, Precision>::getEdge(
        ++infVertex) {
 
     ASSERT(points.contains(infVertex));
+
+    tbb::spin_rw_mutex::scoped_lock lock(points[infVertex].mtx, false);
 
     PLOG("Infinite vertex " << points[infVertex] << std::endl);
     LOGGER.logContainer(points[infVertex].simplices, Logger::Verbosity::PROLIX,
@@ -298,6 +300,20 @@ void Triangulator<D, Precision>::findNeighbors(
   DEDENT
 }
 
+// supplementary class used in updateNeighbors
+template <uint D, typename Precision> class tWhereUsedSuppl {
+public:
+  tWhereUsedSuppl() : point(nullptr), index(0), size(0), deleted(0) {}
+  tWhereUsedSuppl(dPoint<D, Precision> *_point)
+      : point(_point), index(0), size(_point->simplices.size()), deleted(0) {}
+
+public:
+  dPoint<D, Precision> *point = nullptr;
+  uint index = 0;
+  uint size = 0;
+  uint deleted = 0;
+};
+
 template <uint D, typename Precision>
 void Triangulator<D, Precision>::updateNeighbors(
     dSimplices<D, Precision> &simplices, const Ids &toCheck,
@@ -364,11 +380,11 @@ void Triangulator<D, Precision>::updateNeighbors(
     simplex.neighbors.clear();
     simplex.neighbors.reserve(D + 1);
 
-    std::array<uint, D + 1> indices;
-    std::array<const tbb::concurrent_vector<uint> *, D + 1> vertices;
+    std::array<tWhereUsedSuppl<D, Precision>, D + 1> suppl;
     for (uint i = 0; i < D + 1; ++i) {
-      indices[i] = 0;
-      vertices[i] = &points[simplex.vertices[i]].simplices;
+      suppl[i] = std::move(
+          tWhereUsedSuppl<D, Precision>(&points[simplex.vertices[i]]));
+      suppl[i].point->mtx.lock_read();
     }
 
     uint currentMax = 0;
@@ -380,23 +396,26 @@ void Triangulator<D, Precision>::updateNeighbors(
       uint currentMin = std::numeric_limits<uint>::max();
       uint countOver = 0;
       uint count = 0;
+      uint v = 0;
 
       for (uint i = 0; i < D + 1; ++i) {
-        while (indices[i] < vertices[i]->size() &&
-               !dSimplex<D, Precision>::isFinite(vertices[i]->at(indices[i]))) {
-          ++indices[i];
+
+        tWhereUsedSuppl<D, Precision> &supp = suppl[i];
+
+        while (supp.index < supp.size
+                   ? (v = supp.point->simplices.at(supp.index),
+                      !dSimplex<D, Precision>::isFinite(v))
+                   : (++countOver, false)) {
+          ++supp.index;
+          ++supp.deleted;
         }
 
-        if (indices[i] < vertices[i]->size()) {
-          auto v = vertices[i]->at(indices[i]);
-
+        if (supp.index < supp.size) {
           currentMin = std::min(v, currentMin);
           currentMax = std::max(v, currentMax);
           count += v == currentV;
 
-          indices[i] += v <= currentV;
-        } else {
-          ++countOver;
+          supp.index += v <= currentV;
         }
       }
       if (count == D && simplices.contains(currentV)) {
@@ -412,6 +431,30 @@ void Triangulator<D, Precision>::updateNeighbors(
         currentV = currentMin;
 
       cont = countOver <= 2;
+    }
+
+    // unlock everything
+    for (uint i = 0; i < D + 1; ++i) {
+      suppl[i].point->mtx.unlock();
+    }
+
+    // compactify where used list if necessary
+    for (uint i = 0; i < D + 1; ++i) {
+      tWhereUsedSuppl<D, Precision> &supp = suppl[i];
+
+      if (supp.deleted / supp.size > .5) {
+        tbb::concurrent_vector<uint> v;
+        v.reserve(supp.size - supp.deleted);
+
+        tbb::spin_rw_mutex::scoped_lock lock(supp.point->mtx, false);
+        for (const auto &s : supp.point->simplices) {
+          if (dSimplex<D, Precision>::isFinite(s))
+            v.emplace_back(s);
+        }
+
+        lock.upgrade_to_writer();
+        supp.point->simplices = std::move(v);
+      }
     }
     DEDENT
 
@@ -548,7 +591,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   // delete all simplices belonging to the edge from DT
   LOG("Striping triangulation from edge" << std::endl);
 
-  SpinMutex eraseMtx;
+  tbb::spin_mutex eraseMtx;
   tbb::parallel_for(
       std::size_t(0), edgeSimplices.bucket_count(), [&](const uint i) {
 
@@ -563,14 +606,18 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
           for (uint p = 0; p < D + 1; ++p) {
             dPoint<D, Precision> &point = points[DT[id].vertices[p]];
 
+            tbb::spin_rw_mutex::scoped_lock lock(point.mtx, false);
             auto it =
                 std::find(point.simplices.begin(), point.simplices.end(), id);
             ASSERT(it != point.simplices.end());
-            std::lock_guard<SpinMutex> lock(point.mtx);
+
+            // lock.upgrade_to_writer();
+            // no need to upgrade to writer here - no invalidation of iterators
+            // possible
             *it = dSimplex<D, Precision>::cINF;
           }
 
-          std::lock_guard<SpinMutex> lock(eraseMtx);
+          tbb::spin_mutex::scoped_lock lock(eraseMtx);
           DT.erase(id);
         }
       });
@@ -596,7 +643,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   // merge partial DTs and edge DT
   LOG("Merging triangulations" << std::endl);
-  SpinMutex insertMtx;
+  tbb::spin_mutex insertMtx;
   Ids insertedSimplices;
 
   tbb::parallel_for(std::size_t(0), edgeDT.bucket_count(), [&](const uint i) {
@@ -610,7 +657,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
       bool inOnePartition = partitioning[p0].contains(edgeSimplex);
 
       if (!inOnePartition) {
-        std::lock_guard<SpinMutex> lock(insertMtx);
+        tbb::spin_mutex::scoped_lock lock(insertMtx);
         DT.insert(edgeSimplex);
         insertedSimplices.insert(edgeSimplex.id);
       } else {
@@ -622,7 +669,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
         for (auto it = range.first; it != range.second; ++it) {
           if (edgeSimplex.equalVertices(*it)) {
-            std::lock_guard<SpinMutex> lock(insertMtx);
+            tbb::spin_mutex::scoped_lock lock(insertMtx);
             DT.insert(edgeSimplex);
             insertedSimplices.insert(edgeSimplex.id);
           }
