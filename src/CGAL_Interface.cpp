@@ -89,8 +89,7 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
   cPoints.reserve(points.size());
   for (const auto &p : points) {
-    if ((ids != nullptr &&
-         std::find(ids->begin(), ids->end(), p.id) == ids->end()) ||
+    if ((ids != nullptr && ids->count(p.id) == 0) ||
         (filterInfinite && !p.isFinite()))
       continue;
 
