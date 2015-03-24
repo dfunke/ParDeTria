@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <atomic>
 
 #include <tbb/parallel_for.h>
 
@@ -609,6 +610,26 @@ template <uint D, typename Precision>
 dSphere<D, Precision> dSimplex<D, Precision>::circumsphere(
     const dPoints<D, Precision> &points) const {
   return GeometryHelper<D, Precision>::circumsphere(*this, points);
+}
+
+template <uint D, typename Precision>
+uint dSimplices<D, Precision>::countDuplicates() const {
+
+  std::atomic<uint> duplicates(0);
+
+  tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+
+    for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+      const dSimplex<D, Precision> &s = *it;
+      auto simplices = findSimplices(s.vertices, true);
+      duplicates += simplices.size() - 1;
+    }
+  });
+
+  PLOG("Found " << duplicates << " duplicates" << std::endl);
+
+  return duplicates;
 }
 
 template <uint D, typename Precision>

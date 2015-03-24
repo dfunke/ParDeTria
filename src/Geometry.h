@@ -462,18 +462,7 @@ public:
   CrossCheckReport<D, Precision>
   crossCheck(const dSimplices<D, Precision> &realDT) const;
 
-  uint countDuplicates() const {
-    uint duplicates = 0;
-
-    for (const auto &s : *this) {
-      auto simplices = findSimplices(s.vertices, true);
-      duplicates += simplices.size() - 1;
-    }
-
-    PLOG("Found " << duplicates << " duplicates" << std::endl);
-
-    return duplicates;
-  }
+  uint countDuplicates() const;
 
   template <typename Container>
   dSimplices<D, Precision> findSimplices(const Container &points,
