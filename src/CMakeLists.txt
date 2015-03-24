@@ -20,7 +20,6 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 include_directories(
   SYSTEM
-  ${ROOT_INCLUDE_DIRS}
   ${CGAL_INCLUDE_DIRS}
   ${Cairomm_INCLUDE_DIRS}
 )
@@ -68,7 +67,18 @@ add_library(Painting
   Painter.cpp
 )
 
-target_link_libraries(Painting Logging Geometry ${Cairomm_LIBRARIES} ${VTK_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(Painting
+  Logging
+  Geometry
+  ${Boost_LIBRARIES}
+)
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+  target_link_libraries(Painting
+    debug ${Cairomm_LIBRARIES}
+    debug ${VTK_LIBRARIES}
+  )
+endif ()
 
 add_library(Triangulate
   Triangulator.cpp

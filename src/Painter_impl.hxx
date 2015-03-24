@@ -6,7 +6,6 @@
 
 #include <cairo/cairo.h>
 #include <cairomm/cairomm.h>
-#include <bits/atomic_base.h>
 
 #include "Geometry.h"
 #include "utils/Logger.h"

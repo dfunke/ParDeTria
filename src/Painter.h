@@ -4,9 +4,6 @@
 #include <vector>
 #include <tuple>
 
-#include <cairo/cairo.h>
-#include <cairomm/cairomm.h>
-
 #include "Geometry.h"
 #include "utils/Logger.h"
 
@@ -18,7 +15,12 @@ typedef std::tuple<float, float, float, float> tRGBa;
 template <uint D, typename Precision> class Painter;
 template <uint D, typename Precision> struct PainterImplementation;
 
+#ifndef NDEBUG
 #include "Painter_impl.hxx"
+#endif
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 template <uint D, typename Precision> class Painter {
 
@@ -30,27 +32,34 @@ public:
   }
 
   Painter(const dBox<D, Precision> &_bounds, uint _resolution = 10) {
-
+#ifndef NDEBUG
     if (ENABLED)
       impl._init(_bounds, _resolution);
+#endif
   }
 
   Painter(const Painter<D, Precision> &a) {
+#ifndef NDEBUG
     if (ENABLED)
       impl._copy(a);
+#endif
   }
 
   Painter &operator=(const Painter<D, Precision> &a) {
 
+#ifndef NDEBUG
     if (ENABLED)
       impl._copy(a);
+#endif
 
     return *this;
   }
 
   void draw(const dPoint<D, Precision> &point, bool drawInfinite = false) {
+#ifndef NDEBUG
     if (ENABLED)
       impl.draw(point, drawInfinite);
+#endif
   }
   void draw(const dPoints<D, Precision> &points, bool drawInfinite = false) {
     if (ENABLED)
@@ -60,8 +69,10 @@ public:
 
   void draw(const dSimplex<D, Precision> &simplex,
             const dPoints<D, Precision> &points, bool drawInfinite = false) {
+#ifndef NDEBUG
     if (ENABLED)
       impl.draw(simplex, points, drawInfinite);
+#endif
   }
   void draw(const dSimplices<D, Precision> &simplices,
             const dPoints<D, Precision> &points, bool drawInfinite = false) {
@@ -73,8 +84,10 @@ public:
   void drawCircumSphere(const dSimplex<D, Precision> &simplex,
                         const dPoints<D, Precision> &points,
                         bool drawInfinite = false) {
+#ifndef NDEBUG
     if (ENABLED)
       impl.drawCircumSphere(simplex, points, drawInfinite);
+#endif
   }
   void drawCircumSphere(const dSimplices<D, Precision> &simplices,
                         const dPoints<D, Precision> &points,
@@ -106,8 +119,10 @@ public:
   }
 
   void drawPartition(const dPoints<D, Precision> &points) {
+#ifndef NDEBUG
     if (ENABLED)
       impl.drawPartition(points);
+#endif
   }
 
   void setColor(const tRGBa &rgba) {
@@ -120,20 +135,34 @@ public:
   }
 
   void setColor(float r, float g, float b, float alpha = 1.0) {
+#ifndef NDEBUG
     if (ENABLED)
       impl.setColor(r, g, b, alpha);
+#endif
   }
 
   void save(const std::string &file) const {
+#ifndef NDEBUG
     if (ENABLED)
       impl.save(file);
+#endif
   }
 
-  void setLogging(bool _logging = true) { impl.logging = _logging; }
-  void setDashed(bool _dashed = true) { impl.dashed = _dashed; }
+  void setLogging(bool _logging = true) {
+#ifndef NDEBUG
+    impl.logging = _logging;
+#endif
+  }
+  void setDashed(bool _dashed = true) {
+#ifndef NDEBUG
+    impl.dashed = _dashed;
+#endif
+  }
 
 private:
+#ifndef NDEBUG
   PainterImplementation<D, Precision> impl;
+#endif
 
 public:
   static tRGB tetradicColor(uint i) {
@@ -142,6 +171,8 @@ public:
 
   static bool ENABLED;
 };
+
+#pragma GCC diagnostic pop
 
 #include <boost/progress.hpp>
 #include <deque>
