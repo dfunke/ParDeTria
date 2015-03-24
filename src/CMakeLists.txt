@@ -3,6 +3,13 @@ cmake_policy(VERSION 3.0)
 
 project (Delaunay)
 
+find_program(CCACHE_PROG ccache)
+
+if (NOT CCACHE_PROG MATCHES NOTFOUND)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif ()
+
 enable_testing()
 find_package(GTest)
 
