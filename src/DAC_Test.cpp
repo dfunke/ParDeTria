@@ -50,7 +50,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     break;
   default:
     // p must be a dimension - subtract '0' to get integer value
-    uint d = splitter - '0';
+    int d = splitter - '0';
     ASSERT(0 <= d && d < D);
     partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
     break;
