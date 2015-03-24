@@ -600,9 +600,8 @@ dSimplex<D, Precision>::orientation(const dPoints<D, Precision> &points) const {
 }
 
 template <uint D, typename Precision>
-bool
-dSimplex<D, Precision>::inSphere(const dPoint<D, Precision> &p,
-                                 const dPoints<D, Precision> &points) const {
+bool dSimplex<D, Precision>::inSphere(
+    const dPoint<D, Precision> &p, const dPoints<D, Precision> &points) const {
   return GeometryHelper<D, Precision>::inSphere(*this, p, points);
 }
 
@@ -623,8 +622,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     // find my simplex, compares simplex id or vertices ids
     auto mySimplex = std::find_if(this->begin(), this->end(),
                                   [&](const dSimplex<D, Precision> &s) {
-      return s.equalVertices(realSimplex);
-    });
+                                    return s.equalVertices(realSimplex);
+                                  });
 
     if (mySimplex == this->end()) {
       LOG("did not find simplex " << realSimplex << std::endl);
@@ -659,10 +658,10 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
   for (const auto &mySimplex : *this) {
     auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
                                     [&](const dSimplex<D, Precision> &s) {
-      return s.equalVertices(mySimplex);
-    });
+                                      return s.equalVertices(mySimplex);
+                                    });
 
-    if (realSimplex == realDT.end() && mySimplex.isFinite()) {
+    if (realSimplex == realDT.end() /*&& mySimplex.isFinite()*/) {
       LOG("simplex " << mySimplex << " does not exist in real triangulation"
                      << std::endl);
       result.valid = false;
