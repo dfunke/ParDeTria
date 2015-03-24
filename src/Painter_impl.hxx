@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <tuple>
+#include <atomic>
 
 #include <cairo/cairo.h>
 #include <cairomm/cairomm.h>
