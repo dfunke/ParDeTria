@@ -127,6 +127,7 @@ dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
 
     for (uint i = 0; i < D + 1; ++i) {
       dPoint<D, Precision> &point = points[it->vertex(i)->info()];
+      ASSERT(point.id == it->vertex(i)->info());
 
       a.vertices[i] = point.id;
 
