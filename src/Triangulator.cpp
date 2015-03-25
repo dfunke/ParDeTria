@@ -990,18 +990,28 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partioning.size());
 
-    tbb::parallel_for(std::size_t(0), partioning.size(), [&](const uint i) {
-      LOGGER.setIndent(
-          provenance.length()); // new thread, initialize Logger indent
-      INDENT
-      LOG("Partition " << i << " on thread " << std::this_thread::get_id()
-                       << std::endl);
-      partialDTs[i] =
-          triangulateDAC(partioning[i].points, provenance + std::to_string(i));
-      LOG("Triangulation " << i << " contains " << partialDTs[i].size()
-                           << " tetrahedra" << std::endl);
-      DEDENT
-    });
+#ifdef NDEBUG
+    tbb::parallel_for(
+        std::size_t(0), partioning.size(),
+        [&](const uint i)
+#else
+    for (uint i = 0; i < partioning.size(); ++i)
+#endif
+        {
+          LOGGER.setIndent(
+              provenance.length()); // new thread, initialize Logger indent
+          INDENT
+          LOG("Partition " << i << " on thread " << std::this_thread::get_id()
+                           << std::endl);
+          partialDTs[i] = triangulateDAC(partioning[i].points,
+                                         provenance + std::to_string(i));
+          LOG("Triangulation " << i << " contains " << partialDTs[i].size()
+                               << " tetrahedra" << std::endl);
+          DEDENT
+        }
+#ifdef NDEBUG
+        );
+#endif
 
 #ifndef NDEBUG
     Painter<D, Precision> paintPartialDTs = basePainter;
