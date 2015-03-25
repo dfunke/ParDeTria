@@ -4,7 +4,7 @@
 
 template <uint D, typename Precision> class CGALInterface {
 public:
-  static dSimplices<D, Precision> triangulate(dPoints<D, Precision> &points,
-                                              const Ids *ids = nullptr,
+  static dSimplices<D, Precision> triangulate(const Ids &ids,
+                                              dPoints<D, Precision> &points,
                                               bool filterInfinite = false);
 };

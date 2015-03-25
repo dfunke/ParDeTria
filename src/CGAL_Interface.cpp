@@ -82,15 +82,18 @@ public:
 };
 
 template <uint D, typename Precision, class Tria>
-dSimplices<D, Precision> _delaunayCgal(dPoints<D, Precision> &points,
-                                       const Ids *ids, bool filterInfinite) {
+dSimplices<D, Precision> _delaunayCgal(const Ids &ids,
+                                       dPoints<D, Precision> &points,
+                                       bool filterInfinite) {
 
   // copy points into CGAL structure
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
-  cPoints.reserve(points.size());
-  for (const auto &p : points) {
-    if ((ids != nullptr && ids->count(p.id) == 0) ||
-        (filterInfinite && !p.isFinite()))
+  cPoints.reserve(ids.size());
+  for (const auto &id : ids) {
+
+    const auto &p = points[id];
+
+    if (filterInfinite && !p.isFinite())
       continue;
 
     auto cp = CGALHelper<D, Precision>::template make_point<Tria>(p);
@@ -176,29 +179,29 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
 template <typename Precision> class CGALInterface<2, Precision> {
 public:
-  static dSimplices<2, Precision> triangulate(dPoints<2, Precision> &points,
-                                              const Ids *ids,
+  static dSimplices<2, Precision> triangulate(const Ids &ids,
+                                              dPoints<2, Precision> &points,
                                               bool filterInfinite) {
 
     typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
     typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
     typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
-    return _delaunayCgal<2, Precision, CT>(points, ids, filterInfinite);
+    return _delaunayCgal<2, Precision, CT>(ids, points, filterInfinite);
   }
 };
 
 template <typename Precision> class CGALInterface<3, Precision> {
 public:
-  static dSimplices<3, Precision> triangulate(dPoints<3, Precision> &points,
-                                              const Ids *ids,
+  static dSimplices<3, Precision> triangulate(const Ids &ids,
+                                              dPoints<3, Precision> &points,
                                               bool filterInfinite) {
 
     typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
     typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-    return _delaunayCgal<3, Precision, CT>(points, ids, filterInfinite);
+    return _delaunayCgal<3, Precision, CT>(ids, points, filterInfinite);
   }
 };
 
