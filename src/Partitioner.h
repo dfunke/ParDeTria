@@ -67,6 +67,33 @@ template <uint D, typename Precision> struct dPointStats {
   dVector<D, Precision> max;
 };
 
+template <uint D, typename Precision>
+dPointStats<D, Precision> getPointStats(const uint &first, const uint &last,
+                                        const dPoints<D, Precision> &points,
+                                        const bool ignoreInfinite = true) {
+
+  dPointStats<D, Precision> stats;
+
+  for (uint dim = 0; dim < D; ++dim) {
+    stats.min[dim] = std::numeric_limits<Precision>::max();
+    stats.max[dim] = std::numeric_limits<Precision>::min();
+
+    for (uint id = first; id < last; ++id) {
+
+      ASSERT(points.contains(id));
+
+      if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {
+        stats.min[dim] = std::min(stats.min[dim], points[id].coords[dim]);
+        stats.max[dim] = std::max(stats.max[dim], points[id].coords[dim]);
+      }
+    }
+
+    stats.mid[dim] = (stats.max[dim] + stats.min[dim]) / 2;
+  }
+
+  return stats;
+}
+
 template <uint D, typename Precision, class InputIt>
 dPointStats<D, Precision> getPointStats(const InputIt &first,
                                         const InputIt &last,
@@ -84,7 +111,7 @@ dPointStats<D, Precision> getPointStats(const InputIt &first,
       uint id = *it;
       ASSERT(points.contains(id));
 
-      if (points[id].isFinite() || !ignoreInfinite) {
+      if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {
         stats.min[dim] = std::min(stats.min[dim], points[id].coords[dim]);
         stats.max[dim] = std::max(stats.max[dim], points[id].coords[dim]);
       }

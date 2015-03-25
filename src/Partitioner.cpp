@@ -22,11 +22,12 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
   }
 
   for (auto &id : ids) {
+
+    if (!dPoint<D, Precision>::isFinite(id))
+      continue; // skip infinite points, they will be added later
+
     ASSERT(points.contains(id));
     const auto &p = points[id];
-
-    if (!p.isFinite())
-      continue; // skip infinite points, they will be added later
 
     uint part = 0;
     for (uint dim = 0; dim < D; ++dim) {
@@ -73,11 +74,12 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
   }
 
   for (auto &id : ids) {
+
+    if (!dPoint<D, Precision>::isFinite(id))
+      continue; // skip infinite points, they will be added later
+
     ASSERT(points.contains(id));
     const auto &p = points[id];
-
-    if (!p.isFinite())
-      continue; // skip infinite points, they will be added later
 
     uint part = (p.coords[k] > stats.mid[k]);
 
@@ -126,11 +128,11 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
   }
 
   for (auto &id : ids) {
+    if (!dPoint<D, Precision>::isFinite(id))
+      continue; // skip infinite points, they will be added later
+
     ASSERT(points.contains(id));
     const auto &p = points[id];
-
-    if (!p.isFinite())
-      continue; // skip infinite points, they will be added later
 
     uint part = (p.coords[k] > stats.mid[k]);
 

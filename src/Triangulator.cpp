@@ -48,22 +48,22 @@ Triangulator<D, Precision>::Triangulator(
     std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
     : bounds(_bounds), baseThreshold(_baseThreshold), points(_points),
       partitioner(_partitioner) {
-  if (!points.contains(dPoint<D, Precision>::cINF)) {
-    auto stats = getPointStats(points.begin_keys(), points.end_keys(), points);
-    for (uint i = 0; i < pow(2, D); ++i) {
-      VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
-                           << stats.max << std::endl);
 
-      dPoint<D, Precision> p;
-      p.id = dPoint<D, Precision>::cINF | i;
-      p.coords = stats.mid;
+  // add infinite points to data set
+  auto stats = getPointStats(0, points.size(), points);
+  for (uint i = 0; i < pow(2, D); ++i) {
+    VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
+                         << stats.max << std::endl);
 
-      for (uint d = 0; d < D; ++d)
-        p.coords[d] += (i & (1 << d) ? 1 : -1) * 2 * SAFETY *
-                       (stats.max[d] - stats.min[d]);
+    dPoint<D, Precision> p;
+    p.id = dPoint<D, Precision>::cINF | i;
+    p.coords = stats.mid;
 
-      points.insert(p);
-    }
+    for (uint d = 0; d < D; ++d)
+      p.coords[d] +=
+          (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
+
+    points.emplace_back(p);
   }
 }
 
@@ -74,11 +74,12 @@ Ids Triangulator<D, Precision>::getEdge(
   Ids edgeSimplices;
   Ids wqa; // set of already checked simplices
 
-  // we use the overflow of the uint to zero to abort the loop
-  for (uint infVertex = dPoint<D, Precision>::cINF; infVertex != 0;
-       ++infVertex) {
+  // the infinite points are stored as the last ones in the point array
+  for (uint infVertex = points.size() - dPoint<D, Precision>::nINF;
+       infVertex < points.size(); ++infVertex) {
 
     ASSERT(points.contains(infVertex));
+    ASSERT(!points[infVertex].isFinite());
 
     tbb::spin_rw_mutex::scoped_lock lock(points[infVertex].mtx, false);
 
@@ -540,30 +541,30 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
 //**********************
 #ifndef NDEBUG
-  auto paintMerging =
-      [&](const dSimplices<D, Precision> &dt, const std::string &name,
-          bool drawInfinite = false) -> Painter<D, Precision> {
-        Painter<D, Precision> painter(bounds);
+  auto paintMerging = [&](const dSimplices<D, Precision> &dt,
+                          const std::string &name,
+                          bool drawInfinite = false) -> Painter<D, Precision> {
+    Painter<D, Precision> painter(bounds);
 
-        painter.draw(points);
-        painter.drawPartition(points);
+    painter.draw(points);
+    painter.drawPartition(points);
 
-        painter.setColor(0, 1, 0, 0.4);
-        painter.draw(dt, points, drawInfinite);
+    painter.setColor(0, 1, 0, 0.4);
+    painter.draw(dt, points, drawInfinite);
 
-        painter.setColor(1, 0, 0);
-        painter.draw(points.project(edgePointIds));
-        painter.save(name);
+    painter.setColor(1, 0, 0);
+    painter.draw(points.template filter<dPoints<D, Precision>>(edgePointIds));
+    painter.save(name);
 
-        if (realDT != nullptr) {
-          painter.setColor(0, 0, 0, 0.1);
-          painter.draw(*realDT, points);
-        }
+    if (realDT != nullptr) {
+      painter.setColor(0, 0, 0, 0.1);
+      painter.draw(*realDT, points);
+    }
 
-        painter.save(name + "_overlay");
+    painter.save(name + "_overlay");
 
-        return painter;
-      };
+    return painter;
+  };
 #endif
 //**********************
 
@@ -715,7 +716,8 @@ void Triangulator<D, Precision>::evaluateVerificationReport(
       writer.top().drawCircumSphere(inCircle.first, points, true);
 
       writer.top().setColor(1, 0, 0);
-      writer.top().draw(points.project(inCircle.second));
+      writer.top().draw(
+          points.template filter<dPoints<D, Precision>>(inCircle.second));
     }
 
     for (const auto &neighbors : vr.wrongNeighbors) {
@@ -890,7 +892,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 
   if (isTOP && VERIFY) {
     LOG("Verifying CGAL triangulation" << std::endl);
-    dt.verify(points.project(partitionPoints));
+    dt.verify(partitionPoints, points);
   }
 
 #ifndef NDEBUG
@@ -914,7 +916,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 
   if (isTOP && VERIFY) {
     LOG("Consistency check of triangulation" << std::endl);
-    auto vr = dt.verify(points.project(partitionPoints));
+    auto vr = dt.verify(partitionPoints, points);
     evaluateVerificationReport(vr, provenance);
 
     LOG("Cross check with real triangulation" << std::endl);
@@ -948,8 +950,10 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 #ifndef NDEBUG
     // setup base painter
     Painter<D, Precision> basePainter(bounds);
-    basePainter.draw(points.project(partitionPoints));
-    basePainter.drawPartition(points.project(partitionPoints));
+    basePainter.draw(
+        points.template filter<dPoints<D, Precision>>(partitionPoints));
+    basePainter.drawPartition(
+        points.template filter<dPoints<D, Precision>>(partitionPoints));
     basePainter.save(provenance + "_00_points");
 #endif
 
@@ -1044,7 +1048,8 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                     << edgePointIds.size() << " points" << std::endl);
 
 #ifndef NDEBUG
-    paintEdges.draw(points.project(edgePointIds));
+    paintEdges.draw(
+        points.template filter<dPoints<D, Precision>>(edgePointIds));
     paintEdges.save(provenance + "_03_edgeMarked");
 #endif
 
@@ -1062,7 +1067,8 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     paintEdgeDT.setColor(0, 1, 0);
     paintEdgeDT.draw(edgeDT, points, true);
     paintEdgeDT.setColor(1, 0, 0);
-    paintEdgeDT.draw(points.project(edgePointIds));
+    paintEdgeDT.draw(
+        points.template filter<dPoints<D, Precision>>(edgePointIds));
 
     paintEdgeDT.save(provenance + "_04_edgeDT");
 #endif
@@ -1089,7 +1095,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
     if (isTOP & VERIFY) {
       LOG("Consistency check of triangulation" << std::endl);
-      auto vr = mergedDT.verify(points.project(partitionPoints));
+      auto vr = mergedDT.verify(partitionPoints, points);
       evaluateVerificationReport(vr, provenance);
 
       LOG("Cross check with real triangulation" << std::endl);
@@ -1109,9 +1115,22 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 }
 
 template <uint D, typename Precision>
+Ids Triangulator<D, Precision>::allPoints() const {
+  Ids allPoints;
+  allPoints.reserve(points.size());
+  for (uint i = 0; i < points.finite_size(); ++i)
+    allPoints.insert(i);
+  for (uint infVertex = points.size() - dPoint<D, Precision>::nINF;
+       infVertex < points.size(); ++infVertex)
+
+    allPoints.insert(points[infVertex].id);
+
+  return allPoints;
+}
+
+template <uint D, typename Precision>
 dSimplices<D, Precision> Triangulator<D, Precision>::triangulate() {
-  Ids allPoints(points.begin_keys(), points.end_keys());
-  return triangulateDAC(allPoints, std::to_string(TOP));
+  return triangulateDAC(allPoints(), std::to_string(TOP));
 }
 
 // specializations

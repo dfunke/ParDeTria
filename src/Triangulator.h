@@ -76,6 +76,8 @@ protected:
       const dSimplices<D, Precision> &realDT,
       const Partitioning<D, Precision> *partitioning = nullptr) const;
 
+  Ids allPoints() const;
+
 protected:
   const dBox<D, Precision> baseBounds;
   const uint baseThreshold;

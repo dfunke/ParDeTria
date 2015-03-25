@@ -59,6 +59,12 @@ void serialize(Archive &ar, IndexedVector<V, K> &v,
   ar &boost::serialization::base_object<std::unordered_map<K, V>>(v);
 }
 
+template <class Archive, typename T>
+void serialize(Archive &ar, VectorAdapter<T> &v,
+               __attribute((unused)) const unsigned int version) {
+  ar &boost::serialization::base_object<std::vector<T>>(v);
+}
+
 // points
 
 template <class Archive, uint D, typename Precision>
@@ -72,7 +78,7 @@ void serialize(Archive &ar, dPoint<D, Precision> &p,
 template <class Archive, uint D, typename Precision>
 void serialize(Archive &ar, dPoints<D, Precision> &ps,
                __attribute((unused)) const unsigned int version) {
-  ar &boost::serialization::base_object<IndexedVector<dPoint<D, Precision>>>(
+  ar &boost::serialization::base_object<VectorAdapter<dPoint<D, Precision>>>(
       ps);
 }
 

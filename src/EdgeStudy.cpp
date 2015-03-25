@@ -21,10 +21,8 @@ public:
                                    std::move(_partitioner)),
         out(_out), outMtx(_outMtx) {
 
-    Ids allPoints(this->points.begin_keys(), this->points.end_keys());
-
     auto partitioning =
-        this->partitioner->partition(allPoints, this->points, "0");
+        this->partitioner->partition(this->allPoints(), this->points, "0");
 
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partitioning.size());

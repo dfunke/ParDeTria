@@ -17,6 +17,7 @@
 #include <tbb/spin_rw_mutex.h>
 
 #include "utils/IndexedVector.hxx"
+#include "utils/VectorAdapter.hxx"
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
 
@@ -173,7 +174,13 @@ public:
     return !((i & cINF) == cINF);
   }
 
+  static inline uint infIndex(const uint &i) {
+    ASSERT(!isFinite(i));
+    return ~cINF & i;
+  }
+
   static constexpr uint cINF = ~(0) ^ ((1 << D) - 1);
+  static constexpr uint nINF = ~(0) - cINF + 1;
 };
 
 //#############################################################################
@@ -181,13 +188,13 @@ public:
 // IndexedVector of dPoints
 
 template <uint D, typename Precision>
-class dPoints : public IndexedVector<dPoint<D, Precision>> {
+class dPoints : public VectorAdapter<dPoint<D, Precision>> {
 
 public:
-  dPoints() : IndexedVector<dPoint<D, Precision>>() {}
+  dPoints() : VectorAdapter<dPoint<D, Precision>>() {}
 
-  dPoints(const IndexedVector<dPoint<D, Precision>> &other)
-      : IndexedVector<dPoint<D, Precision>>(other) {}
+  dPoints(const VectorAdapter<dPoint<D, Precision>> &other)
+      : VectorAdapter<dPoint<D, Precision>>(other) {}
 
   bool operator==(const Ids &other) const {
     if (this->size() != other.size())
@@ -457,7 +464,7 @@ public:
   }
 
   VerificationReport<D, Precision>
-  verify(const dPoints<D, Precision> &points) const;
+  verify(const Ids &partitionPoints, const dPoints<D, Precision> &points) const;
 
   CrossCheckReport<D, Precision>
   crossCheck(const dSimplices<D, Precision> &realDT) const;

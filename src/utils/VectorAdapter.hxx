@@ -60,10 +60,14 @@ public:
     return _filter<Return>(first, last, std::distance(first, last));
   }
 
+  const typename vector::size_type finite_size() const {
+    return vector::size() - T::nINF;
+  }
+
 private:
   inline typename vector::size_type
   _infIdx(const typename vector::size_type i) const {
-    return vector::size() - T::nINF + T::infIndex(i) - 1;
+    return vector::size() - T::nINF + T::infIndex(i);
   }
 
   template <class Return, class InputIt>
