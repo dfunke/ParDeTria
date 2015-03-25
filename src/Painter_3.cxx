@@ -1,4 +1,5 @@
 #include "Painter.h"
+#include "Painter_impl.hxx"
 #include "Partitioner.h"
 
 #include <vtkSmartPointer.h>
@@ -184,7 +185,12 @@ void PainterImplementation<3, Precision>::_init(
 
 template <typename Precision>
 void PainterImplementation<3, Precision>::_copy(
+#ifdef NDEBUG
+    __attribute__((unused))
+#endif
     const Painter<3, Precision> &a) {
+
+#ifndef NDEBUG
   logging = a.impl.logging;
 
   // copy data
@@ -195,4 +201,10 @@ void PainterImplementation<3, Precision>::_copy(
   pSpheres.insert(pSpheres.end(), a.impl.pSpheres.begin(),
                   a.impl.pSpheres.end());
   pLog.insert(pLog.end(), a.impl.pLog.begin(), a.impl.pLog.end());
+#endif
 }
+
+// specializations
+
+template struct PainterImplementation<3, float>;
+template struct PainterImplementation<3, double>;

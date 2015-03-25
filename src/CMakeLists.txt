@@ -70,6 +70,12 @@ add_library(InterfaceCGAL
 
 target_link_libraries(InterfaceCGAL Logging Geometry ${CGAL_LIBRARY} ${GMP_LIBRARIES})
 
+add_library(Painting2D Painter_2.cxx)
+target_link_libraries(Painting2D ${Cairomm_LIBRARIES})
+
+add_library(Painting3D Painter_3.cxx)
+target_link_libraries(Painting3D ${VTK_LIBRARIES})
+
 add_library(Painting
   Painter.cpp
 )
@@ -78,14 +84,9 @@ target_link_libraries(Painting
   Logging
   Geometry
   ${Boost_LIBRARIES}
+  debug Painting2D
+  debug Painting3D
 )
-
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(Painting
-    debug ${Cairomm_LIBRARIES}
-    debug ${VTK_LIBRARIES}
-  )
-endif ()
 
 add_library(Triangulate
   Triangulator.cpp

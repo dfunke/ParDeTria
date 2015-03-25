@@ -1,4 +1,5 @@
 #include "Painter.h"
+#include "Painter_impl.hxx"
 #include "Partitioner.h"
 
 #include <valgrind/callgrind.h>
@@ -54,9 +55,8 @@ void PainterImplementation<2, Precision>::setColor(float r, float g, float b,
 
 //
 template <typename Precision>
-void
-PainterImplementation<2, Precision>::draw(const dPoint<2, Precision> &point,
-                                          bool drawInfinite) {
+void PainterImplementation<2, Precision>::draw(
+    const dPoint<2, Precision> &point, bool drawInfinite) {
 
   if (!point.isFinite()) {
     if (!drawInfinite)
@@ -83,10 +83,9 @@ PainterImplementation<2, Precision>::draw(const dPoint<2, Precision> &point,
 }
 
 template <typename Precision>
-void
-PainterImplementation<2, Precision>::draw(const dSimplex<2, Precision> &simplex,
-                                          const dPoints<2, Precision> &points,
-                                          bool drawInfinite) {
+void PainterImplementation<2, Precision>::draw(
+    const dSimplex<2, Precision> &simplex, const dPoints<2, Precision> &points,
+    bool drawInfinite) {
 
   auto line = [&](uint a, uint b) {
 
@@ -178,9 +177,8 @@ void PainterImplementation<2, Precision>::save(const std::string &file) const {
 }
 
 template <typename Precision>
-void
-PainterImplementation<2, Precision>::_init(const dBox<2, Precision> &_bounds,
-                                           uint _resolution) {
+void PainterImplementation<2, Precision>::_init(
+    const dBox<2, Precision> &_bounds, uint _resolution) {
   bounds = _bounds;
   logging = false;
   dashed = false;
@@ -220,14 +218,20 @@ PainterImplementation<2, Precision>::_init(const dBox<2, Precision> &_bounds,
 }
 
 template <typename Precision>
-void
-PainterImplementation<2, Precision>::_copy(const Painter<2, Precision> &a) {
+void PainterImplementation<2, Precision>::_copy(
+#ifdef NDEBUG
+    __attribute__((unused))
+#endif
+    const Painter<2, Precision> &a) {
+
+#ifndef NDEBUG
   bounds = a.impl.bounds;
   img = a.impl.img;
   offset = a.impl.offset;
   logging = a.impl.logging;
   dashed = a.impl.dashed;
   logLine = a.impl.logLine;
+#endif
 
   cs = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, imgDim(0), imgDim(1));
   cr = Cairo::Context::create(cs);
@@ -239,7 +243,10 @@ PainterImplementation<2, Precision>::_copy(const Painter<2, Precision> &a) {
 
   // copy a's surface
   cr->save();
+
+#ifndef NDEBUG
   cr->set_source(a.impl.cs, 0, 0);
+#endif
 
   while (strokeMtx.test_and_set(std::memory_order_acquire)) // acquire lock
     ;                                                       // spin
@@ -249,3 +256,8 @@ PainterImplementation<2, Precision>::_copy(const Painter<2, Precision> &a) {
 
   cr->restore();
 }
+
+// specializations
+
+template struct PainterImplementation<2, float>;
+template struct PainterImplementation<2, double>;
