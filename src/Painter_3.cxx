@@ -101,7 +101,7 @@ template <typename Precision>
 void PainterImplementation<3, Precision>::drawPartition(
     const dPoints<3, Precision> &points) {
 
-  auto stats = getPointStats(0, points.size(), points);
+  auto stats = getPointStats(std::size_t(0), points.size(), points);
   pPoints.emplace_back(stats.mid, std::make_tuple(1, 0, 0, 1));
 }
 

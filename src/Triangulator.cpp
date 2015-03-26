@@ -50,7 +50,7 @@ Triangulator<D, Precision>::Triangulator(
       partitioner(_partitioner) {
 
   // add infinite points to data set
-  auto stats = getPointStats(0, points.size(), points);
+  auto stats = getPointStats(std::size_t(0), points.size(), points);
   for (uint i = 0; i < pow(2, D); ++i) {
     VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
                          << stats.max << std::endl);
@@ -1130,8 +1130,8 @@ Ids Triangulator<D, Precision>::allPoints() const {
   allPoints.reserve(points.size());
   for (uint i = 0; i < points.finite_size(); ++i)
     allPoints.insert(i);
-  for (uint infVertex = points.size() - dPoint<D, Precision>::nINF;
-       infVertex < points.size(); ++infVertex)
+  for (uint infVertex = points.finite_size(); infVertex < points.size();
+       ++infVertex)
 
     allPoints.insert(points[infVertex].id);
 

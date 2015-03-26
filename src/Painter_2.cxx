@@ -85,7 +85,7 @@ void PainterImplementation<2, Precision>::draw(
 template <typename Precision>
 void PainterImplementation<2, Precision>::draw(
     const dSimplex<2, Precision> &simplex, const dPoints<2, Precision> &points,
-                                          bool drawInfinite) {
+    bool drawInfinite) {
 
   auto line = [&](uint a, uint b) {
 
@@ -153,7 +153,7 @@ void PainterImplementation<2, Precision>::drawCircumSphere(
 template <typename Precision>
 void PainterImplementation<2, Precision>::drawPartition(
     const dPoints<2, Precision> &points) {
-  auto stats = getPointStats(0, points.size(), points);
+  auto stats = getPointStats(std::size_t(0), points.size(), points);
 
   // draw partition borders
   cr->move_to(translatePoint(stats.mid[0], 0), 0);

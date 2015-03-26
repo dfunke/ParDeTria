@@ -2,6 +2,8 @@
 
 #include "Geometry.h"
 
+#include <type_traits>
+
 #include "utils/ASSERT.h"
 
 template <uint D, typename Precision> class Partition {
@@ -67,34 +69,21 @@ template <uint D, typename Precision> struct dPointStats {
   dVector<D, Precision> max;
 };
 
-template <uint D, typename Precision>
-dPointStats<D, Precision> getPointStats(const uint &first, const uint &last,
-                                        const dPoints<D, Precision> &points,
-                                        const bool ignoreInfinite = true) {
-
-  dPointStats<D, Precision> stats;
-
-  for (uint dim = 0; dim < D; ++dim) {
-    stats.min[dim] = std::numeric_limits<Precision>::max();
-    stats.max[dim] = std::numeric_limits<Precision>::min();
-
-    for (uint id = first; id < last; ++id) {
-
-      ASSERT(points.contains(id));
-
-      if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {
-        stats.min[dim] = std::min(stats.min[dim], points[id].coords[dim]);
-        stats.max[dim] = std::max(stats.max[dim], points[id].coords[dim]);
-      }
-    }
-
-    stats.mid[dim] = (stats.max[dim] + stats.min[dim]) / 2;
-  }
-
-  return stats;
+namespace __detail {
+template <class T,
+          typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
+uint _id(const T &t) {
+  return t;
 }
 
-template <uint D, typename Precision, class InputIt>
+template <class T,
+          typename std::enable_if<!std::is_integral<T>::value, int>::type = 0>
+uint _id(const T &t) {
+  return *t;
+}
+}
+
+template <uint D, typename Precision, typename InputIt>
 dPointStats<D, Precision> getPointStats(const InputIt &first,
                                         const InputIt &last,
                                         const dPoints<D, Precision> &points,
@@ -108,7 +97,7 @@ dPointStats<D, Precision> getPointStats(const InputIt &first,
 
     for (auto it = first; it != last; ++it) {
 
-      uint id = *it;
+      const uint id = __detail::_id(it);
       ASSERT(points.contains(id));
 
       if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {
