@@ -748,17 +748,17 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
   for (const auto &s : *this) {
     for (const auto &p : s.vertices) {
       // point p of s not correctly flagged as used in s
-      if (std::find(points[p].simplices.begin(), points[p].simplices.end(),
-                    s.id) == points[p].simplices.end()) {
+      if (std::find(whereUsed.at(p).begin(), whereUsed.at(p).end(), s.id) ==
+          whereUsed.at(p).end()) {
         LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
-        LOGGER.logContainer(points[p].simplices, Logger::Verbosity::NORMAL,
+        LOGGER.logContainer(whereUsed.at(p), Logger::Verbosity::NORMAL,
                             "p.simplices:");
         result.valid = false;
       }
     }
   }
   for (const auto &p : points) {
-    for (const auto &id : p.simplices) {
+    for (const auto &id : whereUsed.at(p.id)) {
       if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
         continue; // simplex of another triangulation
 
@@ -766,7 +766,7 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
       const auto &s = this->operator[](id);
       if (!std::binary_search(s.vertices.begin(), s.vertices.end(), p.id)) {
         LOG("Point " << p << " SHOULD be used in " << s << std::endl);
-        LOGGER.logContainer(p.simplices, Logger::Verbosity::NORMAL,
+        LOGGER.logContainer(whereUsed.at(p.id), Logger::Verbosity::NORMAL,
                             "p.simplices:");
         result.valid = false;
       }

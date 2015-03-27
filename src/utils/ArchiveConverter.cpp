@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     for (uint k = 0; k < i.coords.size(); ++k)
       outPoints[i.id].coords[k] = i.coords[k];
 
-    outPoints[i.id].simplices = i.simplices;
+    // outPoints[i.id].simplices = i.simplices;
   }
 
   storeObject(outPoints, outFile);

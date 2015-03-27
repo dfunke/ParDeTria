@@ -81,16 +81,18 @@ Ids Triangulator<D, Precision>::getEdge(
     ASSERT(points.contains(infVertex));
     ASSERT(!points[infVertex].isFinite());
 
-    tbb::spin_rw_mutex::scoped_lock lock(points[infVertex].mtx, false);
-
     PLOG("Infinite vertex " << points[infVertex] << std::endl);
-    LOGGER.logContainer(points[infVertex].simplices, Logger::Verbosity::PROLIX,
-                        "Used in simplices: ");
+
+    uint infId = points[infVertex].id;
+    LOGGER.logContainer(simplices.whereUsed.at(infId),
+                        Logger::Verbosity::PROLIX, "Used in simplices: ");
 
     INDENT
-    for (const auto &s : points[infVertex].simplices) {
-      if (!dSimplex<D, Precision>::isFinite(s) || !simplices.contains(s))
+    for (const auto &s : simplices.whereUsed.at(infId)) {
+      if (!dSimplex<D, Precision>::isFinite(s))
         continue;
+
+      ASSERT(simplices.contains(s));
 
       PLOG("Adding " << simplices[s] << " to edge" << std::endl);
       edgeSimplices.insert(simplices[s].id);
@@ -214,12 +216,13 @@ void Triangulator<D, Precision>::findNeighbors(
             const dPoint<D, Precision> &vertex = points[simplex.vertices[v]];
 
             if (IS_PROLIX) {
-              LOGGER.logContainer(vertex.simplices, Logger::Verbosity::PROLIX,
+              LOGGER.logContainer(simplices.whereUsed.at(vertex.id),
+                                  Logger::Verbosity::PROLIX,
                                   "Vertex " + to_string(vertex) + " used in");
             }
 
             INDENT
-            for (const uint u : vertex.simplices) {
+            for (const uint u : simplices.whereUsed.at(vertex.id)) {
               if (dSimplex<D, Precision>::isFinite(u))
                 counters[u] += 1;
             }
@@ -304,12 +307,12 @@ void Triangulator<D, Precision>::findNeighbors(
 // supplementary class used in updateNeighbors
 template <uint D, typename Precision> class tWhereUsedSuppl {
 public:
-  tWhereUsedSuppl() : point(nullptr), index(0), size(0), deleted(0) {}
-  tWhereUsedSuppl(dPoint<D, Precision> *_point)
-      : point(_point), index(0), size(_point->simplices.size()), deleted(0) {}
+  tWhereUsedSuppl() : whereUsed(nullptr), index(0), size(0), deleted(0) {}
+  tWhereUsedSuppl(tbb::concurrent_vector<uint> *_whereUsed)
+      : whereUsed(_whereUsed), index(0), size(_whereUsed->size()), deleted(0) {}
 
 public:
-  dPoint<D, Precision> *point = nullptr;
+  tbb::concurrent_vector<uint> *whereUsed = nullptr;
   uint index = 0;
   uint size = 0;
   uint deleted = 0;
@@ -383,9 +386,8 @@ void Triangulator<D, Precision>::updateNeighbors(
 
     std::array<tWhereUsedSuppl<D, Precision>, D + 1> suppl;
     for (uint i = 0; i < D + 1; ++i) {
-      suppl[i] = std::move(
-          tWhereUsedSuppl<D, Precision>(&points[simplex.vertices[i]]));
-      suppl[i].point->mtx.lock_read();
+      suppl[i] = std::move(tWhereUsedSuppl<D, Precision>(
+          &simplices.whereUsed.at(simplex.vertices[i])));
     }
 
     uint currentMax = 0;
@@ -403,10 +405,9 @@ void Triangulator<D, Precision>::updateNeighbors(
 
         tWhereUsedSuppl<D, Precision> &supp = suppl[i];
 
-        while (supp.index < supp.size
-                   ? (v = supp.point->simplices.at(supp.index),
-                      !dSimplex<D, Precision>::isFinite(v))
-                   : (++countOver, false)) {
+        while (supp.index < supp.size ? (v = supp.whereUsed->at(supp.index),
+                                         !dSimplex<D, Precision>::isFinite(v))
+                                      : (++countOver, false)) {
           ++supp.index;
           ++supp.deleted;
         }
@@ -434,11 +435,6 @@ void Triangulator<D, Precision>::updateNeighbors(
       cont = countOver <= 2;
     }
 
-    // unlock everything
-    for (uint i = 0; i < D + 1; ++i) {
-      suppl[i].point->mtx.unlock();
-    }
-
     // compactify where used list if necessary
     for (uint i = 0; i < D + 1; ++i) {
       tWhereUsedSuppl<D, Precision> &supp = suppl[i];
@@ -447,14 +443,12 @@ void Triangulator<D, Precision>::updateNeighbors(
         tbb::concurrent_vector<uint> v;
         v.reserve(supp.size - supp.deleted);
 
-        tbb::spin_rw_mutex::scoped_lock lock(supp.point->mtx, false);
-        for (const auto &s : supp.point->simplices) {
+        for (const auto &s : *supp.whereUsed) {
           if (dSimplex<D, Precision>::isFinite(s))
             v.emplace_back(s);
         }
 
-        lock.upgrade_to_writer();
-        supp.point->simplices = std::move(v);
+        *supp.whereUsed = std::move(v);
       }
     }
     DEDENT
@@ -535,6 +529,9 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
+    for (const auto &wu : partialDTs[i].whereUsed) {
+      DT.whereUsed[wu.first].grow_by(wu.second.begin(), wu.second.end());
+    }
   }
 
   auto edgePointIds = extractPoints(edgeSimplices, DT);
@@ -605,12 +602,11 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
           // remove simplex from where used list
           for (uint p = 0; p < D + 1; ++p) {
-            dPoint<D, Precision> &point = points[DT[id].vertices[p]];
 
-            tbb::spin_rw_mutex::scoped_lock lock(point.mtx, false);
-            auto it =
-                std::find(point.simplices.begin(), point.simplices.end(), id);
-            ASSERT(it != point.simplices.end());
+            auto it = std::find(DT.whereUsed[DT[id].vertices[p]].begin(),
+                                DT.whereUsed[DT[id].vertices[p]].end(), id);
+
+            ASSERT(it != DT.whereUsed[DT[id].vertices[p]].end());
 
             // lock.upgrade_to_writer();
             // no need to upgrade to writer here - no invalidation of iterators
@@ -660,6 +656,11 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
       if (!inOnePartition) {
         tbb::spin_mutex::scoped_lock lock(insertMtx);
         DT.insert(edgeSimplex);
+
+        for (uint d = 0; d < D + 1; ++d) {
+          DT.whereUsed[edgeSimplex.vertices[d]].emplace_back(edgeSimplex.id);
+        }
+
         insertedSimplices.insert(edgeSimplex.id);
       } else {
         // the simplex is completely in one partition -> it must have been found
@@ -672,6 +673,12 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
           if (edgeSimplex.equalVertices(*it)) {
             tbb::spin_mutex::scoped_lock lock(insertMtx);
             DT.insert(edgeSimplex);
+
+            for (uint d = 0; d < D + 1; ++d) {
+              DT.whereUsed[edgeSimplex.vertices[d]].emplace_back(
+                  edgeSimplex.id);
+            }
+
             insertedSimplices.insert(edgeSimplex.id);
           }
         }
@@ -684,6 +691,12 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 #endif
 
   ASSERT(DT.countDuplicates() == 0);
+
+  // sort the where-used list
+  tbb::parallel_for(DT.whereUsed.range(), [&](auto &r) {
+    for (auto &it : r)
+      tbb::parallel_sort(it.second.begin(), it.second.end());
+  });
 
   LOG("Updating neighbors" << std::endl);
   updateNeighbors(DT, insertedSimplices, provenance);

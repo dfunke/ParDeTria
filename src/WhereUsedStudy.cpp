@@ -31,12 +31,12 @@ public:
 
     for (const auto &p : this->points) {
       uint countInfiniteS = 0;
-      for (const auto &s : p.simplices) {
+      for (const auto &s : DT.whereUsed[p.id]) {
         countInfiniteS += !dSimplex<D, Precision>::isFinite(s);
       }
 
-      ss << CSV::csv(this->points.size(), p.simplices.size(), countInfiniteS)
-         << '\n';
+      ss << CSV::csv(this->points.size(), DT.whereUsed[p.id].size(),
+                     countInfiniteS) << '\n';
     }
 
     {

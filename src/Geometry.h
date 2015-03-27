@@ -118,16 +118,11 @@ public:
   dPoint(const dVector<D, Precision> &_coords)
       : id(dPoint<D, Precision>::cINF), coords(_coords) {}
 
-  dPoint(const dPoint<D, Precision> &a)
-      : id(a.id), coords(a.coords), simplices(a.simplices) {}
+  dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
 
   dPoint &operator=(const dPoint<D, Precision> &a) {
-    // acquire lock, as we are modifying the point
-    tbb::spin_rw_mutex::scoped_lock lock(mtx, true);
-
     id = a.id;
     coords = a.coords;
-    simplices = a.simplices;
 
     return *this;
   }
@@ -162,8 +157,6 @@ public:
 public:
   uint id;
   dVector<D, Precision> coords;
-  tbb::concurrent_vector<uint> simplices;
-  tbb::spin_rw_mutex mtx;
 
 public:
   static inline bool isFinite(const uint &i) {
@@ -491,6 +484,9 @@ public:
 
     return result;
   }
+
+public:
+  tbb::concurrent_unordered_map<uint, tbb::concurrent_vector<uint>> whereUsed;
 };
 
 template <uint D, typename Precision> struct CrossCheckReport {
