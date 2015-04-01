@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.0)
 cmake_policy(VERSION 3.0)
 
-project (Delaunay)
+project (Delaunay C CXX)
 
 find_program(CCACHE_PROG ccache)
 
@@ -36,11 +36,13 @@ include(${VTK_USE_FILE})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror")
 
+option(VALGRIND "Enable Valgrind compatibility options" OFF)
 if (VALGRIND)
   message(STATUS "Valgrind mode enabled")
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
 endif ()
 
+option(SANITIZE "Enable thread sanitizer" OFF)
 if (SANITIZE)
   message(WARNING "ThreadSanitizer is enabled")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
