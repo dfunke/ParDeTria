@@ -22,6 +22,7 @@ find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
+find_package(Threads REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -70,7 +71,14 @@ add_library(InterfaceCGAL
   CGAL_Interface.cpp
 )
 
-target_link_libraries(InterfaceCGAL Logging Geometry ${CGAL_LIBRARY} ${GMP_LIBRARIES})
+target_link_libraries(InterfaceCGAL
+  Logging
+  Geometry
+  ${CGAL_LIBRARY}
+  ${GMP_LIBRARIES}
+  ${TBB_MALLOC_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
+)
 
 add_library(Painting2D Painter_2.cxx)
 target_link_libraries(Painting2D ${Cairomm_LIBRARIES})
@@ -126,6 +134,7 @@ target_link_libraries(Benchmark
   Painting
   InterfaceCGAL
   ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
 add_executable (VTUShow

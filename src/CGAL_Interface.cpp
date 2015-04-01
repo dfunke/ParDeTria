@@ -8,6 +8,7 @@
 std::atomic<uint> tetrahedronID(0);
 
 // CGAL
+#define CGAL_LINKED_WITH_TBB
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
@@ -18,73 +19,74 @@ std::atomic<uint> tetrahedronID(0);
 
 #include <CGAL/Unique_hash_map.h>
 
-template <uint D, typename Precision> class CGALHelper {
+template <uint D, typename Precision, class Tria> class CGALHelper;
+
+template <typename Precision, class Tria> class CGALHelper<2, Precision, Tria> {
 
 public:
-  template <class IT, class Tria> static IT begin(Tria &t);
+  CGALHelper(__attribute__((unused)) const dBox<2, Precision> &bounds) {}
 
-  template <class IT, class Tria> static IT end(Tria &t);
-
-  template <class Tria> static uint size(Tria &t);
-
-  template <class Tria>
-  static typename Tria::Point make_point(const dPoint<D, Precision> &p);
-};
-
-template <typename Precision> class CGALHelper<2, Precision> {
-
-public:
-  template <class Tria>
-  static typename Tria::Finite_faces_iterator begin(Tria &t) {
+  typename Tria::Finite_faces_iterator begin(Tria &t) {
     return t.finite_faces_begin();
   }
 
-  template <class Tria>
-  static typename Tria::Finite_faces_iterator end(Tria &t) {
+  typename Tria::Finite_faces_iterator end(Tria &t) {
     return t.finite_faces_end();
   }
 
-  template <class Tria> static uint size(Tria &t) {
-    return t.number_of_faces();
-  }
+  uint size(Tria &t) { return t.number_of_faces(); }
 
-  template <class Tria>
-  static typename Tria::Point make_point(const dPoint<2, Precision> &p) {
+  typename Tria::Point make_point(const dPoint<2, Precision> &p) {
     return typename Tria::Point(p.coords[0], p.coords[1]);
   }
 
-  template <class Tria> using Handle = typename Tria::Face_handle;
+  Tria make_tria() {
+    Tria t;
+    return t;
+  }
+
+  using Handle = typename Tria::Face_handle;
 };
 
-template <typename Precision> class CGALHelper<3, Precision> {
+template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria> {
 
 public:
-  template <class Tria>
-  static typename Tria::Finite_cells_iterator begin(Tria &t) {
+  CGALHelper(const dBox<3, Precision> &bounds)
+      : lockingDS(CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
+                               bounds.high[0], bounds.high[1], bounds.high[2]),
+                  50) {}
+
+  typename Tria::Finite_cells_iterator begin(Tria &t) {
     return t.finite_cells_begin();
   }
 
-  template <class Tria>
-  static typename Tria::Finite_cells_iterator end(Tria &t) {
+  typename Tria::Finite_cells_iterator end(Tria &t) {
     return t.finite_cells_end();
   }
 
-  template <class Tria> static uint size(Tria &t) {
-    return t.number_of_finite_cells();
-  }
+  uint size(Tria &t) { return t.number_of_finite_cells(); }
 
-  template <class Tria>
-  static typename Tria::Point make_point(const dPoint<3, Precision> &p) {
+  typename Tria::Point make_point(const dPoint<3, Precision> &p) {
     return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
   }
 
-  template <class Tria> using Handle = typename Tria::Cell_handle;
+  Tria make_tria() {
+    Tria t(&lockingDS);
+    return t;
+  }
+
+  using Handle = typename Tria::Cell_handle;
+
+private:
+  typename Tria::Lock_data_structure lockingDS;
 };
 
 template <uint D, typename Precision, class Tria>
-dSimplices<D, Precision> _delaunayCgal(const Ids &ids,
-                                       dPoints<D, Precision> &points,
-                                       bool filterInfinite) {
+dSimplices<D, Precision>
+_delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
+              const dBox<D, Precision> &bounds, bool filterInfinite) {
+
+  CGALHelper<D, Precision, Tria> helper(bounds);
 
   // copy points into CGAL structure
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
@@ -96,15 +98,12 @@ dSimplices<D, Precision> _delaunayCgal(const Ids &ids,
     if (filterInfinite && !p.isFinite())
       continue;
 
-    auto cp = CGALHelper<D, Precision>::template make_point<Tria>(p);
+    auto cp = helper.make_point(p);
     cPoints.push_back(std::make_pair(cp, p.id));
   }
 
-  Tria t;
-
-  // auto start = Clock::now();
+  Tria t = helper.make_tria();
   t.insert(cPoints.begin(), cPoints.end());
-  // auto end = Clock::now();
 
   ASSERT(t.is_valid());
 
@@ -117,14 +116,12 @@ dSimplices<D, Precision> _delaunayCgal(const Ids &ids,
   INDENT
 
   dSimplices<D, Precision> tria;
-  tria.reserve(CGALHelper<D, Precision>::size(t));
+  tria.reserve(helper.size(t));
 
-  CGAL::Unique_hash_map<
-      typename CGALHelper<D, Precision>::template Handle<Tria>, uint>
-      simplexLookup(0, CGALHelper<D, Precision>::size(t));
+  CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria>::Handle, uint>
+      simplexLookup(0, helper.size(t));
 
-  for (auto it = CGALHelper<D, Precision>::begin(t);
-       it != CGALHelper<D, Precision>::end(t); ++it) {
+  for (auto it = helper.begin(t); it != helper.end(t); ++it) {
     dSimplex<D, Precision> a;
     a.id = tetrahedronID++;
 
@@ -150,8 +147,7 @@ dSimplices<D, Precision> _delaunayCgal(const Ids &ids,
   PLOG("Collecting neighbors" << std::endl);
 
   INDENT
-  for (auto it = CGALHelper<D, Precision>::begin(t);
-       it != CGALHelper<D, Precision>::end(t); ++it) {
+  for (auto it = helper.begin(t); it != helper.end(t); ++it) {
     auto &tet = tria[simplexLookup[it]];
     tet.neighbors.reserve(D + 1);
 
@@ -181,13 +177,14 @@ template <typename Precision> class CGALInterface<2, Precision> {
 public:
   static dSimplices<2, Precision> triangulate(const Ids &ids,
                                               dPoints<2, Precision> &points,
+                                              const dBox<2, Precision> &bounds,
                                               bool filterInfinite) {
 
     typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
     typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
     typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
-    return _delaunayCgal<2, Precision, CT>(ids, points, filterInfinite);
+    return _delaunayCgal<2, Precision, CT>(ids, points, bounds, filterInfinite);
   }
 };
 
@@ -195,13 +192,15 @@ template <typename Precision> class CGALInterface<3, Precision> {
 public:
   static dSimplices<3, Precision> triangulate(const Ids &ids,
                                               dPoints<3, Precision> &points,
+                                              const dBox<3, Precision> &bounds,
                                               bool filterInfinite) {
 
     typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
-    typedef CGAL::Triangulation_data_structure_3<Vb> Tds;
+    typedef CGAL::Triangulation_data_structure_3<
+        Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Parallel_tag> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-    return _delaunayCgal<3, Precision, CT>(ids, points, filterInfinite);
+    return _delaunayCgal<3, Precision, CT>(ids, points, bounds, filterInfinite);
   }
 };
 

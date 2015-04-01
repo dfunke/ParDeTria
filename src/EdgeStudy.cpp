@@ -34,8 +34,9 @@ public:
 
     INDENT
     for (uint i = 0; i < partitioning.size(); ++i) {
-      partialDTs[i] = this->triangulateBase(partitioning[i].points,
-                                            "0" + std::to_string(i));
+      partialDTs[i] =
+          this->triangulateBase(partitioning[i].points, partitioning[i].bounds,
+                                "0" + std::to_string(i));
 
       auto eS = this->getEdge(partialDTs[i], partitioning, i);
       edgeSimplices.insert(eS.begin(), eS.end());
@@ -96,14 +97,14 @@ void studyPartitionEdgeSize(const uint N, const char splitter) {
   }
 
   std::mutex mtx;
-  tbb::parallel_for(std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)),
-                    [&](const uint i) {
-    uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
-    LOG("Testing with " << n << " points" << std::endl);
-    auto points = genPoints(n, bounds, dice);
-    PartitionEdgeSizeStudy<D, Precision> es(f, mtx, bounds, points,
-                                            std::move(partitioner_ptr));
-  });
+  tbb::parallel_for(
+      std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)), [&](const uint i) {
+        uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+        LOG("Testing with " << n << " points" << std::endl);
+        auto points = genPoints(n, bounds, dice);
+        PartitionEdgeSizeStudy<D, Precision> es(f, mtx, bounds, points,
+                                                std::move(partitioner_ptr));
+      });
 }
 
 #define Precision double

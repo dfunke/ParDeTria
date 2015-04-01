@@ -40,9 +40,11 @@ public:
 
 protected:
   dSimplices<D, Precision> triangulateBase(const Ids partitionPoints,
+                                           const dBox<D, Precision> &bounds,
                                            const std::string provenance);
 
   dSimplices<D, Precision> triangulateDAC(const Ids partitionPoints,
+                                          const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
   Ids getEdge(const dSimplices<D, Precision> &simplices,
@@ -77,7 +79,7 @@ protected:
       const Partitioning<D, Precision> *partitioning = nullptr) const;
 
 protected:
-  const dBox<D, Precision> bounds;
+  const dBox<D, Precision> baseBounds;
   const uint baseThreshold;
 
   dPoints<D, Precision> points;
