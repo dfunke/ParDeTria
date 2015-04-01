@@ -640,7 +640,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
   // check whether all simplices of real DT are present
   for (const auto &realSimplex : realDT) {
-    // find my simplex, compares simplex id or vertices ids
+    // find my simplex, compares vertices ids
     auto mySimplex = std::find_if(this->begin(), this->end(),
                                   [&](const dSimplex<D, Precision> &s) {
                                     return s.equalVertices(realSimplex);
@@ -690,7 +690,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     }
   }
 
-  // check whether sizes are equal, account for infinite simplices
+  // check whether sizes are equal
   if (dSimplices<D, Precision>::size() != realDT.size()) {
     LOG("my size: " + std::to_string(dSimplices<D, Precision>::size()) +
             " other size: "
@@ -762,8 +762,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
       // p is flagged as being used in s, but its not
       const auto &s = this->operator[](id);
-      if (std::find(s.vertices.begin(), s.vertices.end(), p.id) ==
-          s.vertices.end()) {
+      if (!std::binary_search(s.vertices.begin(), s.vertices.end(), p.id)) {
         LOG("Point " << p << " SHOULD be used in " << s << std::endl);
         LOGGER.logContainer(p.simplices, Logger::Verbosity::NORMAL,
                             "p.simplices:");
