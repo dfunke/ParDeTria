@@ -46,7 +46,7 @@ Triangulator<D, Precision>::Triangulator(
     const dBox<D, Precision> &_bounds, const uint _baseThreshold,
     dPoints<D, Precision> &_points,
     std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
-    : bounds(_bounds), baseThreshold(_baseThreshold), points(_points),
+    : baseBounds(_bounds), baseThreshold(_baseThreshold), points(_points),
       partitioner(_partitioner) {
 
   // add infinite points to data set
@@ -258,7 +258,7 @@ void Triangulator<D, Precision>::findNeighbors(
             if (IS_PROLIX) {
               paintWriter.add("img/" + provenance + "_neighbors_" +
                                   std::to_string(simplex.id),
-                              bounds);
+                              baseBounds);
               paintWriter.top().draw(points);
               paintWriter.top().drawPartition(points);
 
@@ -463,7 +463,7 @@ void Triangulator<D, Precision>::updateNeighbors(
       if (IS_PROLIX) {
         paintWriter.add("img/" + provenance + "_neighbors_" +
                             std::to_string(simplex.id),
-                        bounds);
+                        baseBounds);
         paintWriter.top().draw(points);
         paintWriter.top().drawPartition(points);
 
@@ -541,7 +541,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   auto paintMerging = [&](const dSimplices<D, Precision> &dt,
                           const std::string &name,
                           bool drawInfinite) -> Painter<D, Precision> {
-    Painter<D, Precision> painter(bounds);
+    Painter<D, Precision> painter(baseBounds);
 
     painter.draw(points);
     painter.drawPartition(points);
@@ -713,7 +713,7 @@ void Triangulator<D, Precision>::evaluateVerificationReport(
     const VerificationReport<D, Precision> &vr,
     const std::string &provenance) const {
   if (IS_PROLIX) {
-    Painter<D, Precision> basePainter(bounds);
+    Painter<D, Precision> basePainter(baseBounds);
     basePainter.draw(points);
     basePainter.drawPartition(points);
     basePainter.setLogging();
@@ -754,7 +754,7 @@ void Triangulator<D, Precision>::evaluateCrossCheckReport(
     const dSimplices<D, Precision> &DT, const dSimplices<D, Precision> &realDT,
     const Partitioning<D, Precision> *partitioning) const {
   if (IS_PROLIX) {
-    Painter<D, Precision> basePainter(bounds);
+    Painter<D, Precision> basePainter(baseBounds);
     basePainter.draw(points);
     basePainter.drawPartition(points);
     basePainter.setLogging();
@@ -876,6 +876,7 @@ void Triangulator<D, Precision>::evaluateCrossCheckReport(
 template <uint D, typename Precision>
 dSimplices<D, Precision>
 Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
+                                            const dBox<D, Precision> &bounds,
                                             const std::string provenance) {
 
   LOGGER.setIndent(provenance.length());
@@ -891,7 +892,8 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
     LOG("Real triangulation" << std::endl);
     INDENT
     realDT = std::make_unique<dSimplices<D, Precision>>(
-        CGALInterface<D, Precision>::triangulate(points, &partitionPoints));
+        CGALInterface<D, Precision>::triangulate(partitionPoints, points,
+                                                 bounds));
     LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
                                        << std::endl);
     DEDENT
@@ -899,7 +901,8 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 
   INDENT
   // if this is the top-most triangulation, ignore infinite vertices
-  auto dt = CGALInterface<D, Precision>::triangulate(points, &partitionPoints);
+  auto dt =
+      CGALInterface<D, Precision>::triangulate(partitionPoints, points, bounds);
   LOG("Triangulation contains " << dt.size() << " tetrahedra" << std::endl);
   DEDENT
 
@@ -947,6 +950,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 template <uint D, typename Precision>
 dSimplices<D, Precision>
 Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
+                                           const dBox<D, Precision> &bounds,
                                            const std::string provenance) {
 
   LOGGER.setIndent(provenance.length());
@@ -962,7 +966,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
 #ifndef NDEBUG
     // setup base painter
-    Painter<D, Precision> basePainter(bounds);
+    Painter<D, Precision> basePainter(baseBounds);
     basePainter.draw(
         points.template filter<dPoints<D, Precision>>(partitionPoints));
     basePainter.drawPartition(
@@ -977,7 +981,8 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       INDENT
 
       realDT = std::make_unique<dSimplices<D, Precision>>(
-          CGALInterface<D, Precision>::triangulate(points, &partitionPoints));
+          CGALInterface<D, Precision>::triangulate(partitionPoints, points,
+                                                   bounds));
       LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
                                          << std::endl);
       DEDENT
@@ -1016,8 +1021,9 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
           INDENT
           LOG("Partition " << i << " on thread " << std::this_thread::get_id()
                            << std::endl);
-          partialDTs[i] = triangulateDAC(partioning[i].points,
-                                         provenance + std::to_string(i));
+          partialDTs[i] =
+              triangulateDAC(partioning[i].points, partioning[i].bounds,
+                             provenance + std::to_string(i));
           LOG("Triangulation " << i << " contains " << partialDTs[i].size()
                                << " tetrahedra" << std::endl);
           DEDENT
@@ -1078,7 +1084,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 
     LOG("Triangulating edges" << std::endl);
     INDENT
-    auto edgeDT = triangulateDAC(edgePointIds, provenance + "e");
+    auto edgeDT = triangulateDAC(edgePointIds, bounds, provenance + "e");
     LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
                                        << std::endl
                                        << std::endl);
@@ -1133,7 +1139,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
     return mergedDT;
 
   } else { // base case
-    return triangulateBase(partitionPoints, provenance);
+    return triangulateBase(partitionPoints, bounds, provenance);
   }
 }
 
@@ -1153,7 +1159,7 @@ Ids Triangulator<D, Precision>::allPoints() const {
 
 template <uint D, typename Precision>
 dSimplices<D, Precision> Triangulator<D, Precision>::triangulate() {
-  return triangulateDAC(allPoints(), std::to_string(TOP));
+  return triangulateDAC(allPoints(), baseBounds, std::to_string(TOP));
 }
 
 // specializations
