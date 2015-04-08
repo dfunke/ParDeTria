@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "Geometry.h"
 
 #include "utils/ASSERT.h"
@@ -106,7 +108,7 @@ public:
             const std::string &provenance) const = 0;
 
 public:
-    static std::unique_ptr<Partitioner<D, Precision>> && make(const unsigned char type);
+    static std::unique_ptr<Partitioner<D, Precision>> make(const unsigned char type);
 };
 
 template <uint D, typename Precision>
@@ -143,7 +145,7 @@ public:
 
 
 template<uint D, typename Precision>
-std::unique_ptr<Partitioner<D, Precision>> && Partitioner<D, Precision>::make(const unsigned char type) {
+std::unique_ptr<Partitioner<D, Precision>> Partitioner<D, Precision>::make(const unsigned char type) {
 
   std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
   switch (type) {
@@ -156,10 +158,11 @@ std::unique_ptr<Partitioner<D, Precision>> && Partitioner<D, Precision>::make(co
     default:
       // p must be a dimension - subtract '0' to get integer value
       int d = type - '0';
-          ASSERT(0 <= d && d < D);
+          ASSERT(0 <= d &&  (uint) d < D);
           partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
           break;
   }
 
-  return std::move(partitioner_ptr);
+    ASSERT(partitioner_ptr);
+  return partitioner_ptr;
 }
