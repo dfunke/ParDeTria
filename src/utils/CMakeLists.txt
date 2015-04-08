@@ -1,8 +1,8 @@
 # CMake script for src directory
 # also deals with utils subdir
 
-
 include_directories("${PROJECT_SOURCE_DIR}/include/utils")
+configure_file("version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/version.cpp" @ONLY)
 
 add_library (Logging
   Logger.cpp
@@ -15,6 +15,7 @@ target_link_libraries(Logging ${TBB_LIBRARIES})
 add_library (Measurements
   Timings.cpp
   RSS.c
+  ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
 
 add_executable (VTUShow
@@ -28,4 +29,9 @@ add_executable (archiveConverter
 )
 
 target_link_libraries(archiveConverter ${Boost_LIBRARIES} ${TBB_LIBRARIES})
+
+add_library (DBConn
+  DBConnection.cpp
+  ${EJDB_LIBRARIES}
+)
 

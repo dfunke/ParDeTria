@@ -1,0 +1,8 @@
+//
+// Created by dfunke on 4/7/15.
+//
+
+#include "version.h"
+
+#define GIT_COMMIT_DEF "@GIT_SHA1@"
+const char GIT_COMMIT[] = GIT_COMMIT_DEF;

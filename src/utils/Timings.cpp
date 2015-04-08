@@ -1,25 +1,23 @@
 #include "Timings.h"
 
-#include "utils/ASSERT.h"
+#include <unistd.h>
+#include <time.h>
 
-tMeas stats(const tDurations &meas) {
+#include "version.h"
 
-  // ASSERT(meas.size() > 0);
+ExperimentRun::ExperimentRun() {
 
-  size_t N = 0;
-  tMeas result;
-  result.avg = 0, result.std = 0;
-  double Mprev = 0;
+    // output datetime, hostname and git commit
 
-  for (const auto &x : meas) {
-    ++N;
-    Mprev = result.avg;
-    result.avg += (x.count() - Mprev) / N;
-    result.std += (x.count() - Mprev) * (x.count() - result.avg);
-  }
+    char datetime[64];
+    time_t tnow = time(NULL);
+    strftime(datetime,sizeof(datetime),"%Y-%m-%d %H:%M:%S", localtime(&tnow));
+    addTrait("datetime", datetime);
 
-  if (N > 1)
-    result.std = std::sqrt(result.std / (N - 1));
+    char hostname[128];
+    gethostname(hostname, sizeof(hostname));
+    addTrait("host", hostname);
 
-  return result;
+    addTrait("git-rev", GIT_COMMIT);
+
 }

@@ -31,6 +31,7 @@ find_package(TBB REQUIRED)
 find_package(VTK REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
 find_package(Threads REQUIRED)
+find_package(EJDB REQUIRED)
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
@@ -41,6 +42,9 @@ include_directories(
 )
 
 include(${VTK_USE_FILE})
+
+include(GetGitRevisionDescription)
+get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++1y -pedantic -Wall -Wextra -Werror")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror")
