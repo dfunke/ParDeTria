@@ -34,21 +34,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint baseCase,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter) {
-  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
-  switch (splitter) {
-  case 'd':
-    partitioner_ptr = std::make_unique<dPartitioner<D, Precision>>();
-    break;
-  case 'c':
-    partitioner_ptr = std::make_unique<CyclePartitioner<D, Precision>>();
-    break;
-  default:
-    // p must be a dimension - subtract '0' to get integer value
-    int d = splitter - '0';
-    ASSERT(0 <= d && d < D);
-    partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
-    break;
-  }
+
+  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
 
   Triangulator<D, Precision> triangulator(bounds, baseCase, points,
                                           std::move(partitioner_ptr));
