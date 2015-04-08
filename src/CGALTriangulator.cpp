@@ -1,4 +1,4 @@
-#include "CGAL_Interface.h"
+#include "CGALTriangulator.h"
 
 #include <atomic>
 
@@ -173,7 +173,7 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
 // partial specializations
 
-template <typename Precision> class CGALInterface<2, Precision> {
+template <typename Precision> class CGALTriangulator<2, Precision> {
 public:
   static dSimplices<2, Precision> triangulate(const Ids &ids,
                                               dPoints<2, Precision> &points,
@@ -188,7 +188,7 @@ public:
   }
 };
 
-template <typename Precision> class CGALInterface<3, Precision> {
+template <typename Precision> class CGALTriangulator<3, Precision> {
 public:
   static dSimplices<3, Precision> triangulate(const Ids &ids,
                                               dPoints<3, Precision> &points,
@@ -205,8 +205,8 @@ public:
 };
 
 // specializations
-template class CGALInterface<2, float>;
-template class CGALInterface<3, float>;
+template class CGALTriangulator<2, float>;
+template class CGALTriangulator<3, float>;
 
-template class CGALInterface<2, double>;
-template class CGALInterface<3, double>;
+template class CGALTriangulator<2, double>;
+template class CGALTriangulator<3, double>;

@@ -2,7 +2,7 @@
 
 #include "Geometry.h"
 
-template <uint D, typename Precision> class CGALInterface {
+template <uint D, typename Precision> class CGALTriangulator {
 public:
   static dSimplices<D, Precision> triangulate(const Ids &ids,
                                               dPoints<D, Precision> &points,

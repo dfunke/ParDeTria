@@ -1,4 +1,4 @@
-#include "Triangulator.h"
+#include "DCTriangulator.h"
 
 // std library
 #include <fstream>
@@ -23,7 +23,7 @@
 // own
 #include "Geometry.h"
 #include "Painter.h"
-#include "CGAL_Interface.h"
+#include "CGALTriangulator.h"
 
 #include "utils/Timings.h"
 #include "utils/Logger.h"
@@ -32,17 +32,17 @@
 //**************************
 
 template <uint D, typename Precision>
-constexpr Precision Triangulator<D, Precision>::SAFETY;
+constexpr Precision DCTriangulator<D, Precision>::SAFETY;
 
 template <uint D, typename Precision>
-constexpr char Triangulator<D, Precision>::TOP;
+constexpr char DCTriangulator<D, Precision>::TOP;
 
 template <uint D, typename Precision>
-bool Triangulator<D, Precision>::VERIFY = true;
+bool DCTriangulator<D, Precision>::VERIFY = true;
 //**************************
 
 template <uint D, typename Precision>
-Triangulator<D, Precision>::Triangulator(
+DCTriangulator<D, Precision>::DCTriangulator(
     const dBox<D, Precision> &_bounds, const uint _baseThreshold,
     dPoints<D, Precision> &_points,
     std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
@@ -68,7 +68,7 @@ Triangulator<D, Precision>::Triangulator(
 }
 
 template <uint D, typename Precision>
-Ids Triangulator<D, Precision>::getEdge(
+Ids DCTriangulator<D, Precision>::getEdge(
     const dSimplices<D, Precision> &simplices,
     const Partitioning<D, Precision> &partitioning, const uint &partition) {
   Ids edgeSimplices;
@@ -149,7 +149,7 @@ Ids Triangulator<D, Precision>::getEdge(
 }
 
 template <uint D, typename Precision>
-Ids Triangulator<D, Precision>::extractPoints(
+Ids DCTriangulator<D, Precision>::extractPoints(
     const Ids &edgeSimplices, const dSimplices<D, Precision> &simplices,
     bool ignoreInfinite) {
   Ids outPoints;
@@ -174,7 +174,7 @@ Ids Triangulator<D, Precision>::extractPoints(
 }
 
 template <uint D, typename Precision>
-void Triangulator<D, Precision>::findNeighbors(
+void DCTriangulator<D, Precision>::findNeighbors(
     dSimplices<D, Precision> &simplices,
 #ifdef NDEBUG
     __attribute__((unused))
@@ -319,7 +319,7 @@ public:
 };
 
 template <uint D, typename Precision>
-void Triangulator<D, Precision>::updateNeighbors(
+void DCTriangulator<D, Precision>::updateNeighbors(
     dSimplices<D, Precision> &simplices, const Ids &toCheck,
 #ifdef NDEBUG
     __attribute__((unused))
@@ -512,7 +512,7 @@ void Triangulator<D, Precision>::updateNeighbors(
 }
 
 template <uint D, typename Precision>
-dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
+dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     std::vector<dSimplices<D, Precision>> &partialDTs, const Ids &edgeSimplices,
     const dSimplices<D, Precision> &edgeDT,
     const Partitioning<D, Precision> &partitioning,
@@ -709,7 +709,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 }
 
 template <uint D, typename Precision>
-void Triangulator<D, Precision>::evaluateVerificationReport(
+void DCTriangulator<D, Precision>::evaluateVerificationReport(
     const VerificationReport<D, Precision> &vr,
     const std::string &provenance) const {
   if (IS_PROLIX) {
@@ -749,7 +749,7 @@ void Triangulator<D, Precision>::evaluateVerificationReport(
 }
 
 template <uint D, typename Precision>
-void Triangulator<D, Precision>::evaluateCrossCheckReport(
+void DCTriangulator<D, Precision>::evaluateCrossCheckReport(
     const CrossCheckReport<D, Precision> &ccr, const std::string &provenance,
     const dSimplices<D, Precision> &DT, const dSimplices<D, Precision> &realDT,
     const Partitioning<D, Precision> *partitioning) const {
@@ -875,7 +875,7 @@ void Triangulator<D, Precision>::evaluateCrossCheckReport(
 
 template <uint D, typename Precision>
 dSimplices<D, Precision>
-Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
+DCTriangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
                                             const dBox<D, Precision> &bounds,
                                             const std::string provenance) {
 
@@ -892,7 +892,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
     LOG("Real triangulation" << std::endl);
     INDENT
     realDT = std::make_unique<dSimplices<D, Precision>>(
-        CGALInterface<D, Precision>::triangulate(partitionPoints, points,
+        CGALTriangulator<D, Precision>::triangulate(partitionPoints, points,
                                                  bounds));
     LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
                                        << std::endl);
@@ -902,7 +902,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
   INDENT
   // if this is the top-most triangulation, ignore infinite vertices
   auto dt =
-      CGALInterface<D, Precision>::triangulate(partitionPoints, points, bounds);
+      CGALTriangulator<D, Precision>::triangulate(partitionPoints, points, bounds);
   LOG("Triangulation contains " << dt.size() << " tetrahedra" << std::endl);
   DEDENT
 
@@ -949,7 +949,7 @@ Triangulator<D, Precision>::triangulateBase(const Ids partitionPoints,
 
 template <uint D, typename Precision>
 dSimplices<D, Precision>
-Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
+DCTriangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
                                            const dBox<D, Precision> &bounds,
                                            const std::string provenance) {
 
@@ -981,7 +981,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
       INDENT
 
       realDT = std::make_unique<dSimplices<D, Precision>>(
-          CGALInterface<D, Precision>::triangulate(partitionPoints, points,
+          CGALTriangulator<D, Precision>::triangulate(partitionPoints, points,
                                                    bounds));
       LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
                                          << std::endl);
@@ -1144,7 +1144,7 @@ Triangulator<D, Precision>::triangulateDAC(const Ids partitionPoints,
 }
 
 template <uint D, typename Precision>
-Ids Triangulator<D, Precision>::allPoints() const {
+Ids DCTriangulator<D, Precision>::allPoints() const {
   Ids allPoints;
   allPoints.reserve(points.size());
   for (uint i = 0; i < points.finite_size(); ++i)
@@ -1158,14 +1158,14 @@ Ids Triangulator<D, Precision>::allPoints() const {
 }
 
 template <uint D, typename Precision>
-dSimplices<D, Precision> Triangulator<D, Precision>::triangulate() {
+dSimplices<D, Precision> DCTriangulator<D, Precision>::triangulate() {
   return triangulateDAC(allPoints(), baseBounds, std::to_string(TOP));
 }
 
 // specializations
 
-template class Triangulator<2, float>;
-template class Triangulator<3, float>;
+template class DCTriangulator<2, float>;
+template class DCTriangulator<3, float>;
 
-template class Triangulator<2, double>;
-template class Triangulator<3, double>;
+template class DCTriangulator<2, double>;
+template class DCTriangulator<3, double>;

@@ -1,7 +1,7 @@
 
 // own
 #include "Geometry.h"
-#include "Triangulator.h"
+#include "DCTriangulator.h"
 #include "Partitioner.h"
 #include "Painter.h"
 
@@ -37,7 +37,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
   std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
 
-  Triangulator<D, Precision> triangulator(bounds, baseCase, points,
+  DCTriangulator<D, Precision> triangulator(bounds, baseCase, points,
                                           std::move(partitioner_ptr));
 
   TriangulateReturn ret;
@@ -74,7 +74,7 @@ int benchmark(const uint N, const dBox<D, Precision> &bounds,
               std::function<Precision()> &&dice) {
 
   LOGGER.setLogLevel(Logger::Verbosity::SILENT);
-  Triangulator<D, Precision>::VERIFY = false;
+  DCTriangulator<D, Precision>::VERIFY = false;
   Painter<D, Precision>::ENABLED = false;
 
   uint nIterations = 9 * (log10(N) - 1) + 1;

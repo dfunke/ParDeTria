@@ -1,7 +1,7 @@
 
 // own
 #include "Geometry.h"
-#include "Triangulator.h"
+#include "DCTriangulator.h"
 #include "Partitioner.h"
 #include "Painter.h"
 
@@ -43,7 +43,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
   std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
 
-  Triangulator<D, Precision> triangulator(bounds, baseCase, points,
+  DCTriangulator<D, Precision> triangulator(bounds, baseCase, points,
                                           std::move(partitioner_ptr));
 
   TriangulateReturn ret;
@@ -119,8 +119,8 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
                         ret.time.count(), getCurrentRSS(), getPeakRSS())
             << std::endl;
         }
-        if (Triangulator<D, Precision>::VERIFY &&
-            Triangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
+        if (DCTriangulator<D, Precision>::VERIFY &&
+            DCTriangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
 
           // output points
           storeObject(points, "invalid_" + std::to_string(points.size()) + "_" +
@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (vm.count("no-verify")) {
-    Triangulator<D, Precision>::VERIFY = false;
+    DCTriangulator<D, Precision>::VERIFY = false;
   }
 
   if (vm.count("no-output")) {

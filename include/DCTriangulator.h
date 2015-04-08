@@ -24,9 +24,9 @@ struct TriangulationReportEntry {
 
 typedef tbb::concurrent_vector<TriangulationReportEntry> TriangulationReport;
 
-template <uint D, typename Precision> class Triangulator {
+template <uint D, typename Precision> class DCTriangulator {
 public:
-  Triangulator(const dBox<D, Precision> &_bounds, const uint _baseThreshold,
+  DCTriangulator(const dBox<D, Precision> &_bounds, const uint _baseThreshold,
                dPoints<D, Precision> &_points,
                std::unique_ptr<Partitioner<D, Precision>> &&_partitioner);
 

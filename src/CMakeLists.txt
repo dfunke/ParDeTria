@@ -10,7 +10,7 @@ add_library (Geometry
 target_link_libraries(Geometry Logging)
 
 add_library(InterfaceCGAL
-  CGAL_Interface.cpp
+  CGALTriangulator.cpp
 )
 
 target_link_libraries(InterfaceCGAL
@@ -41,7 +41,7 @@ target_link_libraries(Painting
 )
 
 add_library(Triangulate
-  Triangulator.cpp
+  DCTriangulator.cpp
   Partitioner.cpp
 )
 

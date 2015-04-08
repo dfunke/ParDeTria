@@ -7,21 +7,21 @@
 #include <future>
 #include <bits/stl_deque.h>
 
-#include "Triangulator.h"
+#include "DCTriangulator.h"
 #include "utils/CSV.h"
 #include "Painter.h"
 
 #define LLOG(msg) std::cout << msg;
 
 template <uint D, typename Precision>
-class WhereUsedListSizeStudy : Triangulator<D, Precision> {
+class WhereUsedListSizeStudy : DCTriangulator<D, Precision> {
 
 public:
   WhereUsedListSizeStudy(
       std::ofstream &_out, std::mutex &_outMtx,
       const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
       std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
-      : Triangulator<D, Precision>(_bounds, 500, _points,
+      : DCTriangulator<D, Precision>(_bounds, 500, _points,
                                    std::move(_partitioner)),
         out(_out), outMtx(_outMtx) {
 
@@ -67,7 +67,7 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
   std::uniform_real_distribution<Precision> distribution(0, 1);
   std::function<Precision()> dice = std::bind(distribution, generator);
 
-  Triangulator<D, Precision>::VERIFY = false;
+  DCTriangulator<D, Precision>::VERIFY = false;
   Painter<D, Precision>::ENABLED = false;
 
   std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
