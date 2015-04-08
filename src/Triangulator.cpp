@@ -492,8 +492,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 //**********************
 #ifndef NDEBUG
   auto paintMerging =
-      [&](const dSimplices<D, Precision> &dt, const std::string &name,
-          bool drawInfinite = false) -> Painter<D, Precision> {
+      [&](const dSimplices<D, Precision> &dt, const std::string &name, bool drawInfinite) -> Painter<D, Precision> {
         Painter<D, Precision> painter(baseBounds);
 
         painter.draw(points);
@@ -519,7 +518,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 //**********************
 
 #ifndef NDEBUG
-  paintMerging(DT, provenance + "_05a_merging_merged");
+  paintMerging(DT, provenance + "_05a_merging_merged", false);
 #endif
 
   auto cmpFingerprint =
@@ -568,7 +567,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
 
 //**********************
 #ifndef NDEBUG
-  auto painter = paintMerging(DT, provenance + "_05b_merging_stripped");
+  auto painter = paintMerging(DT, provenance + "_05b_merging_stripped", false);
 
   painter.setColor(0, 0, 1, 0.4);
   painter.setDashed();
@@ -623,7 +622,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   });
 
 #ifndef NDEBUG
-  paintMerging(DT, provenance + "_05c_merging_edge");
+  paintMerging(DT, provenance + "_05c_merging_edge", false);
 #endif
 
   ASSERT(DT.countDuplicates() == 0);
@@ -632,7 +631,7 @@ dSimplices<D, Precision> Triangulator<D, Precision>::mergeTriangulation(
   updateNeighbors(DT, insertedSimplices, provenance);
 
 #ifndef NDEBUG
-  paintMerging(DT, provenance + "_05d_merging_finished");
+  paintMerging(DT, provenance + "_05d_merging_finished", false);
 #endif
 
   return DT;
