@@ -70,21 +70,7 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
   Triangulator<D, Precision>::VERIFY = false;
   Painter<D, Precision>::ENABLED = false;
 
-  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
-  switch (splitter) {
-  case 'd':
-    partitioner_ptr = std::make_unique<dPartitioner<D, Precision>>();
-    break;
-  case 'c':
-    partitioner_ptr = std::make_unique<CyclePartitioner<D, Precision>>();
-    break;
-  default:
-    // p must be a dimension - subtract '0' to get integer value
-    uint d = splitter - '0';
-    ASSERT(0 <= d && d < D);
-    partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
-    break;
-  }
+  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
 
   std::mutex mtx;
   tbb::parallel_for(

@@ -120,6 +120,9 @@ public:
   virtual Partitioning<D, Precision>
   partition(const Ids &ids, const dPoints<D, Precision> &points,
             const std::string &provenance) const = 0;
+
+public:
+    static std::unique_ptr<Partitioner<D, Precision>> && make(const unsigned char type);
 };
 
 template <uint D, typename Precision>
@@ -153,3 +156,26 @@ public:
                                        const dPoints<D, Precision> &points,
                                        const std::string &provenance) const;
 };
+
+
+template<uint D, typename Precision>
+std::unique_ptr<Partitioner<D, Precision>> && Partitioner<D, Precision>::make(const unsigned char type) {
+
+  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
+  switch (type) {
+    case 'd':
+      partitioner_ptr = std::make_unique<dPartitioner<D, Precision>>();
+          break;
+    case 'c':
+      partitioner_ptr = std::make_unique<CyclePartitioner<D, Precision>>();
+          break;
+    default:
+      // p must be a dimension - subtract '0' to get integer value
+      int d = type - '0';
+          ASSERT(0 <= d && d < D);
+          partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
+          break;
+  }
+
+  return std::move(partitioner_ptr);
+}
