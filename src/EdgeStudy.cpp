@@ -33,7 +33,7 @@ public:
     INDENT
     for (uint i = 0; i < partitioning.size(); ++i) {
       partialDTs[i] =
-          this->triangulateBase(partitioning[i].points, partitioning[i].bounds,
+          this->_triangulateBase(partitioning[i].points, partitioning[i].bounds,
                                 "0" + std::to_string(i));
 
       auto eS = this->getEdge(partialDTs[i], partitioning, i);

@@ -8,6 +8,8 @@
 // own
 #include "Geometry.h"
 #include "Partitioner.h"
+#include "Triangulator.h"
+#include "CGALTriangulator.h"
 #include "utils/TBB_Containers.h"
 
 struct TriangulationReportEntry {
@@ -24,26 +26,24 @@ struct TriangulationReportEntry {
 
 typedef tbb::concurrent_vector<TriangulationReportEntry> TriangulationReport;
 
-template <uint D, typename Precision> class DCTriangulator {
+template <uint D, typename Precision> class DCTriangulator : public Triangulator<D, Precision> {
 public:
   DCTriangulator(const dBox<D, Precision> &_bounds, const uint _baseThreshold,
                dPoints<D, Precision> &_points,
                std::unique_ptr<Partitioner<D, Precision>> &&_partitioner);
-
-  dSimplices<D, Precision> triangulate();
 
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;
   }
 
 protected:
-  dSimplices<D, Precision> triangulateBase(const Ids partitionPoints,
+  dSimplices<D, Precision> _triangulateBase(const Ids partitionPoints,
                                            const dBox<D, Precision> &bounds,
                                            const std::string provenance);
 
-  dSimplices<D, Precision> triangulateDAC(const Ids partitionPoints,
-                                          const dBox<D, Precision> &bounds,
-                                          const std::string provenance);
+  dSimplices<D, Precision> _triangulate(const Ids &partitionPoints,
+                                       const dBox<D, Precision> &bounds,
+                                       const std::string provenance);
 
   Ids getEdge(const dSimplices<D, Precision> &simplices,
               const Partitioning<D, Precision> &partitioning,
@@ -76,24 +76,13 @@ protected:
       const dSimplices<D, Precision> &realDT,
       const Partitioning<D, Precision> *partitioning = nullptr) const;
 
-  Ids allPoints() const;
-
 protected:
-  const dBox<D, Precision> baseBounds;
   const uint baseThreshold;
 
-  dPoints<D, Precision> points;
   TriangulationReport triangulationReport;
-  std::unique_ptr<Partitioner<D, Precision>> &partitioner;
-
-public:
-  static bool isTOP(const std::string &provenance) {
-    return provenance == std::to_string(TOP);
-  }
-
-  static bool VERIFY;
+  std::unique_ptr<Partitioner<D, Precision>> partitioner;
+  std::unique_ptr<CGALTriangulator<D, Precision>> baseTriangulator;
 
 protected:
   static constexpr Precision SAFETY = 100;
-  static constexpr char TOP = 0;
 };
