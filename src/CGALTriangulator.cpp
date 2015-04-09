@@ -1,6 +1,7 @@
 #include "CGALTriangulator.h"
 
 #include <atomic>
+#include <type_traits>
 
 #include "utils/ASSERT.h"
 
@@ -19,7 +20,7 @@ std::atomic<uint> tetrahedronID(0);
 
 #include <CGAL/Unique_hash_map.h>
 
-template <uint D, typename Precision, class Tria> class CGALHelper;
+template <uint D, typename Precision, class Tria, bool Parallel = true> class CGALHelper;
 
 template <typename Precision, class Tria> class CGALHelper<2, Precision, Tria> {
 
@@ -48,7 +49,34 @@ public:
   using Handle = typename Tria::Face_handle;
 };
 
-template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria> {
+template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria, false> {
+
+public:
+  CGALHelper(__attribute__((unused)) const dBox<3, Precision> &bounds) { }
+
+  typename Tria::Finite_cells_iterator begin(Tria &t) {
+    return t.finite_cells_begin();
+  }
+
+  typename Tria::Finite_cells_iterator end(Tria &t) {
+    return t.finite_cells_end();
+  }
+
+  uint size(Tria &t) { return t.number_of_finite_cells(); }
+
+  typename Tria::Point make_point(const dPoint<3, Precision> &p) {
+    return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
+  }
+
+  Tria make_tria() {
+    Tria t;
+    return t;
+  }
+
+  using Handle = typename Tria::Cell_handle;
+};
+
+template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria, true> {
 
 public:
   CGALHelper(const dBox<3, Precision> &bounds)
@@ -81,13 +109,13 @@ private:
   typename Tria::Lock_data_structure lockingDS;
 };
 
-template <uint D, typename Precision, class Tria>
+template <uint D, typename Precision, class Tria, bool Parallel>
 dSimplices<D, Precision>
 _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
               const dBox<D, Precision> &bounds
               /*, bool filterInfinite */) {
 
-  CGALHelper<D, Precision, Tria> helper(bounds);
+  CGALHelper<D, Precision, Tria, Parallel> helper(bounds);
 
   // copy points into CGAL structure
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
@@ -119,7 +147,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
   dSimplices<D, Precision> tria;
   tria.reserve(helper.size(t));
 
-  CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria>::Handle, uint>
+  CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
       simplexLookup(0, helper.size(t));
 
   for (auto it = helper.begin(t); it != helper.end(t); ++it) {
@@ -174,7 +202,8 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
 // partial specializations
 
-template <typename Precision> class CGALTriangulator<2, Precision> : public Triangulator<2, Precision> {
+template <typename Precision, bool Parallel> class CGALTriangulator<2, Precision, Parallel>
+        : public Triangulator<2, Precision> {
 
 public:
   CGALTriangulator(const dBox<2, Precision> &_bounds, dPoints<2, Precision> &_points)
@@ -190,17 +219,19 @@ protected:
     typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
     typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
-    return _delaunayCgal<2, Precision, CT>(ids, this->points, bounds /*, filterInfinite */);
+    return _delaunayCgal<2, Precision, CT, Parallel>(ids, this->points, bounds /*, filterInfinite */);
   }
 };
 
-template <typename Precision> class CGALTriangulator<3, Precision> : public Triangulator<3, Precision> {
+template <typename Precision> class CGALTriangulator<3, Precision, true>
+        : public Triangulator<3, Precision> {
 
 public:
   CGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points)
           : Triangulator<3, Precision>(_bounds, _points) {};
 
 protected:
+
   dSimplices<3, Precision> _triangulate(const Ids &ids,
                                               const dBox<3, Precision> &bounds,
                                               __attribute__((unused)) const std::string provenance
@@ -211,13 +242,40 @@ protected:
         Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Parallel_tag> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-    return _delaunayCgal<3, Precision, CT>(ids, this->points, bounds /*, filterInfinite */);
+    return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds /*, filterInfinite */);
+  }
+};
+
+template <typename Precision> class CGALTriangulator<3, Precision, false>
+        : public Triangulator<3, Precision> {
+
+public:
+  CGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points)
+          : Triangulator<3, Precision>(_bounds, _points) {};
+
+protected:
+
+  dSimplices<3, Precision> _triangulate(const Ids &ids,
+                                        const dBox<3, Precision> &bounds,
+                                        __attribute__((unused)) const std::string provenance
+          /*, bool filterInfinite */) {
+
+    typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+    typedef CGAL::Triangulation_data_structure_3<
+            Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Sequential_tag> Tds;
+    typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
+
+    return _delaunayCgal<3, Precision, CT, false>(ids, this->points, bounds /*, filterInfinite */);
   }
 };
 
 // specializations
 template class CGALTriangulator<2, float>;
-template class CGALTriangulator<3, float>;
+
+template class CGALTriangulator<3, float, true>;
+template class CGALTriangulator<3, float, false>;
 
 template class CGALTriangulator<2, double>;
-template class CGALTriangulator<3, double>;
+
+template class CGALTriangulator<3, double, true>;
+template class CGALTriangulator<3, double, false>;

@@ -3,7 +3,8 @@
 #include "Geometry.h"
 #include "Triangulator.h"
 
-template <uint D, typename Precision> class CGALTriangulator : public Triangulator<D, Precision> {
+template <uint D, typename Precision,
+          bool Parallel = true> class CGALTriangulator : public Triangulator<D, Precision> {
 
 template <uint D2, typename Precision2>
 friend class DCTriangulator;
