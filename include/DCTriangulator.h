@@ -30,7 +30,8 @@ template <uint D, typename Precision> class DCTriangulator : public Triangulator
 public:
   DCTriangulator(const dBox<D, Precision> &_bounds, const uint _baseThreshold,
                dPoints<D, Precision> &_points,
-               std::unique_ptr<Partitioner<D, Precision>> &&_partitioner);
+               std::unique_ptr<Partitioner<D, Precision>> &&_partitioner,
+               const uint gridOccupancy = 1);
 
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;

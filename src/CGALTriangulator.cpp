@@ -25,7 +25,8 @@ template <uint D, typename Precision, class Tria, bool Parallel = true> class CG
 template <typename Precision, class Tria> class CGALHelper<2, Precision, Tria> {
 
 public:
-  CGALHelper(__attribute__((unused)) const dBox<2, Precision> &bounds) {}
+  CGALHelper(__attribute__((unused)) const dBox<2, Precision> &bounds,
+             __attribute__((unused)) const uint N) {}
 
   typename Tria::Finite_faces_iterator begin(Tria &t) {
     return t.finite_faces_begin();
@@ -52,7 +53,8 @@ public:
 template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria, false> {
 
 public:
-  CGALHelper(__attribute__((unused)) const dBox<3, Precision> &bounds) { }
+  CGALHelper(__attribute__((unused)) const dBox<3, Precision> &bounds,
+             __attribute__((unused)) const uint N) { }
 
   typename Tria::Finite_cells_iterator begin(Tria &t) {
     return t.finite_cells_begin();
@@ -79,10 +81,10 @@ public:
 template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria, true> {
 
 public:
-  CGALHelper(const dBox<3, Precision> &bounds)
+  CGALHelper(const dBox<3, Precision> &bounds, const uint N)
       : lockingDS(CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
                                bounds.high[0], bounds.high[1], bounds.high[2]),
-                  50) {}
+                  N) {}
 
   typename Tria::Finite_cells_iterator begin(Tria &t) {
     return t.finite_cells_begin();
@@ -112,10 +114,11 @@ private:
 template <uint D, typename Precision, class Tria, bool Parallel>
 dSimplices<D, Precision>
 _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
-              const dBox<D, Precision> &bounds
+              const dBox<D, Precision> &bounds,
+              const uint gridOccupancy
               /*, bool filterInfinite */) {
 
-  CGALHelper<D, Precision, Tria, Parallel> helper(bounds);
+  CGALHelper<D, Precision, Tria, Parallel> helper(bounds, ids.size() / gridOccupancy);
 
   // copy points into CGAL structure
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
@@ -206,8 +209,8 @@ template <typename Precision, bool Parallel> class CGALTriangulator<2, Precision
         : public Triangulator<2, Precision> {
 
 public:
-  CGALTriangulator(const dBox<2, Precision> &_bounds, dPoints<2, Precision> &_points)
-  : Triangulator<2, Precision>(_bounds, _points) {};
+  CGALTriangulator(const dBox<2, Precision> &_bounds, dPoints<2, Precision> &_points, const uint _gridOccupancy)
+  : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) {};
 
 protected:
   dSimplices<2, Precision> _triangulate(const Ids &ids,
@@ -219,16 +222,19 @@ protected:
     typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
     typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
-    return _delaunayCgal<2, Precision, CT, Parallel>(ids, this->points, bounds /*, filterInfinite */);
+    return _delaunayCgal<2, Precision, CT, Parallel>(ids, this->points, bounds, this->gridOccupancy /*, filterInfinite */);
   }
+
+protected:
+  const uint gridOccupancy;
 };
 
 template <typename Precision> class CGALTriangulator<3, Precision, true>
         : public Triangulator<3, Precision> {
 
 public:
-  CGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points)
-          : Triangulator<3, Precision>(_bounds, _points) {};
+  CGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points, const uint _gridOccupancy)
+          : Triangulator<3, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) {};
 
 protected:
 
@@ -242,16 +248,19 @@ protected:
         Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Parallel_tag> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-    return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds /*, filterInfinite */);
+    return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds, this->gridOccupancy /*, filterInfinite */);
   }
+
+protected:
+  const uint gridOccupancy;
 };
 
 template <typename Precision> class CGALTriangulator<3, Precision, false>
         : public Triangulator<3, Precision> {
 
 public:
-  CGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points)
-          : Triangulator<3, Precision>(_bounds, _points) {};
+  CGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points, const uint _gridOccupancy)
+          : Triangulator<3, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) {};
 
 protected:
 
@@ -265,8 +274,11 @@ protected:
             Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Sequential_tag> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-    return _delaunayCgal<3, Precision, CT, false>(ids, this->points, bounds /*, filterInfinite */);
+    return _delaunayCgal<3, Precision, CT, false>(ids, this->points, bounds, this->gridOccupancy /*, filterInfinite */);
   }
+
+protected:
+  const uint gridOccupancy;
 };
 
 // specializations

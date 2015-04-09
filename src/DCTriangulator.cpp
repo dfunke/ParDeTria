@@ -40,7 +40,8 @@ template <uint D, typename Precision>
 DCTriangulator<D, Precision>::DCTriangulator(
     const dBox<D, Precision> &_bounds, const uint _baseThreshold,
     dPoints<D, Precision> &_points,
-    std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
+    std::unique_ptr<Partitioner<D, Precision>> &&_partitioner,
+    const uint gridOccupancy)
     : Triangulator<D, Precision>(_bounds, _points), baseThreshold(_baseThreshold),
       partitioner(std::move(_partitioner)) {
 
@@ -61,7 +62,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
     this->points.emplace_back(p);
   }
 
-    baseTriangulator = std::make_unique<CGALTriangulator<D, Precision>>(this->baseBounds, this->points);
+    baseTriangulator = std::make_unique<CGALTriangulator<D, Precision>>(this->baseBounds, this->points, gridOccupancy);
 }
 
 template <uint D, typename Precision>
