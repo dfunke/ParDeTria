@@ -29,7 +29,6 @@ std::vector<unsigned char> distributions = { 'u' };
 std::vector<uint> occupancies = { 10, 50, 100, 1000 };
 
 DBConnection db("db_" + getHostname() + ".dat", "benchmarks");
-RandomPointHolder<D, Precision> randomPoints;
 dBox<D, Precision> bounds(dVector<D, Precision>({{0,0,0}}), dVector<D, Precision>({{100,100,100}}));
 
 void runExperiment(ExperimentRun & run) {
@@ -42,7 +41,11 @@ void runExperiment(ExperimentRun & run) {
   //get point set
   unsigned char dist = run.getTrait<unsigned char>("dist");
   uint nPoints = run.getTrait<uint>("nP");
-  auto points = randomPoints.get(dist, nPoints);
+
+  //use same start seed for all experiment runs
+  tGenerator gen(START_SEED);
+  auto dice = RandomFactory<Precision>::make(dist, gen);
+  auto points = genPoints(nPoints, bounds, dice);
 
   std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
   unsigned char alg = run.traits().at("alg")[0];
@@ -83,9 +86,9 @@ void runExperiment(ExperimentRun & run) {
       run.addTime(std::chrono::duration_cast<tDuration>(t2 - t1));
     }
 
-  } catch (AssertionException &e) {
+  } catch (std::exception &e) {
     std::cerr << "Experiment: " << run.str() << std::endl;
-    std::cerr << "\tAssertion failed: " << e.what() << std::endl;
+    std::cerr << "\tException raised: " << e.what() << std::endl;
 
     // output points
     storeObject(points, "assertionFailed_" + run.str("_") + ".dat");
@@ -121,9 +124,6 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
 
   //loop over distributions
   for(const unsigned char dist : distributions){
-
-    //fill random point holder
-    randomPoints.fill(dist, N, bounds);
 
     //create ExperimentRuns
     //loop over number of points

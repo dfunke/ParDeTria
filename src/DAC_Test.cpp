@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
   }
 
   std::uniform_real_distribution<Precision> distribution(0, 1);
-  std::function<Precision()> dice = std::bind(distribution, generator);
+  std::function<Precision()> dice = std::bind(distribution, startGen);
 
   /*
    * File format for triangulation report

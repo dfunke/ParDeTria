@@ -73,7 +73,7 @@ void studyPartitionEdgeSize(const uint N, const char splitter) {
   }
 
   std::uniform_real_distribution<Precision> distribution(0, 1);
-  std::function<Precision()> dice = std::bind(distribution, generator);
+  std::function<Precision()> dice = std::bind(distribution, startGen);
 
   DCTriangulator<D, Precision>::VERIFY = false;
 

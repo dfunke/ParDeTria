@@ -8,14 +8,15 @@
 #pragma once
 
 #include <random>
+#include <sstream>
 
 #include "Geometry.h"
 
 //#############################################################################
 
-const uint SEED = 1986;
-std::random_device rd;
-std::mt19937 generator(SEED);
+const uint START_SEED = 1986;
+typedef std::mt19937 tGenerator;
+tGenerator startGen(START_SEED);
 
 /* Prototype
  * std::uniform_int_distribution<uint> distribution(0,100);
@@ -23,17 +24,21 @@ std::mt19937 generator(SEED);
  */
 
 template <typename Precision>
-class DistributionFactory{
+class RandomFactory{
 
 public:
-  static std::function<Precision()> make(const unsigned char type){
+  static std::function<Precision()> make(const unsigned char type, tGenerator & gen){
 
     switch(type){
       case 'u':
       default:
         std::uniform_real_distribution<Precision> distribution(0, 1);
-        return std::bind(distribution, generator);
+        return std::bind(distribution, gen);
     }
+  }
+
+  static std::function<Precision()> make(const unsigned char type){
+    return make(type, startGen);
   }
 
 };
@@ -63,39 +68,3 @@ dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
 
   return points;
 }
-
-template<uint D, typename Precision>
-class RandomPointHolder {
-
-public:
-  typedef std::pair<unsigned char, uint> point_key;
-  typedef std::map<point_key, dPoints<D, Precision>> point_map;
-
-  void fill(unsigned char dist, uint N, const dBox<D, Precision> &bounds){
-
-    auto dice = DistributionFactory<Precision>::make(dist);
-
-    //loop over number of points
-    uint nPointsIterations = 9 * (log10(N) - 1) + 1;
-    for (uint i = 0; i < nPointsIterations; ++i) {
-      uint nPoints = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
-
-      auto points = genPoints<D, Precision>(nPoints, bounds, dice);
-
-      m_points.emplace(point_key(dist, nPoints), points);
-
-    }
-  }
-
-  dPoints<D, Precision> get(const point_key & key) const {
-    return dPoints<D,Precision>(m_points.at(key));
-  }
-
-  dPoints<D, Precision> get(const unsigned char dist, const uint n) const {
-    return get(point_key(dist, n));
-  }
-
-private:
-  point_map m_points;
-
-};
