@@ -10,6 +10,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <sstream>
 #include <map>
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -24,6 +25,25 @@ public:
 
   void addTrait(const std::string & name, const std::string & value){
     m_traits.emplace(name, value);
+  }
+
+  template<typename T>
+  void addTrait(const std::string & name, const T & value){
+    std::stringstream ss;
+    ss << value;
+    addTrait(name, ss.str());
+  }
+
+  std::string getTrait(const std::string & name) const {
+    return m_traits.at(name);
+  }
+
+  template<typename T>
+  T getTrait(const std::string & name) const {
+    std::istringstream ss(m_traits.at(name));
+    T o;
+    ss >> o;
+    return o;
   }
 
   void addTime(const tDuration & t){
@@ -45,6 +65,10 @@ public:
   const auto & mem() const {
     return m_mem;
   }
+
+  tDuration avgTime() const;
+
+  std::string str(std::string _sep = "   ") const;
 
 private:
   std::map<std::string, std::string> m_traits;
