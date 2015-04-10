@@ -18,7 +18,6 @@ find_library(EJDB_LIBRARY
 
 # Set the include dir variables and the libraries and let libfind_process do the rest.
 # NOTE: Singular variables for this library, plural for libraries this this lib depends on.
-set(EJDB_PROCESS_INCLUDES EJDB_INCLUDE_DIR)
 set(EJDB_PROCESS_LIBS EJDB_LIBRARY)
 libfind_process(EJDB)
 
