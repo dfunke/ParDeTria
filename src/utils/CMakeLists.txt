@@ -14,7 +14,8 @@ target_link_libraries(Logging ${TBB_LIBRARIES})
 
 add_library (Measurements
   Timings.cpp
-  RSS.c
+  System.c
+  System.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
 
