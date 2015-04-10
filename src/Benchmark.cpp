@@ -153,6 +153,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
           for (uint threads = 1; threads <= maxThreads; threads <<= 1) {
 
             //loop over gridOccupancy
+            bool firstOccupancy = true;
             for(const uint occ : occupancies){
 
               if(alg == 'm'){
@@ -173,17 +174,19 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
                   //loop over base cases
                   for(uint basecase = 500; basecase <= std::max(500u, nPoints / 2); basecase <<= 2){
 
-                    ExperimentRun runSeq;
-                    runSeq.addTrait("dist", dist);
-                    runSeq.addTrait("nP", nPoints);
-                    runSeq.addTrait("alg", alg);
-                    runSeq.addTrait("threads", threads);
-                    runSeq.addTrait("occupancy", occ);
-                    runSeq.addTrait("splitter", splitter);
-                    runSeq.addTrait("basecase", basecase);
-                    runSeq.addTrait("parallel-base", false);
+                    if(firstOccupancy) { // we do not need to generate runs for the following occupancies
+                      ExperimentRun runSeq;
+                      runSeq.addTrait("dist", dist);
+                      runSeq.addTrait("nP", nPoints);
+                      runSeq.addTrait("alg", alg);
+                      runSeq.addTrait("threads", threads);
+                      runSeq.addTrait("occupancy", 1);
+                      runSeq.addTrait("splitter", splitter);
+                      runSeq.addTrait("basecase", basecase);
+                      runSeq.addTrait("parallel-base", false);
 
-                    runs.emplace_back(runSeq);
+                      runs.emplace_back(runSeq);
+                    }
 
                     ExperimentRun runPar;
                     runPar.addTrait("dist", dist);
@@ -200,6 +203,8 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
                   }
                 }
               }
+
+              firstOccupancy = false;
             }
           }
         }
