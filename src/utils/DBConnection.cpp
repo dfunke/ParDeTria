@@ -17,7 +17,7 @@ DBConnection::DBConnection(const std::string & file, const std::string & collect
 
     m_coll = ejdbgetcoll(m_ejdb, collection.c_str());
     if(!m_coll && mode & JBOWRITER)
-        ejdbcreatecoll(m_ejdb, collection.c_str(), nullptr);
+        m_coll = ejdbcreatecoll(m_ejdb, collection.c_str(), nullptr);
     if(!m_coll)
         _handleError();
 
