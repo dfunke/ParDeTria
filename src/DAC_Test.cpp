@@ -41,10 +41,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter) {
 
-  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
-
-  DCTriangulator<D, Precision> triangulator(bounds, baseCase, points,
-                                          std::move(partitioner_ptr));
+  DCTriangulator<D, Precision> triangulator(bounds, points, baseCase, splitter);
 
   TriangulateReturn ret;
 

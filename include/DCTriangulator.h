@@ -28,10 +28,13 @@ typedef tbb::concurrent_vector<TriangulationReportEntry> TriangulationReport;
 
 template <uint D, typename Precision> class DCTriangulator : public Triangulator<D, Precision> {
 public:
-  DCTriangulator(const dBox<D, Precision> &_bounds, const uint _baseThreshold,
-               dPoints<D, Precision> &_points,
-               std::unique_ptr<Partitioner<D, Precision>> &&_partitioner,
-               const uint gridOccupancy = 1);
+
+
+    DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
+                 const uint _baseThreshold,
+                 const unsigned char splitter,
+                 const uint gridOccupancy = 1,
+                 const bool parallelBaseSolver = false);
 
   const TriangulationReport &getTriangulationReport() const {
     return triangulationReport;
@@ -77,12 +80,13 @@ protected:
       const dSimplices<D, Precision> &realDT,
       const Partitioning<D, Precision> *partitioning = nullptr) const;
 
+
 protected:
   const uint baseThreshold;
 
   TriangulationReport triangulationReport;
   std::unique_ptr<Partitioner<D, Precision>> partitioner;
-  std::unique_ptr<CGALTriangulator<D, Precision>> baseTriangulator;
+  std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
 
 protected:
   static constexpr Precision SAFETY = 100;

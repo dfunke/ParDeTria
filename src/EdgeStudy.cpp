@@ -16,9 +16,8 @@ public:
   PartitionEdgeSizeStudy(
       std::ofstream &_out, std::mutex &_outMtx,
       const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
-      std::unique_ptr<Partitioner<D, Precision>> &&_partitioner)
-      : DCTriangulator<D, Precision>(_bounds, 0, _points,
-                                   std::move(_partitioner)),
+      const unsigned char splitter)
+      : DCTriangulator<D, Precision>(_bounds, _points, 0, splitter),
         out(_out), outMtx(_outMtx) {
 
     auto partitioning =
@@ -78,16 +77,13 @@ void studyPartitionEdgeSize(const uint N, const char splitter) {
 
   DCTriangulator<D, Precision>::VERIFY = false;
 
-  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
-
   std::mutex mtx;
   tbb::parallel_for(
       std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)), [&](const uint i) {
         uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
         LOG("Testing with " << n << " points" << std::endl);
         auto points = genPoints(n, bounds, dice);
-        PartitionEdgeSizeStudy<D, Precision> es(f, mtx, bounds, points,
-                                                std::move(partitioner_ptr));
+        PartitionEdgeSizeStudy<D, Precision> es(f, mtx, bounds, points, splitter);
       });
 }
 

@@ -38,31 +38,40 @@ constexpr Precision DCTriangulator<D, Precision>::SAFETY;
 
 template <uint D, typename Precision>
 DCTriangulator<D, Precision>::DCTriangulator(
-    const dBox<D, Precision> &_bounds, const uint _baseThreshold,
+    const dBox<D, Precision> &_bounds,
     dPoints<D, Precision> &_points,
-    std::unique_ptr<Partitioner<D, Precision>> &&_partitioner,
-    const uint gridOccupancy)
-    : Triangulator<D, Precision>(_bounds, _points), baseThreshold(_baseThreshold),
-      partitioner(std::move(_partitioner)) {
+    const uint _baseThreshold,
+    const unsigned char splitter,
+    const uint gridOccupancy,
+    const bool parallelBaseSolver)
+    : Triangulator<D, Precision>(_bounds, _points), baseThreshold(_baseThreshold) {
 
-  // add infinite points to data set
-  auto stats = getPointStats(std::size_t(0), this->points.size(), this->points);
-  for (uint i = 0; i < pow(2, D); ++i) {
+
+    // add infinite points to data set
+    auto stats = getPointStats(std::size_t(0), this->points.size(), this->points);
+    for (uint i = 0; i < pow(2, D); ++i) {
     VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
-                         << stats.max << std::endl);
+         << stats.max << std::endl);
 
     dPoint<D, Precision> p;
     p.id = dPoint<D, Precision>::cINF | i;
     p.coords = stats.mid;
 
     for (uint d = 0; d < D; ++d)
-      p.coords[d] +=
-          (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
+    p.coords[d] +=
+    (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
 
     this->points.emplace_back(p);
-  }
+    }
 
-    baseTriangulator = std::make_unique<CGALTriangulator<D, Precision>>(this->baseBounds, this->points, gridOccupancy);
+    if(parallelBaseSolver)
+        baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, true>>(this->baseBounds, this->points, gridOccupancy);
+    else
+        baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, false>>(this->baseBounds, this->points, gridOccupancy);
+
+    if(splitter != 0)
+        partitioner = Partitioner<D, Precision>::make(splitter);
+
 }
 
 template <uint D, typename Precision>
