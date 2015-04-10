@@ -10,6 +10,13 @@ include(LibFindMacros)
 # Use pkg-config to get hints about paths
 libfind_pkg_check_modules(EJDB_PKGCONF tcejdb)
 
+# Include dir
+find_path(EJDB_INCLUDE_DIR
+  NAMES ejdb.h
+  PATHS ${EJDB_PKGCONF_INCLUDE_DIRS}
+  PATH_SUFFIXES tcejdb
+)
+
 # Finally the library itself
 find_library(EJDB_LIBRARY
   NAMES ejdb tcejdb
@@ -18,6 +25,7 @@ find_library(EJDB_LIBRARY
 
 # Set the include dir variables and the libraries and let libfind_process do the rest.
 # NOTE: Singular variables for this library, plural for libraries this this lib depends on.
+set(EJDB_PROCESS_INCLUDES EJDB_INCLUDE_DIR)
 set(EJDB_PROCESS_LIBS EJDB_LIBRARY)
 libfind_process(EJDB)
 
