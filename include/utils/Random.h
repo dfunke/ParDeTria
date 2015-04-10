@@ -22,6 +22,22 @@ std::mt19937 generator(SEED);
  * auto dice = std::bind ( distribution, generator );
  */
 
+template <typename Precision>
+class DistributionFactory{
+
+public:
+  static std::function<Precision()> make(const unsigned char type){
+
+    switch(type){
+      case 'u':
+      default:
+        std::uniform_real_distribution<Precision> distribution(0, 1);
+        return std::bind(distribution, generator);
+    }
+  }
+
+};
+
 template <uint D, typename Precision>
 dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
                                 std::function<Precision()> &dice) {
