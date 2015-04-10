@@ -20,9 +20,9 @@ std::atomic<uint> tetrahedronID(0);
 
 #include <CGAL/Unique_hash_map.h>
 
-template <uint D, typename Precision, class Tria, bool Parallel = true> class CGALHelper;
+template <uint D, typename Precision, class Tria, bool Parallel = false> class CGALHelper;
 
-template <typename Precision, class Tria> class CGALHelper<2, Precision, Tria> {
+template <typename Precision, class Tria, bool Parallel> class CGALHelper<2, Precision, Tria, Parallel> {
 
 public:
   CGALHelper(__attribute__((unused)) const dBox<2, Precision> &bounds,
@@ -83,8 +83,7 @@ template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria, t
 public:
   CGALHelper(const dBox<3, Precision> &bounds, const uint N)
       : lockingDS(CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
-                               bounds.high[0], bounds.high[1], bounds.high[2]),
-                  N) {}
+                               bounds.high[0], bounds.high[1], bounds.high[2]), N) {}
 
   typename Tria::Finite_cells_iterator begin(Tria &t) {
     return t.finite_cells_begin();
@@ -118,7 +117,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
               const uint gridOccupancy
               /*, bool filterInfinite */) {
 
-  CGALHelper<D, Precision, Tria, Parallel> helper(bounds, ids.size() / gridOccupancy);
+  CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::max(std::size_t(1), ids.size() / gridOccupancy));
 
   // copy points into CGAL structure
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
@@ -282,12 +281,14 @@ protected:
 };
 
 // specializations
-template class CGALTriangulator<2, float>;
+template class CGALTriangulator<2, float, true>;
+template class CGALTriangulator<2, float, false>;
 
 template class CGALTriangulator<3, float, true>;
 template class CGALTriangulator<3, float, false>;
 
-template class CGALTriangulator<2, double>;
+template class CGALTriangulator<2, double, true>;
+template class CGALTriangulator<2, double, false>;
 
 template class CGALTriangulator<3, double, true>;
 template class CGALTriangulator<3, double, false>;
