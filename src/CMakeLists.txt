@@ -82,8 +82,10 @@ target_link_libraries(Benchmark
   Geometry
   DCTriangulator
   Painting
+  DBConn
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${EJDB_LIBRARIES}
 )
 
 add_executable(EdgeStudy

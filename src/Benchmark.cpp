@@ -11,88 +11,203 @@
 #include "utils/Timings.h"
 #include "utils/System.h"
 #include "utils/ASSERT.h"
+#include "utils/DBConnection.h"
 #include "utils/Serialization.hxx"
 
 #include <boost/program_options.hpp>
+#include <tbb/task_scheduler_init.h>
 
 //**************************
 
 #define D 3
 #define Precision double
+#define REPS 10
 
-//**************************
+std::vector<unsigned char> splitters = { 'c' };
+std::vector<unsigned char> triangulators = { 'c', 'm', 'd' };
+std::vector<unsigned char> distributions = { 'u' };
+std::vector<uint> occupancies = { 10, 50, 100, 1000 };
 
-struct TriangulateReturn {
-  TriangulationReport tr;
-  bool exception;
-  tDuration time;
-};
+DBConnection db("data_" + getHostname() + ".dat", "benchmarks");
 
-//**************************
+void runExperiment(ExperimentRun & run) {
 
-TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
-                              const uint baseCase,
-                              dPoints<D, Precision> &points,
-                              const unsigned char splitter) {
-
-  std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr = Partitioner<D, Precision>::make(splitter);
-
-  DCTriangulator<D, Precision> triangulator(bounds, baseCase, points,
-                                          std::move(partitioner_ptr));
-
-  TriangulateReturn ret;
-
-  try {
-
-    auto t1 = Clock::now();
-    auto dt = triangulator.triangulate();
-    auto t2 = Clock::now();
-
-    ret.tr = triangulator.getTriangulationReport();
-    ret.exception = false;
-    ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
-
-  } catch (AssertionException &e) {
-    std::cerr << "Assertion failed - ABORTING - n =  " << points.size()
-              << " p = " << splitter << std::endl;
-    std::cerr << e.what() << std::endl;
-
-    // output points
-    storeObject(points, "assertionFailed_" + std::to_string(points.size()) +
-                            "_" + (char)splitter + ".dat");
-
-    ret.exception = true;
-  }
-
-  return ret;
-}
-
-//**************************
-
-int benchmark(const uint N, const dBox<D, Precision> &bounds,
-              const uint baseCase, const unsigned char splitter,
-              std::function<Precision()> &&dice) {
-
+  //quite all output and unnecessary computations
   LOGGER.setLogLevel(Logger::Verbosity::SILENT);
   DCTriangulator<D, Precision>::VERIFY = false;
   Painter<D, Precision>::ENABLED = false;
 
-  uint nIterations = 9 * (log10(N) - 1) + 1;
+  //set up distribution
+  unsigned char dist = run.getTrait<unsigned char>("dist");
+  auto dice = DistributionFactory<Precision>::make(dist);
 
-  for (uint i = 0; i < nIterations; ++i) {
-    uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+  //create bounds
+  dBox<D, Precision> bounds;
+  for (uint i = 0; i < D; ++i) {
+    bounds.low[i] = 0;
+    bounds.high[i] = 100;
+  }
 
-    auto points = genPoints(n, bounds, dice);
+  //generate Points
+  uint nPoints = run.getTrait<uint>("nP");
+  auto points = genPoints(nPoints, bounds, dice);
 
-    auto ret = triangulate(bounds, baseCase, points, splitter);
+  std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
+  unsigned char alg = run.traits().at("alg")[0];
 
-    std::cout << "RESULT"
-              << " n=" << n << " splitter=" << splitter
-              << " basecase=" << baseCase << " time=" << ret.time.count()
-              << std::endl;
-  };
+  uint threads = 1;
 
-  return EXIT_SUCCESS;
+  if(alg == 'c'){
+      triangulator_ptr =
+              std::make_unique<CGALTriangulator<D, Precision, false>>(bounds, points);
+  } else {
+    uint gridOccupancy = run.getTrait<uint>("occupancy");
+    threads = run.getTrait<uint>("threads");
+
+    if(alg == 'm'){
+      triangulator_ptr =
+              std::make_unique<CGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
+    } else {
+      uint basecase = run.getTrait<uint>("basecase");
+      unsigned char splitter = run.getTrait<unsigned char>("splitter");
+      bool parBase = run.getTrait<bool>("parallel-base");
+
+      triangulator_ptr =
+              std::make_unique<DCTriangulator<D, Precision>>(bounds, points, basecase, splitter, gridOccupancy, parBase);
+    }
+  }
+
+  // load scheduler with specified number of threads
+  tbb::task_scheduler_init init(threads);
+
+  try {
+
+    for(uint i = 0; i < REPS; ++i) {
+      auto t1 = Clock::now();
+      auto dt = triangulator_ptr->triangulate();
+      auto t2 = Clock::now();
+
+      run.addMemory(getCurrentRSS());
+      run.addTime(std::chrono::duration_cast<tDuration>(t2 - t1));
+    }
+
+  } catch (AssertionException &e) {
+    std::cerr << "Experiment: " << run.str() << std::endl;
+    std::cerr << "\tAssertion failed: " << e.what() << std::endl;
+
+    // output points
+    storeObject(points, "assertionFailed_" + run.str("_") + ".dat");
+  }
+
+  db.save(run);
+}
+
+//**************************
+
+void runExperiments(std::vector<ExperimentRun> & runs){
+
+  for(uint i = 0; i < runs.size(); ++i){
+    std::cout << i << "/" << runs.size() << ": " << runs[i].str() << std::endl;
+
+    runExperiment(runs[i]);
+
+    std::cout << "\tAverage time: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(runs[i].avgTime()).count()
+              << " ms" << std::endl;
+  }
+
+}
+
+//**************************
+
+std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
+
+  std::vector<ExperimentRun> runs;
+
+  //determine maximum number of threads
+  uint maxThreads = tbb::task_scheduler_init::default_num_threads();
+
+  //loop over distributions
+  for(const unsigned char dist : distributions){
+
+    //loop over number of points
+    uint nPointsIterations = 9 * (log10(N) - 1) + 1;
+    for (uint i = 0; i < nPointsIterations; ++i) {
+      uint nPoints = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+
+      //loop over triangulators
+      for(const unsigned char alg : triangulators){
+
+        if(alg == 'c'){
+
+          ExperimentRun run;
+          run.addTrait("dist", dist);
+          run.addTrait("nP", nPoints);
+          run.addTrait("alg", alg);
+
+          runs.emplace_back(run);
+
+        } else {
+
+          //loop over number of threads, if algo is multi-threaded
+          for (uint threads = 1; threads <= maxThreads; threads <<= 1) {
+
+            //loop over gridOccupancy
+            for(const uint occ : occupancies){
+
+              if(alg == 'm'){
+                ExperimentRun run;
+                run.addTrait("dist", dist);
+                run.addTrait("nP", nPoints);
+                run.addTrait("alg", alg);
+                run.addTrait("threads", threads);
+                run.addTrait("occupancy", occ);
+
+                runs.emplace_back(run);
+
+              } else {
+
+                //loop over splitters
+                for(const unsigned char splitter : splitters){
+
+                  //loop over base cases
+                  for(uint basecase = 500; basecase <= std::max(500u, nPoints / 2); basecase <<= 2){
+
+                    ExperimentRun runSeq;
+                    runSeq.addTrait("dist", dist);
+                    runSeq.addTrait("nP", nPoints);
+                    runSeq.addTrait("alg", alg);
+                    runSeq.addTrait("threads", threads);
+                    runSeq.addTrait("occupancy", occ);
+                    runSeq.addTrait("splitter", splitter);
+                    runSeq.addTrait("basecase", basecase);
+                    runSeq.addTrait("parallel-base", false);
+
+                    runs.emplace_back(runSeq);
+
+                    ExperimentRun runPar;
+                    runPar.addTrait("dist", dist);
+                    runPar.addTrait("nP", nPoints);
+                    runPar.addTrait("alg", alg);
+                    runPar.addTrait("threads", threads);
+                    runPar.addTrait("occupancy", occ);
+                    runPar.addTrait("splitter", splitter);
+                    runPar.addTrait("basecase", basecase);
+                    runPar.addTrait("parallel-base", true);
+
+                    runs.emplace_back(runPar);
+
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return runs;
 }
 
 int main(int argc, char *argv[]) {
@@ -101,18 +216,11 @@ int main(int argc, char *argv[]) {
 
   namespace po = boost::program_options;
 
-  unsigned char p;
   uint N;
-  uint baseCase;
 
   po::options_description cCommandLine("Command Line Options");
   cCommandLine.add_options()("n", po::value<uint>(&N),
                              "maximum number of points");
-  cCommandLine.add_options()("basecase", po::value<uint>(&baseCase),
-                             "threshold for base case");
-  cCommandLine.add_options()(
-      "splitter", po::value<unsigned char>(&p),
-      "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -125,30 +233,15 @@ int main(int argc, char *argv[]) {
   }
 
   // plausability checks
-  bool valid = true;
-  if ((!vm.count("basecase"))) {
-    std::cout << "Please specify basecase threshold" << std::endl;
-    valid = false;
-  }
-
-  if ((!vm.count("splitter"))) {
-    std::cout << "Please specify splitter" << std::endl;
-    valid = false;
-  }
-
-  if (!valid)
+  if ((!vm.count("n"))) {
+    std::cout << "Please specify number of points" << std::endl;
     return EXIT_FAILURE;
+  }
 
   //***************************************************************************
 
-  dBox<D, Precision> bounds;
-  for (uint i = 0; i < D; ++i) {
-    bounds.low[i] = 0;
-    bounds.high[i] = 100;
-  }
+  auto runs = generateExperimentRuns(N);
+  runExperiments(runs);
 
-  std::uniform_real_distribution<Precision> distribution(0, 1);
-  std::function<Precision()> dice = std::bind(distribution, generator);
-
-  return benchmark(N, bounds, baseCase, p, std::move(dice));
+  return EXIT_SUCCESS;
 }
