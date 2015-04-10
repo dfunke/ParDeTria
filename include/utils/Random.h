@@ -63,3 +63,39 @@ dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
 
   return points;
 }
+
+template<uint D, typename Precision>
+class RandomPointHolder {
+
+public:
+  typedef std::pair<unsigned char, uint> point_key;
+  typedef std::map<point_key, dPoints<D, Precision>> point_map;
+
+  void fill(unsigned char dist, uint N, const dBox<D, Precision> &bounds){
+
+    auto dice = DistributionFactory<Precision>::make(dist);
+
+    //loop over number of points
+    uint nPointsIterations = 9 * (log10(N) - 1) + 1;
+    for (uint i = 0; i < nPointsIterations; ++i) {
+      uint nPoints = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+
+      auto points = genPoints<D, Precision>(nPoints, bounds, dice);
+
+      m_points.emplace(point_key(dist, nPoints), points);
+
+    }
+  }
+
+  dPoints<D, Precision> get(const point_key & key) const {
+    return dPoints<D,Precision>(m_points.at(key));
+  }
+
+  dPoints<D, Precision> get(const unsigned char dist, const uint n) const {
+    return get(point_key(dist, n));
+  }
+
+private:
+  point_map m_points;
+
+};
