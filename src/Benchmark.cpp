@@ -29,6 +29,8 @@ std::vector<unsigned char> distributions = { 'u' };
 std::vector<uint> occupancies = { 10, 50, 100, 1000 };
 
 DBConnection db("data_" + getHostname() + ".dat", "benchmarks");
+RandomPointHolder<D, Precision> randomPoints;
+dBox<D, Precision> bounds(dVector<D, Precision>({{0,0,0}}), dVector<D, Precision>({{100,100,100}}));
 
 void runExperiment(ExperimentRun & run) {
 
@@ -37,20 +39,10 @@ void runExperiment(ExperimentRun & run) {
   DCTriangulator<D, Precision>::VERIFY = false;
   Painter<D, Precision>::ENABLED = false;
 
-  //set up distribution
+  //get point set
   unsigned char dist = run.getTrait<unsigned char>("dist");
-  auto dice = DistributionFactory<Precision>::make(dist);
-
-  //create bounds
-  dBox<D, Precision> bounds;
-  for (uint i = 0; i < D; ++i) {
-    bounds.low[i] = 0;
-    bounds.high[i] = 100;
-  }
-
-  //generate Points
   uint nPoints = run.getTrait<uint>("nP");
-  auto points = genPoints(nPoints, bounds, dice);
+  auto points = randomPoints.get(dist, nPoints);
 
   std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
   unsigned char alg = run.traits().at("alg")[0];
@@ -130,6 +122,10 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
   //loop over distributions
   for(const unsigned char dist : distributions){
 
+    //fill random point holder
+    randomPoints.fill(dist, N, bounds);
+
+    //create ExperimentRuns
     //loop over number of points
     uint nPointsIterations = 9 * (log10(N) - 1) + 1;
     for (uint i = 0; i < nPointsIterations; ++i) {
