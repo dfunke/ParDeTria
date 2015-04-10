@@ -45,6 +45,11 @@ template <uint D, typename Precision> struct dBox {
   dVector<D, Precision> low;
   dVector<D, Precision> high;
 
+  dBox() { }
+
+  dBox(const dVector<D, Precision> & _low, const dVector<D, Precision> & _high)
+          : low(_low), high(_high) { }
+
   bool contains(const dVector<D, Precision> &p) const {
     for (uint d = 0; d < D; ++d) {
       if (!(low[d] <= p[d] && p[d] <= high[d]))
