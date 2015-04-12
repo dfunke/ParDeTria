@@ -67,6 +67,7 @@ public:
   }
 
   tDuration avgTime() const;
+  std::size_t avgMem() const;
 
   std::string str(std::string _sep = "   ") const;
 

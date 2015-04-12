@@ -44,3 +44,13 @@ tDuration ExperimentRun::avgTime() const {
 
     return avg / m_times.size();
 }
+
+std::size_t ExperimentRun::avgMem() const {
+
+    std::size_t avg(0);
+
+    for(const auto & t : m_mem)
+        avg += t;
+
+    return avg / m_mem.size();
+}
