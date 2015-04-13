@@ -91,7 +91,8 @@ void runExperiment(ExperimentRun & run) {
     std::cerr << "\tException raised: " << e.what() << std::endl;
 
     // output points
-    storeObject(points, "assertionFailed_" + run.str("_") + ".dat");
+    std::ofstream errFile("failedExperiments", std::ios::out | std::ios::app);
+    errFile << run.str() << std::endl;
   }
 
   db.save(run);
@@ -219,10 +220,13 @@ int main(int argc, char *argv[]) {
   namespace po = boost::program_options;
 
   uint N;
+  std::string runFile;
 
   po::options_description cCommandLine("Command Line Options");
   cCommandLine.add_options()("n", po::value<uint>(&N),
                              "maximum number of points");
+  cCommandLine.add_options()("runs", po::value<std::string>(&runFile),
+                             "file containing experiments to run");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -234,15 +238,25 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
   }
 
-  // plausability checks
-  if ((!vm.count("n"))) {
-    std::cout << "Please specify number of points" << std::endl;
-    return EXIT_FAILURE;
-  }
-
   //***************************************************************************
 
-  auto runs = generateExperimentRuns(N);
+  std::vector<ExperimentRun> runs;
+  if(!vm.count("runs")){
+    if ((!vm.count("n"))) {
+      std::cout << "Please specify number of points" << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    runs = generateExperimentRuns(N);
+  } else {
+    std::ifstream input(runFile);
+
+    for( std::string line; getline( input, line ); )
+    {
+      runs.emplace_back(line);
+    }
+  }
+
   runExperiments(runs);
 
   return EXIT_SUCCESS;

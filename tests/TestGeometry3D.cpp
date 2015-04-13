@@ -4,6 +4,7 @@
 TEST(Geometry3D, SimpleInSphere) {
 
   dPoints<3, float> points;
+  points.resize(7);
 
   const uint A = 0;
   const uint B = 1;

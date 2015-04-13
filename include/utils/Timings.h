@@ -23,6 +23,8 @@ public:
 
   ExperimentRun();
 
+  ExperimentRun(const std::string & run, std::string _traitSep = "   ", std::string _innerSep = ": ");
+
   void addTrait(const std::string & name, const std::string & value){
     m_traits.emplace(name, value);
   }
@@ -69,7 +71,9 @@ public:
   tDuration avgTime() const;
   std::size_t avgMem() const;
 
-  std::string str(std::string _sep = "   ") const;
+  std::string str(std::string _traitSep = "   ", std::string _innerSep = ": ") const;
+
+  bool operator ==(const ExperimentRun & o) const;
 
 private:
   std::map<std::string, std::string> m_traits;
@@ -77,3 +81,5 @@ private:
   std::vector<std::size_t> m_mem;
 
 };
+
+std::ostream &operator<<(std::ostream &o, const ExperimentRun &p);
