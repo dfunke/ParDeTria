@@ -83,7 +83,11 @@ template <typename Precision, class Tria> class CGALHelper<3, Precision, Tria, t
 public:
   CGALHelper(const dBox<3, Precision> &bounds, const uint N)
       : lockingDS(CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
-                               bounds.high[0], bounds.high[1], bounds.high[2]), N) {}
+                               bounds.high[0], bounds.high[1], bounds.high[2]),
+                               std::min(
+                                       std::max(1u, N),
+                                       (uint) std::floor(std::cbrt(std::numeric_limits<int>::max()))
+                               )) {}
 
   typename Tria::Finite_cells_iterator begin(Tria &t) {
     return t.finite_cells_begin();
@@ -117,7 +121,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
               const uint gridOccupancy
               /*, bool filterInfinite */) {
 
-  CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::max(std::size_t(1), ids.size() / gridOccupancy));
+  CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
   // copy points into CGAL structure
   std::vector<std::pair<typename Tria::Point, uint>> cPoints;
