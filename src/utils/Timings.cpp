@@ -70,7 +70,10 @@ tDuration ExperimentRun::avgTime() const {
     for(const auto & t : m_times)
         avg += t;
 
-    return avg / m_times.size();
+    if(m_times.size() > 0)
+        avg /= m_times.size();
+
+    return avg;
 }
 
 std::size_t ExperimentRun::avgMem() const {
@@ -80,7 +83,10 @@ std::size_t ExperimentRun::avgMem() const {
     for(const auto & t : m_mem)
         avg += t;
 
-    return avg / m_mem.size();
+    if(m_mem.size() > 0)
+        avg /= m_mem.size();
+
+    return avg;
 }
 
 bool ExperimentRun::operator==(const ExperimentRun &o) const {
