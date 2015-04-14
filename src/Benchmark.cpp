@@ -117,7 +117,7 @@ void runExperiments(std::vector<ExperimentRun> & runs){
 
 //**************************
 
-std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 0) {
+std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10) {
 
   std::vector<ExperimentRun> runs;
 
@@ -129,12 +129,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
     //create ExperimentRuns
     //loop over number of points
-    uint nPointsIterations = 9 * (log10(maxN) - 1) + 1;
-    for (uint i = 0; i < nPointsIterations; ++i) {
-      uint nPoints = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
-
-      if(nPoints < minN)
-        continue;
+    for (uint nPoints = minN; nPoints <= maxN; nPoints += pow(10, floor(log10(nPoints)))) {
 
       //loop over triangulators
       for(const unsigned char alg : triangulators){
@@ -222,7 +217,7 @@ int main(int argc, char *argv[]) {
 
   namespace po = boost::program_options;
 
-  uint maxN, minN = 0;
+  uint maxN, minN = 10;
   std::string runFile;
   std::string run;
 
@@ -235,6 +230,7 @@ int main(int argc, char *argv[]) {
                              "file containing experiments to run");
   cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                              "string describing an experiment to run");
+  cCommandLine.add_options()("gen-only", "just generate test-cases");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -267,7 +263,12 @@ int main(int argc, char *argv[]) {
     runs = generateExperimentRuns(maxN, minN);
   }
 
-  runExperiments(runs);
+  if(vm.count("gen-only")){
+   for(const auto & r : runs)
+     std::cout << r.str() << std::endl;
+  } else {
+    runExperiments(runs);
+  }
 
   return EXIT_SUCCESS;
 }
