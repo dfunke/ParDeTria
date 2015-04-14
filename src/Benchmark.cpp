@@ -140,6 +140,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
           run.addTrait("dist", dist);
           run.addTrait("nP", nPoints);
           run.addTrait("alg", alg);
+          run.addTrait("threads", 1);
 
           runs.emplace_back(run);
 
