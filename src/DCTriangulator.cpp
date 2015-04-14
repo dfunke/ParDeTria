@@ -34,6 +34,9 @@
 template <uint D, typename Precision>
 constexpr Precision DCTriangulator<D, Precision>::SAFETY;
 
+template <uint D, typename Precision>
+constexpr Precision DCTriangulator<D, Precision>::ADAPTION_FACTOR;
+
 //**************************
 
 template <uint D, typename Precision>
@@ -1086,9 +1089,17 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
     paintEdges.save(provenance + "_03_edgeMarked");
 #endif
 
-    LOG("Triangulating edges" << std::endl);
-    INDENT
-    auto edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
+      dSimplices<D, Precision> edgeDT;
+
+      if(edgePointIds.size() < ADAPTION_FACTOR * partitionPoints.size()) {
+          LOG("Triangulating edges recursively" << std::endl);
+          INDENT
+          edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
+      } else {
+          LOG("Triangulating edges with basecase" << std::endl);
+          INDENT
+          edgeDT = _triangulateBase(edgePointIds, bounds, provenance + "e");
+      }
     LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
                                        << std::endl
                                        << std::endl);

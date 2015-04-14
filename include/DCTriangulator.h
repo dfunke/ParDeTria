@@ -90,4 +90,5 @@ protected:
 
 protected:
   static constexpr Precision SAFETY = 100;
+  static constexpr Precision ADAPTION_FACTOR = 0.75;
 };
