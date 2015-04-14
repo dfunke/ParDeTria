@@ -23,7 +23,7 @@
 
 //**************************
 
-#define D 2
+#define D 3
 #define Precision double
 
 //**************************
@@ -257,11 +257,15 @@ int main(int argc, char *argv[]) {
     TriangulateReturn ret;
     if(vm.count("seq-fault")){
       ulong i = 0;
+      std::random_device rd;
+      tGenerator gen(rd());
+      std::function<Precision()> dice = std::bind(distribution, gen);
       for(;;) {
         std::cout << "." << std::flush;
         if(++i % 80 == 0)
           std::cout << std::endl;
 
+        points = genPoints(N, bounds, dice);
         triangulate(bounds, baseCase, points, p);
       }
     } else
