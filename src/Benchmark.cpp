@@ -117,7 +117,7 @@ void runExperiments(std::vector<ExperimentRun> & runs){
 
 //**************************
 
-std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
+std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 0) {
 
   std::vector<ExperimentRun> runs;
 
@@ -129,9 +129,12 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint N) {
 
     //create ExperimentRuns
     //loop over number of points
-    uint nPointsIterations = 9 * (log10(N) - 1) + 1;
+    uint nPointsIterations = 9 * (log10(maxN) - 1) + 1;
     for (uint i = 0; i < nPointsIterations; ++i) {
       uint nPoints = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+
+      if(nPoints < minN)
+        continue;
 
       //loop over triangulators
       for(const unsigned char alg : triangulators){
@@ -219,14 +222,19 @@ int main(int argc, char *argv[]) {
 
   namespace po = boost::program_options;
 
-  uint N;
+  uint maxN, minN = 0;
   std::string runFile;
+  std::string run;
 
   po::options_description cCommandLine("Command Line Options");
-  cCommandLine.add_options()("n", po::value<uint>(&N),
+  cCommandLine.add_options()("n", po::value<uint>(&maxN),
                              "maximum number of points");
+  cCommandLine.add_options()("minN", po::value<uint>(&minN),
+                             "minimum number of points");
   cCommandLine.add_options()("runs", po::value<std::string>(&runFile),
                              "file containing experiments to run");
+  cCommandLine.add_options()("run-string", po::value<std::string>(&run),
+                             "string describing an experiment to run");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -241,20 +249,22 @@ int main(int argc, char *argv[]) {
   //***************************************************************************
 
   std::vector<ExperimentRun> runs;
-  if(!vm.count("runs")){
-    if ((!vm.count("n"))) {
-      std::cout << "Please specify number of points" << std::endl;
-      return EXIT_FAILURE;
-    }
-
-    runs = generateExperimentRuns(N);
-  } else {
+  if(vm.count("runs")){
     std::ifstream input(runFile);
 
     for( std::string line; getline( input, line ); )
     {
       runs.emplace_back(line);
     }
+  } else if(vm.count("run-string")) {
+    runs.emplace_back(run);
+  } else {
+    if ((!vm.count("n"))) {
+      std::cout << "Please specify number of points" << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    runs = generateExperimentRuns(maxN, minN);
   }
 
   runExperiments(runs);
