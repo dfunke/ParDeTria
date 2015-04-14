@@ -88,6 +88,7 @@ target_link_libraries(Benchmark
   ${EJDB_LIBRARIES}
 )
 
+
 add_executable(EdgeStudy
   EdgeStudy.cpp
 )
@@ -107,4 +108,24 @@ target_link_libraries(WhereUsedStudy
   Geometry
   DCTriangulator
 )
+
+add_executable(CGALBenchmark
+  CGALTriangulator.cpp
+)
+
+target_link_libraries(CGALBenchmark
+  Triangulator
+  Logging
+  Geometry
+  Measurements
+  DBConn
+  ${CGAL_LIBRARY}
+  ${GMP_LIBRARIES}
+  ${TBB_MALLOC_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
+  ${Boost_LIBRARIES}
+  ${EJDB_LIBRARIES}
+)
+
+set_target_properties(CGALBenchmark PROPERTIES COMPILE_DEFINITIONS "CGAL_BENCHMARK")
 

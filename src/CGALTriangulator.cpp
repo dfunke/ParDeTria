@@ -296,3 +296,134 @@ template class CGALTriangulator<2, double, false>;
 
 template class CGALTriangulator<3, double, true>;
 template class CGALTriangulator<3, double, false>;
+
+//#define CGAL_BENCHMARK
+#ifdef CGAL_BENCHMARK
+
+#include <boost/program_options.hpp>
+
+#include "utils/Random.h"
+#include "utils/Timings.h"
+#include "utils/System.h"
+#include "utils/DBConnection.h"
+
+#define D 3
+#define Precision double
+#define REPS 10
+
+int main(int argc, char *argv[]) {
+
+  // define program options
+
+  namespace po = boost::program_options;
+
+  uint maxN, minN = 10;
+  std::string runFile;
+  std::string run;
+
+  po::options_description cCommandLine("Command Line Options");
+  cCommandLine.add_options()("n", po::value<uint>(&maxN),
+                             "maximum number of points");
+  cCommandLine.add_options()("minN", po::value<uint>(&minN),
+                             "minimum number of points");
+  cCommandLine.add_options()("help", "produce help message");
+
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
+  po::notify(vm);
+
+  if (vm.count("help")) {
+    std::cout << cCommandLine << std::endl;
+    return EXIT_SUCCESS;
+  }
+
+  //***************************************************************************
+
+  typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+  typedef CGAL::Triangulation_data_structure_3<
+          Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Parallel_tag> Tds;
+  typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
+
+  //setup
+  uint maxThreads = tbb::task_scheduler_init::default_num_threads();
+  std::vector<uint> occupancies = { 10, 50, 100, 1000 };
+  dBox<D, Precision> bounds(dVector<D, Precision>({{0,0,0}}), dVector<D, Precision>({{100,100,100}}));
+  LOGGER.setLogLevel(Logger::Verbosity::SILENT);
+
+  DBConnection db("db_" + getHostname() + ".dat", "pureCGAL");
+
+  //loop over number of points
+  for (uint nPoints = minN; nPoints <= maxN; nPoints += pow(10, floor(log10(nPoints)))) {
+
+    tGenerator gen(START_SEED);
+    auto dice = RandomFactory<Precision>::make('u', gen);
+    auto points = genPoints(nPoints, bounds, dice);
+
+    // copy points into CGAL structure
+    std::vector<std::pair<typename CT::Point, uint>> cPoints;
+    cPoints.reserve(points.size());
+    for (const auto &p : points) {
+      auto cp = CT::Point(p.coords[0], p.coords[1], p.coords[2]);
+      cPoints.push_back(std::make_pair(cp, p.id));
+    }
+
+    //loop over number of threads, if algo is multi-threaded
+    for (uint threads = 1; threads <= maxThreads; threads <<= 1) {
+
+      // load scheduler with specified number of threads
+      tbb::task_scheduler_init init(threads);
+
+      //loop over occupancies
+      for(uint occ : occupancies) {
+
+        ExperimentRun run;
+        run.addTrait("dist", "u");
+        run.addTrait("nP", nPoints);
+        run.addTrait("alg", "m");
+        run.addTrait("threads", threads);
+        run.addTrait("occupancy", occ);
+
+        try {
+
+          for(uint i = 0; i < REPS; ++i) {
+
+            CT::Lock_data_structure lds(
+                    CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
+                         bounds.high[0], bounds.high[1], bounds.high[2]),
+                    std::min(
+                            std::max(1u, (uint) std::floor(std::cbrt(points.size() / occ))),
+                            (uint) std::floor(std::cbrt(std::numeric_limits<int>::max())))
+                    );
+
+            CT tria(&lds);
+
+            auto t1 = Clock::now();
+            tria.insert(cPoints.begin(), cPoints.end());
+            auto t2 = Clock::now();
+
+            run.addMemory(getCurrentRSS());
+            run.addTime(std::chrono::duration_cast<tDuration>(t2 - t1));
+          }
+
+        } catch (std::exception &e) {
+          std::cerr << "Experiment: " << run.str() << std::endl;
+          std::cerr << "\tException raised: " << e.what() << std::endl;
+        }
+
+        std::cout << run.str() << std::endl;
+        std::cout << "\tAverage time: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(run.avgTime()).count()
+        << " ms\tAverage mem: "
+        << run.avgMem() << " MB" << std::endl;
+
+        db.save(run);
+
+        }
+
+      }
+    }
+
+  return EXIT_SUCCESS;
+}
+
+#endif
