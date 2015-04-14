@@ -164,6 +164,7 @@ int main(int argc, char *argv[]) {
   cCommandLine.add_options()("study", "study mode");
   cCommandLine.add_options()("no-verify", "don't verify triangulation");
   cCommandLine.add_options()("no-output", "don't output triangulation");
+  cCommandLine.add_options()("seq-fault", "run triangulation until seq fault occurs");
   cCommandLine.add_options()("verbosity", po::value<int>(&verbosity),
                              "verbosity");
   cCommandLine.add_options()("points", po::value<std::string>(&pointFile),
@@ -253,7 +254,18 @@ int main(int argc, char *argv[]) {
       points = genPoints(N, bounds, dice);
     }
 
-    auto ret = triangulate(bounds, baseCase, points, p);
+    TriangulateReturn ret;
+    if(vm.count("seq-fault")){
+      ulong i = 0;
+      for(;;) {
+        std::cout << "." << std::flush;
+        if(++i % 80 == 0)
+          std::cout << std::endl;
+
+        triangulate(bounds, baseCase, points, p);
+      }
+    } else
+      ret = triangulate(bounds, baseCase, points, p);
 
     LOG("Triangulating "
         << points.size() << " points took "
