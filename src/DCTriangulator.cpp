@@ -14,12 +14,11 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_do.h>
 #include <tbb/parallel_sort.h>
-#include <tbb/task_scheduler_init.h>
 
 // debug
-//#ifndef NDEBUG
+#ifndef NDEBUG
 #include <csignal>
-//#endif
+#endif
 
 // own
 #include "Geometry.h"
@@ -600,9 +599,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   // delete all simplices belonging to the edge from DT
   LOG("Striping triangulation from edge" << std::endl);
 
-  tbb::spin_mutex eraseMtx;
-    //std::array<tbb::spin_mutex, 32> whereUsedMtx;
-
+    // first update whereUsed data structure
   tbb::parallel_for(
       std::size_t(0), edgeSimplices.bucket_count(), [&](const uint i) {
 
@@ -613,38 +610,25 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
           ASSERT(DT.contains(id));
 
-            if(!DT.contains(id))
-                raise(SIGINT);
-
           // remove simplex from where used list
           for (uint p = 0; p < D + 1; ++p) {
 
-              dSimplex<D, Precision> sim = DT[id];
-
-              if(!DT.contains(id))
-                  raise(SIGINT);
-
-              if(sim.id != id)
-                  raise(SIGINT);
-
-              uint vertex = sim.vertices[p];
-              //tbb::spin_mutex::scoped_lock lock(whereUsedMtx[vertex % 32]);
-
+              uint vertex = DT[id].vertices[p];
             auto wu = std::find(DT.whereUsed[vertex].begin(),
                                 DT.whereUsed[vertex].end(), id);
 
             ASSERT(wu != DT.whereUsed[vertex].end());
 
-            // lock.upgrade_to_writer();
-            // no need to upgrade to writer here - no invalidation of iterators
-            // possible
+            // compiles to a movl - instruction
+            // guranteed atomicity for properly aligned data
             *wu = dSimplex<D, Precision>::cINF;
           }
-
-          tbb::spin_mutex::scoped_lock lock(eraseMtx);
-          DT.erase(id);
         }
       });
+
+    // then perform the actual delete
+    for(const auto & id : edgeSimplices)
+        DT.erase(id);
 
 //**********************
 #ifndef NDEBUG
