@@ -398,6 +398,8 @@ int main(int argc, char *argv[]) {
         run.addTrait("threads", threads);
         run.addTrait("occupancy", occ);
 
+        std::cout << run.str() << std::endl;
+
         try {
 
           for(uint i = 0; i < REPS; ++i) {
@@ -426,11 +428,10 @@ int main(int argc, char *argv[]) {
           std::cerr << "\tException raised: " << e.what() << std::endl;
         }
 
-        std::cout << run.str() << std::endl;
         std::cout << "\tAverage time: "
         << std::chrono::duration_cast<std::chrono::milliseconds>(run.avgTime()).count()
         << " ms\tAverage mem: "
-        << run.avgMem() << " MB" << std::endl;
+        << run.avgMem() / 1e6 << " MB" << std::endl;
 
         db.save(run);
 
