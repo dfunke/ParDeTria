@@ -15,7 +15,8 @@ std::atomic<uint> tetrahedronID(0);
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Delaunay_triangulation_3.h>
+// #include <CGAL/Delaunay_triangulation_3.h> use modified version
+#include "mods/Delaunay_triangulation_3.h"
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
 #include <CGAL/Unique_hash_map.h>
