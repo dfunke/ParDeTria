@@ -14,11 +14,12 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_do.h>
 #include <tbb/parallel_sort.h>
+#include <tbb/task_scheduler_init.h>
 
 // debug
-#ifndef NDEBUG
+//#ifndef NDEBUG
 #include <csignal>
-#endif
+//#endif
 
 // own
 #include "Geometry.h"
@@ -600,6 +601,8 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   LOG("Striping triangulation from edge" << std::endl);
 
   tbb::spin_mutex eraseMtx;
+    //std::array<tbb::spin_mutex, 32> whereUsedMtx;
+
   tbb::parallel_for(
       std::size_t(0), edgeSimplices.bucket_count(), [&](const uint i) {
 
@@ -610,18 +613,32 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
           ASSERT(DT.contains(id));
 
+            if(!DT.contains(id))
+                raise(SIGINT);
+
           // remove simplex from where used list
           for (uint p = 0; p < D + 1; ++p) {
 
-            auto it = std::find(DT.whereUsed[DT[id].vertices[p]].begin(),
-                                DT.whereUsed[DT[id].vertices[p]].end(), id);
+              dSimplex<D, Precision> sim = DT[id];
 
-            ASSERT(it != DT.whereUsed[DT[id].vertices[p]].end());
+              if(!DT.contains(id))
+                  raise(SIGINT);
+
+              if(sim.id != id)
+                  raise(SIGINT);
+
+              uint vertex = sim.vertices[p];
+              //tbb::spin_mutex::scoped_lock lock(whereUsedMtx[vertex % 32]);
+
+            auto wu = std::find(DT.whereUsed[vertex].begin(),
+                                DT.whereUsed[vertex].end(), id);
+
+            ASSERT(wu != DT.whereUsed[vertex].end());
 
             // lock.upgrade_to_writer();
             // no need to upgrade to writer here - no invalidation of iterators
             // possible
-            *it = dSimplex<D, Precision>::cINF;
+            *wu = dSimplex<D, Precision>::cINF;
           }
 
           tbb::spin_mutex::scoped_lock lock(eraseMtx);
