@@ -117,7 +117,7 @@ void runExperiments(std::vector<ExperimentRun> & runs){
 
 //**************************
 
-std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10) {
+std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10, bool parallel_base = true) {
 
   std::vector<ExperimentRun> runs;
 
@@ -185,17 +185,19 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                       runs.emplace_back(runSeq);
                     }
 
-                    ExperimentRun runPar;
-                    runPar.addTrait("dist", dist);
-                    runPar.addTrait("nP", nPoints);
-                    runPar.addTrait("alg", alg);
-                    runPar.addTrait("threads", threads);
-                    runPar.addTrait("occupancy", occ);
-                    runPar.addTrait("splitter", splitter);
-                    runPar.addTrait("basecase", basecase);
-                    runPar.addTrait("parallel-base", true);
+                    if(parallel_base) {
+                      ExperimentRun runPar;
+                      runPar.addTrait("dist", dist);
+                      runPar.addTrait("nP", nPoints);
+                      runPar.addTrait("alg", alg);
+                      runPar.addTrait("threads", threads);
+                      runPar.addTrait("occupancy", occ);
+                      runPar.addTrait("splitter", splitter);
+                      runPar.addTrait("basecase", basecase);
+                      runPar.addTrait("parallel-base", true);
 
-                    runs.emplace_back(runPar);
+                      runs.emplace_back(runPar);
+                    }
 
                   }
                 }
@@ -219,6 +221,7 @@ int main(int argc, char *argv[]) {
   namespace po = boost::program_options;
 
   uint maxN, minN = 10;
+  uint occupancy = 1;
   std::string runFile;
   std::string run;
 
@@ -231,7 +234,10 @@ int main(int argc, char *argv[]) {
                              "file containing experiments to run");
   cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                              "string describing an experiment to run");
+  cCommandLine.add_options()("occupancy", po::value<uint>(&occupancy),
+                             "specify occupancy of grid lock data structure");
   cCommandLine.add_options()("gen-only", "just generate test-cases");
+  cCommandLine.add_options()("no-parallel-base", "don't use parallel base solver");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -261,7 +267,11 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
 
-    runs = generateExperimentRuns(maxN, minN);
+    if(vm.count("occupancy")){
+      occupancies = { occupancy };
+    }
+
+    runs = generateExperimentRuns(maxN, minN, !vm.count("no-parallel-base"));
   }
 
   if(vm.count("gen-only")){
