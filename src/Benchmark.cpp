@@ -110,7 +110,7 @@ void runExperiments(std::vector<ExperimentRun> & runs){
     std::cout << "\tAverage time: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(runs[i].avgTime()).count()
               << " ms\tAverage mem: "
-              << runs[i].avgMem() << " MB" << std::endl;
+              << runs[i].avgMem() / 1e6 << " MB" << std::endl;
   }
 
 }
