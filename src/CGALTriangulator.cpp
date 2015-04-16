@@ -318,6 +318,10 @@ int main(int argc, char *argv[]) {
   namespace po = boost::program_options;
 
   uint maxN, minN = 10;
+
+  uint maxThreads = tbb::task_scheduler_init::default_num_threads();
+  uint minThreads = 1;
+  uint occ = 0;
   std::string runFile;
   std::string run;
 
@@ -326,6 +330,12 @@ int main(int argc, char *argv[]) {
                              "maximum number of points");
   cCommandLine.add_options()("minN", po::value<uint>(&minN),
                              "minimum number of points");
+  cCommandLine.add_options()("threads", po::value<uint>(&maxThreads),
+                             "maximum number of threads");
+  cCommandLine.add_options()("minThreads", po::value<uint>(&minThreads),
+                             "minimum number of threads");
+  cCommandLine.add_options()("occ", po::value<uint>(&occ),
+                             "occupancy of grid lock data structure");
   cCommandLine.add_options()("help", "produce help message");
 
   po::variables_map vm;
@@ -345,8 +355,12 @@ int main(int argc, char *argv[]) {
   typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
   //setup
-  uint maxThreads = tbb::task_scheduler_init::default_num_threads();
-  std::vector<uint> occupancies = { 10, 50, 100, 1000 };
+  std::vector<uint> occupancies;
+  if(vm.count("occ"))
+    occupancies = { occ };
+  else
+    occupancies = { 10, 50, 100, 1000 };
+
   dBox<D, Precision> bounds(dVector<D, Precision>({{0,0,0}}), dVector<D, Precision>({{100,100,100}}));
   LOGGER.setLogLevel(Logger::Verbosity::SILENT);
 
@@ -368,7 +382,7 @@ int main(int argc, char *argv[]) {
     }
 
     //loop over number of threads, if algo is multi-threaded
-    for (uint threads = 1; threads <= maxThreads; threads <<= 1) {
+    for (uint threads = minThreads; threads <= maxThreads; threads <<= 1) {
 
       // load scheduler with specified number of threads
       tbb::task_scheduler_init init(threads);
@@ -387,13 +401,14 @@ int main(int argc, char *argv[]) {
 
           for(uint i = 0; i < REPS; ++i) {
 
+            int numGridCells = std::min(
+                    std::max(1, (int) std::floor(std::cbrt(points.size() / occ))),
+                    (int) std::floor(std::cbrt(std::numeric_limits<int>::max())));
+
             CT::Lock_data_structure lds(
                     CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
                          bounds.high[0], bounds.high[1], bounds.high[2]),
-                    std::min(
-                            std::max(1u, (uint) std::floor(std::cbrt(points.size() / occ))),
-                            (uint) std::floor(std::cbrt(std::numeric_limits<int>::max())))
-                    );
+                    numGridCells);
 
             CT tria(&lds);
 
