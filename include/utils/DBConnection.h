@@ -9,8 +9,8 @@
 
 #include <boost/noncopyable.hpp>
 
-#include <tcejdb/ejdb.h>
-#include <tcejdb/bson.h>
+#include <ejdb/ejdb.h>
+#include <ejdb/bson.h>
 
 #include "Logger.h"
 
@@ -56,16 +56,31 @@ public:
         bson_destroy(&bobj);
     }
 
+    template<typename T>
+    T getMaximum(const std::string & field) const {
+        std::string max = _getMaximum(field);
+        T o = T();
+
+        if(max != "") {
+            std::istringstream ss(max);
+            ss >> o;
+        }
+
+        return o;
+    }
+
 private:
-    inline void _handleError() {
+    inline void _handleError() const {
         int ec = ejdbecode(m_ejdb);
         if(ec)
             throw EJDBException(ejdberrmsg(ec));
     }
 
-    inline void _handleError(const std::string & msg){
+    inline void _handleError(const std::string & msg) const {
             throw EJDBException(msg);
     }
+
+    std::string _getMaximum(const std::string & field) const;
 
     template <class T>
     void bsonify(bson * bobj, const T & o);
