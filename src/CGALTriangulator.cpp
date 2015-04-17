@@ -367,6 +367,9 @@ int main(int argc, char *argv[]) {
 
   DBConnection db("db_" + getHostname() + ".dat", "pureCGAL");
 
+  //determine the latest run number
+  uint runNumber = db.getMaximum<uint>("run-number") + 1;
+
   //loop over number of points
   for (uint nPoints = minN; nPoints <= maxN; nPoints += pow(10, floor(log10(nPoints)))) {
 
@@ -392,11 +395,14 @@ int main(int argc, char *argv[]) {
       for(uint occ : occupancies) {
 
         ExperimentRun run;
+        run.addTrait("run-number", runNumber);
         run.addTrait("dist", "u");
         run.addTrait("nP", nPoints);
         run.addTrait("alg", "m");
         run.addTrait("threads", threads);
         run.addTrait("occupancy", occ);
+
+        run.addTrait("start-time", getDatetime());
 
         std::cout << run.str() << std::endl;
 
@@ -428,12 +434,13 @@ int main(int argc, char *argv[]) {
           std::cerr << "\tException raised: " << e.what() << std::endl;
         }
 
+        run.addTrait("end-time", getDatetime());
+        db.save(run);
+
         std::cout << "\tAverage time: "
         << std::chrono::duration_cast<std::chrono::milliseconds>(run.avgTime()).count()
         << " ms\tAverage mem: "
         << run.avgMem() / 1e6 << " MB" << std::endl;
-
-        db.save(run);
 
         }
 
