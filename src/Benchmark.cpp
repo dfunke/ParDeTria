@@ -75,6 +75,8 @@ void runExperiment(ExperimentRun & run) {
   // load scheduler with specified number of threads
   tbb::task_scheduler_init init(threads);
 
+  run.addTrait("start-time", getDatetime());
+
   try {
 
     for(uint i = 0; i < REPS; ++i) {
@@ -94,6 +96,8 @@ void runExperiment(ExperimentRun & run) {
     std::ofstream errFile("failedExperiments", std::ios::out | std::ios::app);
     errFile << run.str() << std::endl;
   }
+
+  run.addTrait("end-time", getDatetime());
 
   db.save(run);
 }
@@ -124,6 +128,9 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
   //determine maximum number of threads
   uint maxThreads = tbb::task_scheduler_init::default_num_threads();
 
+  //determine the latest run number
+  uint runNumber = db.getMaximum<uint>("run-number") + 1;
+
   //loop over distributions
   for(const unsigned char dist : distributions){
 
@@ -137,6 +144,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
         if(alg == 'c'){
 
           ExperimentRun run;
+          run.addTrait("run-number", runNumber);
           run.addTrait("dist", dist);
           run.addTrait("nP", nPoints);
           run.addTrait("alg", alg);
@@ -155,6 +163,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
               if(alg == 'm'){
                 ExperimentRun run;
+                run.addTrait("run-number", runNumber);
                 run.addTrait("dist", dist);
                 run.addTrait("nP", nPoints);
                 run.addTrait("alg", alg);
@@ -173,6 +182,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
                     if(firstOccupancy) { // we do not need to generate runs for the following occupancies
                       ExperimentRun runSeq;
+                      runSeq.addTrait("run-number", runNumber);
                       runSeq.addTrait("dist", dist);
                       runSeq.addTrait("nP", nPoints);
                       runSeq.addTrait("alg", alg);
@@ -187,6 +197,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
                     if(parallel_base) {
                       ExperimentRun runPar;
+                      runPar.addTrait("run-number", runNumber);
                       runPar.addTrait("dist", dist);
                       runPar.addTrait("nP", nPoints);
                       runPar.addTrait("alg", alg);
