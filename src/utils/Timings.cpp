@@ -8,12 +8,7 @@
 
 ExperimentRun::ExperimentRun() {
 
-    // output datetime, hostname and git commit
-
-    char datetime[64];
-    time_t tnow = time(NULL);
-    strftime(datetime,sizeof(datetime),"%Y-%m-%d %H:%M:%S", localtime(&tnow));
-    addTrait("datetime", std::string(datetime));
+    // output hostname and git commit
 
     addTrait("host", getHostname());
 
@@ -39,7 +34,7 @@ ExperimentRun::ExperimentRun(const std::string &run, std::string _traitSep, std:
         traitName = run.substr(currPos, (innerSep - currPos));
         traitValue = run.substr(innerSep + _innerSep.length(), (traitSep-(innerSep + _innerSep.length())));
 
-        if(   traitName != "datetime"
+        if(   traitName.find("time") == std::string::npos
            && traitName != "host"
            && traitName != "git-rev")
 
@@ -97,7 +92,7 @@ bool ExperimentRun::operator==(const ExperimentRun &o) const {
     bool eq = true;
     for(const auto & t : m_traits) {
 
-        if (t.first == "datetime"
+        if (t.first.find("time") != std::string::npos
             && t.first == "host"
             && t.first == "git-rev")
 

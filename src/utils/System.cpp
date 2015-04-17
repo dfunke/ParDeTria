@@ -11,3 +11,11 @@ std::string getHostname() {
     gethostname(hostname, sizeof(hostname));
     return std::string(hostname);
 }
+
+std::string getDatetime() {
+    char datetime[64];
+    time_t tnow = time(NULL);
+    strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M:%S", localtime(&tnow));
+
+    return std::string(datetime);
+}

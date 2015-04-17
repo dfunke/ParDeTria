@@ -48,6 +48,17 @@ public:
     return o;
   }
 
+  void updateTrait(const std::string & name, const std::string & value){
+    m_traits[name] = value;
+  }
+
+  template<typename T>
+  void updateTrait(const std::string & name, const T & value){
+    std::stringstream ss;
+    ss << value;
+    updateTrait(name, ss.str());
+  }
+
   void addTime(const tDuration & t){
     m_times.emplace_back(t);
   }
