@@ -153,6 +153,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
   dSimplices<D, Precision> tria;
   tria.reserve(helper.size(t));
+  tria.whereUsed.reserve(ids.size());
 
   CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
       simplexLookup(0, helper.size(t));

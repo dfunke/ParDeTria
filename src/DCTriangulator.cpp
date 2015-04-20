@@ -318,11 +318,11 @@ void DCTriangulator<D, Precision>::findNeighbors(
 template <uint D, typename Precision> class tWhereUsedSuppl {
 public:
   tWhereUsedSuppl() : whereUsed(nullptr), index(0), size(0), deleted(0) {}
-  tWhereUsedSuppl(tbb::concurrent_vector<uint> *_whereUsed)
+  tWhereUsedSuppl(typename dSimplices<D, Precision>::tWhereUsedEntry *_whereUsed)
       : whereUsed(_whereUsed), index(0), size(_whereUsed->size()), deleted(0) {}
 
 public:
-  tbb::concurrent_vector<uint> *whereUsed = nullptr;
+  typename dSimplices<D, Precision>::tWhereUsedEntry *whereUsed = nullptr;
   uint index = 0;
   uint size = 0;
   uint deleted = 0;
@@ -450,7 +450,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
       tWhereUsedSuppl<D, Precision> &supp = suppl[i];
 
       if (supp.deleted / supp.size > .5) {
-        tbb::concurrent_vector<uint> v;
+        typename dSimplices<D,Precision>::tWhereUsedEntry v;
         v.reserve(supp.size - supp.deleted);
 
         for (const auto &s : *supp.whereUsed) {
@@ -540,7 +540,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
     for (const auto &wu : partialDTs[i].whereUsed) {
-      DT.whereUsed[wu.first].grow_by(wu.second.begin(), wu.second.end());
+      DT.whereUsed[wu.first].insert(DT.whereUsed[wu.first].end(), wu.second.begin(), wu.second.end());
     }
   }
 
@@ -704,9 +704,9 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   ASSERT(DT.countDuplicates() == 0);
 
   // sort the where-used list
-  tbb::parallel_for(DT.whereUsed.range(), [&](auto &r) {
-    for (auto &it : r)
-      tbb::parallel_sort(it.second.begin(), it.second.end());
+  tbb::parallel_for(std::size_t(0), DT.whereUsed.bucket_count(), [&](auto &r) {
+    for (auto it = DT.whereUsed.begin(r); it != DT.whereUsed.end(r); ++it)
+      tbb::parallel_sort(it->second.begin(), it->second.end());
   });
 
   LOG("Updating neighbors" << std::endl);

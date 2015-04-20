@@ -491,7 +491,9 @@ public:
   }
 
 public:
-  tbb::concurrent_unordered_map<uint, tbb::concurrent_vector<uint>> whereUsed;
+  typedef std::vector<uint> tWhereUsedEntry;
+  typedef std::unordered_map<uint, tWhereUsedEntry> tWhereUsedMap;
+  tWhereUsedMap whereUsed;
 };
 
 template <uint D, typename Precision> struct CrossCheckReport {
