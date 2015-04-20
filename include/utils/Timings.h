@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <string>
 #include <map>
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -90,6 +91,9 @@ private:
   std::map<std::string, std::string> m_traits;
   std::vector<tDuration> m_times;
   std::vector<std::size_t> m_mem;
+
+private:
+  static std::vector<std::string> c_ignored_fields;
 
 };
 

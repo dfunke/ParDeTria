@@ -1,19 +1,19 @@
 #include "Timings.h"
 
-#include <time.h>
+#include <algorithm>
 
 #include "System.h"
-
 #include "version.h"
+
+#define IGNORED_FIELDS {"git-rev", "start-time", "end-time", "run-number", "host"}
+std::vector<std::string> ExperimentRun::c_ignored_fields(IGNORED_FIELDS);
 
 ExperimentRun::ExperimentRun() {
 
-    // output hostname and git commit
+    // hostname and git commit
 
     addTrait("host", getHostname());
-
     addTrait("git-rev", std::string(GIT_COMMIT));
-
 }
 
 ExperimentRun::ExperimentRun(const std::string &run, std::string _traitSep, std::string _innerSep)
@@ -34,10 +34,8 @@ ExperimentRun::ExperimentRun(const std::string &run, std::string _traitSep, std:
         traitName = run.substr(currPos, (innerSep - currPos));
         traitValue = run.substr(innerSep + _innerSep.length(), (traitSep-(innerSep + _innerSep.length())));
 
-        if(   traitName.find("time") == std::string::npos
-           && traitName != "host"
-           && traitName != "git-rev")
-
+        if(std::find(c_ignored_fields.begin(), c_ignored_fields.end(), traitName) == c_ignored_fields.end())
+            //trait not in ignored fields
             addTrait(traitName, traitValue);
 
         currPos = traitSep + _traitSep.length();
@@ -92,11 +90,8 @@ bool ExperimentRun::operator==(const ExperimentRun &o) const {
     bool eq = true;
     for(const auto & t : m_traits) {
 
-        if (t.first.find("time") != std::string::npos
-            && t.first == "host"
-            && t.first == "git-rev")
-
-            //skip datetime host and git version
+        if(std::find(c_ignored_fields.begin(), c_ignored_fields.end(), t.first) != c_ignored_fields.end())
+            //trait is ignored field
             continue;
 
         if (o.m_traits.count(t.first) == 0)
