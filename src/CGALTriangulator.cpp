@@ -158,8 +158,8 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
   CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
       simplexLookup(0, helper.size(t));
 
+  dSimplex<D, Precision> a;
   for (auto it = helper.begin(t); it != helper.end(t); ++it) {
-    dSimplex<D, Precision> a;
     a.id = tetrahedronID++;
 
     for (uint i = 0; i < D + 1; ++i) {
