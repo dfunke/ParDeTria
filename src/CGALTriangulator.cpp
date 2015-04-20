@@ -6,7 +6,7 @@
 #include "utils/ASSERT.h"
 
 // define a static counter for the tetrahedronID
-std::atomic<uint> tetrahedronID(0);
+std::atomic<uint> gAtomicTetrahedronID(0);
 
 // CGAL
 #define CGAL_LINKED_WITH_TBB
@@ -158,6 +158,11 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
   CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
       simplexLookup(0, helper.size(t));
 
+  uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
+#ifndef NDEBUG
+  uint saveTetrahedronID = tetrahedronID;
+#endif
+
   dSimplex<D, Precision> a;
   for (auto it = helper.begin(t); it != helper.end(t); ++it) {
     a.id = tetrahedronID++;
@@ -180,6 +185,8 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     simplexLookup[it] = a.id;
   }
   DEDENT
+
+  ASSERT(tetrahedronID != saveTetrahedronID + helper.size(t));
 
   PLOG("Collecting neighbors" << std::endl);
 
