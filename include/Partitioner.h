@@ -47,7 +47,7 @@ template <uint D, typename Precision>
 std::ostream &operator<<(std::ostream &o, const Partition<D, Precision> &p);
 
 template <uint D, typename Precision>
-class Partitioning : public IndexedVector<Partition<D, Precision>> {
+class Partitioning : public std::vector<Partition<D, Precision>> {
 
 public:
   uint partition(const uint p) const {

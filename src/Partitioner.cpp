@@ -10,6 +10,8 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
   PLOG("Midpoint is " << stats.mid << std::endl);
 
   Partitioning<D, Precision> partitioning;
+  partitioning.resize(pow(2, D));
+
   for (uint i = 0; i < pow(2, D); ++i) {
     partitioning[i].id = i;
 
@@ -60,6 +62,7 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
   PLOG("Midpoint is " << stats.mid << std::endl);
 
   Partitioning<D, Precision> partitioning;
+  partitioning.resize(2);
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
@@ -114,6 +117,7 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
   PLOG("Splitting dimension is " << k << std::endl);
 
   Partitioning<D, Precision> partitioning;
+  partitioning.resize(2);
 
   partitioning[0].id = 0;
   for (uint d = 0; d < D; ++d) {
