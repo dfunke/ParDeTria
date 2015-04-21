@@ -186,7 +186,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
   }
   DEDENT
 
-  ASSERT(tetrahedronID != saveTetrahedronID + helper.size(t));
+  ASSERT(tetrahedronID == saveTetrahedronID + helper.size(t));
 
   PLOG("Collecting neighbors" << std::endl);
 
