@@ -9,14 +9,19 @@ public:
   typedef typename std::vector<T> vector;
 
 public:
+
+  VectorAdapter(const typename vector::size_type firstIdx = 0)
+          : vector(), m_firstIdx(firstIdx) { }
+
+public:
   bool contains(const typename vector::size_type &i) const {
 
-    return (T::isFinite(i) ? i : _infIdx(i)) < vector::size();
+    return (T::isFinite(i) ? _finIdx(i) < finite_size() : _infIdx(i)) < vector::size();
   }
 
   T &operator[](const typename vector::size_type i) {
     if (__builtin_expect(T::isFinite(i), true))
-      return vector::operator[](i);
+      return vector::operator[](_finIdx(i));
     else
 #ifndef NDEBUG
       return vector::at(_infIdx(i));
@@ -27,7 +32,7 @@ public:
 
   const T &operator[](const typename vector::size_type i) const {
     if (__builtin_expect(T::isFinite(i), true))
-      return vector::operator[](i);
+      return vector::operator[](_finIdx(i));
     else
 #ifndef NDEBUG
       return vector::at(_infIdx(i));
@@ -38,14 +43,14 @@ public:
 
   T &at(const typename vector::size_type i) {
     if (__builtin_expect(T::isFinite(i), true))
-      return vector::at(i);
+      return vector::at(_finIdx(i));
     else
       return vector::at(_infIdx(i));
   }
 
   const T &at(const typename vector::size_type i) const {
     if (__builtin_expect(T::isFinite(i), true))
-      return vector::at(i);
+      return vector::at(_finIdx(i));
     else
       return vector::at(_infIdx(i));
   }
@@ -70,6 +75,11 @@ private:
     return vector::size() - T::nINF + T::infIndex(i);
   }
 
+  inline typename vector::size_type
+  _finIdx(const typename vector::size_type i) const {
+    return i - m_firstIdx;
+  }
+
   template <class Return, class InputIt>
   const Return _filter(const InputIt &first, const InputIt &last,
                        const uint n) const {
@@ -81,4 +91,7 @@ private:
 
     return res;
   }
+
+private:
+  typename vector::size_type m_firstIdx;
 };
