@@ -1,8 +1,14 @@
 language: cpp
-compiler: 
+
+compiler:
   - gcc
   - clang
 
+env:
+  - BUILD_TYPE=Debug
+  - BUILD_TYPE=RelWithDebInfo
+
 script:
-  - cmake --build
-  - ./bin/foo
+  - mkdir build && cd build
+  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ../
+  - make
