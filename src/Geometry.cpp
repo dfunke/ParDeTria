@@ -847,26 +847,38 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     for (auto it = this->begin(i); it != this->end(i); ++it) {
 
       const dSimplex<D, Precision> &a = *it;
-      for (const auto &b : *this) {
-        // a and b are neighbors: the neighbor property is symmetric and the
-        // corresponding simplices must be present in the neighbors arrays
-        // accordingly
-        if ((a.isNeighbor(b) &&
-             (!b.isNeighbor(a) || a.neighbors.count(b.id) != 1 ||
-              b.neighbors.count(a.id) != 1))
-            // a and b are NOT neighbors: must be symmetric and simplices NOT be
-            // present in neighbors arrays
-            ||
-            (!a.isNeighbor(b) &&
-             (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
-              b.neighbors.count(a.id) != 0))) {
 
-          tbb::spin_mutex::scoped_lock lock(mtx);
-          LOG("Wrong neighbor relation between " << a << " and " << b
-                                                 << std::endl);
-          result.wrongNeighbors.emplace_back(a, b);
-          result.valid = false;
-        }
+      // we already verified that the face where-used data structure is correct
+      // we can use it to verify the neighbor relation
+      for(uint i = 0; i < D + 1; ++i){
+          uint faceHash = a.vertexFingerprint ^ a.vertices[i];
+
+          for(const auto & nc : this->wuFaces.at(faceHash)){
+              if(!dSimplex<D, Precision>::isFinite(nc) || !this->contains(nc))
+                  // infinite/deleted simplex or not belonging to this triangulation
+                  continue;
+
+              const auto &b = this->at(nc);
+              // a and b are neighbors: the neighbor property is symmetric and the
+              // corresponding simplices must be present in the neighbors arrays
+              // accordingly
+              if ((a.isNeighbor(b) &&
+                   (!b.isNeighbor(a) || a.neighbors.count(b.id) != 1 ||
+                    b.neighbors.count(a.id) != 1))
+                  // a and b are NOT neighbors: must be symmetric and simplices NOT be
+                  // present in neighbors arrays
+                  ||
+                  (!a.isNeighbor(b) &&
+                   (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
+                    b.neighbors.count(a.id) != 0))) {
+
+                  tbb::spin_mutex::scoped_lock lock(mtx);
+                  LOG("Wrong neighbor relation between " << a << " and " << b
+                      << std::endl);
+                  result.wrongNeighbors.emplace_back(a, b);
+                  result.valid = false;
+              }
+          }
       }
     }
   });
