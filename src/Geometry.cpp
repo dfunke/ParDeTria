@@ -647,13 +647,18 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
             const dSimplex<D, Precision> &realSimplex = *it;
 
-            // find my simplex, compares vertices ids
-            auto mySimplex = std::find_if(this->begin(), this->end(),
-                                          [&](const dSimplex<D, Precision> &s) {
-                                              return s.equalVertices(realSimplex);
+            // find corresponding mySimplex for realSimplex
+            // we can limit the search by using the face where-used ds
+            uint faceHash = realSimplex.vertexFingerprint ^ realSimplex.vertices[0];
+            auto mySimplex = std::find_if(this->wuFaces.at(faceHash).begin(),
+                                          this->wuFaces.at(faceHash).end(),
+                                          [&](const uint &i) {
+                                              return dSimplex<D, Precision>::isFinite(i)
+                                                     && this->contains(i)
+                                                     && this->at(i).equalVertices(realSimplex);
                                           });
 
-            if (mySimplex == this->end()) {
+            if (mySimplex == this->wuFaces.at(faceHash).end()) {
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("did not find simplex " << realSimplex << std::endl);
                 result.valid = false;
@@ -667,7 +672,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                     continue;
 
                 bool found = false;
-                for (const auto &nn : mySimplex->neighbors) {
+                for (const auto &nn : this->at(*mySimplex).neighbors) {
                     if (dSimplex<D, Precision>::isFinite(nn) &&
                         this->operator[](nn).equalVertices(realDT[n])) {
                         found = true;
@@ -691,12 +696,18 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
         for (auto it = this->begin(i); it != this->end(i); ++it) {
 
             const dSimplex<D, Precision> &mySimplex = *it;
-            auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
-                                            [&](const dSimplex<D, Precision> &s) {
-                                                return s.equalVertices(mySimplex);
+
+            // again we use the face where-used ds for the lookup
+            uint faceHash = mySimplex.vertexFingerprint ^ mySimplex.vertices[0];
+            auto realSimplex = std::find_if(realDT.wuFaces.at(faceHash).begin(),
+                                            realDT.wuFaces.at(faceHash).end(),
+                                            [&](const uint &i) {
+                                                return dSimplex<D, Precision>::isFinite(i)
+                                                       && realDT.contains(i)
+                                                       && realDT.at(i).equalVertices(mySimplex);
                                             });
 
-            if (realSimplex == realDT.end() /*&& mySimplex.isFinite()*/) {
+            if (realSimplex == realDT.wuFaces.at(faceHash).end() /*&& mySimplex.isFinite()*/) {
 
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("simplex " << mySimplex << " does not exist in real triangulation"
@@ -824,8 +835,10 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
                 const auto &s = this->operator[](id);
                 bool found = false;
                 for(uint d = 0; d < D + 1; ++d){
-                    if(f.first == (s.vertexFingerprint ^ s.vertices[d]))
+                    if(f.first == (s.vertexFingerprint ^ s.vertices[d])) {
                         found = true;
+                        break;
+                    }
                 }
                 if(!found){
                     // simplex is flagged as having face f, but it hasn't
