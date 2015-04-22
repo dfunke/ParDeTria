@@ -745,33 +745,83 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
 
   // verify where-used data structure
   LOG("Checking where-used relation" << std::endl);
-  for (const auto &s : *this) {
-    for (const auto &p : s.vertices) {
-      // point p of s not correctly flagged as used in s
-      if (std::find(whereUsed.at(p).begin(), whereUsed.at(p).end(), s.id) ==
-          whereUsed.at(p).end()) {
-        LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
-        LOGGER.logContainer(whereUsed.at(p), Logger::Verbosity::NORMAL,
-                            "p.simplices:");
-        result.valid = false;
-      }
-    }
-  }
-  for (const auto &p : points) {
-    for (const auto &id : whereUsed.at(p.id)) {
-      if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
-        continue; // simplex of another triangulation
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
-      // p is flagged as being used in s, but its not
-      const auto &s = this->operator[](id);
-      if (!std::binary_search(s.vertices.begin(), s.vertices.end(), p.id)) {
-        LOG("Point " << p << " SHOULD be used in " << s << std::endl);
-        LOGGER.logContainer(whereUsed.at(p.id), Logger::Verbosity::NORMAL,
-                            "p.simplices:");
-        result.valid = false;
-      }
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &s = *it;
+            for (const auto &p : s.vertices) {
+                // point p of s not correctly flagged as used in s
+                if (std::find(wuPoints.at(p).begin(), wuPoints.at(p).end(), s.id) ==
+                    wuPoints.at(p).end()) {
+
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
+                    LOGGER.logContainer(wuPoints.at(p), Logger::Verbosity::NORMAL,
+                                        "p.simplices:");
+                    result.valid = false;
+                }
+
+                // check facette
+                uint facetteHash = s.vertexFingerprint ^p;
+                if (std::find(wuFaces.at(facetteHash).begin(), wuFaces.at(facetteHash).end(), s.id) ==
+                    wuFaces.at(facetteHash).end()) {
+
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("Face " << facetteHash << " NOT flagged as used in " << s << std::endl);
+                    LOGGER.logContainer(wuFaces.at(facetteHash), Logger::Verbosity::NORMAL,
+                                        "face.simplices:");
+                    result.valid = false;
+                }
+            }
     }
-  }
+  });
+
+    tbb::parallel_for(std::size_t(0), points.size(), [&](const uint i){
+        const auto &p = points[i];
+        for (const auto &id : wuPoints.at(p.id)) {
+          if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
+            continue; // simplex of another triangulation
+
+          // p is flagged as being used in s, but its not
+          const auto &s = this->operator[](id);
+          if (!std::binary_search(s.vertices.begin(), s.vertices.end(), p.id)) {
+
+            tbb::spin_mutex::scoped_lock lock(mtx);
+            LOG("Point " << p << " SHOULD be used in " << s << std::endl);
+            LOGGER.logContainer(wuPoints.at(p.id), Logger::Verbosity::NORMAL,
+                                "p.simplices:");
+            result.valid = false;
+          }
+        }
+  });
+
+    tbb::parallel_for(std::size_t(0), this->wuFaces.bucket_count(), [&](const uint i){
+        for (auto it = this->wuFaces.begin(i); it != this->wuFaces.end(i); ++it) {
+
+            const auto &f = *it;
+            for (const auto &id : f.second) {
+                if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
+                    continue; // simplex of another triangulation
+
+                const auto &s = this->operator[](id);
+                bool found = false;
+                for(uint d = 0; d < D + 1; ++d){
+                    if(f.first == (s.vertexFingerprint ^ s.vertices[d]))
+                        found = true;
+                }
+                if(!found){
+                    // simplex is flagged as having face f, but it hasn't
+
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("Face " << f.first << " SHOULD be used in " << s << std::endl);
+                    LOGGER.logContainer(f.second, Logger::Verbosity::NORMAL,
+                                        "face.simplices:");
+                    result.valid = false;
+                }
+            }
+        }
+    });
 
   // verify that all simplices with a shared D-1 simplex are neighbors
   LOG("Checking neighbors" << std::endl);
@@ -793,9 +843,10 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
             (!a.isNeighbor(b) &&
              (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
               b.neighbors.count(a.id) != 0))) {
+
+          tbb::spin_mutex::scoped_lock lock(mtx);
           LOG("Wrong neighbor relation between " << a << " and " << b
                                                  << std::endl);
-          tbb::spin_mutex::scoped_lock lock(mtx);
           result.wrongNeighbors.emplace_back(a, b);
           result.valid = false;
         }

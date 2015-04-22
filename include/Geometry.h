@@ -493,7 +493,8 @@ public:
 public:
   typedef std::vector<uint> tWhereUsedEntry;
   typedef std::unordered_map<uint, tWhereUsedEntry> tWhereUsedMap;
-  tWhereUsedMap whereUsed;
+  tWhereUsedMap wuPoints;
+  tWhereUsedMap wuFaces;
 };
 
 template <uint D, typename Precision> struct CrossCheckReport {

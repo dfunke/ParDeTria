@@ -153,7 +153,8 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
   dSimplices<D, Precision> tria;
   tria.reserve(helper.size(t));
-  tria.whereUsed.reserve(ids.size());
+  tria.wuPoints.reserve(ids.size());
+  tria.wuFaces.reserve(helper.size(t));
 
   CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
       simplexLookup(0, helper.size(t));
@@ -173,12 +174,20 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
       a.vertices[i] = point.id;
 
-      // update where-used data structure
-      tria.whereUsed[point.id].emplace_back(a.id);
+      // update point where-used data structure
+      tria.wuPoints[point.id].emplace_back(a.id);
     }
+
     // sort vertices by ascending point id
     std::sort(a.vertices.begin(), a.vertices.end());
     a.fingerprint();
+
+    //update where-used data structure for faces
+    for (uint i = 0; i < D + 1; ++i) {
+      uint facetteHash = a.vertexFingerprint ^ a.vertices[i];
+
+      tria.wuFaces[facetteHash].emplace_back(a.id);
+    }
 
     PLOG(a << std::endl);
     tria.insert(a);
