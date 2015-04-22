@@ -890,24 +890,32 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     for (auto it = this->begin(i); it != this->end(i); ++it) {
 
       const dSimplex<D, Precision> &s = *it;
-      for (const auto &p : points) {
-        if (!p.isFinite())
-          continue; // skip infinite points
 
-        bool contains = s.contains(p);
-        bool inCircle = s.inSphere(p, points);
-        if (contains != inCircle) {
-          LOG("Point " << p << " is " << (inCircle ? "" : "NOT ")
-                       << "in circle of " << s << " but should "
-                       << (contains ? "" : "NOT ") << "be" << std::endl);
+        // we have established that the neighboorhood is correctly set
+        // we check for all neighbors whether the NOT shared point is in the circle
 
-          tbb::spin_mutex::scoped_lock lock(mtx);
-          result.valid = false;
+        for(const auto &n : s.neighbors){
+            if(!dSimplex<D, Precision>::isFinite(n))
+                continue;
 
-          result.inCircle[s].insert(p.id);
+            const dSimplex<D, Precision> &nn = this->at(n);
+            for(uint d = 0; d < D + 1; ++d){
+                const auto &p = points[nn.vertices[d]];
+
+                if(p.isFinite() && !s.contains(p)){
+                    // we have found the point of nn that is NOT shared with s
+                    if (s.inSphere(p, points)) {
+                        LOG("Point " << p << " is in circle of " << s << std::endl);
+
+                        tbb::spin_mutex::scoped_lock lock(mtx);
+                        result.valid = false;
+
+                        result.inCircle[s].insert(p.id);
+                    }
+                }
+            }
         }
       }
-    }
   });
   DEDENT
 
