@@ -258,9 +258,13 @@ public:
   bool operator<(const dSimplex<D, Precision> &a) const { return id < a.id; }
 
   bool equalVertices(const dSimplex<D, Precision> &a) const {
-    // compare vertices
-    // both vertex arrays are sorted by vertex id
 
+    // first compare fingerprints
+    if(vertexFingerprint != a.vertexFingerprint)
+      return false;
+
+    // fingerprints are equal => compare vertices
+    // both vertex arrays are sorted by vertex id
     for (uint i = 0; i < D + 1; ++i) {
       if (vertices[i] != a.vertices[i]) {
         return false;
