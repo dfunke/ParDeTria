@@ -638,57 +638,74 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
   CrossCheckReport<D, Precision> result;
   result.valid = true;
 
+    tbb::spin_mutex mtx;
+
   // check whether all simplices of real DT are present
-  for (const auto &realSimplex : realDT) {
-    // find my simplex, compares vertices ids
-    auto mySimplex = std::find_if(this->begin(), this->end(),
-                                  [&](const dSimplex<D, Precision> &s) {
-                                    return s.equalVertices(realSimplex);
-                                  });
+    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
 
-    if (mySimplex == this->end()) {
-      LOG("did not find simplex " << realSimplex << std::endl);
-      result.valid = false;
-      result.missing.insert(realSimplex);
-      continue;
-    }
+        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
 
-    // check neighbors
-    for (const auto &n : realSimplex.neighbors) {
-      if (!dSimplex<D, Precision>::isFinite(n))
-        continue;
+            const dSimplex<D, Precision> &realSimplex = *it;
 
-      bool found = false;
-      for (const auto &nn : mySimplex->neighbors) {
-        if (dSimplex<D, Precision>::isFinite(nn) &&
-            this->operator[](nn).equalVertices(realDT[n])) {
-          found = true;
-          break;
+            // find my simplex, compares vertices ids
+            auto mySimplex = std::find_if(this->begin(), this->end(),
+                                          [&](const dSimplex<D, Precision> &s) {
+                                              return s.equalVertices(realSimplex);
+                                          });
+
+            if (mySimplex == this->end()) {
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("did not find simplex " << realSimplex << std::endl);
+                result.valid = false;
+                result.missing.insert(realSimplex);
+                continue;
+            }
+
+            // check neighbors
+            for (const auto &n : realSimplex.neighbors) {
+                if (!dSimplex<D, Precision>::isFinite(n))
+                    continue;
+
+                bool found = false;
+                for (const auto &nn : mySimplex->neighbors) {
+                    if (dSimplex<D, Precision>::isFinite(nn) &&
+                        this->operator[](nn).equalVertices(realDT[n])) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("did not find neighbor " << realDT[n] << " of simplex "
+                                                                 << realSimplex << std::endl);
+                    result.valid = false;
+                }
+            }
         }
-      }
-
-      if (!found) {
-        LOG("did not find neighbor " << realDT[n] << " of simplex "
-                                     << realSimplex << std::endl);
-        result.valid = false;
-      }
-    }
-  }
+    });
 
   // check for own simplices that are not in real DT
-  for (const auto &mySimplex : *this) {
-    auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
-                                    [&](const dSimplex<D, Precision> &s) {
-                                      return s.equalVertices(mySimplex);
-                                    });
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
-    if (realSimplex == realDT.end() /*&& mySimplex.isFinite()*/) {
-      LOG("simplex " << mySimplex << " does not exist in real triangulation"
-                     << std::endl);
-      result.valid = false;
-      result.invalid.insert(mySimplex);
-    }
-  }
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &mySimplex = *it;
+            auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
+                                            [&](const dSimplex<D, Precision> &s) {
+                                                return s.equalVertices(mySimplex);
+                                            });
+
+            if (realSimplex == realDT.end() /*&& mySimplex.isFinite()*/) {
+
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("simplex " << mySimplex << " does not exist in real triangulation"
+                                               << std::endl);
+                result.valid = false;
+                result.invalid.insert(mySimplex);
+            }
+        }
+    });
 
   // check whether sizes are equal
   if (dSimplices<D, Precision>::size() != realDT.size()) {
