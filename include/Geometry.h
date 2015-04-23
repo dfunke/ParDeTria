@@ -336,14 +336,14 @@ public:
   }
 
   bool isFinite() const {
-    bool finite = true;
 
-    for (uint i = 0; i < D + 1; ++i) {
+    //the vertices are sorted by ID -> infinite points are at the end
+    for (int i = D; i >= 0; --i) {
       if (!dPoint<D, Precision>::isFinite(vertices[i]))
-        finite = false;
+        return false;
     }
 
-    return finite;
+    return true;
   }
 
   // dimension specific implementations in cpp file
