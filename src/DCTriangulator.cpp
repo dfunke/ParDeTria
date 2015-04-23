@@ -222,13 +222,14 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     for (uint i = 0; i < D + 1; ++i) {
 
         uint facetteHash = simplex.vertexFingerprint ^simplex.vertices[i];
-        for (const auto &nc : simplices.wuFaces[facetteHash]) {
-            if (nc != simplex.id && dSimplex<D, Precision>::isFinite(nc)
-                && simplices.contains(nc) && simplex.isNeighbor(simplices[nc])) {
-                PLOG("Neighbor with " << simplices[nc] << std::endl);
+        auto range = simplices.wuFaces.equal_range(facetteHash);
+        for (auto it = range.first; it != range.second; ++it) {
+            if (it->second != simplex.id && dSimplex<D, Precision>::isFinite(it->second)
+                && simplices.contains(it->second) && simplex.isNeighbor(simplices[it->second])) {
+                PLOG("Neighbor with " << simplices[it->second] << std::endl);
 
-                simplex.neighbors.insert(nc);
-                feeder.add(nc);
+                simplex.neighbors.insert(it->second);
+                feeder.add(it->second);
             }
         }
     }
@@ -334,8 +335,8 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
       // copy the faces where-used list
       // don't copy values belonging to the edge
       for(auto & wu : partialDTs[i].wuFaces){
-          std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first])
-                  ,[&edgeSimplices](const uint & i){ return dSimplex<D, Precision>::isFinite(i) && !edgeSimplices.count(i); });
+          if(!edgeSimplices.count(wu.second))
+            DT.wuFaces.insert(std::move(wu));
       }
   }
 
@@ -426,7 +427,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
               DT.convexHull.insert(edgeSimplex.id);
 
         for (uint d = 0; d < D + 1; ++d) {
-          DT.wuFaces[edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]].emplace_back(edgeSimplex.id);
+          DT.wuFaces.emplace((edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]), edgeSimplex.id);
         }
 
         insertedSimplices.insert(edgeSimplex.id);
@@ -447,7 +448,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
                   DT.convexHull.insert(edgeSimplex.id);
 
             for (uint d = 0; d < D + 1; ++d) {
-              DT.wuFaces[edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]].emplace_back(edgeSimplex.id);
+                DT.wuFaces.emplace((edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]), edgeSimplex.id);
             }
 
             insertedSimplices.insert(edgeSimplex.id);

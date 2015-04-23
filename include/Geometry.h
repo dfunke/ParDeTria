@@ -8,13 +8,11 @@
 #pragma once
 
 #include <iostream>
-#include <unordered_set>
 #include <map>
+#include <unordered_set>
+#include <unordered_map>
 #include <array>
 #include <cmath>
-
-#include <tbb/spin_mutex.h>
-#include <tbb/spin_rw_mutex.h>
 
 #include "utils/IndexedVector.hxx"
 #include "utils/VectorAdapter.hxx"
@@ -491,10 +489,8 @@ public:
   }
 
 public:
-  typedef std::vector<uint> tWhereUsedEntry;
-  typedef std::unordered_map<uint, tWhereUsedEntry> tWhereUsedMap;
   Ids convexHull;
-  tWhereUsedMap wuFaces;
+  std::unordered_multimap<uint, uint> wuFaces;
 };
 
 template <uint D, typename Precision> struct CrossCheckReport {

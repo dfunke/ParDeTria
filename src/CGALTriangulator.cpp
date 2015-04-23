@@ -153,7 +153,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
   dSimplices<D, Precision> tria;
   tria.reserve(helper.size(t));
-  tria.wuFaces.reserve(helper.size(t));
+  tria.wuFaces.reserve(3*helper.size(t));
 
   CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
       simplexLookup(0, helper.size(t));
@@ -186,7 +186,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     for (uint i = 0; i < D + 1; ++i) {
       uint facetteHash = a.vertexFingerprint ^ a.vertices[i];
 
-      tria.wuFaces[facetteHash].emplace_back(a.id);
+      tria.wuFaces.emplace(facetteHash, a.id);
     }
 
     PLOG(a << std::endl);
