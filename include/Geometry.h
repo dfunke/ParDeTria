@@ -123,14 +123,14 @@ public:
   dPoint(const dVector<D, Precision> &_coords)
       : id(dPoint<D, Precision>::cINF), coords(_coords) {}
 
-  dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
+  /*dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
 
   dPoint &operator=(const dPoint<D, Precision> &a) {
     id = a.id;
     coords = a.coords;
 
     return *this;
-  }
+  }*/
 
   bool operator==(const dPoint<D, Precision> &a) const {
 
@@ -221,21 +221,18 @@ public:
   dSimplex(const std::array<uint, D + 1> &_vertices)
       : id(dSimplex<D, Precision>::cINF), vertices(_vertices) {}
 
-  dSimplex(const dSimplex<D, Precision> &a)
+  /*dSimplex(const dSimplex<D, Precision> &a)
       : id(a.id), vertices(a.vertices), vertexFingerprint(a.vertexFingerprint),
         neighbors(a.neighbors) {}
 
   dSimplex &operator=(const dSimplex<D, Precision> &a) {
-    // acquire lock, as we are modifying the point
-    tbb::spin_mutex::scoped_lock lock(mtx);
-
     id = a.id;
     vertices = a.vertices;
     vertexFingerprint = a.vertexFingerprint;
     neighbors = a.neighbors;
 
     return *this;
-  }
+  }*/
 
   bool operator==(const dSimplex<D, Precision> &a) const {
 
@@ -378,7 +375,6 @@ public:
   std::array<uint, D + 1> vertices;
   uint vertexFingerprint;
   Ids neighbors;
-  tbb::spin_mutex mtx;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }
