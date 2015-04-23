@@ -309,11 +309,15 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
 
+      // copy only the convex hull of the partial DT
+      // only copy values not belonging to edgeSimplices -> would be deleted later anyhow
       for(const auto & idx : partialDTs[i].convexHull){
           if(!edgeSimplices.count(idx))
               DT.convexHull.insert(std::move(idx));
       }
 
+      // copy the faces where-used list
+      // only copy valid entries
       for (const auto &wu : partialDTs[i].wuFaces) {
         std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first])
                 ,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
@@ -375,7 +379,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   // delete all simplices belonging to the edge from DT
   LOG("Striping triangulation from edge" << std::endl);
 
-    // first update wuPoints data structure
+    // first update where used data structure
   tbb::parallel_for(
       std::size_t(0), edgeSimplices.bucket_count(), [&](const uint i) {
 
@@ -443,6 +447,8 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
       if (!inOnePartition) {
         tbb::spin_mutex::scoped_lock lock(insertMtx);
         DT.insert(edgeSimplex);
+
+          //convex hull treatment
           if(!edgeSimplex.isFinite())
               DT.convexHull.insert(edgeSimplex.id);
 
@@ -462,6 +468,8 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
           if (edgeSimplex.equalVertices(*it)) {
             tbb::spin_mutex::scoped_lock lock(insertMtx);
             DT.insert(edgeSimplex);
+
+              //convex hull treatment
               if(!edgeSimplex.isFinite())
                   DT.convexHull.insert(edgeSimplex.id);
 
