@@ -1,5 +1,10 @@
 #include "DCTriangulator.h"
 
+// debug
+#ifndef NDEBUG
+#include <csignal>
+#endif
+
 // std library
 #include <fstream>
 #include <iostream>
@@ -15,10 +20,8 @@
 #include <tbb/parallel_do.h>
 #include <tbb/parallel_sort.h>
 
-// debug
-#ifndef NDEBUG
-#include <csignal>
-#endif
+// tbb
+#include <tbb/spin_mutex.h>
 
 // own
 #include "Geometry.h"
@@ -301,33 +304,50 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     const dSimplices<D, Precision> *realDT) {
 
   LOG("Merging partial DTs into one triangulation" << std::endl);
+
   dSimplices<D, Precision> DT;
   // use the first partition as estimator for the size of the triangulation
   DT.reserve(partialDTs.size() * partialDTs[0].size());
   DT.convexHull.reserve(partialDTs.size() * partialDTs[0].convexHull.size());
+  DT.wuFaces.reserve(partialDTs.size() * partialDTs[0].wuFaces.size());
+
+  std::vector<dSimplex<D, Precision>> deletedSimplices;
+  deletedSimplices.reserve(edgeSimplices.size());
 
   for (uint i = 0; i < partialDTs.size(); ++i) {
-    DT.insert(partialDTs[i].begin(), partialDTs[i].end());
 
-      // copy only the convex hull of the partial DT
-      // only copy values not belonging to edgeSimplices -> would be deleted later anyhow
-      for(const auto & idx : partialDTs[i].convexHull){
+      // copy the simplices not belonging to the edge
+      for(auto & s : partialDTs[i]){
+          if(!edgeSimplices.count(s.id))
+              DT.insert(std::move(s));
+          else
+              deletedSimplices.push_back(std::move(s));
+      }
+
+      // copy the convex hull of the partial DT
+      // only copy values not belonging to edgeSimplices
+      for(auto & idx : partialDTs[i].convexHull){
           if(!edgeSimplices.count(idx))
               DT.convexHull.insert(std::move(idx));
       }
 
       // copy the faces where-used list
-      // only copy valid entries
-      for (const auto &wu : partialDTs[i].wuFaces) {
-        std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first])
-                ,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
-    }
+      // don't copy values belonging to the edge
+      for(auto & wu : partialDTs[i].wuFaces){
+          std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first])
+                  ,[&edgeSimplices](const uint & i){ return dSimplex<D, Precision>::isFinite(i) && !edgeSimplices.count(i); });
+      }
   }
 
-  auto edgePointIds = extractPoints(edgeSimplices, DT);
+  auto cmpFingerprint =
+          [](const dSimplex<D, Precision> &a, const dSimplex<D, Precision> &b) {
+              return a.vertexFingerprint < b.vertexFingerprint;
+          };
+  tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpFingerprint);
 
 //**********************
 #ifndef NDEBUG
+  auto edgePointIds = extractPoints(edgeSimplices, DT);
   auto paintMerging = [&](const dSimplices<D, Precision> &dt,
                           const std::string &name,
                           bool drawInfinite) -> Painter<D, Precision> {
@@ -359,56 +379,9 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   paintMerging(DT, provenance + "_05a_merging_merged", false);
 #endif
 
-  auto cmpFingerprint =
-      [](const dSimplex<D, Precision> &a, const dSimplex<D, Precision> &b) {
-        return a.vertexFingerprint < b.vertexFingerprint;
-      };
-
-  std::vector<dSimplex<D, Precision>> deletedSimplices;
-  deletedSimplices.reserve(edgeSimplices.size());
-  for (const auto &id : edgeSimplices) {
-    deletedSimplices.emplace_back(DT[id]);
-  }
-  tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(),
-                     cmpFingerprint);
-
 #ifndef NDEBUG
 // paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
 #endif
-
-  // delete all simplices belonging to the edge from DT
-  LOG("Striping triangulation from edge" << std::endl);
-
-    // first update where used data structure
-  tbb::parallel_for(
-      std::size_t(0), edgeSimplices.bucket_count(), [&](const uint i) {
-
-        for (auto it = edgeSimplices.begin(i); it != edgeSimplices.end(i);
-             ++it) {
-
-          const uint id = *it;
-
-          ASSERT(DT.contains(id));
-
-            // remove simplex from faces where used list
-            for (uint i = 0; i < D + 1; ++i) {
-                uint facetteHash = DT[id].vertexFingerprint ^ DT[id].vertices[i];
-
-                auto wu = std::find(DT.wuFaces[facetteHash].begin(),
-                                    DT.wuFaces[facetteHash].end(), id);
-
-                ASSERT(wu != DT.wuFaces[facetteHash].end());
-
-                // compiles to a movl - instruction
-                // guranteed atomicity for properly aligned data
-                *wu = dSimplex<D, Precision>::cINF;
-            }
-        }
-      });
-
-    // then perform the actual delete
-    for(const auto & id : edgeSimplices)
-        DT.erase(id);
 
 //**********************
 #ifndef NDEBUG
