@@ -474,11 +474,12 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
     for (const auto &wu : partialDTs[i].wuPoints) {
-        std::move(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuPoints[wu.first]));
-                     //,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
+        std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuPoints[wu.first])
+                     ,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
     }
     for (const auto &wu : partialDTs[i].wuFaces) {
-        std::move(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first]));
+        std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first])
+                ,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
     }
   }
 
