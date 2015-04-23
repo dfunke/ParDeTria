@@ -28,13 +28,13 @@ public:
 
     std::stringstream ss;
 
-    for (const auto &p : this->points) {
+    for (const auto &it : DT.wuFaces) {
       uint countInfiniteS = 0;
-      for (const auto &s : DT.wuPoints[p.id]) {
+      for (const auto &s : it.second) {
         countInfiniteS += !dSimplex<D, Precision>::isFinite(s);
       }
 
-      ss << CSV::csv(this->points.size(), DT.wuPoints[p.id].size(),
+      ss << CSV::csv(this->points.size(), it.second.size(),
                      countInfiniteS) << '\n';
     }
 

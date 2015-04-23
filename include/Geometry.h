@@ -497,7 +497,7 @@ public:
 public:
   typedef std::vector<uint> tWhereUsedEntry;
   typedef std::unordered_map<uint, tWhereUsedEntry> tWhereUsedMap;
-  tWhereUsedMap wuPoints;
+  Ids convexHull;
   tWhereUsedMap wuFaces;
 };
 

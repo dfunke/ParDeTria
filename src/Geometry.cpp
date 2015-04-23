@@ -771,6 +771,36 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     }
   }
 
+    // verify convex hull
+    LOG("Checking convex-hull" << std::endl);
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &s = *it;
+            if(!s.isFinite() && !this->convexHull.count(s.id)){
+                // s is infinite but not part of the convex hull
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("Infinite simplex " << s << " NOT in convex hull" << std::endl);
+                result.valid = false;
+            }
+        }
+    });
+
+    tbb::parallel_for(std::size_t(0), this->convexHull.bucket_count(), [&](const uint i) {
+
+        for (auto it = this->convexHull.begin(i); it != this->convexHull.end(i); ++it) {
+
+            const dSimplex<D, Precision> &s = this->at(*it);
+            if(s.isFinite()){
+                // s is finite but part of convex hull
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("Finite simplex " << s << " IS in convex hull" << std::endl);
+                result.valid = false;
+            }
+        }
+    });
+
   // verify where-used data structure
   LOG("Checking where-used relation" << std::endl);
     tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
@@ -779,18 +809,7 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
 
             const dSimplex<D, Precision> &s = *it;
             for (const auto &p : s.vertices) {
-                // point p of s not correctly flagged as used in s
-                if (std::find(wuPoints.at(p).begin(), wuPoints.at(p).end(), s.id) ==
-                    wuPoints.at(p).end()) {
-
-                    tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
-                    LOGGER.logContainer(wuPoints.at(p), Logger::Verbosity::NORMAL,
-                                        "p.simplices:");
-                    result.valid = false;
-                }
-
-                // check facette
+                                // check facette
                 uint facetteHash = s.vertexFingerprint ^p;
                 if (std::find(wuFaces.at(facetteHash).begin(), wuFaces.at(facetteHash).end(), s.id) ==
                     wuFaces.at(facetteHash).end()) {
@@ -805,24 +824,6 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     }
   });
 
-    tbb::parallel_for(std::size_t(0), points.size(), [&](const uint i){
-        const auto &p = points[i];
-        for (const auto &id : wuPoints.at(p.id)) {
-          if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
-            continue; // simplex of another triangulation
-
-          // p is flagged as being used in s, but its not
-          const auto &s = this->operator[](id);
-          if (!std::binary_search(s.vertices.begin(), s.vertices.end(), p.id)) {
-
-            tbb::spin_mutex::scoped_lock lock(mtx);
-            LOG("Point " << p << " SHOULD be used in " << s << std::endl);
-            LOGGER.logContainer(wuPoints.at(p.id), Logger::Verbosity::NORMAL,
-                                "p.simplices:");
-            result.valid = false;
-          }
-        }
-  });
 
     tbb::parallel_for(std::size_t(0), this->wuFaces.bucket_count(), [&](const uint i){
         for (auto it = this->wuFaces.begin(i); it != this->wuFaces.end(i); ++it) {

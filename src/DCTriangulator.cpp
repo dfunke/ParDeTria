@@ -82,45 +82,13 @@ Ids DCTriangulator<D, Precision>::getEdge(
     const dSimplices<D, Precision> &simplices,
     const Partitioning<D, Precision> &partitioning, const uint &partition) {
   Ids edgeSimplices;
-  Ids wqa; // set of already checked simplices
-
-  // the infinite points are stored as the last ones in the point array
-  for (uint infVertex = this->points.size() - dPoint<D, Precision>::nINF;
-       infVertex < this->points.size(); ++infVertex) {
-
-    ASSERT(this->points.contains(infVertex));
-    ASSERT(!this->points[infVertex].isFinite());
-
-    PLOG("Infinite vertex " << this->points[infVertex] << std::endl);
-
-    uint infId = this->points[infVertex].id;
-    LOGGER.logContainer(simplices.wuPoints.at(infId),
-                        Logger::Verbosity::PROLIX, "Used in simplices: ");
-
-    INDENT
-    for (const auto &s : simplices.wuPoints.at(infId)) {
-      if (!dSimplex<D, Precision>::isFinite(s))
-        continue;
-
-      ASSERT(simplices.contains(s));
-
-      PLOG("Adding " << simplices[s] << " to edge" << std::endl);
-      edgeSimplices.insert(simplices[s].id);
+  Ids wqa = simplices.convexHull; // set of already checked simplices
+  std::deque<uint> wq(simplices.convexHull.begin(), simplices.convexHull.end());
 
       /* Walk along the neighbors,
        * testing for each neighbor whether its circumsphere is within the
        * partition or not
        */
-      wqa.insert(simplices[s].id);
-      std::deque<uint> wq;
-
-      // work queue of simplices to check for circum circle criterian
-      for (const auto &n : simplices[s].neighbors) {
-        if (wqa.insert(n).second) {
-          // simplex not yet inspected -> add it to queue
-          wq.push_back(n);
-        }
-      }
 
       INDENT
       while (!wq.empty()) {
@@ -151,9 +119,6 @@ Ids DCTriangulator<D, Precision>::getEdge(
         }
       }
       DEDENT
-    }
-    DEDENT
-  }
 
   return edgeSimplices;
 }
@@ -339,14 +304,17 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
   dSimplices<D, Precision> DT;
   // use the first partition as estimator for the size of the triangulation
   DT.reserve(partialDTs.size() * partialDTs[0].size());
+  DT.convexHull.reserve(partialDTs.size() * partialDTs[0].convexHull.size());
 
   for (uint i = 0; i < partialDTs.size(); ++i) {
     DT.insert(partialDTs[i].begin(), partialDTs[i].end());
-    for (const auto &wu : partialDTs[i].wuPoints) {
-        std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuPoints[wu.first])
-                     ,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
-    }
-    for (const auto &wu : partialDTs[i].wuFaces) {
+
+      for(const auto & idx : partialDTs[i].convexHull){
+          if(!edgeSimplices.count(idx))
+              DT.convexHull.insert(std::move(idx));
+      }
+
+      for (const auto &wu : partialDTs[i].wuFaces) {
         std::copy_if(wu.second.begin(), wu.second.end(), std::back_inserter(DT.wuFaces[wu.first])
                 ,[](const uint & i){ return dSimplex<D, Precision>::isFinite(i); });
     }
@@ -418,20 +386,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
           ASSERT(DT.contains(id));
 
-          // remove simplex from point where used list
-          for (uint p = 0; p < D + 1; ++p) {
-
-              uint vertex = DT[id].vertices[p];
-            auto wu = std::find(DT.wuPoints[vertex].begin(),
-                                DT.wuPoints[vertex].end(), id);
-
-            ASSERT(wu != DT.wuPoints[vertex].end());
-
-            // compiles to a movl - instruction
-            // guranteed atomicity for properly aligned data
-            *wu = dSimplex<D, Precision>::cINF;
-          }
-
             // remove simplex from faces where used list
             for (uint i = 0; i < D + 1; ++i) {
                 uint facetteHash = DT[id].vertexFingerprint ^ DT[id].vertices[i];
@@ -489,9 +443,10 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
       if (!inOnePartition) {
         tbb::spin_mutex::scoped_lock lock(insertMtx);
         DT.insert(edgeSimplex);
+          if(!edgeSimplex.isFinite())
+              DT.convexHull.insert(edgeSimplex.id);
 
         for (uint d = 0; d < D + 1; ++d) {
-          DT.wuPoints[edgeSimplex.vertices[d]].emplace_back(edgeSimplex.id);
           DT.wuFaces[edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]].emplace_back(edgeSimplex.id);
         }
 
@@ -507,10 +462,10 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
           if (edgeSimplex.equalVertices(*it)) {
             tbb::spin_mutex::scoped_lock lock(insertMtx);
             DT.insert(edgeSimplex);
+              if(!edgeSimplex.isFinite())
+                  DT.convexHull.insert(edgeSimplex.id);
 
             for (uint d = 0; d < D + 1; ++d) {
-              DT.wuPoints[edgeSimplex.vertices[d]].emplace_back(
-                  edgeSimplex.id);
               DT.wuFaces[edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]].emplace_back(edgeSimplex.id);
             }
 

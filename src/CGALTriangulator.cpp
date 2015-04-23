@@ -153,7 +153,6 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
   dSimplices<D, Precision> tria;
   tria.reserve(helper.size(t));
-  tria.wuPoints.reserve(ids.size());
   tria.wuFaces.reserve(helper.size(t));
 
   CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
@@ -173,14 +172,15 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
       ASSERT(point.id == it->vertex(i)->info());
 
       a.vertices[i] = point.id;
-
-      // update point where-used data structure
-      tria.wuPoints[point.id].emplace_back(a.id);
     }
 
     // sort vertices by ascending point id
     std::sort(a.vertices.begin(), a.vertices.end());
     a.fingerprint();
+
+    //check whether vertex belongs to the convex hull
+    if(!a.isFinite())
+      tria.convexHull.insert(a.id);
 
     //update where-used data structure for faces
     for (uint i = 0; i < D + 1; ++i) {
