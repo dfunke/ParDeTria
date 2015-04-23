@@ -19,6 +19,9 @@ std::atomic<uint> gAtomicTetrahedronID(0);
 #include "mods/Delaunay_triangulation_3.h"
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
+// boost
+#include <boost/iterator/transform_iterator.hpp>
+
 #include <CGAL/Unique_hash_map.h>
 
 template <uint D, typename Precision, class Tria, bool Parallel = false> class CGALHelper;
@@ -124,22 +127,15 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
   CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
-  // copy points into CGAL structure
-  std::vector<std::pair<typename Tria::Point, uint>> cPoints;
-  cPoints.reserve(ids.size());
-  for (const auto &id : ids) {
-
-    const auto &p = points[id];
-
-    /* if (filterInfinite && !p.isFinite())
-      continue; */
-
-    auto cp = helper.make_point(p);
-    cPoints.push_back(std::make_pair(cp, p.id));
-  }
+  // transform points into CGAL points with info
+  auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
+      const auto &p = points[i];
+      return std::make_pair(helper.make_point(p), p.id);
+  };
 
   Tria t = helper.make_tria();
-  t.insert(cPoints.begin(), cPoints.end());
+  t.insert(boost::make_transform_iterator(ids.begin(), transform),
+           boost::make_transform_iterator(ids.end(), transform));
 
   ASSERT(t.is_valid());
 
