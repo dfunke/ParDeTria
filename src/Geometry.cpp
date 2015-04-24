@@ -874,14 +874,16 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
               // corresponding simplices must be present in the neighbors arrays
               // accordingly
               if ((a.isNeighbor(b) &&
-                   (!b.isNeighbor(a) || a.neighbors.count(b.id) != 1 ||
-                    b.neighbors.count(a.id) != 1))
+                   (!b.isNeighbor(a) ||
+                           std::find(a.neighbors.begin(), a.neighbors.end(), b.id) == a.neighbors.end() ||
+                           std::find(b.neighbors.begin(), b.neighbors.end(), a.id) == b.neighbors.end()))
                   // a and b are NOT neighbors: must be symmetric and simplices NOT be
                   // present in neighbors arrays
                   ||
                   (!a.isNeighbor(b) &&
-                   (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
-                    b.neighbors.count(a.id) != 0))) {
+                   (b.isNeighbor(a) ||
+                           std::find(a.neighbors.begin(), a.neighbors.end(), b.id) != a.neighbors.end() ||
+                           std::find(b.neighbors.begin(), b.neighbors.end(), a.id) != b.neighbors.end()))) {
 
                   tbb::spin_mutex::scoped_lock lock(mtx);
                   LOG("Wrong neighbor relation between " << a << " and " << b

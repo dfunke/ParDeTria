@@ -198,18 +198,18 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
   INDENT
   for (auto it = helper.begin(t); it != helper.end(t); ++it) {
     auto &tet = tria[simplexLookup[it]];
-    tet.neighbors.reserve(D + 1);
-
+    uint neighborIdx = 0;
     for (uint i = 0; i < D + 1; ++i) {
       if (simplexLookup.is_defined(it->neighbor(i))) {
         const auto &n = tria[simplexLookup[it->neighbor(i)]];
         if (n.id != tet.id) {
-          tet.neighbors.insert(n.id);
+          tet.neighbors[neighborIdx++] = n.id;
         }
-      } else {
-        tet.neighbors.insert(dSimplex<D, Precision>::cINF);
       }
     }
+
+    while(neighborIdx < D + 1)
+      tet.neighbors[neighborIdx++] = dSimplex<D, Precision>::cINF;
 
     PLOG(tet << std::endl);
   }

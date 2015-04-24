@@ -372,7 +372,7 @@ public:
   uint id;
   std::array<uint, D + 1> vertices;
   uint vertexFingerprint;
-  Ids neighbors;
+  std::array<uint, D + 1> neighbors;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }
@@ -443,7 +443,8 @@ public:
       for (const auto &n : mySimplex->neighbors) {
         // TODO handle infinite neighbors better
         if (dSimplex<D, Precision>::isFinite(n) &&
-            otherSimplex.neighbors.count(n) != 1) {
+            //TODO sorted array for binary search?
+                std::find(otherSimplex.neighbors.begin(), otherSimplex.neighbors.end(), n) == otherSimplex.neighbors.end()) {
           // the other triangulation does not contain n as neighbor
           PLOG("wrong neighbors: " << *mySimplex << " -- " << otherSimplex
                                    << std::endl);

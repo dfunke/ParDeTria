@@ -19,6 +19,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_do.h>
 #include <tbb/parallel_sort.h>
+#include <tbb/enumerable_thread_specific.h>
 
 // tbb
 #include <tbb/spin_mutex.h>
@@ -166,6 +167,9 @@ void DCTriangulator<D, Precision>::updateNeighbors(
   const uint saveIndent = LOGGER.getIndent();
 
   tbb::concurrent_unordered_set<uint> wqa(toCheck.size());
+  tbb::enumerable_thread_specific<std::set<uint>,
+          tbb::cache_aligned_allocator<std::set<uint>>,
+          tbb::ets_key_usage_type::ets_key_per_instance> tsNeighborSet;
 
 #ifndef NDEBUG
   std::atomic<uint> checked(0);
@@ -214,31 +218,33 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     dSimplex<D, Precision> saveSimplex = simplex;
 #endif
 
-    simplex.neighbors.clear();
-    simplex.neighbors.reserve(D + 1);
-
-
     INDENT
+      uint neighborIdx = 0;
+      auto neighborSet = tsNeighborSet.local();
+      neighborSet.clear();
     for (uint i = 0; i < D + 1; ++i) {
 
-        uint facetteHash = simplex.vertexFingerprint ^simplex.vertices[i];
+        uint facetteHash = simplex.vertexFingerprint ^ simplex.vertices[i];
         auto range = simplices.wuFaces.equal_range(facetteHash);
+        PLOG("Key: " << facetteHash << " #Results: " << std::distance(range.first, range.second) << std::endl;);
         for (auto it = range.first; it != range.second; ++it) {
             if (it->second != simplex.id && dSimplex<D, Precision>::isFinite(it->second)
                 && simplices.contains(it->second) && simplex.isNeighbor(simplices[it->second])) {
                 PLOG("Neighbor with " << simplices[it->second] << std::endl);
 
-                simplex.neighbors.insert(it->second);
-                feeder.add(it->second);
+                if(neighborSet.insert(it->second).second) {
+                    simplex.neighbors[neighborIdx++] = it->second;
+                    feeder.add(it->second);
+                }
             }
         }
     }
     DEDENT
 
-    ASSERT(0 < simplex.neighbors.size() && simplex.neighbors.size() <= D + 1);
+    ASSERT(0 < neighborIdx && neighborIdx <= D + 1);
 
 #ifndef NDEBUG
-    if (!(simplex.neighbors.size() > 0 && simplex.neighbors.size() <= D + 1)) {
+    if (!(neighborIdx > 0 && neighborIdx <= D + 1)) {
       LOG("Error: wrong number of neighbors for simplex " << simplex
                                                           << std::endl);
 
@@ -276,11 +282,10 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
     // D+1);
 
-    // TODO it might be better NOT to save the infinite simplex as neighbor
-    if (simplex.neighbors.size() < D + 1) { // if it is a simplex at the border,
+    while(neighborIdx < D + 1) { // if it is a simplex at the border,
       // it might have one infinite
       // simplex as neighbor
-      simplex.neighbors.insert(uint(dSimplex<D, Precision>::cINF));
+      simplex.neighbors[neighborIdx++] = uint(dSimplex<D, Precision>::cINF);
     }
   });
 
@@ -348,7 +353,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
 //**********************
 #ifndef NDEBUG
-  auto edgePointIds = extractPoints(edgeSimplices, DT);
+  // auto edgePointIds = extractPoints(edgeSimplices, DT);
   auto paintMerging = [&](const dSimplices<D, Precision> &dt,
                           const std::string &name,
                           bool drawInfinite) -> Painter<D, Precision> {
@@ -360,9 +365,9 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     painter.setColor(0, 1, 0, 0.4);
     painter.draw(dt, this->points, drawInfinite);
 
-    painter.setColor(1, 0, 0);
-    painter.draw(this->points.template filter<dPoints<D, Precision>>(edgePointIds));
-    painter.save(name);
+    // painter.setColor(1, 0, 0);
+    // painter.draw(this->points.template filter<dPoints<D, Precision>>(edgePointIds));
+    // painter.save(name);
 
     if (realDT != nullptr) {
       painter.setColor(0, 0, 0, 0.1);
