@@ -7,6 +7,7 @@
 
 // define a static counter for the tetrahedronID
 std::atomic<uint> gAtomicTetrahedronID(0);
+std::atomic<uint> gAtomicCgalID(0);
 
 // CGAL
 #define CGAL_LINKED_WITH_TBB
@@ -23,6 +24,101 @@ std::atomic<uint> gAtomicTetrahedronID(0);
 #include <boost/iterator/transform_iterator.hpp>
 
 #include <CGAL/Unique_hash_map.h>
+
+
+
+template <typename Precision, typename GT,
+        typename Cb = CGAL::Triangulation_cell_base_3<GT> >
+class Triangulation_dSimplexAdapter_3
+        : public Cb
+{
+public:
+  typedef typename Cb::Vertex_handle                   Vertex_handle;
+  typedef typename Cb::Cell_handle                     Cell_handle;
+
+  template < typename TDS2 >
+  struct Rebind_TDS {
+    typedef typename Cb::template Rebind_TDS<TDS2>::Other       Cb2;
+    typedef Triangulation_dSimplexAdapter_3<Precision, GT, Cb2>  Other;
+  };
+
+  Triangulation_dSimplexAdapter_3()
+          : Cb() {
+
+    m_simplex.id = gAtomicCgalID++;
+  }
+
+  Triangulation_dSimplexAdapter_3(Vertex_handle v0, Vertex_handle v1,
+                                      Vertex_handle v2, Vertex_handle v3)
+          : Cb(v0, v1, v2, v3) {
+
+    m_simplex.id = gAtomicCgalID++;
+  }
+
+  Triangulation_dSimplexAdapter_3(Vertex_handle v0, Vertex_handle v1,
+                                      Vertex_handle v2, Vertex_handle v3,
+                                      Cell_handle   n0, Cell_handle   n1,
+                                      Cell_handle   n2, Cell_handle   n3)
+          : Cb(v0, v1, v2, v3, n0, n1, n2, n3) {
+
+    m_simplex.id = gAtomicCgalID++;
+  }
+
+  // SETTING
+
+  void set_vertex(int i, Vertex_handle v)
+  {
+    Cb::set_vertex(i, v);
+    m_simplex.vertices[i] = v->info();
+  }
+
+  void set_neighbor(int i, Cell_handle n)
+  {
+    Cb::set_neighbor(i, n);
+    //m_simplex.neighbors[i] = n->m_simplex.id;
+  }
+
+  void set_vertices()
+  {
+    Cb::set_vertices();
+    m_simplex.vertices[0] = dPoint<3, Precision>::cINF;
+    m_simplex.vertices[1] = dPoint<3, Precision>::cINF;
+    m_simplex.vertices[2] = dPoint<3, Precision>::cINF;
+    m_simplex.vertices[3] = dPoint<3, Precision>::cINF;
+  }
+
+  void set_vertices(Vertex_handle v0, Vertex_handle v1,
+                    Vertex_handle v2, Vertex_handle v3)
+  {
+    Cb::set_vertices(v0, v1, v2, v3);
+    m_simplex.vertices[0] = v0->info();
+    m_simplex.vertices[1] = v1->info();
+    m_simplex.vertices[2] = v2->info();
+    m_simplex.vertices[3] = v3->info();
+  }
+
+  void set_neighbors()
+  {
+    Cb::set_neighbors();
+    //m_simplex.neighbors[0] = dSimplex<3, Precision>::cINF;
+    //m_simplex.neighbors[1] = dSimplex<3, Precision>::cINF;
+    //m_simplex.neighbors[2] = dSimplex<3, Precision>::cINF;
+    //m_simplex.neighbors[3] = dSimplex<3, Precision>::cINF;
+  }
+
+  void set_neighbors(Cell_handle n0, Cell_handle n1,
+                     Cell_handle n2, Cell_handle n3)
+  {
+    Cb::set_neighbors(n0, n1,n2,n3);
+    //m_simplex.neighbors[0] = n0->m_simplex.id;
+    //m_simplex.neighbors[1] = n1->m_simplex.id;
+    //m_simplex.neighbors[2] = n2->m_simplex.id;
+    //m_simplex.neighbors[3] = n3->m_simplex.id;
+  }
+
+public:
+  dSimplex<3, Precision> m_simplex;
+};
 
 template <uint D, typename Precision, class Tria, bool Parallel = false> class CGALHelper;
 
