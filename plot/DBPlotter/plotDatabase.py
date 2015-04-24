@@ -352,6 +352,82 @@ def plotComparison():
     pSpeedupRel.plot("comparison_rel_speedup_over_threads.png")
     pSpeedupAbs.plot("comparison_abs_speedup_over_threads.png")
 
+def plotImprovement():
+    ########################################################################################################################
+
+    lastRunBenchmarks = int(getLastRun(database, 'benchmarks'))
+
+    if lastRunBenchmarks < 2:
+        # no improvement to plot
+        return
+
+    new = load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks)})
+    old = load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks-1)})
+
+    charsBenchmarks = getCharacteristics(new)
+
+    pRuntime = ph.Plot()
+    pRuntime.title = "Runtime over Threads"
+    pRuntime.xlabel = "threads"
+    pRuntime.ylabel = "time [ms]"
+    pRuntime.desc = r"$10^%i$ points" % math.log10(charsBenchmarks['nP'][0])
+
+    pImprovement = ph.Plot()
+    pImprovement.title = "Improvement over Threads"
+    pImprovement.xlabel = "threads"
+    pImprovement.ylabel = "ratio"
+    pImprovement.desc = r"$10^%i$ points" % math.log10(charsBenchmarks['nP'][0])
+    
+    #################################################
+    # old small base case, seq. base
+
+    sOldSeqBase = ph.Series()
+    sOldSeqBase.xvalues = charsBenchmarks['threads']
+    sOldSeqBase.yvalues = [np.mean(x) / 1e6 for x in select(old, **{'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sOldSeqBase.label = "Old - Seq. Base %i" % np.min(charsBenchmarks['basecase'])
+    pRuntime.addSeries(sOldSeqBase)
+
+    
+    #################################################
+    # old large base case, par. base
+
+    sOldParBase = ph.Series()
+    sOldParBase.xvalues = charsBenchmarks['threads']
+    sOldParBase.yvalues = [np.mean(x) / 1e6 for x in select(old, **{'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sOldParBase.label = "Old - Par. Base %i" % np.max(charsBenchmarks['basecase'])
+    pRuntime.addSeries(sOldParBase)
+    
+    #################################################
+    # new small base case, seq. base
+
+    sNewSeqBase = ph.Series()
+    sNewSeqBase.xvalues = charsBenchmarks['threads']
+    sNewSeqBase.yvalues = [np.mean(x) / 1e6 for x in select(new, **{'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sNewSeqBase.label = "New - Seq. Base %i" % np.min(charsBenchmarks['basecase'])
+    pRuntime.addSeries(sNewSeqBase)
+
+    
+    #################################################
+    # new large base case, par. base
+
+    sNewParBase = ph.Series()
+    sNewParBase.xvalues = charsBenchmarks['threads']
+    sNewParBase.yvalues = [np.mean(x) / 1e6 for x in select(new, **{'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sNewParBase.label = "New - Par. Base %i" % np.max(charsBenchmarks['basecase'])
+    pRuntime.addSeries(sNewParBase)
+
+    sImpSeqBase = ph.Series(sNewSeqBase)
+    sImpSeqBase.yvalues = [old / new for old, new in zip(sOldSeqBase.yvalues, sImpSeqBase.yvalues)]
+    pImprovement.addSeries(sImpSeqBase)
+    
+    sImpParBase = ph.Series(sNewParBase)
+    sImpParBase.yvalues = [old / new for old, new in zip(sOldParBase.yvalues, sImpParBase.yvalues)]
+    pImprovement.addSeries(sImpParBase)
+
+    pRuntime.plot("improvement_time_over_threads.png", legend_cols=2)
+    pImprovement.plot("improvement_ratio_over_threads.png")
+
+
 if len(sys.argv) != 2:
     print("Specify database")
 database = sys.argv[1]
@@ -362,5 +438,8 @@ plotCGAL()
 print("Plot Base Case")
 plotBaseCase()
 
-print("Plotting Benchmarks")
+print("Plotting Comparision")
 plotComparison()
+
+print("Plotting Improvement")
+plotImprovement()
