@@ -75,7 +75,8 @@ public:
   void set_neighbor(int i, Cell_handle n)
   {
     Cb::set_neighbor(i, n);
-    //m_simplex.neighbors[i] = n->m_simplex.id;
+    if(n != Cell_handle())
+      m_simplex.neighbors[i] = n->m_simplex.id;
   }
 
   void set_vertices()
@@ -100,20 +101,24 @@ public:
   void set_neighbors()
   {
     Cb::set_neighbors();
-    //m_simplex.neighbors[0] = dSimplex<3, Precision>::cINF;
-    //m_simplex.neighbors[1] = dSimplex<3, Precision>::cINF;
-    //m_simplex.neighbors[2] = dSimplex<3, Precision>::cINF;
-    //m_simplex.neighbors[3] = dSimplex<3, Precision>::cINF;
+    m_simplex.neighbors[0] = dSimplex<3, Precision>::cINF;
+    m_simplex.neighbors[1] = dSimplex<3, Precision>::cINF;
+    m_simplex.neighbors[2] = dSimplex<3, Precision>::cINF;
+    m_simplex.neighbors[3] = dSimplex<3, Precision>::cINF;
   }
 
   void set_neighbors(Cell_handle n0, Cell_handle n1,
                      Cell_handle n2, Cell_handle n3)
   {
     Cb::set_neighbors(n0, n1,n2,n3);
-    //m_simplex.neighbors[0] = n0->m_simplex.id;
-    //m_simplex.neighbors[1] = n1->m_simplex.id;
-    //m_simplex.neighbors[2] = n2->m_simplex.id;
-    //m_simplex.neighbors[3] = n3->m_simplex.id;
+    if(n0 != Cell_handle())
+      m_simplex.neighbors[0] = n0->m_simplex.id;
+    if(n1 != Cell_handle())
+      m_simplex.neighbors[1] = n1->m_simplex.id;
+    if(n2 != Cell_handle())
+      m_simplex.neighbors[2] = n2->m_simplex.id;
+    if(n3 != Cell_handle())
+      m_simplex.neighbors[3] = n3->m_simplex.id;
   }
 
 public:
@@ -357,8 +362,8 @@ protected:
                                               /*, bool filterInfinite */) {
 
     typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
-    typedef CGAL::Triangulation_data_structure_3<
-        Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Parallel_tag> Tds;
+    typedef Triangulation_dSimplexAdapter_3<Precision, K> Cb;
+    typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
     return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds, this->gridOccupancy /*, filterInfinite */);
@@ -383,8 +388,8 @@ protected:
           /*, bool filterInfinite */) {
 
     typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
-    typedef CGAL::Triangulation_data_structure_3<
-            Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Sequential_tag> Tds;
+    typedef Triangulation_dSimplexAdapter_3<Precision, K> Cb;
+    typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
     typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
     return _delaunayCgal<3, Precision, CT, false>(ids, this->points, bounds, this->gridOccupancy /*, filterInfinite */);
