@@ -843,7 +843,7 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
             const auto &s = this->operator[](id);
             bool found = false;
             for (uint d = 0; d < D + 1; ++d) {
-                if (it->first == (s.vertexFingerprint ^ s.vertices[d])) {
+                if (it->first == s.faceFingerprint(d)) {
                     found = true;
                     break;
                 }
