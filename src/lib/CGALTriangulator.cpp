@@ -1,9 +1,16 @@
 #include "CGALTriangulator.h"
 
+#ifndef NDEBUG
+
+#include <csignal>
+
+#endif
+
 #include <atomic>
 #include <type_traits>
 
 #include "utils/ASSERT.h"
+#include "utils/StaticSort.h"
 
 // define a static counter for the tetrahedronID
 std::atomic<uint> gAtomicTetrahedronID(0);
@@ -26,6 +33,50 @@ std::atomic<uint> gAtomicCgalID(0);
 
 #include <CGAL/Unique_hash_map.h>
 
+template<typename Info_, typename GT,
+        typename Fb_ = CGAL::Triangulation_face_base_2<GT> >
+class Triangulation_dSimplexAdapter_2
+        : public Fb_ {
+    Info_ _info;
+public:
+    typedef typename Fb_::Vertex_handle Vertex_handle;
+    typedef typename Fb_::Face_handle Face_handle;
+    typedef Info_ Info;
+
+    template<typename TDS2>
+    struct Rebind_TDS {
+        typedef typename Fb_::template Rebind_TDS<TDS2>::Other Fb2;
+        typedef Triangulation_dSimplexAdapter_2<Info, GT, Fb2> Other;
+    };
+
+    Triangulation_dSimplexAdapter_2()
+            : Fb_() {
+
+        m_id = gAtomicCgalID++;
+    }
+
+    Triangulation_dSimplexAdapter_2(Vertex_handle v0,
+                                    Vertex_handle v1,
+                                    Vertex_handle v2)
+            : Fb_(v0, v1, v2) {
+
+        m_id = gAtomicCgalID++;
+    }
+
+    Triangulation_dSimplexAdapter_2(Vertex_handle v0,
+                                    Vertex_handle v1,
+                                    Vertex_handle v2,
+                                    Face_handle n0,
+                                    Face_handle n1,
+                                    Face_handle n2)
+            : Fb_(v0, v1, v2, n0, n1, n2) {
+
+        m_id = gAtomicCgalID++;
+    }
+
+public:
+    uint m_id;
+};
 
 template<typename Precision, typename GT,
         typename Cb = CGAL::Triangulation_cell_base_3<GT> >
@@ -44,14 +95,14 @@ public:
     Triangulation_dSimplexAdapter_3()
             : Cb() {
 
-        m_simplex.id = gAtomicCgalID++;
+        m_id = gAtomicCgalID++;
     }
 
     Triangulation_dSimplexAdapter_3(Vertex_handle v0, Vertex_handle v1,
                                     Vertex_handle v2, Vertex_handle v3)
             : Cb(v0, v1, v2, v3) {
 
-        m_simplex.id = gAtomicCgalID++;
+        m_id = gAtomicCgalID++;
     }
 
     Triangulation_dSimplexAdapter_3(Vertex_handle v0, Vertex_handle v1,
@@ -60,62 +111,11 @@ public:
                                     Cell_handle n2, Cell_handle n3)
             : Cb(v0, v1, v2, v3, n0, n1, n2, n3) {
 
-        m_simplex.id = gAtomicCgalID++;
-    }
-
-    // SETTING
-
-    void set_vertex(int i, Vertex_handle v) {
-        Cb::set_vertex(i, v);
-        m_simplex.vertices[i] = v->info();
-    }
-
-    void set_neighbor(int i, Cell_handle n) {
-        Cb::set_neighbor(i, n);
-        if (n != Cell_handle())
-            m_simplex.neighbors[i] = n->m_simplex.id;
-    }
-
-    void set_vertices() {
-        Cb::set_vertices();
-        m_simplex.vertices[0] = dPoint<3, Precision>::cINF;
-        m_simplex.vertices[1] = dPoint<3, Precision>::cINF;
-        m_simplex.vertices[2] = dPoint<3, Precision>::cINF;
-        m_simplex.vertices[3] = dPoint<3, Precision>::cINF;
-    }
-
-    void set_vertices(Vertex_handle v0, Vertex_handle v1,
-                      Vertex_handle v2, Vertex_handle v3) {
-        Cb::set_vertices(v0, v1, v2, v3);
-        m_simplex.vertices[0] = v0->info();
-        m_simplex.vertices[1] = v1->info();
-        m_simplex.vertices[2] = v2->info();
-        m_simplex.vertices[3] = v3->info();
-    }
-
-    void set_neighbors() {
-        Cb::set_neighbors();
-        m_simplex.neighbors[0] = dSimplex<3, Precision>::cINF;
-        m_simplex.neighbors[1] = dSimplex<3, Precision>::cINF;
-        m_simplex.neighbors[2] = dSimplex<3, Precision>::cINF;
-        m_simplex.neighbors[3] = dSimplex<3, Precision>::cINF;
-    }
-
-    void set_neighbors(Cell_handle n0, Cell_handle n1,
-                       Cell_handle n2, Cell_handle n3) {
-        Cb::set_neighbors(n0, n1, n2, n3);
-        if (n0 != Cell_handle())
-            m_simplex.neighbors[0] = n0->m_simplex.id;
-        if (n1 != Cell_handle())
-            m_simplex.neighbors[1] = n1->m_simplex.id;
-        if (n2 != Cell_handle())
-            m_simplex.neighbors[2] = n2->m_simplex.id;
-        if (n3 != Cell_handle())
-            m_simplex.neighbors[3] = n3->m_simplex.id;
+        m_id = gAtomicCgalID++;
     }
 
 public:
-    dSimplex<3, Precision> m_simplex;
+    uint m_id;
 };
 
 template<uint D, typename Precision, class Tria, bool Parallel = false>
@@ -128,11 +128,11 @@ public:
     CGALHelper(__attribute__((unused)) const dBox<2, Precision> &bounds,
                __attribute__((unused)) const uint N) { }
 
-    typename Tria::Finite_faces_iterator begin(Tria &t) {
+    typename Tria::Finite_faces_iterator begin(const Tria &t) {
         return t.finite_faces_begin();
     }
 
-    typename Tria::Finite_faces_iterator end(Tria &t) {
+    typename Tria::Finite_faces_iterator end(const Tria &t) {
         return t.finite_faces_end();
     }
 
@@ -157,11 +157,11 @@ public:
     CGALHelper(__attribute__((unused)) const dBox<3, Precision> &bounds,
                __attribute__((unused)) const uint N) { }
 
-    typename Tria::Finite_cells_iterator begin(Tria &t) {
+    typename Tria::Finite_cells_iterator begin(const Tria &t) {
         return t.finite_cells_begin();
     }
 
-    typename Tria::Finite_cells_iterator end(Tria &t) {
+    typename Tria::Finite_cells_iterator end(const Tria &t) {
         return t.finite_cells_end();
     }
 
@@ -191,11 +191,11 @@ public:
                                 (uint) std::floor(std::cbrt(std::numeric_limits<int>::max()))
                         )) { }
 
-    typename Tria::Finite_cells_iterator begin(Tria &t) {
+    typename Tria::Finite_cells_iterator begin(const Tria &t) {
         return t.finite_cells_begin();
     }
 
-    typename Tria::Finite_cells_iterator end(Tria &t) {
+    typename Tria::Finite_cells_iterator end(const Tria &t) {
         return t.finite_cells_end();
     }
 
@@ -237,10 +237,9 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
     ASSERT(t.is_valid());
 
-    // VLOG("CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid"
-    //     << std::endl);
-    // VLOG("finite cells/vertices " << t.number_of_finite_cells() << "/"
-    //     << t.number_of_vertices() << std::endl);
+    PLOG("CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl);
+    PLOG("finite cells/vertices " << t.number_of_finite_cells() << "/"
+         << t.number_of_vertices() << std::endl);
 
     PLOG("Collecting simplices" << std::endl);
     INDENT
@@ -249,27 +248,24 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     tria.reserve(helper.size(t));
     tria.wuFaces.reserve(3 * helper.size(t));
 
-    CGAL::Unique_hash_map<typename CGALHelper<D, Precision, Tria, Parallel>::Handle, uint>
-            simplexLookup(0, helper.size(t));
-
-    uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
+    //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
 #ifndef NDEBUG
-    uint saveTetrahedronID = tetrahedronID;
+    //uint saveTetrahedronID = tetrahedronID;
 #endif
 
     dSimplex<D, Precision> a;
     for (auto it = helper.begin(t); it != helper.end(t); ++it) {
-        a.id = tetrahedronID++;
+        a.id = it->m_id;
 
-        for (uint i = 0; i < D + 1; ++i) {
-            dPoint<D, Precision> &point = points[it->vertex(i)->info()];
-            ASSERT(point.id == it->vertex(i)->info());
-
-            a.vertices[i] = point.id;
+        for (uint d = 0; d < D + 1; ++d) {
+            a.vertices[d] = it->vertex(d)->info();
+            a.neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<3, Precision>::cINF
+                                                            : it->neighbor(d)->m_id;
         }
 
         // sort vertices by ascending point id
-        std::sort(a.vertices.begin(), a.vertices.end());
+        static_insertion_sort(a.vertices);
+        static_insertion_sort(a.neighbors);
         a.fingerprint();
 
         //check whether vertex belongs to the convex hull
@@ -285,33 +281,10 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
         PLOG(a << std::endl);
         tria.insert(a);
-        simplexLookup[it] = a.id;
     }
     DEDENT
 
-    ASSERT(tetrahedronID == saveTetrahedronID + helper.size(t));
-
-    PLOG("Collecting neighbors" << std::endl);
-
-    INDENT
-    for (auto it = helper.begin(t); it != helper.end(t); ++it) {
-        auto &tet = tria[simplexLookup[it]];
-        uint neighborIdx = 0;
-        for (uint i = 0; i < D + 1; ++i) {
-            if (simplexLookup.is_defined(it->neighbor(i))) {
-                const auto &n = tria[simplexLookup[it->neighbor(i)]];
-                if (n.id != tet.id) {
-                    tet.neighbors[neighborIdx++] = n.id;
-                }
-            }
-        }
-
-        while (neighborIdx < D + 1)
-            tet.neighbors[neighborIdx++] = dSimplex<D, Precision>::cINF;
-
-        PLOG(tet << std::endl);
-    }
-    DEDENT
+    //ASSERT(tetrahedronID == saveTetrahedronID + helper.size(t));
 
     return tria;
 }
@@ -335,7 +308,8 @@ protected:
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
-        typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
+        typedef Triangulation_dSimplexAdapter_2<Precision, K> Cb;
+        typedef CGAL::Triangulation_data_structure_2<Vb, Cb> Tds;
         typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
         return _delaunayCgal<2, Precision, CT, Parallel>(ids, this->points, bounds,
