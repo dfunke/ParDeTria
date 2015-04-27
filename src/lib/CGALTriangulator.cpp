@@ -238,8 +238,6 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     ASSERT(t.is_valid());
 
     PLOG("CGAL triangulation is " << (t.is_valid() ? "" : "NOT ") << "valid" << std::endl);
-    PLOG("finite cells/vertices " << t.number_of_finite_cells() << "/"
-         << t.number_of_vertices() << std::endl);
 
     PLOG("Collecting simplices" << std::endl);
     INDENT
