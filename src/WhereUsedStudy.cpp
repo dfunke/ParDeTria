@@ -28,14 +28,13 @@ public:
 
     std::stringstream ss;
 
-    for (const auto &p : this->points) {
-      uint countInfiniteS = 0;
-      for (const auto &s : DT.whereUsed[p.id]) {
-        countInfiniteS += !dSimplex<D, Precision>::isFinite(s);
-      }
+    for (auto it =  DT.wuFaces.begin();
+              it != DT.wuFaces.end();) {
 
-      ss << CSV::csv(this->points.size(), DT.whereUsed[p.id].size(),
-                     countInfiniteS) << '\n';
+      auto range = DT.wuFaces.equal_range(it->first);
+      ss << CSV::csv(this->points.size(), std::distance(range.first, range.second)) << '\n';
+      it = range.second;
+
     }
 
     {
@@ -55,7 +54,7 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
   std::ofstream f("whereUsed_study_array_" + std::to_string(D) + "_" +
                       splitter + ".csv",
                   std::ios::out | std::ios::trunc);
-  f << CSV::csv("nP", "nWU", "nIWU") << std::endl;
+  f << CSV::csv("nP", "nWU") << std::endl;
 
   dBox<D, Precision> bounds;
   for (uint i = 0; i < D; ++i) {

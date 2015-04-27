@@ -45,7 +45,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
   TriangulateReturn ret;
 
-  try {
+  //try {
 
     auto t1 = Clock::now();
     auto dt = triangulator.triangulate();
@@ -55,7 +55,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
-  } catch (AssertionException &e) {
+  /*} catch (AssertionException &e) {
     std::cerr << "Assertion failed - ABORTING - n =  " << points.size()
               << " p = " << splitter << std::endl;
     std::cerr << e.what() << std::endl;
@@ -65,7 +65,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                             "_" + (char)splitter + ".dat");
 
     ret.exception = true;
-  }
+  }*/
 
   return ret;
 }

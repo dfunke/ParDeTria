@@ -8,13 +8,11 @@
 #pragma once
 
 #include <iostream>
-#include <unordered_set>
 #include <map>
+#include <unordered_set>
+#include <unordered_map>
 #include <array>
 #include <cmath>
-
-#include <tbb/spin_mutex.h>
-#include <tbb/spin_rw_mutex.h>
 
 #include "utils/IndexedVector.hxx"
 #include "utils/VectorAdapter.hxx"
@@ -123,14 +121,14 @@ public:
   dPoint(const dVector<D, Precision> &_coords)
       : id(dPoint<D, Precision>::cINF), coords(_coords) {}
 
-  dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
+  /*dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
 
   dPoint &operator=(const dPoint<D, Precision> &a) {
     id = a.id;
     coords = a.coords;
 
     return *this;
-  }
+  }*/
 
   bool operator==(const dPoint<D, Precision> &a) const {
 
@@ -221,21 +219,18 @@ public:
   dSimplex(const std::array<uint, D + 1> &_vertices)
       : id(dSimplex<D, Precision>::cINF), vertices(_vertices) {}
 
-  dSimplex(const dSimplex<D, Precision> &a)
+  /*dSimplex(const dSimplex<D, Precision> &a)
       : id(a.id), vertices(a.vertices), vertexFingerprint(a.vertexFingerprint),
         neighbors(a.neighbors) {}
 
   dSimplex &operator=(const dSimplex<D, Precision> &a) {
-    // acquire lock, as we are modifying the point
-    tbb::spin_mutex::scoped_lock lock(mtx);
-
     id = a.id;
     vertices = a.vertices;
     vertexFingerprint = a.vertexFingerprint;
     neighbors = a.neighbors;
 
     return *this;
-  }
+  }*/
 
   bool operator==(const dSimplex<D, Precision> &a) const {
 
@@ -258,9 +253,13 @@ public:
   bool operator<(const dSimplex<D, Precision> &a) const { return id < a.id; }
 
   bool equalVertices(const dSimplex<D, Precision> &a) const {
-    // compare vertices
-    // both vertex arrays are sorted by vertex id
 
+    // first compare fingerprints
+    if(vertexFingerprint != a.vertexFingerprint)
+      return false;
+
+    // fingerprints are equal => compare vertices
+    // both vertex arrays are sorted by vertex id
     for (uint i = 0; i < D + 1; ++i) {
       if (vertices[i] != a.vertices[i]) {
         return false;
@@ -332,14 +331,14 @@ public:
   }
 
   bool isFinite() const {
-    bool finite = true;
 
-    for (uint i = 0; i < D + 1; ++i) {
+    //the vertices are sorted by ID -> infinite points are at the end
+    for (int i = D; i >= 0; --i) {
       if (!dPoint<D, Precision>::isFinite(vertices[i]))
-        finite = false;
+        return false;
     }
 
-    return finite;
+    return true;
   }
 
   // dimension specific implementations in cpp file
@@ -373,8 +372,7 @@ public:
   uint id;
   std::array<uint, D + 1> vertices;
   uint vertexFingerprint;
-  Ids neighbors;
-  tbb::spin_mutex mtx;
+  std::array<uint, D + 1> neighbors;
 
 public:
   static bool isFinite(const uint &i) { return i != cINF; }
@@ -445,7 +443,8 @@ public:
       for (const auto &n : mySimplex->neighbors) {
         // TODO handle infinite neighbors better
         if (dSimplex<D, Precision>::isFinite(n) &&
-            otherSimplex.neighbors.count(n) != 1) {
+            //TODO sorted array for binary search?
+                std::find(otherSimplex.neighbors.begin(), otherSimplex.neighbors.end(), n) == otherSimplex.neighbors.end()) {
           // the other triangulation does not contain n as neighbor
           PLOG("wrong neighbors: " << *mySimplex << " -- " << otherSimplex
                                    << std::endl);
@@ -491,9 +490,8 @@ public:
   }
 
 public:
-  typedef std::vector<uint> tWhereUsedEntry;
-  typedef std::unordered_map<uint, tWhereUsedEntry> tWhereUsedMap;
-  tWhereUsedMap whereUsed;
+  Ids convexHull;
+  std::unordered_multimap<uint, uint> wuFaces;
 };
 
 template <uint D, typename Precision> struct CrossCheckReport {

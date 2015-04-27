@@ -5,6 +5,7 @@
 #include <atomic>
 
 #include <tbb/parallel_for.h>
+#include <tbb/spin_mutex.h>
 
 // static variables
 template <uint D, typename Precision> constexpr uint dPoint<D, Precision>::cINF;
@@ -638,57 +639,87 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
   CrossCheckReport<D, Precision> result;
   result.valid = true;
 
+    tbb::spin_mutex mtx;
+
   // check whether all simplices of real DT are present
-  for (const auto &realSimplex : realDT) {
-    // find my simplex, compares vertices ids
-    auto mySimplex = std::find_if(this->begin(), this->end(),
-                                  [&](const dSimplex<D, Precision> &s) {
-                                    return s.equalVertices(realSimplex);
-                                  });
+    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
 
-    if (mySimplex == this->end()) {
-      LOG("did not find simplex " << realSimplex << std::endl);
-      result.valid = false;
-      result.missing.insert(realSimplex);
-      continue;
-    }
+        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
 
-    // check neighbors
-    for (const auto &n : realSimplex.neighbors) {
-      if (!dSimplex<D, Precision>::isFinite(n))
-        continue;
+            const dSimplex<D, Precision> &realSimplex = *it;
 
-      bool found = false;
-      for (const auto &nn : mySimplex->neighbors) {
-        if (dSimplex<D, Precision>::isFinite(nn) &&
-            this->operator[](nn).equalVertices(realDT[n])) {
-          found = true;
-          break;
+            // find corresponding mySimplex for realSimplex
+            // we can limit the search by using the face where-used ds
+            uint faceHash = realSimplex.vertexFingerprint ^ realSimplex.vertices[0];
+            auto range = this->wuFaces.equal_range(faceHash);
+            auto mySimplex = std::find_if(range.first,
+                                          range.second,
+                                          [&](const auto &i) {
+                                              return dSimplex<D, Precision>::isFinite(i.second)
+                                                     && this->contains(i.second)
+                                                     && this->at(i.second).equalVertices(realSimplex);
+                                          });
+
+            if (mySimplex == range.second) {
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("did not find simplex " << realSimplex << std::endl);
+                result.valid = false;
+                result.missing.insert(realSimplex);
+                continue;
+            }
+
+            // check neighbors
+            for (const auto &n : realSimplex.neighbors) {
+                if (!dSimplex<D, Precision>::isFinite(n))
+                    continue;
+
+                bool found = false;
+                for (const auto &nn : this->at(mySimplex->second).neighbors) {
+                    if (dSimplex<D, Precision>::isFinite(nn) &&
+                        this->operator[](nn).equalVertices(realDT[n])) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("did not find neighbor " << realDT[n] << " of simplex "
+                                                                 << realSimplex << std::endl);
+                    result.valid = false;
+                }
+            }
         }
-      }
-
-      if (!found) {
-        LOG("did not find neighbor " << realDT[n] << " of simplex "
-                                     << realSimplex << std::endl);
-        result.valid = false;
-      }
-    }
-  }
+    });
 
   // check for own simplices that are not in real DT
-  for (const auto &mySimplex : *this) {
-    auto realSimplex = std::find_if(realDT.begin(), realDT.end(),
-                                    [&](const dSimplex<D, Precision> &s) {
-                                      return s.equalVertices(mySimplex);
-                                    });
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
-    if (realSimplex == realDT.end() /*&& mySimplex.isFinite()*/) {
-      LOG("simplex " << mySimplex << " does not exist in real triangulation"
-                     << std::endl);
-      result.valid = false;
-      result.invalid.insert(mySimplex);
-    }
-  }
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &mySimplex = *it;
+
+            // again we use the face where-used ds for the lookup
+            uint faceHash = mySimplex.vertexFingerprint ^ mySimplex.vertices[0];
+            auto range = realDT.wuFaces.equal_range(faceHash);
+            auto realSimplex = std::find_if(range.first,
+                                            range.second,
+                                            [&](const auto &i) {
+                                                return dSimplex<D, Precision>::isFinite(i.second)
+                                                       && realDT.contains(i.second)
+                                                       && realDT.at(i.second).equalVertices(mySimplex);
+                                            });
+
+            if (realSimplex == range.second /*&& mySimplex.isFinite()*/) {
+
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("simplex " << mySimplex << " does not exist in real triangulation"
+                                               << std::endl);
+                result.valid = false;
+                result.invalid.insert(mySimplex);
+            }
+        }
+    });
 
   // check whether sizes are equal
   if (dSimplices<D, Precision>::size() != realDT.size()) {
@@ -743,35 +774,82 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     }
   }
 
+    // verify convex hull
+    LOG("Checking convex-hull" << std::endl);
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &s = *it;
+            if(!s.isFinite() && !this->convexHull.count(s.id)){
+                // s is infinite but not part of the convex hull
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("Infinite simplex " << s << " NOT in convex hull" << std::endl);
+                result.valid = false;
+            }
+        }
+    });
+
+    tbb::parallel_for(std::size_t(0), this->convexHull.bucket_count(), [&](const uint i) {
+
+        for (auto it = this->convexHull.begin(i); it != this->convexHull.end(i); ++it) {
+
+            const dSimplex<D, Precision> &s = this->at(*it);
+            if(s.isFinite()){
+                // s is finite but part of convex hull
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("Finite simplex " << s << " IS in convex hull" << std::endl);
+                result.valid = false;
+            }
+        }
+    });
+
   // verify where-used data structure
   LOG("Checking where-used relation" << std::endl);
-  for (const auto &s : *this) {
-    for (const auto &p : s.vertices) {
-      // point p of s not correctly flagged as used in s
-      if (std::find(whereUsed.at(p).begin(), whereUsed.at(p).end(), s.id) ==
-          whereUsed.at(p).end()) {
-        LOG("Point " << p << " NOT flagged as used in " << s << std::endl);
-        LOGGER.logContainer(whereUsed.at(p), Logger::Verbosity::NORMAL,
-                            "p.simplices:");
-        result.valid = false;
-      }
-    }
-  }
-  for (const auto &p : points) {
-    for (const auto &id : whereUsed.at(p.id)) {
-      if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
-        continue; // simplex of another triangulation
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
-      // p is flagged as being used in s, but its not
-      const auto &s = this->operator[](id);
-      if (!std::binary_search(s.vertices.begin(), s.vertices.end(), p.id)) {
-        LOG("Point " << p << " SHOULD be used in " << s << std::endl);
-        LOGGER.logContainer(whereUsed.at(p.id), Logger::Verbosity::NORMAL,
-                            "p.simplices:");
-        result.valid = false;
-      }
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &s = *it;
+            for (const auto &p : s.vertices) {
+                // check facette
+                uint facetteHash = s.vertexFingerprint ^p;
+                auto range = this->wuFaces.equal_range(facetteHash);
+                if (std::find_if(range.first, range.second, [&s] (const auto & i) { return s.id == i.second; }) == range.second) {
+
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("Face " << facetteHash << " NOT flagged as used in " << s << std::endl);
+                    result.valid = false;
+                }
+            }
     }
-  }
+  });
+
+
+    tbb::parallel_for(std::size_t(0), this->wuFaces.bucket_count(), [&](const uint i){
+        for (auto it = this->wuFaces.begin(i); it != this->wuFaces.end(i); ++it) {
+
+            const auto &id = it->second;
+            if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
+                continue; // simplex of another triangulation
+
+            const auto &s = this->operator[](id);
+            bool found = false;
+            for(uint d = 0; d < D + 1; ++d){
+                if(it->first == (s.vertexFingerprint ^ s.vertices[d])) {
+                    found = true;
+                    break;
+                }
+            }
+            if(!found){
+                // simplex is flagged as having face f, but it hasn't
+
+                tbb::spin_mutex::scoped_lock lock(mtx);
+                LOG("Face " << it->first << " SHOULD be used in " << s << std::endl);
+                result.valid = false;
+            }
+        }
+    });
 
   // verify that all simplices with a shared D-1 simplex are neighbors
   LOG("Checking neighbors" << std::endl);
@@ -780,25 +858,40 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     for (auto it = this->begin(i); it != this->end(i); ++it) {
 
       const dSimplex<D, Precision> &a = *it;
-      for (const auto &b : *this) {
-        // a and b are neighbors: the neighbor property is symmetric and the
-        // corresponding simplices must be present in the neighbors arrays
-        // accordingly
-        if ((a.isNeighbor(b) &&
-             (!b.isNeighbor(a) || a.neighbors.count(b.id) != 1 ||
-              b.neighbors.count(a.id) != 1))
-            // a and b are NOT neighbors: must be symmetric and simplices NOT be
-            // present in neighbors arrays
-            ||
-            (!a.isNeighbor(b) &&
-             (b.isNeighbor(a) || a.neighbors.count(b.id) != 0 ||
-              b.neighbors.count(a.id) != 0))) {
-          LOG("Wrong neighbor relation between " << a << " and " << b
-                                                 << std::endl);
-          tbb::spin_mutex::scoped_lock lock(mtx);
-          result.wrongNeighbors.emplace_back(a, b);
-          result.valid = false;
-        }
+
+      // we already verified that the face where-used data structure is correct
+      // we can use it to verify the neighbor relation
+      for(uint i = 0; i < D + 1; ++i){
+          uint faceHash = a.vertexFingerprint ^ a.vertices[i];
+          auto range = this->wuFaces.equal_range(faceHash);
+          for(auto it = range.first; it != range.second; ++it){
+              if(!dSimplex<D, Precision>::isFinite(it->second) || !this->contains(it->second))
+                  // infinite/deleted simplex or not belonging to this triangulation
+                  continue;
+
+              const auto &b = this->at(it->second);
+              // a and b are neighbors: the neighbor property is symmetric and the
+              // corresponding simplices must be present in the neighbors arrays
+              // accordingly
+              if ((a.isNeighbor(b) &&
+                   (!b.isNeighbor(a) ||
+                           std::find(a.neighbors.begin(), a.neighbors.end(), b.id) == a.neighbors.end() ||
+                           std::find(b.neighbors.begin(), b.neighbors.end(), a.id) == b.neighbors.end()))
+                  // a and b are NOT neighbors: must be symmetric and simplices NOT be
+                  // present in neighbors arrays
+                  ||
+                  (!a.isNeighbor(b) &&
+                   (b.isNeighbor(a) ||
+                           std::find(a.neighbors.begin(), a.neighbors.end(), b.id) != a.neighbors.end() ||
+                           std::find(b.neighbors.begin(), b.neighbors.end(), a.id) != b.neighbors.end()))) {
+
+                  tbb::spin_mutex::scoped_lock lock(mtx);
+                  LOG("Wrong neighbor relation between " << a << " and " << b
+                      << std::endl);
+                  result.wrongNeighbors.emplace_back(a, b);
+                  result.valid = false;
+              }
+          }
       }
     }
   });
@@ -810,24 +903,32 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     for (auto it = this->begin(i); it != this->end(i); ++it) {
 
       const dSimplex<D, Precision> &s = *it;
-      for (const auto &p : points) {
-        if (!p.isFinite())
-          continue; // skip infinite points
 
-        bool contains = s.contains(p);
-        bool inCircle = s.inSphere(p, points);
-        if (contains != inCircle) {
-          LOG("Point " << p << " is " << (inCircle ? "" : "NOT ")
-                       << "in circle of " << s << " but should "
-                       << (contains ? "" : "NOT ") << "be" << std::endl);
+        // we have established that the neighboorhood is correctly set
+        // we check for all neighbors whether the NOT shared point is in the circle
 
-          tbb::spin_mutex::scoped_lock lock(mtx);
-          result.valid = false;
+        for(const auto &n : s.neighbors){
+            if(!dSimplex<D, Precision>::isFinite(n))
+                continue;
 
-          result.inCircle[s].insert(p.id);
+            const dSimplex<D, Precision> &nn = this->at(n);
+            for(uint d = 0; d < D + 1; ++d){
+                const auto &p = points[nn.vertices[d]];
+
+                if(p.isFinite() && !s.contains(p)){
+                    // we have found the point of nn that is NOT shared with s
+                    if (s.inSphere(p, points)) {
+                        LOG("Point " << p << " is in circle of " << s << std::endl);
+
+                        tbb::spin_mutex::scoped_lock lock(mtx);
+                        result.valid = false;
+
+                        result.inCircle[s].insert(p.id);
+                    }
+                }
+            }
         }
       }
-    }
   });
   DEDENT
 
