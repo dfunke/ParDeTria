@@ -60,6 +60,9 @@ whereUsedSet3.sort(order='nP')
 whereUsedArray3 = np.genfromtxt(os.path.join(dir, 'whereUsed_study_array_3_c.csv'), names=True)
 whereUsedArray3.sort(order='nP')
 
+whereUsedFaces3 = np.genfromtxt(os.path.join(dir, 'whereUsed_study_faces_3_c.csv'), names=True)
+whereUsedFaces3.sort(order='nP')
+
 N2D = np.unique(whereUsedSet2['nP'])
 N3D = np.unique(whereUsedSet3['nP'])
 
@@ -91,6 +94,16 @@ for n in N3D:
     ax.legend()
 
     closeFig("whereUsed_study/01_length3D_%i" % n)
+
+#Lenght of array/set
+    fig, ax = getFig("Number of Colliding Faces Over Number of Points", r"$p$", r"$l$")
+
+    plt.hist(whereUsedFaces3[whereUsedFaces3['nP'] == n]['nWU'], label='Collisions', log=True, bins=100)
+
+
+    ax.legend()
+
+    closeFig("whereUsed_study/03_lengthFaces3D_%i" % n)
 
 #Percent of deleted items
 

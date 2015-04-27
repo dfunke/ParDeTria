@@ -50,7 +50,7 @@ private:
 template<uint D, typename Precision>
 void studyWhereUsedListSize(const uint N, const char splitter) {
 
-    std::ofstream f("whereUsed_study_array_" + std::to_string(D) + "_" +
+    std::ofstream f("whereUsed_study_faces_" + std::to_string(D) + "_" +
                     splitter + ".csv",
                     std::ios::out | std::ios::trunc);
     f << CSV::csv("nP", "nWU") << std::endl;
