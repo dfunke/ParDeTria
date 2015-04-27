@@ -14,4 +14,5 @@ size_t getCurrentRSS();
 #endif
 
 std::string getHostname();
+
 std::string getDatetime();

@@ -23,48 +23,48 @@ tGenerator startGen(START_SEED);
  * auto dice = std::bind ( distribution, generator );
  */
 
-template <typename Precision>
-class RandomFactory{
+template<typename Precision>
+class RandomFactory {
 
 public:
-  static std::function<Precision()> make(const unsigned char type, tGenerator & gen){
+    static std::function<Precision()> make(const unsigned char type, tGenerator &gen) {
 
-    switch(type){
-      case 'u':
-      default:
-        std::uniform_real_distribution<Precision> distribution(0, 1);
-        return std::bind(distribution, gen);
+        switch (type) {
+            case 'u':
+            default:
+                std::uniform_real_distribution<Precision> distribution(0, 1);
+                return std::bind(distribution, gen);
+        }
     }
-  }
 
-  static std::function<Precision()> make(const unsigned char type){
-    return make(type, startGen);
-  }
+    static std::function<Precision()> make(const unsigned char type) {
+        return make(type, startGen);
+    }
 
 };
 
-template <uint D, typename Precision>
+template<uint D, typename Precision>
 dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
                                 std::function<Precision()> &dice) {
-  dPoints<D, Precision> points;
-  points.reserve(n);
+    dPoints<D, Precision> points;
+    points.reserve(n);
 
-  dVector<D, Precision> dim = bounds.high;
-  for (uint d = 0; d < D; ++d) {
-    dim[d] -= bounds.low[d];
-  }
-
-  for (uint i = 0; i < n; ++i) {
-    dPoint<D, Precision> p;
-    p.id = i;
+    dVector<D, Precision> dim = bounds.high;
     for (uint d = 0; d < D; ++d) {
-      p.coords[d] = bounds.low[d] + dim[d] * dice();
+        dim[d] -= bounds.low[d];
     }
 
-    points.emplace_back(p);
-  }
+    for (uint i = 0; i < n; ++i) {
+        dPoint<D, Precision> p;
+        p.id = i;
+        for (uint d = 0; d < D; ++d) {
+            p.coords[d] = bounds.low[d] + dim[d] * dice();
+        }
 
-  // TODO checks for colliding points, straight lines, etc.
+        points.emplace_back(p);
+    }
 
-  return points;
+    // TODO checks for colliding points, straight lines, etc.
+
+    return points;
 }

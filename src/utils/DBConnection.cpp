@@ -5,27 +5,27 @@
 #include "DBConnection.h"
 #include "ASSERT.h"
 
-DBConnection::DBConnection(const std::string & file, const std::string & collection,
-             const int mode) {
+DBConnection::DBConnection(const std::string &file, const std::string &collection,
+                           const int mode) {
     m_ejdb = ejdbnew();
 
-    if(!m_ejdb){
+    if (!m_ejdb) {
         _handleError("EJDB Error: Could not create EJDB instance");
     }
 
-    if(!ejdbopen(m_ejdb, file.c_str(), mode))
+    if (!ejdbopen(m_ejdb, file.c_str(), mode))
         _handleError();
 
     m_coll = ejdbgetcoll(m_ejdb, collection.c_str());
-    if(!m_coll && mode & JBOWRITER)
+    if (!m_coll && mode & JBOWRITER)
         m_coll = ejdbcreatecoll(m_ejdb, collection.c_str(), nullptr);
-    if(!m_coll)
+    if (!m_coll)
         _handleError();
 
 }
 
 DBConnection::~DBConnection() {
-    if(m_ejdb) {
+    if (m_ejdb) {
         if (ejdbisopen(m_ejdb))
             ejdbclose(m_ejdb);
 
@@ -33,7 +33,7 @@ DBConnection::~DBConnection() {
     }
 }
 
-std::string DBConnection::_getMaximum(const std::string & field) const {
+std::string DBConnection::_getMaximum(const std::string &field) const {
 
     /* Execute the following query:
      * Query: *
@@ -47,7 +47,7 @@ std::string DBConnection::_getMaximum(const std::string & field) const {
     bson_init_as_query(&bsquery);
     bson_finish(&bsquery);
 
-    if(bsquery.err)
+    if (bsquery.err)
         _handleError(bsquery.errstr);
 
     bson bshints;
@@ -60,19 +60,19 @@ std::string DBConnection::_getMaximum(const std::string & field) const {
     bson_append_finish_object(&bshints);
     bson_finish(&bshints);
 
-    if(bshints.err)
+    if (bshints.err)
         _handleError(bshints.errstr);
 
     EJQ *q1 = ejdbcreatequery(m_ejdb, &bsquery, nullptr, 0, &bshints);
-    if(!q1)
+    if (!q1)
         _handleError();
 
     uint32_t count;
     TCLIST *res = ejdbqryexecute(m_coll, q1, &count, JBQRYFINDONE, NULL);
-    if(!res)
+    if (!res)
         _handleError();
 
-    if(count < 1)
+    if (count < 1)
         result = "";
     else {
 
@@ -88,7 +88,7 @@ std::string DBConnection::_getMaximum(const std::string & field) const {
         bson_type bt = bson_find_from_buffer(&it, bsdata, field.c_str());
         ASSERT(bt == BSON_STRING);
 
-        const char * value = bson_iterator_string(&it);
+        const char *value = bson_iterator_string(&it);
         result = std::string(value);
 
     }
@@ -106,22 +106,22 @@ std::string DBConnection::_getMaximum(const std::string & field) const {
 
 #include "Timings.h"
 
-template <>
-void DBConnection::bsonify(bson *bobj, const ExperimentRun & o) {
+template<>
+void DBConnection::bsonify(bson *bobj, const ExperimentRun &o) {
 
-    for(const auto & t : o.traits()){
+    for (const auto &t : o.traits()) {
         bson_append_string(bobj, t.first.c_str(), t.second.c_str());
     }
 
     bson_append_start_array(bobj, "times");
-    for(uint i = 0; i < o.times().size(); ++i){
-        bson_append_long(bobj, std::to_string(i).c_str() ,o.times()[i].count());
+    for (uint i = 0; i < o.times().size(); ++i) {
+        bson_append_long(bobj, std::to_string(i).c_str(), o.times()[i].count());
     }
     bson_append_finish_array(bobj);
 
     bson_append_start_array(bobj, "memory");
-    for(uint i = 0; i < o.mem().size(); ++i){
-        bson_append_long(bobj, std::to_string(i).c_str() ,o.mem()[i]);
+    for (uint i = 0; i < o.mem().size(); ++i) {
+        bson_append_long(bobj, std::to_string(i).c_str(), o.mem()[i]);
     }
     bson_append_finish_array(bobj);
 

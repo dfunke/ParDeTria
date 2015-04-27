@@ -6,17 +6,17 @@
 class AssertionException : public std::exception {
 
 public:
-  AssertionException(){};
+    AssertionException() { };
 
-  AssertionException(const std::string &expr, const std::string &file,
-                     const uint line)
-      : _what(file + ":" + std::to_string(line) + ": failed assertion `" +
-              expr + "'") {}
+    AssertionException(const std::string &expr, const std::string &file,
+                       const uint line)
+            : _what(file + ":" + std::to_string(line) + ": failed assertion `" +
+                    expr + "'") { }
 
-  const char *what() const noexcept { return _what.c_str(); }
+    const char *what() const noexcept { return _what.c_str(); }
 
 private:
-  std::string _what;
+    std::string _what;
 };
 
 #ifdef NDEBUG

@@ -40,79 +40,84 @@ class Logger : private boost::noncopyable {
 #define DEDENT Logger::getInstance().decIndent();
 
 public:
-  enum class Verbosity : short {
-    LIVEPROLIX = -3,
-    LIVEVERBOSE = -2,
-    LIVE = -1,
-    SILENT = 0,
-    NORMAL = 1,
-    VERBOSE = 2,
-    PROLIX = 3
-  };
+    enum class Verbosity : short {
+        LIVEPROLIX = -3,
+        LIVEVERBOSE = -2,
+        LIVE = -1,
+        SILENT = 0,
+        NORMAL = 1,
+        VERBOSE = 2,
+        PROLIX = 3
+    };
 
-  static Verbosity abs(const Verbosity &v) {
-    return static_cast<Verbosity>(std::abs(static_cast<int>(v)));
-  }
+    static Verbosity abs(const Verbosity &v) {
+        return static_cast<Verbosity>(std::abs(static_cast<int>(v)));
+    }
 
 public:
-  typedef std::pair<Verbosity, std::unique_ptr<std::stringstream>> LogEntry;
-  typedef tbb::concurrent_vector<LogEntry> LogEntries;
+    typedef std::pair<Verbosity, std::unique_ptr<std::stringstream>> LogEntry;
+    typedef tbb::concurrent_vector<LogEntry> LogEntries;
 
-  static Logger &getInstance();
+    static Logger &getInstance();
 
-  const Verbosity &getLogLevel() const { return logLevel; }
-  void setLogLevel(const Verbosity &l) { logLevel = l; }
+    const Verbosity &getLogLevel() const { return logLevel; }
 
-  std::ostream &addLogEntry(Verbosity level);
+    void setLogLevel(const Verbosity &l) { logLevel = l; }
 
-  std::ostream &printLog(std::ostream &out) const;
+    std::ostream &addLogEntry(Verbosity level);
 
-  std::ostream &printLog(std::ostream &out, Verbosity level) const;
+    std::ostream &printLog(std::ostream &out) const;
 
-  std::string indent() const;
-  void incIndent() { ++indentLevel; }
-  void decIndent() {
-    ASSERT(indentLevel > 0);
-    --indentLevel;
-  }
-  void setIndent(const uint i) { indentLevel = i; }
-  uint getIndent() { return indentLevel; }
+    std::ostream &printLog(std::ostream &out, Verbosity level) const;
 
-  template <typename InputIt>
-  void logContainer(const InputIt &first, const InputIt &last, Verbosity level,
-                    const std::string &prefix = "",
-                    const std::string &sep = " ") {
+    std::string indent() const;
 
-    if (Logger::abs(Logger::getInstance().getLogLevel()) >= level) {
-      auto &stream = addLogEntry(level);
+    void incIndent() { ++indentLevel; }
 
-      if (prefix != "")
-        stream << prefix << sep;
-
-      for (auto it = first; it != last; ++it) {
-        if (it != first)
-          stream << sep;
-        stream << *it;
-      }
-      stream << std::endl;
+    void decIndent() {
+        ASSERT(indentLevel > 0);
+        --indentLevel;
     }
-  }
 
-  template <typename Container>
-  void logContainer(const Container &c, Verbosity level,
-                    const std::string &prefix = "",
-                    const std::string &sep = " ") {
+    void setIndent(const uint i) { indentLevel = i; }
 
-    logContainer(c.begin(), c.end(), level, prefix, sep);
-  }
+    uint getIndent() { return indentLevel; }
+
+    template<typename InputIt>
+    void logContainer(const InputIt &first, const InputIt &last, Verbosity level,
+                      const std::string &prefix = "",
+                      const std::string &sep = " ") {
+
+        if (Logger::abs(Logger::getInstance().getLogLevel()) >= level) {
+            auto &stream = addLogEntry(level);
+
+            if (prefix != "")
+                stream << prefix << sep;
+
+            for (auto it = first; it != last; ++it) {
+                if (it != first)
+                    stream << sep;
+                stream << *it;
+            }
+            stream << std::endl;
+        }
+    }
+
+    template<typename Container>
+    void logContainer(const Container &c, Verbosity level,
+                      const std::string &prefix = "",
+                      const std::string &sep = " ") {
+
+        logContainer(c.begin(), c.end(), level, prefix, sep);
+    }
 
 private:
-  Logger() : logLevel(Logger::Verbosity::NORMAL){};
+    Logger() : logLevel(Logger::Verbosity::NORMAL) { };
 
-  LogEntries logEntries;
+    LogEntries logEntries;
 
-  Verbosity logLevel;
-  static thread_local uint indentLevel;
+    Verbosity logLevel;
+    static thread_local uint indentLevel;
 };
 
 std::ostream &operator<<(std::ostream &s, const Logger &log);

@@ -19,12 +19,6 @@ add_library (Measurements
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
 
-add_executable (archiveConverter
-  ArchiveConverter.cpp
-)
-
-target_link_libraries(archiveConverter ${Boost_LIBRARIES} ${TBB_LIBRARIES})
-
 add_library (DBConn
   DBConnection.cpp
   ${EJDB_LIBRARIES}

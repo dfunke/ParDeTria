@@ -6,15 +6,17 @@
 
 #include "Geometry.h"
 
-template <uint D, typename Precision>
+template<uint D, typename Precision>
 class Triangulator {
 
-    template <uint D2, typename Precision2>
-    friend class DCTriangulator;
+    template<uint D2, typename Precision2>
+    friend
+    class DCTriangulator;
 
 protected:
     Triangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points)
             : baseBounds(_bounds), points(_points) { }
+
 public:
 
     dSimplices<D, Precision> triangulate() {
@@ -22,15 +24,15 @@ public:
     };
 
 protected:
-    virtual dSimplices<D, Precision> _triangulate(const Ids & partitionPoints,
-                                         const dBox<D, Precision> &bounds,
-                                         const std::string provenance) = 0;
+    virtual dSimplices<D, Precision> _triangulate(const Ids &partitionPoints,
+                                                  const dBox<D, Precision> &bounds,
+                                                  const std::string provenance) = 0;
 
     Ids allPoints() const;
 
 protected:
     const dBox<D, Precision> baseBounds;
-    dPoints<D, Precision> & points;
+    dPoints<D, Precision> &points;
 
 public:
     static bool isTOP(const std::string &provenance) {
