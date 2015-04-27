@@ -158,10 +158,7 @@ Ids DCTriangulator<D, Precision>::extractPoints(
 template<uint D, typename Precision>
 void DCTriangulator<D, Precision>::updateNeighbors(
         dSimplices<D, Precision> &simplices, const Ids &toCheck,
-#ifdef NDEBUG
-    __attribute__((unused))
-#endif
-        const std::string &provenance) {
+        __attribute__((unused)) const std::string &provenance) {
 
     INDENT
     const uint saveIndent = LOGGER.getIndent();
@@ -214,10 +211,6 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         ++updated;
 #endif
 
-#ifndef NDEBUG
-        dSimplex<D, Precision> saveSimplex = simplex;
-#endif
-
         INDENT
         uint neighborIdx = 0;
         auto neighborSet = tsNeighborSet.local();
@@ -245,8 +238,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 
 #ifndef NDEBUG
         if (!(neighborIdx > 0 && neighborIdx <= D + 1)) {
-            LOG("Error: wrong number of neighbors for simplex " << simplex
-                << std::endl);
+            LOG("Error: wrong number of neighbors for simplex " << simplex << std::endl);
         }
 #endif
 
@@ -274,11 +266,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
         std::vector<dSimplices<D, Precision>> &partialDTs, const Ids &edgeSimplices,
         const dSimplices<D, Precision> &edgeDT,
         const Partitioning<D, Precision> &partitioning,
-        const std::string &provenance,
-#ifdef NDEBUG
-    __attribute__((unused))
-#endif
-        const dSimplices<D, Precision> *realDT) {
+        const std::string &provenance) {
 
     LOG("Merging partial DTs into one triangulation" << std::endl);
 
@@ -660,7 +648,7 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         DEDENT
 
         auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
-                                           partioning, provenance, realDT.get());
+                                           partioning, provenance);
 
         TriangulationReportEntry rep;
         rep.provenance = provenance;

@@ -66,8 +66,7 @@ protected:
                                const Ids &edgeSimplices,
                                const dSimplices<D, Precision> &edgeDT,
                                const Partitioning<D, Precision> &partitioning,
-                               const std::string &provenance,
-                               const dSimplices<D, Precision> *realDT = nullptr);
+                               const std::string &provenance);
 
     void evaluateVerificationReport(const VerificationReport<D, Precision> &vr,
                                     const std::string &provenance) const;
