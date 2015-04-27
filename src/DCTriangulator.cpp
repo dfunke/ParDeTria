@@ -26,7 +26,6 @@
 
 // own
 #include "Geometry.h"
-#include "Painter.h"
 #include "CGALTriangulator.h"
 
 #include "utils/Timings.h"
@@ -159,9 +158,6 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     __attribute__((unused))
 #endif
     const std::string &provenance) {
-#ifndef NDEBUG
-  PainterBulkWriter<D, Precision> paintWriter;
-#endif
 
   INDENT
   const uint saveIndent = LOGGER.getIndent();
@@ -247,35 +243,6 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     if (!(neighborIdx > 0 && neighborIdx <= D + 1)) {
       LOG("Error: wrong number of neighbors for simplex " << simplex
                                                           << std::endl);
-
-      if (IS_PROLIX) {
-        paintWriter.add("img/" + provenance + "_neighbors_" +
-                            std::to_string(simplex.id),
-                        this->baseBounds);
-        paintWriter.top().draw(this->points);
-        paintWriter.top().drawPartition(this->points);
-
-        paintWriter.top().setColor(0, 0, 0, 0.4);
-        paintWriter.top().draw(simplices, this->points, true);
-
-        paintWriter.top().setColor(1, 0, 0); // simplex in red
-        paintWriter.top().draw(simplex, this->points, true);
-
-        paintWriter.top().setColor(1, 1, 0, 0.4); // neighbors in yellow
-        paintWriter.top().drawNeighbors(simplex, simplices, this->points, true);
-
-        if (!(simplex.equalVertices(saveSimplex) &&
-              simplex.equalNeighbors(saveSimplex))) {
-          LOG("Error: was before " << saveSimplex << std::endl);
-
-          paintWriter.top().setColor(0, 0, 1); // old simplex in blue
-          paintWriter.top().draw(saveSimplex, this->points, true);
-
-          paintWriter.top().setColor(0, 1, 1,
-                                     0.4); // old simplex neighbors in cyan
-          paintWriter.top().drawNeighbors(saveSimplex, simplices, this->points, true);
-        }
-      }
     }
 #endif
 
@@ -351,63 +318,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
           };
   tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpFingerprint);
 
-//**********************
-#ifndef NDEBUG
-  // auto edgePointIds = extractPoints(edgeSimplices, DT);
-  auto paintMerging = [&](const dSimplices<D, Precision> &dt,
-                          const std::string &name,
-                          bool drawInfinite) -> Painter<D, Precision> {
-    Painter<D, Precision> painter(this->baseBounds);
-
-    painter.draw(this->points);
-    painter.drawPartition(this->points);
-
-    painter.setColor(0, 1, 0, 0.4);
-    painter.draw(dt, this->points, drawInfinite);
-
-    // painter.setColor(1, 0, 0);
-    // painter.draw(this->points.template filter<dPoints<D, Precision>>(edgePointIds));
-    // painter.save(name);
-
-    if (realDT != nullptr) {
-      painter.setColor(0, 0, 0, 0.1);
-      painter.draw(*realDT, this->points);
-    }
-
-    painter.save(name + "_overlay");
-
-    return painter;
-  };
-#endif
-//**********************
-
-#ifndef NDEBUG
-  paintMerging(DT, provenance + "_05a_merging_merged", false);
-#endif
-
-#ifndef NDEBUG
-// paintMerging(deletedSimplices, provenance + "_05b_merging_deleted", true);
-#endif
-
-//**********************
-#ifndef NDEBUG
-  auto painter = paintMerging(DT, provenance + "_05b_merging_stripped", false);
-
-  painter.setColor(0, 0, 1, 0.4);
-  painter.setDashed();
-  painter.draw(edgeDT, this->points);
-
-  painter.save(provenance + "_05b_merging_stripped+edge_overlay");
-
-  painter.setColor(1, 0, 0, 0.4);
-  painter.setDashed();
-  // painter.draw(deletedSimplices, this->points);
-  painter.setDashed(false);
-
-  painter.save(provenance + "_05b_merging_stripped+edge+deleted_overlay");
-#endif
-  //**********************
-
   // merge partial DTs and edge DT
   LOG("Merging triangulations" << std::endl);
   tbb::spin_mutex insertMtx;
@@ -463,60 +373,19 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     }
   });
 
-#ifndef NDEBUG
-  paintMerging(DT, provenance + "_05c_merging_edge", false);
-#endif
-
   ASSERT(DT.countDuplicates() == 0);
 
   LOG("Updating neighbors" << std::endl);
   updateNeighbors(DT, insertedSimplices, provenance);
-
-#ifndef NDEBUG
-  paintMerging(DT, provenance + "_05d_merging_finished", false);
-#endif
 
   return DT;
 }
 
 template <uint D, typename Precision>
 void DCTriangulator<D, Precision>::evaluateVerificationReport(
-    const VerificationReport<D, Precision> &vr,
-    const std::string &provenance) const {
-  if (IS_PROLIX) {
-    Painter<D, Precision> basePainter(this->baseBounds);
-    basePainter.draw(this->points);
-    basePainter.drawPartition(this->points);
-    basePainter.setLogging();
+    __attribute__((unused)) const VerificationReport<D, Precision> &vr,
+    __attribute__((unused)) const std::string &provenance) const {
 
-    PainterBulkWriter<D, Precision> writer;
-    for (const auto &inCircle : vr.inCircle) {
-      writer.add("img/" + provenance + "_inCircle_" +
-                     std::to_string(inCircle.first.id),
-                 basePainter);
-
-      writer.top().setColor(0, 1, 0);
-      writer.top().draw(inCircle.first, this->points, true);
-      writer.top().drawCircumSphere(inCircle.first, this->points, true);
-
-      writer.top().setColor(1, 0, 0);
-      writer.top().draw(
-          this->points.template filter<dPoints<D, Precision>>(inCircle.second));
-    }
-
-    for (const auto &neighbors : vr.wrongNeighbors) {
-      writer.add("img/" + provenance + "_wrongNeighbors_" +
-                     std::to_string(neighbors.first.id) + "_" +
-                     std::to_string(neighbors.second.id),
-                 basePainter);
-
-      writer.top().setColor(0, 1, 0);
-      writer.top().draw(neighbors.first, this->points, true);
-
-      writer.top().setColor(1, 0, 0);
-      writer.top().draw(neighbors.second, this->points, true);
-    }
-  }
 }
 
 template <uint D, typename Precision>
@@ -525,26 +394,11 @@ void DCTriangulator<D, Precision>::evaluateCrossCheckReport(
     const dSimplices<D, Precision> &DT, const dSimplices<D, Precision> &realDT,
     const Partitioning<D, Precision> *partitioning) const {
   if (IS_PROLIX) {
-    Painter<D, Precision> basePainter(this->baseBounds);
-    basePainter.draw(this->points);
-    basePainter.drawPartition(this->points);
-    basePainter.setLogging();
-
-    PainterBulkWriter<D, Precision> writer;
     std::stringstream txt;
 
     for (const auto &missingSimplex : ccr.missing) {
-      writer.add("img/" + provenance + "_missing_" +
-                     std::to_string(missingSimplex.id),
-                 basePainter);
 
       auto mySimplices = DT.findSimplices(missingSimplex.vertices);
-
-      writer.top().setColor(0, 1, 0);
-      writer.top().draw(mySimplices, this->points, true);
-
-      writer.top().setColor(1, 0, 0);
-      writer.top().draw(missingSimplex, this->points, true);
 
       // textual description of the missing simplex
 
@@ -615,17 +469,7 @@ void DCTriangulator<D, Precision>::evaluateCrossCheckReport(
     }
 
     for (const auto &invalidSimplex : ccr.invalid) {
-      writer.add("img/" + provenance + "_invalid_" +
-                     std::to_string(invalidSimplex.id),
-                 basePainter);
-
       auto realSimplices = realDT.findSimplices(invalidSimplex.vertices);
-
-      writer.top().setColor(0, 1, 0);
-      writer.top().draw(realSimplices, this->points, true);
-
-      writer.top().setColor(1, 0, 0);
-      writer.top().draw(invalidSimplex, this->points, true);
 
       // textual description of the missing simplex
       txt << "Invalid simplex: " << invalidSimplex << std::endl;
@@ -733,16 +577,6 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
   if (partitionPoints.size() > baseThreshold) {
     LOG("Recursive case" << std::endl);
 
-#ifndef NDEBUG
-    // setup base painter
-    Painter<D, Precision> basePainter(this->baseBounds);
-    basePainter.draw(
-        this->points.template filter<dPoints<D, Precision>>(partitionPoints));
-    basePainter.drawPartition(
-        this->points.template filter<dPoints<D, Precision>>(partitionPoints));
-    basePainter.save(provenance + "_00_points");
-#endif
-
     std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
     if (isTOP && Triangulator<D, Precision>::VERIFY) {
       // perform real triangulation
@@ -754,16 +588,6 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
       LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
                                          << std::endl);
       DEDENT
-
-#ifndef NDEBUG
-      Painter<D, Precision> paintRealDT = basePainter;
-
-      paintRealDT.setColor(0, 0, 1);
-      paintRealDT.draw(*realDT, this->points);
-      paintRealDT.setColor(0, 0, 0);
-
-      paintRealDT.save(provenance + "_01_realDT");
-#endif
     }
 
     // partition input
@@ -776,13 +600,9 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
     std::vector<dSimplices<D, Precision>> partialDTs;
     partialDTs.resize(partioning.size());
 
-#ifdef NDEBUG
     tbb::parallel_for(
         std::size_t(0), partioning.size(),
         [&](const uint i)
-#else
-    for (uint i = 0; i < partioning.size(); ++i)
-#endif
         {
           LOGGER.setIndent(
               provenance.length()); // new thread, initialize Logger indent
@@ -796,34 +616,13 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
                                << " tetrahedra" << std::endl);
           DEDENT
         }
-#ifdef NDEBUG
         );
-#endif
-
-#ifndef NDEBUG
-    Painter<D, Precision> paintPartialDTs = basePainter;
-    for (uint i = 0; i < partioning.size(); ++i) {
-      paintPartialDTs.setColor(Painter<D, Precision>::tetradicColor(i), 0.4);
-      paintPartialDTs.draw(partialDTs[i], this->points);
-
-      Painter<D, Precision> paintPartialDT = basePainter;
-      paintPartialDT.draw(partialDTs[i], this->points, true);
-      paintPartialDT.save(provenance + "_02_partialDT_" + std::to_string(i));
-    }
-
-    paintPartialDTs.save(provenance + "_02_partialDTs");
-#endif
 
     LOG("Extracting edges" << std::endl);
     INDENT
 
     Ids edgePointIds;
     Ids edgeSimplexIds;
-
-#ifndef NDEBUG
-    Painter<D, Precision> paintEdges = paintPartialDTs;
-    paintEdges.setColor(1, 0, 0);
-#endif
 
     for (uint i = 0; i < partioning.size(); ++i) {
       // points are in different partitions, there can be no overlap
@@ -834,21 +633,11 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
       // ignore infinite vertices if this is the top most triangulation
       auto ep = extractPoints(edge, partialDTs[i]);
       edgePointIds.insert(ep.begin(), ep.end());
-
-#ifndef NDEBUG
-      paintEdges.draw(partialDTs[i].project(edge), this->points, false);
-#endif
     }
     DEDENT
 
     LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
                     << edgePointIds.size() << " points" << std::endl);
-
-#ifndef NDEBUG
-    paintEdges.draw(
-        this->points.template filter<dPoints<D, Precision>>(edgePointIds));
-    paintEdges.save(provenance + "_03_edgeMarked");
-#endif
 
       dSimplices<D, Precision> edgeDT;
 
@@ -866,27 +655,8 @@ DCTriangulator<D, Precision>::_triangulate(const Ids & partitionPoints,
                                        << std::endl);
     DEDENT
 
-#ifndef NDEBUG
-    Painter<D, Precision> paintEdgeDT = basePainter;
-
-    paintEdgeDT.setColor(0, 1, 0);
-    paintEdgeDT.draw(edgeDT, this->points, true);
-    paintEdgeDT.setColor(1, 0, 0);
-    paintEdgeDT.draw(
-        this->points.template filter<dPoints<D, Precision>>(edgePointIds));
-
-    paintEdgeDT.save(provenance + "_04_edgeDT");
-#endif
-
     auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                        partioning, provenance, realDT.get());
-
-#ifndef NDEBUG
-    Painter<D, Precision> paintFinal = basePainter;
-    paintFinal.setColor(0, 1, 0);
-    paintFinal.draw(mergedDT, this->points, true);
-    paintFinal.save(provenance + "_06_final");
-#endif
 
     TriangulationReportEntry rep;
     rep.provenance = provenance;

@@ -35,27 +35,8 @@ add_library(DCTriangulator
 target_link_libraries(DCTriangulator
   Triangulator
   CGALTriangulator
-  Painting
   Logging
   Geometry
-)
-
-add_library(Painting2D Painter_2.cxx)
-target_link_libraries(Painting2D ${Cairomm_LIBRARIES})
-
-add_library(Painting3D Painter_3.cxx)
-target_link_libraries(Painting3D ${VTK_LIBRARIES})
-
-add_library(Painting
-  Painter.cpp
-)
-
-target_link_libraries(Painting
-  Logging
-  Geometry
-  ${Boost_LIBRARIES}
-  debug Painting2D
-  debug Painting3D
 )
 
 add_executable (DACTest
@@ -67,7 +48,6 @@ target_link_libraries(DACTest
   Measurements
   Geometry
   DCTriangulator
-  Painting
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
@@ -81,7 +61,6 @@ target_link_libraries(Benchmark
   Measurements
   Geometry
   DCTriangulator
-  Painting
   DBConn
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}

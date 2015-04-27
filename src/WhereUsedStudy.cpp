@@ -9,7 +9,6 @@
 
 #include "DCTriangulator.h"
 #include "utils/CSV.h"
-#include "Painter.h"
 
 #define LLOG(msg) std::cout << msg;
 
@@ -66,7 +65,6 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
   std::function<Precision()> dice = std::bind(distribution, startGen);
 
   DCTriangulator<D, Precision>::VERIFY = false;
-  Painter<D, Precision>::ENABLED = false;
 
   std::mutex mtx;
   tbb::parallel_for(

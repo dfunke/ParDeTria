@@ -3,7 +3,6 @@
 #include "Geometry.h"
 #include "DCTriangulator.h"
 #include "Partitioner.h"
-#include "Painter.h"
 
 #include "utils/Random.h"
 #include "utils/Logger.h"
@@ -36,7 +35,6 @@ void runExperiment(ExperimentRun & run) {
   //quite all output and unnecessary computations
   LOGGER.setLogLevel(Logger::Verbosity::SILENT);
   DCTriangulator<D, Precision>::VERIFY = false;
-  Painter<D, Precision>::ENABLED = false;
 
   //get point set
   unsigned char dist = run.getTrait<unsigned char>("dist");

@@ -19,12 +19,6 @@ add_library (Measurements
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
 
-add_executable (VTUShow
-  VTU_Show.cpp
-)
-
-target_link_libraries(VTUShow ${VTK_LIBRARIES} ${Boost_LIBRARIES})
-
 add_executable (archiveConverter
   ArchiveConverter.cpp
 )

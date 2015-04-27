@@ -26,9 +26,7 @@ find_package(GTest)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 find_package(CGAL REQUIRED)
-find_package(Cairomm REQUIRED)
 find_package(TBB REQUIRED)
-find_package(VTK REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
 find_package(Threads REQUIRED)
 find_package(EJDB REQUIRED)
@@ -38,8 +36,6 @@ include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories(
   SYSTEM
   ${CGAL_INCLUDE_DIRS}
-  ${Cairomm_INCLUDE_DIRS}
-  ${VTK_INCLUDE_DIRS}
 )
 
 include(GetGitRevisionDescription)

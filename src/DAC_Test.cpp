@@ -3,7 +3,6 @@
 #include "Geometry.h"
 #include "DCTriangulator.h"
 #include "Partitioner.h"
-#include "Painter.h"
 
 #include "utils/Random.h"
 #include "utils/Logger.h"
@@ -78,8 +77,6 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
   std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
 
   LOGGER.setLogLevel(Logger::Verbosity::SILENT);
-
-  Painter<D, Precision>::ENABLED = false;
 
   uint nIterations = 9 * (log10(N) - 1) + 1;
   ProgressDisplay progress(splitters.size() * nIterations, std::cout);
@@ -163,7 +160,6 @@ int main(int argc, char *argv[]) {
       "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
   cCommandLine.add_options()("study", "study mode");
   cCommandLine.add_options()("no-verify", "don't verify triangulation");
-  cCommandLine.add_options()("no-output", "don't output triangulation");
   cCommandLine.add_options()("seq-fault", "run triangulation until seq fault occurs");
   cCommandLine.add_options()("verbosity", po::value<int>(&verbosity),
                              "verbosity");
@@ -215,10 +211,6 @@ int main(int argc, char *argv[]) {
 
   if (vm.count("no-verify")) {
     DCTriangulator<D, Precision>::VERIFY = false;
-  }
-
-  if (vm.count("no-output")) {
-    Painter<D, Precision>::ENABLED = false;
   }
 
   // load scheduler with specified number of threads
