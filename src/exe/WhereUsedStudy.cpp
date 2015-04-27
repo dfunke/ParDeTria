@@ -50,10 +50,10 @@ private:
 template<uint D, typename Precision>
 void studyWhereUsedListSize(const uint N, const char splitter) {
 
-    std::ofstream f("whereUsed_study_faces_" + std::to_string(D) + "_" +
+    std::ofstream f("whereUsed_collisions_" + std::to_string(D) + "_" +
                     splitter + ".csv",
                     std::ios::out | std::ios::trunc);
-    f << CSV::csv("nP", "nWU") << std::endl;
+    f << CSV::csv("n", "collisions") << std::endl;
 
     dBox<D, Precision> bounds;
     for (uint i = 0; i < D; ++i) {
@@ -84,12 +84,12 @@ int main() {
     LOGGER.setLogLevel(Logger::Verbosity::SILENT);
     const unsigned char splitter = 'c';
 
-    std::async(std::launch::async, [&]() {
+    /*std::async(std::launch::async, [&]() {
         LLOG("2D" << std::endl);
         INDENT
         studyWhereUsedListSize<2, Precision>(N, splitter);
         DEDENT
-    });
+    });*/
 
     std::async(std::launch::async, [&]() {
         LLOG("3D" << std::endl);
