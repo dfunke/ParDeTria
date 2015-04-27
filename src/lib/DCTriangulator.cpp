@@ -217,7 +217,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         neighborSet.clear();
         for (uint i = 0; i < D + 1; ++i) {
 
-            uint facetteHash = simplex.vertexFingerprint ^simplex.vertices[i];
+            auto facetteHash = simplex.faceFingerprint(i);
             auto range = simplices.wuFaces.equal_range(facetteHash);
             PLOG("Key: " << facetteHash << " #Results: " << std::distance(range.first, range.second) << std::endl;);
             for (auto it = range.first; it != range.second; ++it) {
@@ -334,7 +334,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
                     DT.convexHull.insert(edgeSimplex.id);
 
                 for (uint d = 0; d < D + 1; ++d) {
-                    DT.wuFaces.emplace((edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]), edgeSimplex.id);
+                    DT.wuFaces.emplace((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
                 }
 
                 insertedSimplices.insert(edgeSimplex.id);
@@ -355,7 +355,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
                             DT.convexHull.insert(edgeSimplex.id);
 
                         for (uint d = 0; d < D + 1; ++d) {
-                            DT.wuFaces.emplace((edgeSimplex.vertexFingerprint ^ edgeSimplex.vertices[d]),
+                            DT.wuFaces.emplace((edgeSimplex.faceFingerprint(d)),
                                                edgeSimplex.id);
                         }
 

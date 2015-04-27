@@ -655,7 +655,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
             // find corresponding mySimplex for realSimplex
             // we can limit the search by using the face where-used ds
-            uint faceHash = realSimplex.vertexFingerprint ^realSimplex.vertices[0];
+            auto faceHash = realSimplex.faceFingerprint(0);
             auto range = this->wuFaces.equal_range(faceHash);
             auto mySimplex = std::find_if(range.first,
                                           range.second,
@@ -705,7 +705,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
             const dSimplex<D, Precision> &mySimplex = *it;
 
             // again we use the face where-used ds for the lookup
-            uint faceHash = mySimplex.vertexFingerprint ^mySimplex.vertices[0];
+            auto faceHash = mySimplex.faceFingerprint(0);
             auto range = realDT.wuFaces.equal_range(faceHash);
             auto realSimplex = std::find_if(range.first,
                                             range.second,
@@ -817,9 +817,9 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
         for (auto it = this->begin(i); it != this->end(i); ++it) {
 
             const dSimplex<D, Precision> &s = *it;
-            for (const auto &p : s.vertices) {
+            for (uint d = 0; d < D + 1; ++d) {
                 // check facette
-                uint facetteHash = s.vertexFingerprint ^p;
+                auto facetteHash = s.faceFingerprint(d);
                 auto range = this->wuFaces.equal_range(facetteHash);
                 if (std::find_if(range.first, range.second, [&s](const auto &i) { return s.id == i.second; }) ==
                     range.second) {
@@ -869,7 +869,7 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
             // we already verified that the face where-used data structure is correct
             // we can use it to verify the neighbor relation
             for (uint i = 0; i < D + 1; ++i) {
-                uint faceHash = a.vertexFingerprint ^a.vertices[i];
+                auto faceHash = a.faceFingerprint(i);
                 auto range = this->wuFaces.equal_range(faceHash);
                 for (auto it = range.first; it != range.second; ++it) {
                     if (!dSimplex<D, Precision>::isFinite(it->second) || !this->contains(it->second))

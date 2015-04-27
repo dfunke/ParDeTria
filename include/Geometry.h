@@ -19,10 +19,9 @@
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
 
-typedef std::unordered_set<uint> Ids;
-
-// dimensionality of our problem
-// const uint D = 2;
+typedef uint tHashType;
+typedef uint tIdType;
+typedef std::unordered_set<tIdType> Ids;
 
 // basic data structure for d-dimensional data
 template<std::size_t D, typename Precision>
@@ -156,16 +155,16 @@ public:
         }
     }
 
-    bool operator==(const uint &a) const { return id == a; }
+    bool operator==(const tIdType &a) const { return id == a; }
 
     inline bool isFinite() const { return isFinite(id); }
 
 public:
-    uint id;
+    tIdType id;
     dVector<D, Precision> coords;
 
 public:
-    static inline bool isFinite(const uint &i) {
+    static inline bool isFinite(const tIdType &i) {
         // INDENT
         // PLOG(i << " -> " << (i & cINF) << " != " << cINF << ": " << !((i &
         // cINF) == cINF) << std::endl);
@@ -173,13 +172,13 @@ public:
         return !((i & cINF) == cINF);
     }
 
-    static inline uint infIndex(const uint &i) {
+    static inline tIdType infIndex(const tIdType &i) {
         ASSERT(!isFinite(i));
         return ~cINF & i;
     }
 
-    static constexpr uint cINF = ~(0) ^((1 << D) - 1);
-    static constexpr uint nINF = ~(0) - cINF + 1;
+    static constexpr tIdType cINF = ~(0) ^((1 << D) - 1);
+    static constexpr tIdType nINF = ~(0) - cINF + 1;
 };
 
 //#############################################################################
@@ -367,7 +366,7 @@ public:
         return sharedVertices == D;
     }
 
-    uint fingerprint() {
+    tHashType fingerprint() {
         vertexFingerprint = 0;
         for (uint i = 0; i < D + 1; ++i) {
             vertexFingerprint ^= vertices[i];
@@ -376,11 +375,15 @@ public:
         return vertexFingerprint;
     }
 
+    inline tHashType faceFingerprint(uint i) const {
+        return vertexFingerprint ^ vertices[i];
+    }
+
 public:
     uint id;
-    std::array<uint, D + 1> vertices;
-    uint vertexFingerprint;
-    std::array<uint, D + 1> neighbors;
+    std::array<tIdType, D + 1> vertices;
+    tHashType vertexFingerprint;
+    std::array<tIdType, D + 1> neighbors;
 
 public:
     static bool isFinite(const uint &i) { return i != cINF; }
@@ -502,7 +505,7 @@ public:
 
 public:
     Ids convexHull;
-    std::unordered_multimap<uint, uint> wuFaces;
+    std::unordered_multimap<tHashType, tIdType> wuFaces;
 };
 
 template<uint D, typename Precision>

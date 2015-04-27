@@ -272,7 +272,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
         //update where-used data structure for faces
         for (uint i = 0; i < D + 1; ++i) {
-            uint facetteHash = a.vertexFingerprint ^a.vertices[i];
+            auto facetteHash = a.faceFingerprint(i);
 
             tria.wuFaces.emplace(facetteHash, a.id);
         }
