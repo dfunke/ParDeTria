@@ -28,8 +28,8 @@ TEST(Geometry3D, HashingTest) {
 
     EXPECT_EQ(s.vertexFingerprint, eq.vertexFingerprint);
 
-    // fingerprint should be unequal
-    EXPECT_NE(s.vertexFingerprint, pe.fingerprint());
+    // fingerprint should be equal
+    EXPECT_EQ(s.vertexFingerprint, pe.fingerprint());
 
     // find neighbor
     bool foundNeighbor = false;
