@@ -77,12 +77,15 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
 }
 
 #define Precision double
-#define N 1e4
 
-int main() {
+int main(int argc, char *argv[]) {
 
     LOGGER.setLogLevel(Logger::Verbosity::SILENT);
     const unsigned char splitter = 'c';
+
+    int N = 1e4;
+    if(argc == 2)
+        N = std::stoi(argv[1]);
 
     /*std::async(std::launch::async, [&]() {
         LLOG("2D" << std::endl);
