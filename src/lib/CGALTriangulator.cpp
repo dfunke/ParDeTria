@@ -125,18 +125,22 @@ template<typename Precision, class Tria, bool Parallel>
 class CGALHelper<2, Precision, Tria, Parallel> {
 
 public:
+    using Handle = typename Tria::Face_handle;
+    using Iterator = typename Tria::Finite_faces_iterator;
+
+public:
     CGALHelper(__attribute__((unused)) const dBox<2, Precision> &bounds,
                __attribute__((unused)) const uint N) { }
 
-    typename Tria::Finite_faces_iterator begin(const Tria &t) {
+    Iterator begin(const Tria &t) {
         return t.finite_faces_begin();
     }
 
-    typename Tria::Finite_faces_iterator end(const Tria &t) {
+    Iterator end(const Tria &t) {
         return t.finite_faces_end();
     }
 
-    uint size(Tria &t) { return t.number_of_faces(); }
+    std::size_t size(Tria &t) { return t.number_of_faces(); }
 
     typename Tria::Point make_point(const dPoint<2, Precision> &p) {
         return typename Tria::Point(p.coords[0], p.coords[1]);
@@ -146,26 +150,28 @@ public:
         Tria t;
         return t;
     }
-
-    using Handle = typename Tria::Face_handle;
 };
 
 template<typename Precision, class Tria>
 class CGALHelper<3, Precision, Tria, false> {
 
 public:
+    using Handle = typename Tria::Cell_handle;
+    using Iterator = typename Tria::Finite_cells_iterator;
+
+public:
     CGALHelper(__attribute__((unused)) const dBox<3, Precision> &bounds,
                __attribute__((unused)) const uint N) { }
 
-    typename Tria::Finite_cells_iterator begin(const Tria &t) {
+    Iterator begin(const Tria &t) {
         return t.finite_cells_begin();
     }
 
-    typename Tria::Finite_cells_iterator end(const Tria &t) {
+    Iterator end(const Tria &t) {
         return t.finite_cells_end();
     }
 
-    uint size(Tria &t) { return t.number_of_finite_cells(); }
+    std::size_t size(Tria &t) { return t.number_of_finite_cells(); }
 
     typename Tria::Point make_point(const dPoint<3, Precision> &p) {
         return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
@@ -175,12 +181,14 @@ public:
         Tria t;
         return t;
     }
-
-    using Handle = typename Tria::Cell_handle;
 };
 
 template<typename Precision, class Tria>
 class CGALHelper<3, Precision, Tria, true> {
+
+public:
+    using Handle = typename Tria::Cell_handle;
+    using Iterator = typename Tria::Finite_cells_iterator;
 
 public:
     CGALHelper(const dBox<3, Precision> &bounds, const uint N)
@@ -191,15 +199,15 @@ public:
                                 (uint) std::floor(std::cbrt(std::numeric_limits<int>::max()))
                         )) { }
 
-    typename Tria::Finite_cells_iterator begin(const Tria &t) {
+    Iterator begin(const Tria &t) {
         return t.finite_cells_begin();
     }
 
-    typename Tria::Finite_cells_iterator end(const Tria &t) {
+    Iterator end(const Tria &t) {
         return t.finite_cells_end();
     }
 
-    uint size(Tria &t) { return t.number_of_finite_cells(); }
+    std::size_t size(Tria &t) { return t.number_of_finite_cells(); }
 
     typename Tria::Point make_point(const dPoint<3, Precision> &p) {
         return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
@@ -209,8 +217,6 @@ public:
         Tria t(&lockingDS);
         return t;
     }
-
-    using Handle = typename Tria::Cell_handle;
 
 private:
     typename Tria::Lock_data_structure lockingDS;
@@ -244,7 +250,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
     dSimplices<D, Precision> tria;
     tria.reserve(helper.size(t));
-    tria.wuFaces.reserve(3 * helper.size(t));
+    tria.wuFaces.reserve((D+1) * helper.size(t));
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
 #ifndef NDEBUG
