@@ -1,4 +1,4 @@
-from dbm.dumb import _Database
+#! /usr/bin/env python3
 
 __author__ = 'dfunke'
 
