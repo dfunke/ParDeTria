@@ -369,14 +369,28 @@ public:
     tHashType fingerprint() {
         vertexFingerprint = 0;
         for (uint i = 0; i < D + 1; ++i) {
-            vertexFingerprint ^= vertices[i];
+            vertexFingerprint ^= _rol(vertices[i]);
         }
 
         return vertexFingerprint;
     }
 
-    inline tHashType faceFingerprint(uint i) const {
-        return vertexFingerprint ^ vertices[i];
+    inline tHashType faceFingerprint(const uint i) const {
+        return vertexFingerprint ^ _rol(vertices[i]);
+    }
+
+private:
+
+    constexpr uint _log2(const uint n, const uint p = 0) const {
+        return (n <= 1) ? p : _log2(n / 2, p + 1);
+    }
+
+    inline tHashType _rol(const tHashType x) const {
+        return _rol(x, x & ((1 << _log2(sizeof(tHashType) * 8)) - 1));
+    }
+
+    inline tHashType _rol(const tHashType x, const uint r) const {
+        return (x >> r) | (x << (sizeof(tHashType) * 8 - r));
     }
 
 public:
