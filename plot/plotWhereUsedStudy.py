@@ -75,6 +75,10 @@ ax.set_xlim(0, len(N)+1)
 ax.set_xticklabels((N-8)[0::9])
 ax.set_xticks(np.arange(1, len(N)+1, 9))
 
+_, ymax = ax.get_ylim()
+ymax += 1
+ax.set_ylim(0, ymax)
+
 #ax.legend()
 
 closeFig("whereUsed_study/04_collisions")
