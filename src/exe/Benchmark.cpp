@@ -131,12 +131,17 @@ void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10) {
 
 //**************************
 
-std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10, bool parallel_base = true) {
+std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10,
+                                                  int maxThreads = -1, int minThreads = 1,
+                                                  bool parallel_base = true) {
 
     std::vector<ExperimentRun> runs;
 
     //determine maximum number of threads
-    uint maxThreads = tbb::task_scheduler_init::default_num_threads();
+    if(maxThreads == -1)
+        maxThreads = tbb::task_scheduler_init::default_num_threads();
+    if(minThreads == -1)
+        minThreads = maxThreads;
 
     //determine the latest run number
     uint runNumber = db.getMaximum<uint>("run-number") + 1;
@@ -165,7 +170,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                 } else {
 
                     //loop over number of threads, if algo is multi-threaded
-                    for (uint threads = 1; threads <= maxThreads; threads <<= 1) {
+                    for (uint threads = minThreads; threads <= (unsigned) maxThreads; threads <<= 1) {
 
                         //loop over gridOccupancy
                         bool firstOccupancy = true;
@@ -242,6 +247,8 @@ int main(int argc, char *argv[]) {
     namespace po = boost::program_options;
 
     uint maxN, minN = 10;
+    int maxThreads = -1;
+    int minThreads = 1;
     uint occupancy = 1;
     unsigned char alg;
     bool parallelBase;
@@ -255,7 +262,13 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()("n", po::value<uint>(&maxN),
                                "maximum number of points");
     cCommandLine.add_options()("minN", po::value<uint>(&minN),
-                               "minimum number of points");
+                               "minimum number of points, default 10");
+
+    // thread options
+    cCommandLine.add_options()("minThreads", po::value<int>(&minThreads),
+                               "minimum number of threads, default 1");
+    cCommandLine.add_options()("maxThreads", po::value<int>(&maxThreads),
+                               "maximum number of threads, default -1 = automatic");
 
     // algorithm options
     cCommandLine.add_options()("algorithm", po::value<unsigned char>(&alg),
@@ -325,9 +338,13 @@ int main(int argc, char *argv[]) {
             triangulators = {'d'};
             occupancies = {100};
             parallelBase = false;
+
+            //operations don't change with number of threads
+            minThreads = -1;
+            maxThreads = -1;
         }
 
-        runs = generateExperimentRuns(maxN, minN, parallelBase);
+        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, parallelBase);
     }
 
 #ifdef ENABLE_PROFILING
