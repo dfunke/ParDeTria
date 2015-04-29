@@ -244,6 +244,7 @@ int main(int argc, char *argv[]) {
     uint maxN, minN = 10;
     uint occupancy = 1;
     unsigned char alg;
+    bool parallelBase;
 
     uint reps = 10;
     std::string runFile;
@@ -317,20 +318,25 @@ int main(int argc, char *argv[]) {
             triangulators = {alg};
         }
 
-        runs = generateExperimentRuns(maxN, minN, !vm.count("no-parallel-base"));
+        parallelBase = !vm.count("no-parallel-base");
+
+        if (vm.count("profiling")) {
+            // only our algorithm is instrumented
+            triangulators = {'d'};
+            occupancies = {100};
+            parallelBase = false;
+        }
+
+        runs = generateExperimentRuns(maxN, minN, parallelBase);
     }
 
 #ifdef ENABLE_PROFILING
-    if(!vm.count("profiling")){
+    if (!vm.count("profiling")) {
         std::cout << "Compiled with profiling, but not specified on command line. Exiting" << std::endl;
         return EXIT_FAILURE;
     } else {
         // only 1 reptition, profiling counters don't change
         reps = 1;
-
-        // only own algorithm is instrumented
-        triangulators = {'d'};
-        occupancies = {100};
     }
 #endif
 
