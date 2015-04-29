@@ -19,6 +19,8 @@ add_library (Measurements
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
 
+target_link_libraries(Measurements ${TBB_LIBRARIES})
+
 add_library (DBConn
   DBConnection.cpp
   ${EJDB_LIBRARIES}

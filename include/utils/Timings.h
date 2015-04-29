@@ -117,8 +117,8 @@ class ExperimentRunAccessor : private boost::noncopyable {
 
 #ifdef ENABLE_PROFILING
 
-#define PROFILER_INC(name) ExperimentRunAccessor::getInstance().incCounter(name);
-#define PROFILER_ADD(name, value) ExperimentRunAccessor::getInstance().incCounter(name, value);
+#define PROFILER_INC(name) ExperimentRunAccessor::getInstance().incCounter(name)
+#define PROFILER_ADD(name, value) ExperimentRunAccessor::getInstance().incCounter(name, value)
 
 #else // ENABLE_PROFILING
 
@@ -131,31 +131,23 @@ public:
     static ExperimentRunAccessor &getInstance();
 
     void addMeasurement(const std::string &name, const ExperimentRun::tMeasurement &value) {
-        m_run.addMeasurement(name, value);
+        if(m_run)
+            m_run->addMeasurement(name, value);
     }
 
     void incCounter(const std::string &name, const ExperimentRun::tMeasurement &value = 1) {
-        m_run.incCounter(name, value);
+        if(m_run)
+            m_run->incCounter(name, value);
     }
 
-    void setRun(const ExperimentRun &run){
+    void setRun(ExperimentRun *run){
         m_run = run;
     }
 
-    ExperimentRun getRun() const {
-        //return by value
-        return m_run;
-    }
-
-    void test(){
-        PROFILER_INC("branch");
-        PROFILER_ADD("branch", 4);
-    }
-
 private:
-    ExperimentRunAccessor() { }
+    ExperimentRunAccessor() : m_run(nullptr) { }
 
-    ExperimentRun m_run;
+    ExperimentRun * m_run;
 
 };
 
