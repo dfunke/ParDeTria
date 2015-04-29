@@ -603,23 +603,30 @@ public:
 template<uint D, typename Precision>
 Precision
 dSimplex<D, Precision>::orientation(const dPoints<D, Precision> &points) const {
+    PROFILER_INC("dSimplex_orientation");
+
     return GeometryHelper<D, Precision>::orientation(*this, points);
 }
 
 template<uint D, typename Precision>
 bool dSimplex<D, Precision>::inSphere(
         const dPoint<D, Precision> &p, const dPoints<D, Precision> &points) const {
+    PROFILER_INC("dSimplex_inSphere");
+
     return GeometryHelper<D, Precision>::inSphere(*this, p, points);
 }
 
 template<uint D, typename Precision>
 dSphere<D, Precision> dSimplex<D, Precision>::circumsphere(
         const dPoints<D, Precision> &points) const {
+    PROFILER_INC("dSimplex_circumsphere");
+
     return GeometryHelper<D, Precision>::circumsphere(*this, points);
 }
 
 template<uint D, typename Precision>
 uint dSimplices<D, Precision>::countDuplicates() const {
+    PROFILER_INC("dSimplices_countDuplicates");
 
     std::atomic<uint> duplicates(0);
 

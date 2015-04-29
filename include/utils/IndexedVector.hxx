@@ -4,6 +4,8 @@
 #include <vector>
 #include <iterator>
 
+#include "utils/Timings.h"
+
 template<typename V, typename K = uint>
 class IndexedVector : public std::unordered_map<K, V> {
 
@@ -165,11 +167,23 @@ public:
     };
 
 public:
-    V &operator[](uint idx) { return map::operator[](idx); }
+    V &operator[](uint idx) {
+        PROFILER_INC("IndexedVector_access");
 
-    const V &operator[](uint idx) const { return map::at(idx); }
+        return map::operator[](idx);
+    }
 
-    void insert(const V &value) { map::insert(std::make_pair(value.id, value)); }
+    const V &operator[](uint idx) const {
+        PROFILER_INC("IndexedVector_access");
+
+        return map::at(idx);
+    }
+
+    void insert(const V &value) {
+        PROFILER_INC("IndexedVector_insert");
+
+        map::insert(std::make_pair(value.id, value));
+    }
 
     template<class InputIt>
     void insert(const InputIt &first, const InputIt &last) {
@@ -178,9 +192,17 @@ public:
         }
     }
 
-    bool contains(const V &value) const { return map::count(value.id); }
+    bool contains(const V &value) const {
+        PROFILER_INC("IndexedVector_contains");
 
-    bool contains(const K &key) const { return map::count(key); }
+        return map::count(value.id);
+    }
+
+    bool contains(const K &key) const {
+        PROFILER_INC("IndexedVector_contains");
+
+        return map::count(key);
+    }
 
     template<class Container>
     const IndexedVector project(const Container &ids) const {
@@ -213,6 +235,8 @@ public:
     }
 
     iterator<typename map::iterator> begin() {
+        PROFILER_INC("IndexedVector_begin");
+
         return iterator<typename map::iterator>(map::begin());
     }
 
@@ -221,6 +245,8 @@ public:
     }
 
     const_iterator<typename map::const_iterator> begin() const {
+        PROFILER_INC("IndexedVector_begin");
+
         return const_iterator<typename map::const_iterator>(map::begin());
     }
 
@@ -229,6 +255,8 @@ public:
     }
 
     const_key_iterator<typename map::const_iterator> begin_keys() const {
+        PROFILER_INC("IndexedVector_begin");
+
         return const_key_iterator<typename map::const_iterator>(map::begin());
     }
 
@@ -236,19 +264,23 @@ public:
         return const_key_iterator<typename map::const_iterator>(map::end());
     }
 
-    iterator<typename map::local_iterator> begin(const uint i) {
+    iterator<typename map::local_iterator> begin(const std::size_t i) {
+        PROFILER_INC("IndexedVector_begin");
+
         return iterator<typename map::local_iterator>(map::begin(i));
     }
 
-    iterator<typename map::local_iterator> end(const uint i) {
+    iterator<typename map::local_iterator> end(const std::size_t i) {
         return iterator<typename map::local_iterator>(map::end(i));
     }
 
-    const_iterator<typename map::const_local_iterator> begin(const uint i) const {
+    const_iterator<typename map::const_local_iterator> begin(const std::size_t i) const {
+        PROFILER_INC("IndexedVector_localBegin");
+
         return const_iterator<typename map::const_local_iterator>(map::begin(i));
     }
 
-    const_iterator<typename map::const_local_iterator> end(const uint i) const {
+    const_iterator<typename map::const_local_iterator> end(const std::size_t i) const {
         return const_iterator<typename map::const_local_iterator>(map::end(i));
     }
 };
