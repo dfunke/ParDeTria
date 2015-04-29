@@ -19,7 +19,6 @@
 
 #define D 3
 #define Precision double
-#define REPS 10
 
 std::vector<unsigned char> splitters = {'c'};
 std::vector<unsigned char> triangulators = {'c', 'm', 'd'};
@@ -30,9 +29,11 @@ DBConnection db("db_" + getHostname() + ".dat", "benchmarks");
 
 dBox<D, Precision> bounds(dVector<D, Precision>( {{ 0, 0, 0 }}
 
-), dVector<D, Precision>({{ 100,100,100}}));
+), dVector<D, Precision>({
+{
+100,100,100}}));
 
-void runExperiment(ExperimentRun &run) {
+void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
     //quite all output and unnecessary computations
     LOGGER.setLogLevel(Logger::Verbosity::SILENT);
@@ -78,9 +79,11 @@ void runExperiment(ExperimentRun &run) {
 
     run.addTrait("start-time", getDatetime());
 
+    PROFILER.setRun(&run);
+
     try {
 
-        for (uint i = 0; i < REPS; ++i) {
+        for (uint i = 0; i < reps; ++i) {
             auto t1 = Clock::now();
             auto dt = triangulator_ptr->triangulate();
             auto t2 = Clock::now();
@@ -105,17 +108,17 @@ void runExperiment(ExperimentRun &run) {
 
 //**************************
 
-void runExperiments(std::vector<ExperimentRun> &runs) {
+void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10) {
 
     for (uint i = 0; i < runs.size(); ++i) {
         std::cout << i << "/" << runs.size() << ": " << runs[i].str() << std::endl;
 
-        runExperiment(runs[i]);
+        runExperiment(runs[i], reps);
 
         std::cout << "\tAverage time: "
-                     << runs[i].avgMeasurement("times") / 1e6
+        << runs[i].avgMeasurement("times") / 1e6
         << " ms\tAverage mem: "
-                     << runs[i].avgMeasurement("memory") / 1e6 << " MB" << std::endl;
+        << runs[i].avgMeasurement("memory") / 1e6 << " MB" << std::endl;
     }
 
 }
@@ -234,22 +237,44 @@ int main(int argc, char *argv[]) {
 
     uint maxN, minN = 10;
     uint occupancy = 1;
+    unsigned char alg;
+
+    uint reps = 10;
     std::string runFile;
     std::string run;
 
     po::options_description cCommandLine("Command Line Options");
+    // point options
     cCommandLine.add_options()("n", po::value<uint>(&maxN),
                                "maximum number of points");
     cCommandLine.add_options()("minN", po::value<uint>(&minN),
                                "minimum number of points");
+
+    // algorithm options
+    cCommandLine.add_options()("algorithm", po::value<unsigned char>(&alg),
+                               "algorithm to use");
+
+    // occupancy options
+    cCommandLine.add_options()("occupancy", po::value<uint>(&occupancy),
+                               "specify occupancy of grid lock data structure");
+
+    // parallel base options
+    cCommandLine.add_options()("no-parallel-base", "don't use parallel base solver");
+
+    // operative options
+    cCommandLine.add_options()("reps", po::value<uint>(&reps),
+                               "repetitions of experiments");
     cCommandLine.add_options()("runs", po::value<std::string>(&runFile),
                                "file containing experiments to run");
     cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                                "string describing an experiment to run");
-    cCommandLine.add_options()("occupancy", po::value<uint>(&occupancy),
-                               "specify occupancy of grid lock data structure");
     cCommandLine.add_options()("gen-only", "just generate test-cases");
-    cCommandLine.add_options()("no-parallel-base", "don't use parallel base solver");
+
+#ifdef ENABLE_PROFILING
+    cCommandLine.add_options()("profiling",
+                               "perform fine-grained profiling");
+#endif
+
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -282,14 +307,32 @@ int main(int argc, char *argv[]) {
             occupancies = {occupancy};
         }
 
+        if (vm.count("algorithm")) {
+            triangulators = {alg};
+        }
+
         runs = generateExperimentRuns(maxN, minN, !vm.count("no-parallel-base"));
     }
+
+#ifdef ENABLE_PROFILING
+    if(!vm.count("profiling")){
+        std::cout << "Compiled with profiling, but not specified on command line. Exiting" << std::endl;
+        return EXIT_FAILURE;
+    } else {
+        // only 1 reptition, profiling counters don't change
+        reps = 1;
+
+        // only own algorithm is instrumented
+        triangulators = {'d'};
+        occupancies = {100};
+    }
+#endif
 
     if (vm.count("gen-only")) {
         for (const auto &r : runs)
             std::cout << r.str() << std::endl;
     } else {
-        runExperiments(runs);
+        runExperiments(runs, reps);
     }
 
     return EXIT_SUCCESS;

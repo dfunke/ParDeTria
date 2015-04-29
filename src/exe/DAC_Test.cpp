@@ -30,6 +30,7 @@ struct TriangulateReturn {
     TriangulationReport tr;
     bool exception;
     tDuration time;
+    ExperimentRun run;
 };
 
 //**************************
@@ -42,6 +43,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     DCTriangulator<D, Precision> triangulator(bounds, points, baseCase, splitter);
 
     TriangulateReturn ret;
+    PROFILER.setRun(&ret.run);
 
     //try {
 
@@ -273,14 +275,22 @@ int main(int argc, char *argv[]) {
 
         VLOG(CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
                       "valid", "nPoints", "nSimplices", "nEdgePoints",
-                      "nEdgeSimplices", "time", "mem", "max_mem"));
+                      "nEdgeSimplices", "time", "mem", "max_mem") << std::endl);
 
         for (const auto &tr : ret.tr) {
             VLOG(CSV::csv(points.size(), p, tr.provenance, tr.base_case,
                           tr.edge_triangulation, tr.valid, tr.nPoints, tr.nSimplices,
                           tr.nEdgePoints, tr.nEdgeSimplices, ret.time.count(),
-                          getCurrentRSS(), getPeakRSS()));
+                          getCurrentRSS(), getPeakRSS()) << std::endl);
         }
+
+#ifdef ENABLE_PROFILING
+        VLOG(std::endl << "Profiling Counters:" << std::endl);
+        for(const auto &c : ret.run.counters()){
+            VLOG(c.first << ": " << c.second << std::endl);
+        }
+#endif
+
 
         returnCode = EXIT_SUCCESS;
     }
