@@ -14,6 +14,10 @@
 #include <string>
 #include <map>
 
+#include <boost/noncopyable.hpp>
+
+#include "utils/TBB_Containers.h"
+
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::nanoseconds tDuration;
 
@@ -21,6 +25,7 @@ class ExperimentRun {
 
 public:
     typedef ulong tMeasurement;
+    typedef tbb::concurrent_vector<tMeasurement> tMeasurements;
 
 public:
 
@@ -62,12 +67,12 @@ public:
         updateTrait(name, ss.str());
     }
 
-    void addMeasurement(const std::string &name, const tMeasurement &value) {
-        m_measurements[name].emplace_back(value);
-    }
-
     const auto &traits() const {
         return m_traits;
+    }
+
+    void addMeasurement(const std::string &name, const tMeasurement &value) {
+        m_measurements[name].emplace_back(value);
     }
 
     const auto &measurements() const {
@@ -80,16 +85,77 @@ public:
 
     tMeasurement avgMeasurement(const std::string &name) const;
 
+    void incCounter(const std::string &name, const tMeasurement &value = 1) {
+        m_counters[name] += value;
+    }
+
+    const auto &counters() const {
+        return m_counters;
+    }
+
+    const auto &counter(const std::string &name) const {
+        return m_counters.at(name);
+    }
+
     std::string str(std::string _traitSep = "   ", std::string _innerSep = ": ") const;
 
     bool operator==(const ExperimentRun &o) const;
 
 private:
     std::map<std::string, std::string> m_traits;
-    std::map<std::string, std::vector<tMeasurement>> m_measurements;
+    tbb::concurrent_unordered_map<std::string, tMeasurements> m_measurements;
+    tbb::concurrent_unordered_map<std::string, tMeasurement> m_counters;
 
 private:
     static std::vector<std::string> c_ignored_fields;
+
+};
+
+class ExperimentRunAccessor : private boost::noncopyable {
+
+#define PROFILER ExperimentRunAccessor::getInstance()
+
+#ifdef ENABLE_PROFILING
+
+#define PROFILER_INC(name) ExperimentRunAccessor::getInstance().incCounter(name);
+#define PROFILER_ADD(name, value) ExperimentRunAccessor::getInstance().incCounter(name, value);
+
+#else // ENABLE_PROFILING
+
+#define PROFILER_INC(name) ((void)(0))
+#define PROFILER_ADD(name, value) ((void)(0))
+
+#endif
+
+public:
+    static ExperimentRunAccessor &getInstance();
+
+    void addMeasurement(const std::string &name, const ExperimentRun::tMeasurement &value) {
+        m_run.addMeasurement(name, value);
+    }
+
+    void incCounter(const std::string &name, const ExperimentRun::tMeasurement &value = 1) {
+        m_run.incCounter(name, value);
+    }
+
+    void setRun(const ExperimentRun &run){
+        m_run = run;
+    }
+
+    ExperimentRun getRun() const {
+        //return by value
+        return m_run;
+    }
+
+    void test(){
+        PROFILER_INC("branch");
+        PROFILER_ADD("branch", 4);
+    }
+
+private:
+    ExperimentRunAccessor() { }
+
+    ExperimentRun m_run;
 
 };
 

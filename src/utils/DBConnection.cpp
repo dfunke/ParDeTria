@@ -121,4 +121,8 @@ void DBConnection::bsonify(bson *bobj, const ExperimentRun &o) {
         bson_append_finish_array(bobj);
     }
 
+    for (const auto &counter : o.counters()) {
+        bson_append_long(bobj, counter.first.c_str(), counter.second);
+    }
+
 }

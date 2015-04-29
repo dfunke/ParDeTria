@@ -95,3 +95,9 @@ bool ExperimentRun::operator==(const ExperimentRun &o) const {
 std::ostream &operator<<(std::ostream &o, const ExperimentRun &p) {
     return o << p.str();
 }
+
+ExperimentRunAccessor &ExperimentRunAccessor::getInstance() {
+    static ExperimentRunAccessor instance; // Guaranteed to be destroyed and thread safe
+    // Instantiated on first use.
+    return instance;
+}
