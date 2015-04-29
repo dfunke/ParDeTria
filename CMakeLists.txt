@@ -57,6 +57,12 @@ if (SANITIZE)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread")
 endif()
 
+option(PROFILING "Enable fine-grained profiling" OFF)
+if(PROFILING)
+  message(STATUS "Profiling enabled")
+  add_definitions(-DENABLE_PROFILING)
+endif()
+
 # add src subdirectory
 add_subdirectory(src)
 
