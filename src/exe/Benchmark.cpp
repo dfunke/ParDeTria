@@ -25,7 +25,13 @@ std::vector<unsigned char> triangulators = {'c', 'm', 'd'};
 std::vector<unsigned char> distributions = {'u'};
 std::vector<uint> occupancies = {10, 50, 100, 1000};
 
-DBConnection db("db_" + getHostname() + ".dat", "benchmarks");
+DBConnection db("db_" + getHostname() + ".dat",
+#ifndef ENABLE_PROFILING
+                "benchmarks"
+#else
+                "profiling"
+#endif
+);
 
 dBox<D, Precision> bounds(dVector<D, Precision>( {{ 0, 0, 0 }}
 
