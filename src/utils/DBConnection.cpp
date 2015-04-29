@@ -122,7 +122,7 @@ void DBConnection::bsonify(bson *bobj, const ExperimentRun &o) {
     }
 
     for (const auto &counter : o.counters()) {
-        bson_append_long(bobj, counter.first.c_str(), counter.second);
+        bson_append_long(bobj, ("counter_" + counter.first).c_str(), counter.second);
     }
 
 }
