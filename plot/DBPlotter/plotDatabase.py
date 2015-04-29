@@ -78,6 +78,10 @@ def getCharacteristics(dataset : pd.DataFrame) -> dict:
         if col == '_id' or 'time' in col:
             continue
 
+        # ignore counter fields
+        if col.startsWith('counter_'):
+            continue
+
         # check whether column contains a plain characteristic
         if isinstance(dataset[col][0], list):
             continue
