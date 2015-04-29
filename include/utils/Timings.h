@@ -20,6 +20,9 @@ typedef std::chrono::nanoseconds tDuration;
 class ExperimentRun {
 
 public:
+    typedef ulong tMeasurement;
+
+public:
 
     ExperimentRun();
 
@@ -59,29 +62,23 @@ public:
         updateTrait(name, ss.str());
     }
 
-    void addTime(const tDuration &t) {
-        m_times.emplace_back(t);
-    }
-
-    void addMemory(const std::size_t &m) {
-        m_mem.emplace_back(m);
+    void addMeasurement(const std::string &name, const tMeasurement &value) {
+        m_measurements[name].emplace_back(value);
     }
 
     const auto &traits() const {
         return m_traits;
     }
 
-    const auto &times() const {
-        return m_times;
+    const auto &measurements() const {
+        return m_measurements;
     }
 
-    const auto &mem() const {
-        return m_mem;
+    const auto &measurements(const std::string &name) const {
+        return m_measurements.at(name);
     }
 
-    tDuration avgTime() const;
-
-    std::size_t avgMem() const;
+    tMeasurement avgMeasurement(const std::string &name) const;
 
     std::string str(std::string _traitSep = "   ", std::string _innerSep = ": ") const;
 
@@ -89,8 +86,7 @@ public:
 
 private:
     std::map<std::string, std::string> m_traits;
-    std::vector<tDuration> m_times;
-    std::vector<std::size_t> m_mem;
+    std::map<std::string, std::vector<tMeasurement>> m_measurements;
 
 private:
     static std::vector<std::string> c_ignored_fields;

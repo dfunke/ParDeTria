@@ -532,8 +532,8 @@ int main(int argc, char *argv[]) {
                         tria.insert(cPoints.begin(), cPoints.end());
                         auto t2 = Clock::now();
 
-                        run.addMemory(getCurrentRSS());
-                        run.addTime(std::chrono::duration_cast<tDuration>(t2 - t1));
+                        run.addMeasurement("memory", getCurrentRSS());
+                        run.addMeasurement("times", std::chrono::duration_cast<tDuration>(t2 - t1).count());
                     }
 
                 } catch (std::exception &e) {
@@ -545,9 +545,9 @@ int main(int argc, char *argv[]) {
                 db.save(run);
 
                 std::cout << "\tAverage time: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(run.avgTime()).count()
+                             << run.avgMeasurement("times") / 1e6
                 << " ms\tAverage mem: "
-                << run.avgMem() / 1e6 << " MB" << std::endl;
+                             << run.avgMeasurement("memory") / 1e6 << " MB" << std::endl;
 
             }
 

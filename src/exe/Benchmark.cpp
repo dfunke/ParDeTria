@@ -85,8 +85,8 @@ void runExperiment(ExperimentRun &run) {
             auto dt = triangulator_ptr->triangulate();
             auto t2 = Clock::now();
 
-            run.addMemory(getCurrentRSS());
-            run.addTime(std::chrono::duration_cast<tDuration>(t2 - t1));
+            run.addMeasurement("memory", getCurrentRSS());
+            run.addMeasurement("times", std::chrono::duration_cast<tDuration>(t2 - t1).count());
         }
 
     } catch (std::exception &e) {
@@ -113,9 +113,9 @@ void runExperiments(std::vector<ExperimentRun> &runs) {
         runExperiment(runs[i]);
 
         std::cout << "\tAverage time: "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(runs[i].avgTime()).count()
+                     << runs[i].avgMeasurement("times") / 1e6
         << " ms\tAverage mem: "
-        << runs[i].avgMem() / 1e6 << " MB" << std::endl;
+                     << runs[i].avgMeasurement("memory") / 1e6 << " MB" << std::endl;
     }
 
 }

@@ -55,28 +55,15 @@ std::string ExperimentRun::str(std::string _traitSep, std::string _innerSep) con
 
 }
 
-tDuration ExperimentRun::avgTime() const {
+ExperimentRun::tMeasurement ExperimentRun::avgMeasurement(const std::string &name) const {
 
-    tDuration avg(0);
+    tMeasurement avg = 0;
 
-    for (const auto &t : m_times)
-        avg += t;
+    for (const auto &m : m_measurements.at(name))
+        avg += m;
 
-    if (m_times.size() > 0)
-        avg /= m_times.size();
-
-    return avg;
-}
-
-std::size_t ExperimentRun::avgMem() const {
-
-    std::size_t avg(0);
-
-    for (const auto &t : m_mem)
-        avg += t;
-
-    if (m_mem.size() > 0)
-        avg /= m_mem.size();
+    if (m_measurements.at(name).size() > 0)
+        avg /= m_measurements.at(name).size();
 
     return avg;
 }

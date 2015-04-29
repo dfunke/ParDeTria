@@ -113,16 +113,12 @@ void DBConnection::bsonify(bson *bobj, const ExperimentRun &o) {
         bson_append_string(bobj, t.first.c_str(), t.second.c_str());
     }
 
-    bson_append_start_array(bobj, "times");
-    for (uint i = 0; i < o.times().size(); ++i) {
-        bson_append_long(bobj, std::to_string(i).c_str(), o.times()[i].count());
+    for (const auto &series : o.measurements()) {
+        bson_append_start_array(bobj, series.first.c_str());
+        for (uint i = 0; i < series.second.size(); ++i) {
+            bson_append_long(bobj, std::to_string(i).c_str(), series.second[i]);
+        }
+        bson_append_finish_array(bobj);
     }
-    bson_append_finish_array(bobj);
-
-    bson_append_start_array(bobj, "memory");
-    for (uint i = 0; i < o.mem().size(); ++i) {
-        bson_append_long(bobj, std::to_string(i).c_str(), o.mem()[i]);
-    }
-    bson_append_finish_array(bobj);
 
 }
