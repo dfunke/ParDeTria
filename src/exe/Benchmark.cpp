@@ -63,12 +63,12 @@ void runExperiment(ExperimentRun &run) {
             triangulator_ptr =
                     std::make_unique<CGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
         } else {
-            uint basecase = run.getTrait<uint>("basecase");
+            uint recursionDepth = run.getTrait<uint>("recursion-depth");
             unsigned char splitter = run.getTrait<unsigned char>("splitter");
             bool parBase = run.getTrait<bool>("parallel-base");
 
             triangulator_ptr =
-                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, basecase, splitter, gridOccupancy,
+                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, recursionDepth, splitter, gridOccupancy,
                                                                    parBase);
         }
     }
@@ -178,8 +178,10 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                                 //loop over splitters
                                 for (const unsigned char splitter : splitters) {
 
-                                    //loop over base cases
-                                    for (uint basecase = 500; basecase <= std::max(500u, nPoints / 2); basecase <<= 2) {
+                                    //loop over recursion depth
+                                    for (uint recursionDepth = 0;
+                                         recursionDepth <= std::ceil(std::log2(nPoints / DCTriangulator<D, Precision>::BASE_CUTOFF));
+                                         ++recursionDepth) {
 
                                         if (firstOccupancy) { // we do not need to generate runs for the following occupancies
                                             ExperimentRun runSeq;
@@ -190,7 +192,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                                             runSeq.addTrait("threads", threads);
                                             runSeq.addTrait("occupancy", 1);
                                             runSeq.addTrait("splitter", splitter);
-                                            runSeq.addTrait("basecase", basecase);
+                                            runSeq.addTrait("recursion-depth", recursionDepth);
                                             runSeq.addTrait("parallel-base", false);
 
                                             runs.emplace_back(runSeq);
@@ -205,7 +207,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                                             runPar.addTrait("threads", threads);
                                             runPar.addTrait("occupancy", occ);
                                             runPar.addTrait("splitter", splitter);
-                                            runPar.addTrait("basecase", basecase);
+                                            runPar.addTrait("recursion-depth", recursionDepth);
                                             runPar.addTrait("parallel-base", true);
 
                                             runs.emplace_back(runPar);
