@@ -487,6 +487,8 @@ DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
                                                const dBox<D, Precision> &bounds,
                                                const std::string provenance) {
 
+    PROFILER_MEAS("basecaseSize", partitionPoints.size());
+
     LOGGER.setIndent(provenance.length());
 
     LOG("triangulateBASE called on level " << provenance << " with "

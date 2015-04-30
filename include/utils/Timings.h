@@ -119,11 +119,13 @@ class ExperimentRunAccessor : private boost::noncopyable {
 
 #define PROFILER_INC(name) ExperimentRunAccessor::getInstance().incCounter(name)
 #define PROFILER_ADD(name, value) ExperimentRunAccessor::getInstance().incCounter(name, value)
+#define PROFILER_MEAS(name, value) ExperimentRunAccessor::getInstance().addMeasurement(name, value)
 
 #else // ENABLE_PROFILING
 
 #define PROFILER_INC(name) ((void)(0))
 #define PROFILER_ADD(name, value) ((void)(0))
+#define PROFILER_MEAS(name, value) ((void)(0))
 
 #endif
 
