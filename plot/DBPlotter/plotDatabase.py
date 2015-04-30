@@ -7,6 +7,7 @@ import pyejdb
 import numpy as np
 import pandas as pd
 import math
+import copy
 
 import plot_helpers as ph
 import db_helpers as dh
@@ -97,8 +98,8 @@ def plotBaseCase():
 
         pSpeedup.addSeries(sSPar)
 
-    pRuntime.plot("basecase_time_over_threads.png", legend_cols=2)
-    pSpeedup.plot("basecase_speedup_over_threads.png", legend_cols=2, legend_loc=2)
+    pRuntime.plot("basecase_time_over_threads.png", {'ncol' : 2})
+    pSpeedup.plot("basecase_speedup_over_threads.png", {'ncol' : 2, 'loc' : 2})
 
 def plotComparison():
     ########################################################################################################################
@@ -175,7 +176,7 @@ def plotComparison():
     sASSeqBase = ph.Series(sSeqBase)
     sASSeqBase.yvalues = sCGAL.yvalue / sSeqBase.yvalues
     pSpeedupAbs.addSeries(sASSeqBase)
-    
+
     #################################################
     # large base case, par. base
 
@@ -226,7 +227,7 @@ def plotImprovement():
     pImprovement.xlabel = "threads"
     pImprovement.ylabel = "ratio"
     pImprovement.desc = r"$10^%i$ points" % math.log10(charsBenchmarks['nP'][0])
-    
+
     #################################################
     # old small base case, seq. base
 
@@ -236,7 +237,7 @@ def plotImprovement():
     sOldSeqBase.label = "Old - Seq. Base %i" % np.min(charsBenchmarks['basecase'])
     pRuntime.addSeries(sOldSeqBase)
 
-    
+
     #################################################
     # old large base case, par. base
 
@@ -245,7 +246,7 @@ def plotImprovement():
     sOldParBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(old, {'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sOldParBase.label = "Old - Par. Base %i" % np.max(charsBenchmarks['basecase'])
     pRuntime.addSeries(sOldParBase)
-    
+
     #################################################
     # new small base case, seq. base
 
@@ -255,7 +256,7 @@ def plotImprovement():
     sNewSeqBase.label = "New - Seq. Base %i" % np.min(charsBenchmarks['basecase'])
     pRuntime.addSeries(sNewSeqBase)
 
-    
+
     #################################################
     # new large base case, par. base
 
@@ -268,27 +269,118 @@ def plotImprovement():
     sImpSeqBase = ph.Series(sNewSeqBase)
     sImpSeqBase.yvalues = [old / new for old, new in zip(sOldSeqBase.yvalues, sImpSeqBase.yvalues)]
     pImprovement.addSeries(sImpSeqBase)
-    
+
     sImpParBase = ph.Series(sNewParBase)
     sImpParBase.yvalues = [old / new for old, new in zip(sOldParBase.yvalues, sImpParBase.yvalues)]
     pImprovement.addSeries(sImpParBase)
 
-    pRuntime.plot("improvement_time_over_threads.png", legend_cols=2)
+    pRuntime.plot("improvement_time_over_threads.png", {'ncol' : 2})
     pImprovement.plot("improvement_ratio_over_threads.png")
 
+def plotProfiling():
+
+    lastRun = dh.getLastRun(database, 'profiling')
+    prof = dh.load(database, 'profiling', {'run-number' : lastRun}).sort(columns='nP')
+
+    chars = dh.getCharacteristics(prof)
+    counters = dh.getCounters(prof)
+
+    #plot each counter over N
+    for counter in counters:
+        label = counter.replace('counter_', '')
+        print("Plotting metric %s over n" % label)
+
+        plt = ph.Plot()
+        plt.title = r"%s over $n$" % label
+        plt.xlabel = r"$n$"
+        plt.ylabel = "%s" % label
+
+        for bc in chars['basecase']:
+            data = dh.select(prof, {'basecase' : bc})
+
+            series = ph.Series()
+            series.xvalues = data['nP']
+            series.yvalues = data[counter]
+            series.label = "basecase: %i" % bc
+
+            plt.addSeries(series)
+
+        plt.plot("profiling/01_%s_over_n.png" % label)
+
+    #plot stackplots for each basecase over n
+    for bc in chars['basecase']:
+        print("Plotting stackplot for basecase %i" % bc)
+
+        pCt = ph.StackPlot()
+        pCt.title = r"Ops over $n$"
+        pCt.xlabel = r"$n$"
+        pCt.ylabel = "a.u."
+        pCt.desc = "Basecase %i" % bc
+
+        data = dh.select(prof, {'basecase' : bc})
+
+        total = None
+
+        for counter in counters:
+            label = counter.replace('counter_', '')
+
+            series = ph.Series()
+            series.xvalues = data['nP']
+            series.yvalues = data[counter]
+            series.label = label
+
+            if total is None:
+                total = copy.copy(series.yvalues)
+            else:
+                total += series.yvalues
+
+            pCt.addSeries(series)
+
+        pCt.plot("profiling/02_ops_over_n_bc%i.png" % bc,
+                 figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
+
+        pSh = ph.StackPlot()
+        pSh.title = r"Ops over $n$"
+        pSh.xlabel = r"$n$"
+        pSh.ylabel = "%"
+        pSh.desc = "Basecase %i" % bc
+
+        for counter in counters:
+            label = counter.replace('counter_', '')
+
+            series = ph.Series()
+            series.xvalues = data['nP']
+            series.yvalues = data[counter] / total
+            series.label = label
+
+            pSh.addSeries(series)
+
+        pSh.plot("profiling/03_ops_perc_over_n_bc%i.png" % bc,
+                 figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
 
 if len(sys.argv) != 2:
     print("Specify database")
+    sys.exit(4)
+
 database = sys.argv[1]
 
-print("Plotting pure CGAL")
-plotCGAL()
+# print("Plotting pure CGAL")
+# plotCGAL()
+#
+# print("Plot Base Case")
+# plotBaseCase()
+#
+# print("Plotting Comparision")
+# plotComparison()
+#
+# print("Plotting Improvement")
+# plotImprovement()
 
-print("Plot Base Case")
-plotBaseCase()
-
-print("Plotting Comparision")
-plotComparison()
-
-print("Plotting Improvement")
-plotImprovement()
+print("Plotting Profiling")
+plotProfiling()
