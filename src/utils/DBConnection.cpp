@@ -105,12 +105,20 @@ std::string DBConnection::_getMaximum(const std::string &field) const {
 }
 
 #include "Timings.h"
+#include "utils/StringUtils.h"
 
 template<>
 void DBConnection::bsonify(bson *bobj, const ExperimentRun &o) {
 
     for (const auto &t : o.traits()) {
-        bson_append_string(bobj, t.first.c_str(), t.second.c_str());
+        if(is_int(t.second)) {
+            bson_append_long(bobj, t.first.c_str(), std::stol(t.second));
+        }
+        else if(is_float(t.second)) {
+            bson_append_double(bobj, t.first.c_str(), std::stod(t.second));
+        }
+        else
+            bson_append_string(bobj, t.first.c_str(), t.second.c_str());
     }
 
     bson_append_start_array(bobj, "times");
