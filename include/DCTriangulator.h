@@ -32,7 +32,7 @@ public:
 
 
     DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
-                   const uint _baseThreshold,
+                   const uint _recursionDepth,
                    const unsigned char splitter,
                    const uint gridOccupancy = 1,
                    const bool parallelBaseSolver = false);
@@ -79,13 +79,13 @@ protected:
 
 
 protected:
-    const uint baseThreshold;
+    const uint recursionDepth;
 
     TriangulationReport triangulationReport;
     std::unique_ptr<Partitioner<D, Precision>> partitioner;
     std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
 
-protected:
+public:
     static constexpr Precision SAFETY = 100;
-    static constexpr Precision ADAPTION_FACTOR = 0.75;
+    static constexpr uint BASE_CUTOFF = 100;
 };

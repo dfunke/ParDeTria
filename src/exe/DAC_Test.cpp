@@ -36,11 +36,11 @@ struct TriangulateReturn {
 //**************************
 
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
-                              const uint baseCase,
+                              const uint recursionDepth,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter) {
 
-    DCTriangulator<D, Precision> triangulator(bounds, points, baseCase, splitter);
+    DCTriangulator<D, Precision> triangulator(bounds, points, recursionDepth, splitter);
 
     TriangulateReturn ret;
     PROFILER.setRun(&ret.run);
@@ -72,7 +72,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
 //**************************
 
-int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
+int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint recursionDepth,
             std::function<Precision()> &&dice) {
     // define splitter test cases
     std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
@@ -83,7 +83,7 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
     ProgressDisplay progress(splitters.size() * nIterations, std::cout);
 
     std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
-    f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
+    f << CSV::csv("n", "splitter", "provenance", "recursionDepth", "edge_tria",
                   "valid", "nPoints", "nSimplices", "nEdgePoints",
                   "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
 
@@ -101,7 +101,7 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
             auto &points = pointss[i];
             unsigned char p = splitters[j];
 
-            auto ret = triangulate(bounds, baseCase, points, p);
+            auto ret = triangulate(bounds, recursionDepth, points, p);
 
             // evaluate the triangulation report
 
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 
     unsigned char p;
     uint N;
-    uint baseCase;
+    uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
 
     bool study = false;
@@ -154,8 +154,8 @@ int main(int argc, char *argv[]) {
 
     po::options_description cCommandLine("Command Line Options");
     cCommandLine.add_options()("n", po::value<uint>(&N), "number of points");
-    cCommandLine.add_options()("basecase", po::value<uint>(&baseCase),
-                               "threshold for base case");
+    cCommandLine.add_options()("recDepth", po::value<uint>(&recursionDepth),
+                               "maximum levels of recursion");
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
@@ -185,8 +185,8 @@ int main(int argc, char *argv[]) {
 
     // plausability checks
     bool valid = true;
-    if ((!vm.count("basecase"))) {
-        std::cout << "Please specify basecase threshold" << std::endl;
+    if ((!vm.count("recDepth"))) {
+        std::cout << "Please specify the maximum depth of recursion" << std::endl;
         valid = false;
     }
 
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
 
     uint returnCode = 0;
     if (study) {
-        returnCode = doStudy(N, bounds, baseCase, std::move(dice));
+        returnCode = doStudy(N, bounds, recursionDepth, std::move(dice));
     } else {
 
         dPoints<D, Precision> points;
@@ -260,10 +260,10 @@ int main(int argc, char *argv[]) {
                     std::cout << std::endl;
 
                 points = genPoints(N, bounds, dice);
-                triangulate(bounds, baseCase, points, p);
+                triangulate(bounds, recursionDepth, points, p);
             }
         } else
-            ret = triangulate(bounds, baseCase, points, p);
+            ret = triangulate(bounds, recursionDepth, points, p);
 
         LOG("Triangulating "
             << points.size() << " points took "

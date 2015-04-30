@@ -40,7 +40,7 @@ template<uint D, typename Precision>
 constexpr Precision DCTriangulator<D, Precision>::SAFETY;
 
 template<uint D, typename Precision>
-constexpr Precision DCTriangulator<D, Precision>::ADAPTION_FACTOR;
+constexpr uint DCTriangulator<D, Precision>::BASE_CUTOFF;
 
 //**************************
 
@@ -48,11 +48,11 @@ template<uint D, typename Precision>
 DCTriangulator<D, Precision>::DCTriangulator(
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
-        const uint _baseThreshold,
+        const uint _recursionDepth,
         const unsigned char splitter,
         const uint gridOccupancy,
         const bool parallelBaseSolver)
-        : Triangulator<D, Precision>(_bounds, _points), baseThreshold(_baseThreshold) {
+        : Triangulator<D, Precision>(_bounds, _points), recursionDepth(_recursionDepth) {
 
 
     // add infinite points to data set
@@ -567,7 +567,7 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
 
     bool isTOP = this->isTOP(provenance);
 
-    if (partitionPoints.size() > baseThreshold) {
+    if (provenance.length()-1 < recursionDepth && partitionPoints.size() > BASE_CUTOFF) {
         LOG("Recursive case" << std::endl);
 
         std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
@@ -631,17 +631,10 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
             << edgePointIds.size() << " points" << std::endl);
 
-        dSimplices<D, Precision> edgeDT;
+        LOG("Triangulating edges recursively" << std::endl);
+        INDENT
+        auto edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
 
-        if (edgePointIds.size() < ADAPTION_FACTOR * partitionPoints.size()) {
-            LOG("Triangulating edges recursively" << std::endl);
-            INDENT
-            edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
-        } else {
-            LOG("Triangulating edges with basecase" << std::endl);
-            INDENT
-            edgeDT = _triangulateBase(edgePointIds, bounds, provenance + "e");
-        }
         LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
             << std::endl
             << std::endl);
