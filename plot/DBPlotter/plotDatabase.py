@@ -9,172 +9,14 @@ import pandas as pd
 import math
 
 import plot_helpers as ph
-
-# util functions
-def _getLastEntry(database : str, collection : str, query : dict = None) -> pyejdb.bson.BSON_LazyDict:
-    # Open database
-    ejdb = pyejdb.EJDB(database, pyejdb.JBOREADER)
-
-    res = ejdb.findOne(collection, query, hints= {
-                   "$orderby" : [ ("run-number", -1) ],
-                   "$fields" :  { "run-number" : 1, "git-rev" : 1 }})
-    ejdb.close()
-
-    return res
-
-def getLastCommit(database : str, collection : str, query : dict = None) -> str:
-
-    res = _getLastEntry(database, collection, query)
-
-    if not res is None:
-        print("%s: %s" % (res['run-number'], res['git-rev']))
-        return res['git-rev']
-    else:
-        return None
-
-def getLastRun(database : str, collection : str, query : dict = None) -> str:
-
-    res = _getLastEntry(database, collection, query)
-
-    if not res is None:
-        print("Selecting run: %s" % res['run-number'])
-        return res['run-number']
-    else:
-        return None
-
-def load(database: str, collection: str, query : dict = None) -> pd.DataFrame:
-    # Open database
-    ejdb = pyejdb.EJDB(database, pyejdb.JBOREADER)
-
-    lData = list()
-    with ejdb.find(collection, query) as cur:
-
-        for p in cur:
-            lData.append(dict(p.items()))
-
-    ejdb.close()
-
-    if len(lData) == 0:
-        print("%s-%s: no data selected by %s" % (database, collection, str(query)))
-        sys.exit(4)
-
-    return pd.DataFrame(lData).convert_objects(convert_dates=True, convert_numeric=True)
-
-
-def select(dataset : pd.DataFrame, **filters) -> pd.DataFrame:
-    mask = np.ones(len(dataset), dtype=np.bool)
-
-    for field, value in filters.items():
-        mask &= (dataset[field] == value)
-
-    return dataset[mask]
-
-
-def getCharacteristics(dataset : pd.DataFrame) -> dict:
-    characteristics = dict()
-
-    for col in dataset.columns:
-        # skip over id and datetime column
-        if col == '_id' or 'time' in col:
-            continue
-
-        # check whether column contains a plain characteristic
-        if isinstance(dataset[col][0], list):
-            continue
-
-        nonNull = pd.notnull(dataset[col])
-
-        if np.any(nonNull):
-            characteristics[col] = np.sort(np.unique(dataset[col][nonNull]))
-
-    # print(characteristics)
-    return characteristics
-
-def getSensitivityMap(dataset : pd.DataFrame, chars : dict, seriesChars : list) -> dict:
-    map = dict()
-
-    for series in seriesChars:
-        map[series] = dict()
-        for sValue in chars[series]:
-            map[series][sValue] = dict()
-            lData = select(dataset, **{series : sValue})
-
-            for c in [x for x in chars if x != series]:
-                map[series][sValue][c] = np.any(pd.notnull(lData[c]))
-
-    return map
-
-def plot(dataset : pd.DataFrame, chars : dict, xname : str, yname : str, seriesName : str, seriesValue : str, sensitiveChars : list, **filters):
-    xvalues = np.sort(chars[xname])
-    print(seriesName, "-", seriesValue, ": plot", yname, " over", xname, ":", xvalues ,"with filters", filters)
-
-    query = filters.copy()
-    query[seriesName] = seriesValue
-    lData = select(dataset, **query).sort(xname)
-
-    if len(lData) <= len(xvalues):
-        # basecase - plot data
-
-        if len(lData) == len(xvalues):
-            yvalues = [np.mean(x) for x in lData[yname]]
-        else:
-            # we have less y values, create a mapping
-            yvalues = list()
-            for x in xvalues:
-                if x in lData[xname]:
-                    yvalues.append(np.mean(list(lData[lData[xname] == x][yname])))
-                else:
-                    yvalues.append(0)
-
-        p = ph.Plot()
-        p.title = "%s - %s: %s over %s" % (seriesName, seriesValue, yname, xname)
-
-        p.xlabel = xname
-        p.ylabel = yname
-        p.desc = "Filters: %s" % str(filters)
-
-        d = ph.Series()
-        d.xvalues = xvalues
-        d.yvalues = yvalues
-        d.label = "%s: %s" % (seriesName, seriesValue)
-
-        p.addSeries(d)
-
-        # filename: seriesName-seriesValue_yname_xname_filters
-
-        filterStr = "filters"
-        for f in filters:
-            filterStr += "_%s-%s" % (f, filters[f])
-
-        p.plot("%s/%s-%s_%s_%s_%s.png" % (seriesName, seriesName, seriesValue, yname, xname, filterStr))
-
-    else:
-        # we need to reduce the dataset by further filters
-
-        if not sensitiveChars:
-            print("Dataset can't be reduced further - aborting")
-            print(lData)
-            sys.exit(4)
-
-        # if len(sensitiveChars) == 1 and len(chars[sensitiveChars[0]]) <= 5 and len(lData) <= len(xvalues) * len(chars[sensitiveChars[0]]):
-            # we have one sensitive characteristic left, with a sensible amount of catagories,
-            # try to plot them as series
-
-
-        cSensitiveChars = sensitiveChars.copy()
-        filterName = cSensitiveChars.pop()
-
-        for filterValue in chars[filterName]:
-            nFilter = filters.copy()
-            nFilter[filterName] = filterValue
-
-            plot(dataset, chars, xname, yname, seriesName, seriesValue, cSensitiveChars, **nFilter)
+import db_helpers as dh
 
 def plotCGAL():
-    lastRunCGAL = getLastRun(database, 'pureCGAL')
+    lastRunCGAL = dh.getLastRun(database, 'pureCGAL')
+    maxPoints = dh.selectMax(database, 'pureCGAL', 'nP', {'run-number' : lastRunCGAL})
 
-    pureCGAL = load(database, 'pureCGAL', {'run-number' : lastRunCGAL})
-    charsCGAL = getCharacteristics(pureCGAL)
+    pureCGAL = dh.load(database, 'pureCGAL', {'run-number' : lastRunCGAL, 'nP' : maxPoints})
+    charsCGAL = dh.getCharacteristics(pureCGAL)
 
     pRuntime = ph.Plot()
     pRuntime.title = "CGAL MT: Runtime over Threads"
@@ -191,7 +33,7 @@ def plotCGAL():
     for occ in charsCGAL['occupancy']:
         sRuntime = ph.Series()
         sRuntime.xvalues = charsCGAL['threads']
-        sRuntime.yvalues = [np.mean(x) / 1e6 for x in select(pureCGAL, occupancy = occ).sort(columns='threads')['times']]
+        sRuntime.yvalues = [np.mean(x) / 1e6 for x in dh.select(pureCGAL, {'occupancy' : occ}).sort(columns='threads')['times']]
 
         sRuntime.label = "CGAL - Lock Granularity %s" % occ
 
@@ -206,10 +48,11 @@ def plotCGAL():
     pSpeedup.plot("pureCGAL_speedup_over_threads.png")
 
 def plotBaseCase():
-    lastRunBenchmarks = getLastRun(database, 'benchmarks')
+    lastRunBenchmarks = dh.getLastRun(database, 'benchmarks')
+    maxPoints = dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : lastRunBenchmarks})
 
-    benchmarks = load(database, 'benchmarks', {'run-number' : lastRunBenchmarks})
-    charsBenchmarks = getCharacteristics(benchmarks)
+    benchmarks = dh.load(database, 'benchmarks', {'run-number' : lastRunBenchmarks, 'nP' : maxPoints})
+    charsBenchmarks = dh.getCharacteristics(benchmarks)
 
     pRuntime = ph.Plot()
     pRuntime.title = "Runtime over Threads"
@@ -227,7 +70,7 @@ def plotBaseCase():
         # sequential base solver
         sRSeq = ph.Series()
         sRSeq.xvalues = charsBenchmarks['threads']
-        sRSeq.yvalues = [np.mean(x) / 1e6 for x in select(benchmarks, **{'basecase' : bs, 'parallel-base': False}).sort(columns='threads')['times']]
+        sRSeq.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'basecase' : bs, 'parallel-base': False}).sort(columns='threads')['times']]
 
         sRSeq.label = "seq. Base %i" % bs
 
@@ -243,7 +86,7 @@ def plotBaseCase():
         
         sRPar = ph.Series()
         sRPar.xvalues = charsBenchmarks['threads']
-        sRPar.yvalues = [np.mean(x) / 1e6 for x in select(benchmarks, **{'basecase' : bs, 'parallel-base': True}).sort(columns='threads')['times']]
+        sRPar.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'basecase' : bs, 'parallel-base': True}).sort(columns='threads')['times']]
 
         sRPar.label = "par. Base %i" % bs
 
@@ -260,10 +103,12 @@ def plotBaseCase():
 def plotComparison():
     ########################################################################################################################
 
-    lastRunBenchmarks = getLastRun(database, 'benchmarks')
+    lastRunBenchmarks = dh.getLastRun(database, 'benchmarks')
+    maxPoints = dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : lastRunBenchmarks})
 
-    benchmarks = load(database, 'benchmarks', {'run-number' : lastRunBenchmarks})
-    charsBenchmarks = getCharacteristics(benchmarks)
+    benchmarks = dh.load(database, 'benchmarks', {'run-number' : lastRunBenchmarks, 'nP' : maxPoints})
+
+    charsBenchmarks = dh.getCharacteristics(benchmarks)
 
     pRuntime = ph.Plot()
     pRuntime.title = "Runtime over Threads"
@@ -288,7 +133,7 @@ def plotComparison():
 
     sCGAL = ph.HLine()
     sCGAL.xvalues = charsBenchmarks['threads']
-    sCGAL.yvalue = np.mean(list(select(benchmarks, alg='c').sort(columns='threads')['times'])) / 1e6
+    sCGAL.yvalue = np.mean(list(dh.select(benchmarks, {'alg' : 'c'}).sort(columns='threads')['times'])) / 1e6
     sCGAL.label = "CGAL sequential"
     pRuntime.addSeries(sCGAL)
 
@@ -302,7 +147,7 @@ def plotComparison():
 
     sCGALMT = ph.Series()
     sCGALMT.xvalues = charsBenchmarks['threads']
-    sCGALMT.yvalues = [np.mean(x) / 1e6 for x in select(benchmarks, alg='m').sort(columns='threads')['times']]
+    sCGALMT.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'alg' : 'm'}).sort(columns='threads')['times']]
     sCGALMT.label = "CGAL MT"
     pRuntime.addSeries(sCGALMT)
 
@@ -319,7 +164,7 @@ def plotComparison():
 
     sSeqBase = ph.Series()
     sSeqBase.xvalues = charsBenchmarks['threads']
-    sSeqBase.yvalues = [np.mean(x) / 1e6 for x in select(benchmarks, **{'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sSeqBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sSeqBase.label = "Seq. Base %i" % np.min(charsBenchmarks['basecase'])
     pRuntime.addSeries(sSeqBase)
 
@@ -336,7 +181,7 @@ def plotComparison():
 
     sParBase = ph.Series()
     sParBase.xvalues = charsBenchmarks['threads']
-    sParBase.yvalues = [np.mean(x) / 1e6 for x in select(benchmarks, **{'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sParBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sParBase.label = "Par. Base %i" % np.max(charsBenchmarks['basecase'])
     pRuntime.addSeries(sParBase)
 
@@ -355,16 +200,20 @@ def plotComparison():
 def plotImprovement():
     ########################################################################################################################
 
-    lastRunBenchmarks = int(getLastRun(database, 'benchmarks'))
+    lastRunBenchmarks = int(dh.getLastRun(database, 'benchmarks'))
 
     if lastRunBenchmarks < 2:
         # no improvement to plot
         return
 
-    new = load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks)})
-    old = load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks-1)})
+    maxPointsNew = int(dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : str(lastRunBenchmarks)}))
+    maxPointsOld = int(dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : str(lastRunBenchmarks-1)}))
+    maxPoints = min(maxPointsOld, maxPointsNew)
 
-    charsBenchmarks = getCharacteristics(new)
+    new = dh.load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks), 'nP' : str(maxPoints)})
+    old = dh.load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks-1),'nP' : str(maxPoints)})
+
+    charsBenchmarks = dh.getCharacteristics(new)
 
     pRuntime = ph.Plot()
     pRuntime.title = "Runtime over Threads"
@@ -383,7 +232,7 @@ def plotImprovement():
 
     sOldSeqBase = ph.Series()
     sOldSeqBase.xvalues = charsBenchmarks['threads']
-    sOldSeqBase.yvalues = [np.mean(x) / 1e6 for x in select(old, **{'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sOldSeqBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(old, {'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sOldSeqBase.label = "Old - Seq. Base %i" % np.min(charsBenchmarks['basecase'])
     pRuntime.addSeries(sOldSeqBase)
 
@@ -393,7 +242,7 @@ def plotImprovement():
 
     sOldParBase = ph.Series()
     sOldParBase.xvalues = charsBenchmarks['threads']
-    sOldParBase.yvalues = [np.mean(x) / 1e6 for x in select(old, **{'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sOldParBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(old, {'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sOldParBase.label = "Old - Par. Base %i" % np.max(charsBenchmarks['basecase'])
     pRuntime.addSeries(sOldParBase)
     
@@ -402,7 +251,7 @@ def plotImprovement():
 
     sNewSeqBase = ph.Series()
     sNewSeqBase.xvalues = charsBenchmarks['threads']
-    sNewSeqBase.yvalues = [np.mean(x) / 1e6 for x in select(new, **{'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sNewSeqBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(new, {'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sNewSeqBase.label = "New - Seq. Base %i" % np.min(charsBenchmarks['basecase'])
     pRuntime.addSeries(sNewSeqBase)
 
@@ -412,7 +261,7 @@ def plotImprovement():
 
     sNewParBase = ph.Series()
     sNewParBase.xvalues = charsBenchmarks['threads']
-    sNewParBase.yvalues = [np.mean(x) / 1e6 for x in select(new, **{'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
+    sNewParBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(new, {'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
     sNewParBase.label = "New - Par. Base %i" % np.max(charsBenchmarks['basecase'])
     pRuntime.addSeries(sNewParBase)
 
