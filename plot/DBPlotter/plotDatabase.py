@@ -200,18 +200,18 @@ def plotComparison():
 def plotImprovement():
     ########################################################################################################################
 
-    lastRunBenchmarks = int(dh.getLastRun(database, 'benchmarks'))
+    lastRunBenchmarks = dh.getLastRun(database, 'benchmarks')
 
     if lastRunBenchmarks < 2:
         # no improvement to plot
         return
 
-    maxPointsNew = int(dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : str(lastRunBenchmarks)}))
-    maxPointsOld = int(dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : str(lastRunBenchmarks-1)}))
+    maxPointsNew = dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : lastRunBenchmarks})
+    maxPointsOld = dh.selectMax(database, 'benchmarks', 'nP', {'run-number' : lastRunBenchmarks-1})
     maxPoints = min(maxPointsOld, maxPointsNew)
 
-    new = dh.load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks), 'nP' : str(maxPoints)})
-    old = dh.load(database, 'benchmarks', {'run-number' : str(lastRunBenchmarks-1),'nP' : str(maxPoints)})
+    new = dh.load(database, 'benchmarks', {'run-number' : lastRunBenchmarks, 'nP' : maxPoints})
+    old = dh.load(database, 'benchmarks', {'run-number' : lastRunBenchmarks-1,'nP' : maxPoints})
 
     charsBenchmarks = dh.getCharacteristics(new)
 
