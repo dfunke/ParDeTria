@@ -22,7 +22,6 @@ def selectMax(database : str, collection : str, field : str, query : dict = None
     ejdb.close()
 
     if not res is None:
-        print("max %s: %s" % (field, res.items()))
         if addFields:
             return res
         else:
@@ -101,6 +100,9 @@ def getCharacteristics(dataset : pd.DataFrame) -> dict:
 
     # print(characteristics)
     return characteristics
+
+def getCounters(dataset : pd.DataFrame) -> list:
+    return [col for col in dataset.columns if col.startswith('counter_')]
 
 def getSensitivityMap(dataset : pd.DataFrame, chars : dict, seriesChars : list) -> dict:
     map = dict()
