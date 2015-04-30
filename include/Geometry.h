@@ -566,6 +566,28 @@ public:
         return base::end();
     }
 
+    auto begin(std::size_t i) {
+        PROFILER_INC("dSimplices_wuFaces_localBegin");
+
+        return base::begin(i);
+    }
+
+    auto end(std::size_t i) {
+
+        return base::end(i);
+    }
+
+    auto begin(std::size_t i) const {
+        PROFILER_INC("dSimplices_wuFaces_localBegin");
+
+        return base::begin(i);
+    }
+
+    auto end(std::size_t i) const {
+
+        return base::end(i);
+    }
+
     template<typename Pair>
     auto insert(Pair &&__x) {
         PROFILER_INC("dSimplices_wuFaces_insert");
@@ -578,6 +600,18 @@ public:
         PROFILER_INC("dSimplices_wuFaces_emplace");
 
         return base::emplace(std::forward<Args>(__args)...);
+    }
+
+    auto equal_range(const tHashType & key) const {
+        PROFILER_INC("dSimplices_wuFaces_equal_range");
+
+        return base::equal_range(key);
+    }
+
+    auto equal_range(const tHashType & key) {
+        PROFILER_INC("dSimplices_wuFaces_equal_range");
+
+        return base::equal_range(key);
     }
 
 };
@@ -662,7 +696,7 @@ public:
 
 public:
     cConvexHull convexHull;
-    std::unordered_multimap<tHashType, tIdType> wuFaces;
+    cWuFaces wuFaces;
 };
 
 template<uint D, typename Precision>
