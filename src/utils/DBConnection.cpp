@@ -86,10 +86,18 @@ std::string DBConnection::_getMaximum(const std::string &field) const {
         __attribute__((unused))
 #endif
         bson_type bt = bson_find_from_buffer(&it, bsdata, field.c_str());
-        ASSERT(bt == BSON_STRING);
-
-        const char *value = bson_iterator_string(&it);
-        result = std::string(value);
+        if(bt == BSON_STRING) {
+            const char *value = bson_iterator_string(&it);
+            result = std::string(value);
+        } else if (bt == BSON_LONG) {
+            long value = bson_iterator_long(&it);
+            result = std::to_string(value);
+        } else if (bt == BSON_DOUBLE) {
+            double value = bson_iterator_double(&it);
+            result = std::to_string(value);
+        } else {
+            _handleError("Unsupported data type");
+        }
 
     }
 
