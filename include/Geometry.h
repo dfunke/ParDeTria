@@ -258,7 +258,7 @@ public:
     bool equalVertices(const dSimplex<D, Precision> &a) const {
 
         // first compare fingerprints
-        if (vertexFingerprint != a.vertexFingerprint)
+        if (fingerprint() != a.fingerprint())
             return false;
 
         // fingerprints are equal => compare vertices
@@ -366,17 +366,21 @@ public:
         return sharedVertices == D;
     }
 
-    tHashType fingerprint() {
-        vertexFingerprint = 0;
+    tHashType genFingerprint() {
+        vFingerprint = 0;
         for (uint i = 0; i < D + 1; ++i) {
-            vertexFingerprint ^= _rol(vertices[i]);
+            vFingerprint ^= _rol(vertices[i]);
         }
 
-        return vertexFingerprint;
+        return vFingerprint;
+    }
+
+    inline tHashType fingerprint() const {
+        return vFingerprint;
     }
 
     inline tHashType faceFingerprint(const uint i) const {
-        return vertexFingerprint ^ _rol(vertices[i]);
+        return vFingerprint ^ _rol(vertices[i]);
     }
 
 private:
@@ -392,7 +396,7 @@ private:
 public:
     uint id;
     std::array<tIdType, D + 1> vertices;
-    tHashType vertexFingerprint;
+    tHashType vFingerprint;
     std::array<tIdType, D + 1> neighbors;
 
 public:

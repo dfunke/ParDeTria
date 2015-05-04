@@ -644,6 +644,27 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     CrossCheckReport<D, Precision> result;
     result.valid = true;
 
+    //build hashmap for simplex lookup
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(this->size() + realDT.size());
+
+    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+
+        for (auto it = this->begin(i); it != this->end(i); ++it) {
+
+            const dSimplex<D, Precision> &a = *it;
+            simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
+        }
+    });
+
+    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
+
+        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
+
+            const dSimplex<D, Precision> &a = *it;
+            simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
+        }
+    });
+
     tbb::spin_mutex mtx;
 
     // check whether all simplices of real DT are present
@@ -655,8 +676,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
             // find corresponding mySimplex for realSimplex
             // we can limit the search by using the face where-used ds
-            auto faceHash = realSimplex.faceFingerprint(0);
-            auto range = this->wuFaces.equal_range(faceHash);
+            auto hash = realSimplex.fingerprint();
+            auto range = simplexLookup.equal_range(hash);
             auto mySimplex = std::find_if(range.first,
                                           range.second,
                                           [&](const auto &i) {
@@ -705,8 +726,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
             const dSimplex<D, Precision> &mySimplex = *it;
 
             // again we use the face where-used ds for the lookup
-            auto faceHash = mySimplex.faceFingerprint(0);
-            auto range = realDT.wuFaces.equal_range(faceHash);
+            auto hash = mySimplex.fingerprint();
+            auto range = simplexLookup.equal_range(hash);
             auto realSimplex = std::find_if(range.first,
                                             range.second,
                                             [&](const auto &i) {
@@ -810,55 +831,24 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
         }
     });
 
-    // verify where-used data structure
-    LOG("Checking where-used relation" << std::endl);
+    // verify that all simplices with a shared D-1 simplex are neighbors
+
+    //build hashmap for face lookup
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1)*this->size());
+
     tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
         for (auto it = this->begin(i); it != this->end(i); ++it) {
 
-            const dSimplex<D, Precision> &s = *it;
-            for (uint d = 0; d < D + 1; ++d) {
-                // check facette
-                auto facetteHash = s.faceFingerprint(d);
-                auto range = this->wuFaces.equal_range(facetteHash);
-                if (std::find_if(range.first, range.second, [&s](const auto &i) { return s.id == i.second; }) ==
-                    range.second) {
+            const dSimplex<D, Precision> &a = *it;
+            for (uint i = 0; i < D + 1; ++i) {
+                auto facetteHash = a.faceFingerprint(i);
 
-                    tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("Face " << facetteHash << " NOT flagged as used in " << s << std::endl);
-                    result.valid = false;
-                }
+                faceLookup.insert(std::make_pair(facetteHash, a.id));
             }
         }
     });
 
-
-    tbb::parallel_for(std::size_t(0), this->wuFaces.bucket_count(), [&](const uint i) {
-        for (auto it = this->wuFaces.begin(i); it != this->wuFaces.end(i); ++it) {
-
-            const auto &id = it->second;
-            if (!dSimplex<D, Precision>::isFinite(id) || !this->contains(id))
-                continue; // simplex of another triangulation
-
-            const auto &s = this->operator[](id);
-            bool found = false;
-            for (uint d = 0; d < D + 1; ++d) {
-                if (it->first == s.faceFingerprint(d)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                // simplex is flagged as having face f, but it hasn't
-
-                tbb::spin_mutex::scoped_lock lock(mtx);
-                LOG("Face " << it->first << " SHOULD be used in " << s << std::endl);
-                result.valid = false;
-            }
-        }
-    });
-
-    // verify that all simplices with a shared D-1 simplex are neighbors
     LOG("Checking neighbors" << std::endl);
     tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
 
@@ -870,7 +860,7 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
             // we can use it to verify the neighbor relation
             for (uint i = 0; i < D + 1; ++i) {
                 auto faceHash = a.faceFingerprint(i);
-                auto range = this->wuFaces.equal_range(faceHash);
+                auto range = faceLookup.equal_range(faceHash);
                 for (auto it = range.first; it != range.second; ++it) {
                     if (!dSimplex<D, Precision>::isFinite(it->second) || !this->contains(it->second))
                         // infinite/deleted simplex or not belonging to this triangulation
