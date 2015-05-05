@@ -285,84 +285,121 @@ def plotProfiling():
     chars = dh.getCharacteristics(prof)
     counters = dh.getCounters(prof)
 
-    #plot each counter over N
-    for counter in counters:
-        label = counter.replace('counter_', '')
-        print("Plotting metric %s over n" % label)
+    stopCrit = dh.getStoppingCriterion(prof)
 
-        plt = ph.Plot()
-        plt.title = r"%s over $n$" % label
-        plt.xlabel = r"$n$"
-        plt.ylabel = "%s" % label
+    # #plot each counter over N
+    # for counter in counters:
+    #     label = counter.replace('counter_', '')
+    #     print("Plotting metric %s over n" % label)
+    #
+    #     plt = ph.Plot()
+    #     plt.title = r"%s over $n$" % label
+    #     plt.xlabel = r"$n$"
+    #     plt.ylabel = "%s" % label
+    #
+    #     for sc in chars[stopCrit.field]:
+    #         data = dh.select(prof, {stopCrit.field : sc})
+    #
+    #         series = ph.Series()
+    #         series.xvalues = data['nP']
+    #         series.yvalues = data[counter]
+    #         series.label = "%s: %i" % (stopCrit.label, sc)
+    #
+    #         plt.addSeries(series)
+    #
+    #     plt.plot("profiling/01_%s_over_n.png" % label)
+    #
+    # #plot stackplots for each stop crit over n
+    # for sc in chars[stopCrit.field]:
+    #     print("Plotting stackplot for %s %i" % (stopCrit.label, sc))
+    #
+    #     pCt = ph.StackPlot()
+    #     pCt.title = r"Ops over $n$"
+    #     pCt.xlabel = r"$n$"
+    #     pCt.ylabel = "a.u."
+    #     pCt.desc = "%s %i" % (stopCrit.label, sc)
+    #
+    #     data = dh.select(prof, {stopCrit.field : sc})
+    #
+    #     total = None
+    #
+    #     for counter in counters:
+    #         label = counter.replace('counter_', '')
+    #
+    #         series = ph.Series()
+    #         series.xvalues = data['nP']
+    #         series.yvalues = data[counter]
+    #         series.label = label
+    #
+    #         if total is None:
+    #             total = copy.copy(series.yvalues)
+    #         else:
+    #             total += series.yvalues
+    #
+    #         pCt.addSeries(series)
+    #
+    #     pCt.plot("profiling/02_ops_over_n_%s%i.png" % (stopCrit.shortLabel, sc),
+    #              figureArgs={'figsize': (11,6)},
+    #              axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+    #              legendArgs={'ncol' : 1, 'loc' : 5,
+    #                          'fontsize' : 'small'}, figureLegend=True)
+    #
+    #     pSh = ph.StackPlot()
+    #     pSh.title = r"Ops over $n$"
+    #     pSh.xlabel = r"$n$"
+    #     pSh.ylabel = "%"
+    #     pCt.desc = "%s %i" % (stopCrit.label, sc)
+    #
+    #     for counter in counters:
+    #         label = counter.replace('counter_', '')
+    #
+    #         series = ph.Series()
+    #         series.xvalues = data['nP']
+    #         series.yvalues = data[counter] / total
+    #         series.label = label
+    #
+    #         pSh.addSeries(series)
+    #
+    #     pSh.plot("profiling/03_ops_perc_over_n_%s%i.png" % (stopCrit.shortLabel, sc),
+    #              figureArgs={'figsize': (11,6)},
+    #              axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+    #              legendArgs={'ncol' : 1, 'loc' : 5,
+    #                          'fontsize' : 'small'}, figureLegend=True)
 
-        for bc in chars['basecase']:
-            data = dh.select(prof, {'basecase' : bc})
+    # plot box plots of basecase size over base case
+    for sc in chars[stopCrit.field]:
+        print("Plotting boxplot for %s %i" % (stopCrit.label, sc))
 
-            series = ph.Series()
-            series.xvalues = data['nP']
-            series.yvalues = data[counter]
-            series.label = "basecase: %i" % bc
+        pBS = ph.BoxPlot()
+        pBS.title = r"Base Size over $n$"
+        pBS.xlabel = r"$n$"
+        pBS.ylabel = "$bc$"
+        pBS.desc = "%s %i" % (stopCrit.label, sc)
 
-            plt.addSeries(series)
+        data = dh.select(prof, {stopCrit.field : sc})
+        lN = np.sort(np.unique(data['nP']))
 
-        plt.plot("profiling/01_%s_over_n.png" % label)
+        series = ph.BoxPlotSeries()
+        series.color = 'blue'
+        series.marker = 'D'
+        series.label = '%s %i' % (stopCrit.label, sc)
 
-    #plot stackplots for each basecase over n
-    for bc in chars['basecase']:
-        print("Plotting stackplot for basecase %i" % bc)
+        series.xvalues = lN
+        series.yvalues = []
 
-        pCt = ph.StackPlot()
-        pCt.title = r"Ops over $n$"
-        pCt.xlabel = r"$n$"
-        pCt.ylabel = "a.u."
-        pCt.desc = "Basecase %i" % bc
+        for n in lN:
+            series.yvalues.append(list(dh.select(data, {'nP' : n})['basecaseSize']))
 
-        data = dh.select(prof, {'basecase' : bc})
+        pBS.addSeries(series)
 
-        total = None
+        labelStep = 1
+        if len(lN) > 10:
+            labelStep = 4
+        if len(lN) > 20:
+            labelStep = 9
 
-        for counter in counters:
-            label = counter.replace('counter_', '')
-
-            series = ph.Series()
-            series.xvalues = data['nP']
-            series.yvalues = data[counter]
-            series.label = label
-
-            if total is None:
-                total = copy.copy(series.yvalues)
-            else:
-                total += series.yvalues
-
-            pCt.addSeries(series)
-
-        pCt.plot("profiling/02_ops_over_n_bc%i.png" % bc,
-                 figureArgs={'figsize': (11,6)},
-                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
-                 legendArgs={'ncol' : 1, 'loc' : 5,
-                             'fontsize' : 'small'}, figureLegend=True)
-
-        pSh = ph.StackPlot()
-        pSh.title = r"Ops over $n$"
-        pSh.xlabel = r"$n$"
-        pSh.ylabel = "%"
-        pSh.desc = "Basecase %i" % bc
-
-        for counter in counters:
-            label = counter.replace('counter_', '')
-
-            series = ph.Series()
-            series.xvalues = data['nP']
-            series.yvalues = data[counter] / total
-            series.label = label
-
-            pSh.addSeries(series)
-
-        pSh.plot("profiling/03_ops_perc_over_n_bc%i.png" % bc,
-                 figureArgs={'figsize': (11,6)},
-                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
-                 legendArgs={'ncol' : 1, 'loc' : 5,
-                             'fontsize' : 'small'}, figureLegend=True)
+        pBS.plot("profiling/04_baseSize_over_n_%s%i" % (stopCrit.shortLabel, sc),
+                 plotArgs={'labelStep' : labelStep})
 
 if len(sys.argv) != 2:
     print("Specify database")
