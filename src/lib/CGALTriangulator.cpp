@@ -250,7 +250,6 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
     dSimplices<D, Precision> tria;
     tria.reserve(helper.size(t));
-    tria.wuFaces.reserve((D+1) * helper.size(t));
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
 #ifndef NDEBUG
@@ -270,18 +269,11 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
         // sort vertices by ascending point id
         static_insertion_sort(a.vertices);
         static_insertion_sort(a.neighbors);
-        a.fingerprint();
+        a.genFingerprint();
 
         //check whether vertex belongs to the convex hull
         if (!a.isFinite())
             tria.convexHull.insert(a.id);
-
-        //update where-used data structure for faces
-        for (uint i = 0; i < D + 1; ++i) {
-            auto facetteHash = a.faceFingerprint(i);
-
-            tria.wuFaces.emplace(facetteHash, a.id);
-        }
 
         PLOG(a << std::endl);
         tria.insert(a);

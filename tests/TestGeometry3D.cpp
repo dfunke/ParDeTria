@@ -8,28 +8,28 @@ TEST(Geometry3D, HashingTest) {
 
     dSimplex<3, double> s;
     s.vertices = {{2553, 3528, 4184, 6413}};
-    s.fingerprint();
+    s.genFingerprint();
 
     dSimplex<3, double> eq;
     eq.vertices = {{2553, 3528, 4184, 6413}}; // equal simplex
-    eq.fingerprint();
+    eq.genFingerprint();
 
     dSimplex<3, double> pe;
     pe.vertices = {{2553, 4184, 3528, 6413}}; // permuted simplex
-    pe.fingerprint();
+    pe.genFingerprint();
 
     dSimplex<3, double> nb;
     nb.vertices = {{3528, 4184, 5555, 6413}}; // neighbor simplex
-    nb.fingerprint();
+    nb.genFingerprint();
 
     dSimplex<3, double> ne;
     ne.vertices = {{2543, 3268, 4345, 6093}}; // not equal simplex
-    ne.fingerprint();
+    ne.genFingerprint();
 
-    EXPECT_EQ(s.vertexFingerprint, eq.vertexFingerprint);
+    EXPECT_EQ(s.fingerprint(), eq.fingerprint());
 
     // fingerprint should be equal
-    EXPECT_EQ(s.vertexFingerprint, pe.fingerprint());
+    EXPECT_EQ(s.fingerprint(), pe.genFingerprint());
 
     // find neighbor
     bool foundNeighbor = false;
@@ -44,7 +44,7 @@ TEST(Geometry3D, HashingTest) {
     EXPECT_TRUE(foundNeighbor);
 
     // the other simplex
-    EXPECT_NE(s.vertexFingerprint, ne.vertexFingerprint);
+    EXPECT_NE(s.fingerprint(), ne.fingerprint());
 
 }
 

@@ -270,7 +270,7 @@ public:
         PROFILER_INC("dSimplex_equalVertices");
 
         // first compare fingerprints
-        if (vertexFingerprint != a.vertexFingerprint) {
+        if (fingerprint() != a.fingerprint()) {
             PROFILER_INC("dSimplex_equalVertices-Fingerprint");
 
             return false;
@@ -394,21 +394,25 @@ public:
         return sharedVertices == D;
     }
 
-    tHashType fingerprint() {
-        PROFILER_INC("dSimplex_fingerprint");
+    tHashType genFingerprint() {
+        PROFILER_INC("dSimplex_genFingerprint");
 
-        vertexFingerprint = 0;
+        vFingerprint = 0;
         for (uint i = 0; i < D + 1; ++i) {
-            vertexFingerprint ^= _rol(vertices[i]);
+            vFingerprint ^= _rol(vertices[i]);
         }
 
-        return vertexFingerprint;
+        return vFingerprint;
+    }
+
+    inline tHashType fingerprint() const {
+        PROFILER_INC("dSimplex_fingerprint");
+        return vFingerprint;
     }
 
     inline tHashType faceFingerprint(const uint i) const {
         PROFILER_INC("dSimplex_faceFingerprint");
-
-        return vertexFingerprint ^ _rol(vertices[i]);
+        return vFingerprint ^ _rol(vertices[i]);
     }
 
 private:
@@ -424,7 +428,7 @@ private:
 public:
     uint id;
     std::array<tIdType, D + 1> vertices;
-    tHashType vertexFingerprint;
+    tHashType vFingerprint;
     std::array<tIdType, D + 1> neighbors;
 
 public:
@@ -602,13 +606,20 @@ public:
         return base::emplace(std::forward<Args>(__args)...);
     }
 
-    auto equal_range(const tHashType & key) const {
+    template<typename IT>
+    void insert(IT first, IT last){
+        PROFILER_ADD("dSimplices_wuFaces_insert", std::distance(first, last));
+
+        base::insert(first, last);
+    }
+
+    auto equal_range(const tHashType &key) const {
         PROFILER_INC("dSimplices_wuFaces_equal_range");
 
         return base::equal_range(key);
     }
 
-    auto equal_range(const tHashType & key) {
+    auto equal_range(const tHashType &key) {
         PROFILER_INC("dSimplices_wuFaces_equal_range");
 
         return base::equal_range(key);

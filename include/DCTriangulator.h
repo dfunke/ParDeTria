@@ -50,7 +50,7 @@ protected:
                                           const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
-    Ids getEdge(const dSimplices<D, Precision> &simplices,
+    Ids getEdge(dSimplices<D, Precision> &simplices,
                 const Partitioning<D, Precision> &partitioning,
                 const uint &partition);
 

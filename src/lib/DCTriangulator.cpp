@@ -86,7 +86,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
 
 template<uint D, typename Precision>
 Ids DCTriangulator<D, Precision>::getEdge(
-        const dSimplices<D, Precision> &simplices,
+        dSimplices<D, Precision> &simplices,
         const Partitioning<D, Precision> &partitioning, const uint &partition) {
     Ids edgeSimplices;
     Ids wqa = simplices.convexHull; // set of already checked simplices
@@ -126,6 +126,57 @@ Ids DCTriangulator<D, Precision>::getEdge(
         }
     }
     DEDENT
+
+    wqa.clear();
+
+    /* We need to build the wuFaces DS for the simplices of the first layer "inward" of the edge
+     * plus one more layer, to re-find their neighbors
+     */
+
+    std::function<void(const uint &, const uint &)> insertFaceHashes =
+            [&simplices, &wqa, &insertFaceHashes, &edgeSimplices](const uint &id, const uint &recDepth) {
+
+                if (recDepth < 2 && dSimplex<D, Precision>::isFinite(id)) {
+                    if (wqa.insert(id).second && !edgeSimplices.count(id)) {
+
+                        for (uint i = 0; i < D + 1; ++i) {
+                            auto facetteHash = simplices[id].faceFingerprint(i);
+                            simplices.wuFaces.emplace(facetteHash, id);
+                        }
+                    }
+
+                    for (const auto &n : simplices[id].neighbors) {
+                        insertFaceHashes(n, recDepth + 1);
+                    }
+                }
+            };
+
+    simplices.wuFaces.reserve((D + 1) * (D + 1) * edgeSimplices.size());
+    for (const auto &edgeSimplex : edgeSimplices) {
+        for(const auto & firstLayer : simplices[edgeSimplex].neighbors){
+            if(dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)){
+                // we have an "inward" neighbor, add it to the wuFaces DS
+                if (wqa.insert(firstLayer).second) {
+                    for (uint i = 0; i < D + 1; ++i) {
+                        auto facetteHash = simplices[firstLayer].faceFingerprint(i);
+                        simplices.wuFaces.emplace(facetteHash, firstLayer);
+                    }
+                }
+                // now loop over its neighbors, adding the ones not belonging to the edge
+                // TODO maybe we can avoid this
+                for(const auto & secondLayer : simplices[firstLayer].neighbors){
+                    if(dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
+                            && wqa.insert(secondLayer).second){
+
+                        for (uint i = 0; i < D + 1; ++i) {
+                            auto facetteHash = simplices[secondLayer].faceFingerprint(i);
+                            simplices.wuFaces.emplace(facetteHash, secondLayer);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     return edgeSimplices;
 }
@@ -297,16 +348,13 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
         }
 
         // copy the faces where-used list
-        // don't copy values belonging to the edge
-        for (auto &wu : partialDTs[i].wuFaces) {
-            if (!edgeSimplices.count(wu.second))
-                DT.wuFaces.insert(std::move(wu));
-        }
+        // edgeSimplices are not added to the list in the first place
+        DT.wuFaces.insert(partialDTs[i].wuFaces.begin(), partialDTs[i].wuFaces.end());
     }
 
     auto cmpFingerprint =
             [](const dSimplex<D, Precision> &a, const dSimplex<D, Precision> &b) {
-                return a.vertexFingerprint < b.vertexFingerprint;
+                return a.fingerprint() < b.fingerprint();
             };
     tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpFingerprint);
 
