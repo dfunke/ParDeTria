@@ -20,3 +20,21 @@ protected:
 protected:
     const uint gridOccupancy;
 };
+
+template<uint D, typename Precision,
+        bool Parallel = false>
+class PureCGALTriangulator : public Triangulator<D, Precision> {
+
+public:
+    PureCGALTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
+                     const uint _gridOccupancy = 1);
+
+protected:
+    dSimplices<D, Precision> _triangulate(const Ids &ids,
+                                          const dBox<D, Precision> &bounds,
+                                          const std::string provenance
+            /*, bool filterInfinite = false */);
+
+protected:
+    const uint gridOccupancy;
+};

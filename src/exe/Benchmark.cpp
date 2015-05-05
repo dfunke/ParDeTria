@@ -53,14 +53,14 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
     if (alg == 'c') {
         triangulator_ptr =
-                std::make_unique<CGALTriangulator<D, Precision, false>>(bounds, points);
+                std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
     } else {
         uint gridOccupancy = run.getTrait<uint>("occupancy");
         threads = run.getTrait<uint>("threads");
 
         if (alg == 'm') {
             triangulator_ptr =
-                    std::make_unique<CGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
+                    std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
         } else {
             uint basecase = run.getTrait<uint>("basecase");
             unsigned char splitter = run.getTrait<unsigned char>("splitter");
