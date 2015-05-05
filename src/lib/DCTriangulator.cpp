@@ -348,11 +348,8 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
         }
 
         // copy the faces where-used list
-        // don't copy values belonging to the edge
-        for (auto &wu : partialDTs[i].wuFaces) {
-            if (!edgeSimplices.count(wu.second))
-                DT.wuFaces.insert(std::move(wu));
-        }
+        // edgeSimplices are not added to the list in the first place
+        DT.wuFaces.insert(partialDTs[i].wuFaces.begin(), partialDTs[i].wuFaces.end());
     }
 
     auto cmpFingerprint =
