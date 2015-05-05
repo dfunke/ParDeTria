@@ -19,7 +19,6 @@
 
 #define D 3
 #define Precision double
-#define REPS 10
 
 std::vector<unsigned char> splitters = {'c'};
 std::vector<unsigned char> triangulators = {'c', 'm', 'd'};
@@ -32,7 +31,7 @@ dBox<D, Precision> bounds(dVector<D, Precision>( {{ 0, 0, 0 }}
 
 ), dVector<D, Precision>({{ 100,100,100}}));
 
-void runExperiment(ExperimentRun &run) {
+void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
     //quite all output and unnecessary computations
     LOGGER.setLogLevel(Logger::Verbosity::SILENT);
@@ -48,7 +47,7 @@ void runExperiment(ExperimentRun &run) {
     auto points = genPoints(nPoints, bounds, dice);
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
-    unsigned char alg = run.traits().at("alg")[0];
+    unsigned char alg = run.getTrait<unsigned char>("alg");
 
     uint threads = 1;
 
@@ -80,7 +79,7 @@ void runExperiment(ExperimentRun &run) {
 
     try {
 
-        for (uint i = 0; i < REPS; ++i) {
+        for (uint i = 0; i < reps; ++i) {
             auto t1 = Clock::now();
             auto dt = triangulator_ptr->triangulate();
             auto t2 = Clock::now();
@@ -105,12 +104,12 @@ void runExperiment(ExperimentRun &run) {
 
 //**************************
 
-void runExperiments(std::vector<ExperimentRun> &runs) {
+void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10) {
 
     for (uint i = 0; i < runs.size(); ++i) {
-        std::cout << i << "/" << runs.size() << ": " << runs[i].str() << std::endl;
+        std::cout << i+1 << "/" << runs.size() << ": " << runs[i].str() << std::endl;
 
-        runExperiment(runs[i]);
+        runExperiment(runs[i], reps);
 
         std::cout << "\tAverage time: "
         << std::chrono::duration_cast<std::chrono::milliseconds>(runs[i].avgTime()).count()
@@ -122,12 +121,17 @@ void runExperiments(std::vector<ExperimentRun> &runs) {
 
 //**************************
 
-std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10, bool parallel_base = true) {
+std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10,
+                                                  int maxThreads = -1, int minThreads = 1,
+                                                  bool parallel_base = true) {
 
     std::vector<ExperimentRun> runs;
 
     //determine maximum number of threads
-    uint maxThreads = tbb::task_scheduler_init::default_num_threads();
+    if(maxThreads == -1)
+        maxThreads = tbb::task_scheduler_init::default_num_threads();
+    if(minThreads == -1)
+        minThreads = maxThreads;
 
     //determine the latest run number
     uint runNumber = db.getMaximum<uint>("run-number") + 1;
@@ -156,7 +160,7 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                 } else {
 
                     //loop over number of threads, if algo is multi-threaded
-                    for (uint threads = 1; threads <= maxThreads; threads <<= 1) {
+                    for (uint threads = minThreads; threads <= (unsigned) maxThreads; threads <<= 1) {
 
                         //loop over gridOccupancy
                         bool firstOccupancy = true;
@@ -233,23 +237,49 @@ int main(int argc, char *argv[]) {
     namespace po = boost::program_options;
 
     uint maxN, minN = 10;
+    int maxThreads = -1;
+    int minThreads = 1;
     uint occupancy = 1;
+    unsigned char alg;
+    bool parallelBase;
+
+    uint reps = 10;
     std::string runFile;
     std::string run;
 
     po::options_description cCommandLine("Command Line Options");
+    // point options
     cCommandLine.add_options()("n", po::value<uint>(&maxN),
                                "maximum number of points");
     cCommandLine.add_options()("minN", po::value<uint>(&minN),
-                               "minimum number of points");
+                               "minimum number of points, default 10");
+
+    // thread options
+    cCommandLine.add_options()("minThreads", po::value<int>(&minThreads),
+                               "minimum number of threads, default 1");
+    cCommandLine.add_options()("maxThreads", po::value<int>(&maxThreads),
+                               "maximum number of threads, default -1 = automatic");
+
+    // algorithm options
+    cCommandLine.add_options()("algorithm", po::value<unsigned char>(&alg),
+                               "algorithm to use");
+
+    // occupancy options
+    cCommandLine.add_options()("occupancy", po::value<uint>(&occupancy),
+                               "specify occupancy of grid lock data structure");
+
+    // parallel base options
+    cCommandLine.add_options()("no-parallel-base", "don't use parallel base solver");
+
+    // operative options
+    cCommandLine.add_options()("reps", po::value<uint>(&reps),
+                               "repetitions of experiments");
     cCommandLine.add_options()("runs", po::value<std::string>(&runFile),
                                "file containing experiments to run");
     cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                                "string describing an experiment to run");
-    cCommandLine.add_options()("occupancy", po::value<uint>(&occupancy),
-                               "specify occupancy of grid lock data structure");
     cCommandLine.add_options()("gen-only", "just generate test-cases");
-    cCommandLine.add_options()("no-parallel-base", "don't use parallel base solver");
+
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -282,14 +312,31 @@ int main(int argc, char *argv[]) {
             occupancies = {occupancy};
         }
 
-        runs = generateExperimentRuns(maxN, minN, !vm.count("no-parallel-base"));
+        if (vm.count("algorithm")) {
+            triangulators = {alg};
+        }
+
+        parallelBase = !vm.count("no-parallel-base");
+
+        if (vm.count("profiling")) {
+            // only our algorithm is instrumented
+            triangulators = {'d'};
+            occupancies = {100};
+            parallelBase = false;
+
+            //operations don't change with number of threads
+            minThreads = -1;
+            maxThreads = -1;
+        }
+
+        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, parallelBase);
     }
 
     if (vm.count("gen-only")) {
         for (const auto &r : runs)
             std::cout << r.str() << std::endl;
     } else {
-        runExperiments(runs);
+        runExperiments(runs, reps);
     }
 
     return EXIT_SUCCESS;
