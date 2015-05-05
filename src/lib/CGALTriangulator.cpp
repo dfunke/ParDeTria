@@ -397,156 +397,137 @@ class CGALTriangulator<3, double, true>;
 template
 class CGALTriangulator<3, double, false>;
 
-//#define CGAL_BENCHMARK
-#ifdef CGAL_BENCHMARK
+// pure CGAL triangulators for comparision study
 
-#include <boost/program_options.hpp>
+template<uint D, typename Precision, class Tria, bool Parallel>
+dSimplices<D, Precision>
+_pureCgal(const Ids &ids, dPoints<D, Precision> &points,
+          const dBox<D, Precision> &bounds,
+          const uint gridOccupancy
+        /*, bool filterInfinite */) {
 
-#include "utils/Random.h"
-#include "utils/Timings.h"
-#include "utils/System.h"
-#include "utils/DBConnection.h"
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
-#define D 3
-#define Precision double
-#define REPS 10
+    // transform points into CGAL points with info
+    auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
+        const auto &p = points[i];
+        return std::make_pair(helper.make_point(p), p.id);
+    };
 
-int main(int argc, char *argv[]) {
+    Tria t = helper.make_tria();
+    t.insert(boost::make_transform_iterator(ids.begin(), transform),
+             boost::make_transform_iterator(ids.end(), transform));
 
-    // define program options
-
-    namespace po = boost::program_options;
-
-    uint maxN, minN = 10;
-
-    uint maxThreads = tbb::task_scheduler_init::default_num_threads();
-    uint minThreads = 1;
-    uint occ = 0;
-    std::string runFile;
-    std::string run;
-
-    po::options_description cCommandLine("Command Line Options");
-    cCommandLine.add_options()("n", po::value<uint>(&maxN),
-                               "maximum number of points");
-    cCommandLine.add_options()("minN", po::value<uint>(&minN),
-                               "minimum number of points");
-    cCommandLine.add_options()("threads", po::value<uint>(&maxThreads),
-                               "maximum number of threads");
-    cCommandLine.add_options()("minThreads", po::value<uint>(&minThreads),
-                               "minimum number of threads");
-    cCommandLine.add_options()("occ", po::value<uint>(&occ),
-                               "occupancy of grid lock data structure");
-    cCommandLine.add_options()("help", "produce help message");
-
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
-    po::notify(vm);
-
-    if (vm.count("help")) {
-        std::cout << cCommandLine << std::endl;
-        return EXIT_SUCCESS;
-    }
-
-    //***************************************************************************
-
-    typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
-    typedef CGAL::Triangulation_data_structure_3<
-            Vb, CGAL::Triangulation_cell_base_3<K>, CGAL::Parallel_tag> Tds;
-    typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
-
-    //setup
-    std::vector<uint> occupancies;
-    if (vm.count("occ"))
-        occupancies = {occ};
-    else
-        occupancies = {10, 50, 100, 1000};
-
-    dBox<D, Precision> bounds(dVector<D, Precision>( {{ 0, 0, 0 }}), dVector < D, Precision > ({{ 100, 100, 100 }}));
-    LOGGER.setLogLevel(Logger::Verbosity::SILENT);
-
-    DBConnection db("db_" + getHostname() + ".dat", "pureCGAL");
-
-    //determine the latest run number
-    uint runNumber = db.getMaximum<uint>("run-number") + 1;
-
-    //loop over number of points
-    for (uint nPoints = minN; nPoints <= maxN; nPoints += pow(10, floor(log10(nPoints)))) {
-
-        tGenerator gen(START_SEED);
-        auto dice = RandomFactory<Precision>::make('u', gen);
-        auto points = genPoints(nPoints, bounds, dice);
-
-        // copy points into CGAL structure
-        std::vector<std::pair<typename CT::Point, uint>> cPoints;
-        cPoints.reserve(points.size());
-        for (const auto &p : points) {
-            auto cp = CT::Point(p.coords[0], p.coords[1], p.coords[2]);
-            cPoints.push_back(std::make_pair(cp, p.id));
-        }
-
-        //loop over number of threads, if algo is multi-threaded
-        for (uint threads = minThreads; threads <= maxThreads; threads <<= 1) {
-
-            // load scheduler with specified number of threads
-            tbb::task_scheduler_init init(threads);
-
-            //loop over occupancies
-            for (uint occ : occupancies) {
-
-                ExperimentRun run;
-                run.addTrait("run-number", runNumber);
-                run.addTrait("dist", "u");
-                run.addTrait("nP", nPoints);
-                run.addTrait("alg", "m");
-                run.addTrait("threads", threads);
-                run.addTrait("occupancy", occ);
-
-                run.addTrait("start-time", getDatetime());
-
-                std::cout << run.str() << std::endl;
-
-                try {
-
-                    for (uint i = 0; i < REPS; ++i) {
-
-                        int numGridCells = std::min(
-                                std::max(1, (int) std::floor(std::cbrt(points.size() / occ))),
-                                (int) std::floor(std::cbrt(std::numeric_limits<int>::max())));
-
-                        CT::Lock_data_structure lds(
-                                CGAL::Bbox_3(bounds.low[0], bounds.low[1], bounds.low[2],
-                                             bounds.high[0], bounds.high[1], bounds.high[2]),
-                                numGridCells);
-
-                        CT tria(&lds);
-
-                        auto t1 = Clock::now();
-                        tria.insert(cPoints.begin(), cPoints.end());
-                        auto t2 = Clock::now();
-
-                        run.addMemory(getCurrentRSS());
-                        run.addTime(std::chrono::duration_cast<tDuration>(t2 - t1));
-                    }
-
-                } catch (std::exception &e) {
-                    std::cerr << "Experiment: " << run.str() << std::endl;
-                    std::cerr << "\tException raised: " << e.what() << std::endl;
-                }
-
-                run.addTrait("end-time", getDatetime());
-                db.save(run);
-
-                std::cout << "\tAverage time: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(run.avgTime()).count()
-                << " ms\tAverage mem: "
-                << run.avgMem() / 1e6 << " MB" << std::endl;
-
-            }
-
-        }
-    }
-
-    return EXIT_SUCCESS;
+    dSimplices<D, Precision> dummy;
+    return dummy;
 }
 
-#endif
+// partial specializations
+
+template<typename Precision, bool Parallel>
+class PureCGALTriangulator<2, Precision, Parallel>
+        : public Triangulator<2, Precision> {
+
+public:
+    PureCGALTriangulator(const dBox<2, Precision> &_bounds, dPoints<2, Precision> &_points, const uint _gridOccupancy)
+            : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
+
+protected:
+    dSimplices<2, Precision> _triangulate(const Ids &ids,
+                                          const dBox<2, Precision> &bounds,
+                                          __attribute__((unused)) const std::string provenance
+            /*, bool filterInfinite */) {
+
+        typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
+        typedef CGAL::Triangulation_face_base_2<K> Cb;
+        typedef CGAL::Triangulation_data_structure_2<Vb, Cb> Tds;
+        typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
+
+        return _pureCgal<2, Precision, CT, Parallel>(ids, this->points, bounds,
+                                                     this->gridOccupancy /*, filterInfinite */);
+    }
+
+protected:
+    const uint gridOccupancy;
+};
+
+template<typename Precision>
+class PureCGALTriangulator<3, Precision, true>
+        : public Triangulator<3, Precision> {
+
+public:
+    PureCGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points, const uint _gridOccupancy)
+            : Triangulator<3, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
+
+protected:
+
+    dSimplices<3, Precision> _triangulate(const Ids &ids,
+                                          const dBox<3, Precision> &bounds,
+                                          __attribute__((unused)) const std::string provenance
+            /*, bool filterInfinite */) {
+
+        typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+        typedef CGAL::Triangulation_cell_base_3<K> Cb;
+        typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag> Tds;
+        typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
+
+        return _pureCgal<3, Precision, CT, true>(ids, this->points, bounds,
+                                                 this->gridOccupancy /*, filterInfinite */);
+    }
+
+protected:
+    const uint gridOccupancy;
+};
+
+template<typename Precision>
+class PureCGALTriangulator<3, Precision, false>
+        : public Triangulator<3, Precision> {
+
+public:
+    PureCGALTriangulator(const dBox<3, Precision> &_bounds, dPoints<3, Precision> &_points, const uint _gridOccupancy)
+            : Triangulator<3, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
+
+protected:
+
+    dSimplices<3, Precision> _triangulate(const Ids &ids,
+                                          const dBox<3, Precision> &bounds,
+                                          __attribute__((unused)) const std::string provenance
+            /*, bool filterInfinite */) {
+
+        typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+        typedef CGAL::Triangulation_cell_base_3<K> Cb;
+        typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
+        typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
+
+        return _pureCgal<3, Precision, CT, false>(ids, this->points, bounds,
+                                                  this->gridOccupancy /*, filterInfinite */);
+    }
+
+protected:
+    const uint gridOccupancy;
+};
+
+// specializations
+template
+class PureCGALTriangulator<2, float, true>;
+
+template
+class PureCGALTriangulator<2, float, false>;
+
+template
+class PureCGALTriangulator<3, float, true>;
+
+template
+class PureCGALTriangulator<3, float, false>;
+
+template
+class PureCGALTriangulator<2, double, true>;
+
+template
+class PureCGALTriangulator<2, double, false>;
+
+template
+class PureCGALTriangulator<3, double, true>;
+
+template
+class PureCGALTriangulator<3, double, false>;
