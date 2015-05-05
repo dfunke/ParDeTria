@@ -117,3 +117,33 @@ def getSensitivityMap(dataset : pd.DataFrame, chars : dict, seriesChars : list) 
                 map[series][sValue][c] = np.any(pd.notnull(lData[c]))
 
     return map
+
+class StoppingCriterion:
+
+    def __init__(self):
+        self.label = None
+        self.shortLabel = None
+        self.field = None
+
+class Basecase(StoppingCriterion):
+
+    def __init__(self):
+        self.label = 'basecase'
+        self.shortLabel = 'bc'
+        self.field = 'basecase'
+
+class RecursionDepth(StoppingCriterion):
+
+    def __init__(self):
+        self.label = 'Rec. depths'
+        self.shortLabel = 'rec'
+        self.field = 'recursion-depth'
+
+def getStoppingCriterion(dataset : pd.DataFrame) -> StoppingCriterion:
+    if 'basecase' in dataset.columns:
+        return Basecase()
+
+    if 'recursion-depth' in dataset.columns:
+        return RecursionDepth()
+
+    return None
