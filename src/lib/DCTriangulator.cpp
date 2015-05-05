@@ -129,26 +129,32 @@ Ids DCTriangulator<D, Precision>::getEdge(
 
     wqa.clear();
 
+    /* We need to add three "layers" of simplices to the wuFaces DS
+     * - the edgeSimplice's wuFaces will be deleted in the mergeStep
+     * - the edgeSimplice's "inward" neighbors will get a new neighbor from the edge triangulation
+     * - the inward neighbor need to re-find its own "inwards" neighbors, so we need the second layer beyond the edge
+     */
+
     std::function<void(const uint &, const uint &)> insertFaceHashes =
-            [&simplices, &wqa, &insertFaceHashes](const uint & id, const uint & recDepth){
+            [&simplices, &wqa, &insertFaceHashes](const uint &id, const uint &recDepth) {
 
-        if(recDepth < 3 && dSimplex<D,Precision>::isFinite(id)
-           && wqa.insert(id).second){
+                if (recDepth < 3 && dSimplex<D, Precision>::isFinite(id)) {
+                    if (wqa.insert(id).second) {
 
-            for (uint i = 0; i < D + 1; ++i) {
-                auto facetteHash = simplices[id].faceFingerprint(i);
-                simplices.wuFaces.emplace(facetteHash, id);
-            }
+                        for (uint i = 0; i < D + 1; ++i) {
+                            auto facetteHash = simplices[id].faceFingerprint(i);
+                            simplices.wuFaces.emplace(facetteHash, id);
+                        }
+                    }
 
-            for(const auto &n : simplices[id].neighbors){
-                insertFaceHashes(n, recDepth+1);
-            }
+                    for (const auto &n : simplices[id].neighbors) {
+                        insertFaceHashes(n, recDepth + 1);
+                    }
+                }
+            };
 
-        }
-    };
-
-    simplices.wuFaces.reserve((D+1)*(D+1) * edgeSimplices.size());
-    for(const auto & simplex : edgeSimplices){
+    simplices.wuFaces.reserve((D + 1) * (D + 1) * edgeSimplices.size());
+    for (const auto &simplex : edgeSimplices) {
         insertFaceHashes(simplex, 0);
     }
 
