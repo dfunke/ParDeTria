@@ -37,19 +37,33 @@ struct TriangulateReturn {
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint baseCase,
                               dPoints<D, Precision> &points,
-                              const unsigned char splitter) {
+                              const unsigned char splitter,
+                              const unsigned char alg = 'd') {
 
-    DCTriangulator<D, Precision> triangulator(bounds, points, baseCase, splitter);
+    std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
+    if (alg == 'c') {
+        triangulator_ptr =
+                std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
+    } else {
+        if (alg == 'm') {
+            triangulator_ptr =
+                    std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
+        } else {
+            triangulator_ptr =
+                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, baseCase, splitter, 100,
+                                                                   false);
+        }
+    }
 
     TriangulateReturn ret;
 
     //try {
 
     auto t1 = Clock::now();
-    auto dt = triangulator.triangulate();
+    auto dt = triangulator_ptr->triangulate();
     auto t2 = Clock::now();
 
-    ret.tr = triangulator.getTriangulationReport();
+    //ret.tr = triangulator.getTriangulationReport();
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
@@ -144,6 +158,7 @@ int main(int argc, char *argv[]) {
     uint N;
     uint baseCase;
     uint threads = tbb::task_scheduler_init::default_num_threads();
+    unsigned char alg = 'd';
 
     bool study = false;
 
@@ -167,6 +182,8 @@ int main(int argc, char *argv[]) {
                                "load points from file");
     cCommandLine.add_options()("threads", po::value<uint>(&threads),
                                "specify number of threads");
+    cCommandLine.add_options()("alg", po::value<unsigned char>(&alg),
+                               "specify algorithm to use");
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -258,10 +275,10 @@ int main(int argc, char *argv[]) {
                     std::cout << std::endl;
 
                 points = genPoints(N, bounds, dice);
-                triangulate(bounds, baseCase, points, p);
+                triangulate(bounds, baseCase, points, p, alg);
             }
         } else
-            ret = triangulate(bounds, baseCase, points, p);
+            ret = triangulate(bounds, baseCase, points, p, alg);
 
         LOG("Triangulating "
             << points.size() << " points took "
