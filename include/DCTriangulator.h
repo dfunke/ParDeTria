@@ -64,15 +64,6 @@ protected:
                                const Partitioning<D, Precision> &partitioning,
                                const std::string &provenance);
 
-    void evaluateVerificationReport(const VerificationReport<D, Precision> &vr,
-                                    const std::string &provenance) const;
-
-    void evaluateCrossCheckReport(
-            const CrossCheckReport<D, Precision> &ccr, const std::string &provenance,
-            const dSimplices<D, Precision> &DT,
-            const dSimplices<D, Precision> &realDT,
-            const Partitioning<D, Precision> *partitioning = nullptr) const;
-
 
 protected:
     const uint baseThreshold;

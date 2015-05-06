@@ -27,6 +27,7 @@
 //**************************
 
 struct TriangulateReturn {
+    bool valid;
     bool exception;
     tDuration time;
 };
@@ -37,7 +38,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint baseCase,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
-                              const unsigned char alg = 'd') {
+                              const unsigned char alg = 'd',
+                              const bool verify = true) {
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
     if (alg == 'c') {
@@ -65,6 +67,18 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
+    if(verify){
+        CGALTriangulator<D, Precision, false> cgal(bounds, points);
+        auto realDT = cgal.triangulate();
+
+        auto vr = dt.verify(points);
+        auto ccr = dt.crossCheck(realDT);
+
+        ret.valid = vr.valid && ccr.valid;
+    } else {
+        ret.valid = true;
+    }
+
     /*} catch (AssertionException &e) {
       std::cerr << "Assertion failed - ABORTING - n =  " << points.size()
                 << " p = " << splitter << std::endl;
@@ -82,42 +96,6 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
 //**************************
 
-int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
-            std::function<Precision()> &&dice) {
-    // define splitter test cases
-    std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
-
-    LOGGER.setLogLevel(Logger::Verbosity::SILENT);
-
-    uint nIterations = 9 * (log10(N) - 1) + 1;
-    ProgressDisplay progress(splitters.size() * nIterations, std::cout);
-
-    // generate test points deterministically
-    std::vector<dPoints<D, Precision>> pointss;
-    for (uint i = 0; i < nIterations; ++i) {
-        uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
-        pointss.push_back(genPoints(n, bounds, dice));
-    }
-
-    tbb::parallel_for(std::size_t(0), pointss.size(), [&](const uint i) {
-        tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint j) {
-
-            auto &points = pointss[i];
-            unsigned char p = splitters[j];
-
-            triangulate(bounds, baseCase, points, p);
-
-            ++progress;
-        });
-    });
-
-    std::cout << LOGGER << std::endl;
-
-    LOG("Finished" << std::endl);
-
-    return EXIT_SUCCESS;
-}
-
 int main(int argc, char *argv[]) {
 
     // define program options
@@ -132,7 +110,7 @@ int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
 
-    bool study = false;
+    bool verify = true;
 
     std::string pointFile;
     bool loadPoints = false;
@@ -144,7 +122,6 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
-    cCommandLine.add_options()("study", "study mode");
     cCommandLine.add_options()("no-verify", "don't verify triangulation");
     cCommandLine.add_options()("no-output", "don't write images");
     cCommandLine.add_options()("seq-fault", "run triangulation until seq fault occurs");
@@ -177,12 +154,12 @@ int main(int argc, char *argv[]) {
         valid = false;
     }
 
-    if ((!vm.count("study") && !vm.count("splitter"))) {
+    if (!vm.count("splitter")) {
         std::cout << "Please specify splitter" << std::endl;
         valid = false;
     }
 
-    if ((!vm.count("study") && !(vm.count("n") || vm.count("points")))) {
+    if (!(vm.count("n") || vm.count("points"))) {
         std::cout << "Please specify number of points or point file" << std::endl;
         valid = false;
     }
@@ -194,13 +171,7 @@ int main(int argc, char *argv[]) {
         loadPoints = true; // filename will be in pointFile
     }
 
-    if (vm.count("study")) {
-        study = true;
-    }
-
-    if (vm.count("no-verify")) {
-        DCTriangulator<D, Precision>::VERIFY = false;
-    }
+    verify = !vm.count("no-verify");
 
     // load scheduler with specified number of threads
     tbb::task_scheduler_init init(threads);
@@ -224,41 +195,37 @@ int main(int argc, char *argv[]) {
      */
 
     uint returnCode = 0;
-    if (study) {
-        returnCode = doStudy(N, bounds, baseCase, std::move(dice));
+
+    dPoints<D, Precision> points;
+    if (loadPoints) {
+        points = loadObject<dPoints<D, Precision>>(pointFile);
     } else {
-
-        dPoints<D, Precision> points;
-        if (loadPoints) {
-            points = loadObject<dPoints<D, Precision>>(pointFile);
-        } else {
-            points = genPoints(N, bounds, dice);
-        }
-
-        TriangulateReturn ret;
-        if (vm.count("seq-fault")) {
-            ulong i = 0;
-            std::random_device rd;
-            tGenerator gen(rd());
-            std::function<Precision()> dice = std::bind(distribution, gen);
-            for (; ;) {
-                std::cout << "." << std::flush;
-                if (++i % 80 == 0)
-                    std::cout << std::endl;
-
-                points = genPoints(N, bounds, dice);
-                triangulate(bounds, baseCase, points, p, alg);
-            }
-        } else
-            ret = triangulate(bounds, baseCase, points, p, alg);
-
-        LOG("Triangulating "
-            << points.size() << " points took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
-                    .count() << " ms" << std::endl);
-
-        returnCode = EXIT_SUCCESS;
+        points = genPoints(N, bounds, dice);
     }
+
+    TriangulateReturn ret;
+    if (vm.count("seq-fault")) {
+        ulong i = 0;
+        std::random_device rd;
+        tGenerator gen(rd());
+        std::function<Precision()> dice = std::bind(distribution, gen);
+        for (; ;) {
+            std::cout << "." << std::flush;
+            if (++i % 80 == 0)
+                std::cout << std::endl;
+
+            points = genPoints(N, bounds, dice);
+            triangulate(bounds, baseCase, points, p, alg, verify);
+        }
+    } else
+        ret = triangulate(bounds, baseCase, points, p, alg, verify);
+
+    LOG("Triangulating "
+        << points.size() << " points took "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
+                .count() << " ms" << std::endl);
+
+    returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
 
     if (LOGGER.getLogLevel() >= Logger::Verbosity::NORMAL) {
         LOGGER.printLog(std::cout);

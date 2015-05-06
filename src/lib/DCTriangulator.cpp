@@ -375,113 +375,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 }
 
 template<uint D, typename Precision>
-void DCTriangulator<D, Precision>::evaluateVerificationReport(
-        __attribute__((unused)) const VerificationReport<D, Precision> &vr,
-        __attribute__((unused)) const std::string &provenance) const {
-
-}
-
-template<uint D, typename Precision>
-void DCTriangulator<D, Precision>::evaluateCrossCheckReport(
-        const CrossCheckReport<D, Precision> &ccr, const std::string &provenance,
-        const dSimplices<D, Precision> &DT, const dSimplices<D, Precision> &realDT,
-        const Partitioning<D, Precision> *partitioning) const {
-    if (IS_PROLIX) {
-        std::stringstream txt;
-
-        for (const auto &missingSimplex : ccr.missing) {
-
-            auto mySimplices = DT.findSimplices(missingSimplex.vertices);
-
-            // textual description of the missing simplex
-
-            // sort the simplices by descending number of shared vertices
-            std::priority_queue<std::pair<uint, uint>> pqSharedVertices;
-            for (const auto &s : mySimplices) {
-                pqSharedVertices.emplace(s.countSharedVertices(missingSimplex), s.id);
-            }
-
-            auto format = [&](const uint vertex) -> std::string {
-                std::stringstream s;
-                if (!missingSimplex.contains(vertex))
-                    s << zkr::cc::fore::red;
-
-                s << vertex;
-
-                if (partitioning != nullptr) {
-                    s << "-" << partitioning->partition(vertex);
-                }
-
-                s << zkr::cc::console;
-
-                return s.str();
-            };
-
-            txt << "Missing simplex: " << missingSimplex.id << ": V = ["
-            << format(missingSimplex.vertices[0]);
-            for (uint i = 1; i < D + 1; ++i)
-                txt << ", " << format(missingSimplex.vertices[i]);
-            txt << "]" << std::endl;
-
-            txt << "Points:" << std::endl;
-            for (const auto &p : missingSimplex.vertices) {
-                txt << '\t' << this->points[p] << std::endl;
-            }
-
-            txt << "Cirumsphere: " << missingSimplex.circumsphere(this->points)
-            << std::endl;
-
-            txt << "Possible candidates:" << std::endl;
-
-            while (!pqSharedVertices.empty()) {
-                // check whether we have a valid simplex
-                const auto &s = mySimplices[pqSharedVertices.top().second];
-                auto realS = realDT.findSimplices(s.vertices, true);
-
-                txt << "\t";
-
-                txt << s.id << ": V = [" << format(s.vertices[0]);
-                for (uint i = 1; i < D + 1; ++i)
-                    txt << ", " << format(s.vertices[i]);
-                txt << "] - real";
-
-                ASSERT(realS.empty() || realS.size() == 1);
-
-                if (realS.empty()) {
-                    txt << " INVALID";
-                } else {
-                    for (const auto &r : realS) {
-                        txt << " " << r;
-                    }
-                }
-                txt << std::endl;
-
-                pqSharedVertices.pop();
-            }
-            txt << std::endl;
-        }
-
-        for (const auto &invalidSimplex : ccr.invalid) {
-            auto realSimplices = realDT.findSimplices(invalidSimplex.vertices);
-
-            // textual description of the missing simplex
-            txt << "Invalid simplex: " << invalidSimplex << std::endl;
-            txt << "Possible real candidates:" << std::endl;
-            for (const auto &s : realSimplices) {
-                txt << "\t" << s << std::endl;
-            }
-            txt << std::endl;
-        }
-
-        if (!txt.str().empty()) {
-            std::ofstream o("log/" + provenance + "_CrossCheckReport.log",
-                            std::ios::out | std::ios::trunc);
-            o << txt.str();
-        }
-    }
-}
-
-template<uint D, typename Precision>
 dSimplices<D, Precision>
 DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
                                                const dBox<D, Precision> &bounds,
@@ -493,38 +386,10 @@ DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
         << partitionPoints.size() << " points"
         << std::endl);
 
-    bool isTOP = this->isTOP(provenance);
-
-    std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
-    if (isTOP && Triangulator<D, Precision>::VERIFY) {
-        LOG("Real triangulation" << std::endl);
-        INDENT
-        realDT = std::make_unique<dSimplices<D, Precision>>(
-                baseTriangulator->_triangulate(partitionPoints, bounds, provenance));
-        LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
-            << std::endl);
-        DEDENT
-    }
-
     INDENT
-    // if this is the top-most triangulation, ignore infinite vertices
     auto dt = baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
     LOG("Triangulation contains " << dt.size() << " tetrahedra" << std::endl);
     DEDENT
-
-    if (isTOP && Triangulator<D, Precision>::VERIFY) {
-        LOG("Verifying CGAL triangulation" << std::endl);
-        dt.verify(partitionPoints, this->points);
-    }
-
-#ifndef NDEBUG
-    auto saveDT = dt;
-#endif
-
-    // LOG("Updating neighbors" << std::endl);
-    // findNeighbors(dt, provenance);
-
-    ASSERT(saveDT == dt); // only performed if not NDEBUG
 
     return dt;
 }
@@ -541,23 +406,8 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         << partitionPoints.size() << " points"
         << std::endl);
 
-    bool isTOP = this->isTOP(provenance);
-
     if (partitionPoints.size() > baseThreshold) {
         LOG("Recursive case" << std::endl);
-
-        std::unique_ptr<dSimplices<D, Precision>> realDT = nullptr;
-        if (isTOP && Triangulator<D, Precision>::VERIFY) {
-            // perform real triangulation
-            LOG("Real triangulation" << std::endl);
-            INDENT
-
-            realDT = std::make_unique<dSimplices<D, Precision>>(
-                    baseTriangulator->_triangulate(partitionPoints, bounds, provenance));
-            LOG("Real triangulation contains " << realDT->size() << " tetrahedra"
-                << std::endl);
-            DEDENT
-        }
 
         // partition input
         LOG("Partioning" << std::endl);
@@ -617,9 +467,7 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
             INDENT
             edgeDT = _triangulateBase(edgePointIds, bounds, provenance + "e");
         }
-        LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
-            << std::endl
-            << std::endl);
+        LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl);
         DEDENT
 
         auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,

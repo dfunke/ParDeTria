@@ -8,9 +8,6 @@ template<uint D, typename Precision>
 constexpr char Triangulator<D, Precision>::TOP;
 
 template<uint D, typename Precision>
-bool Triangulator<D, Precision>::VERIFY = true;
-
-template<uint D, typename Precision>
 Ids Triangulator<D, Precision>::allPoints() const {
     Ids allPoints;
     allPoints.reserve(points.size());

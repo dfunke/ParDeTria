@@ -742,8 +742,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
 template<uint D, typename Precision>
 VerificationReport<D, Precision>
-dSimplices<D, Precision>::verify(const Ids &partitionPoints,
-                                 const dPoints<D, Precision> &points) const {
+dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     INDENT
     VerificationReport<D, Precision> result;
     result.valid = true;
@@ -755,7 +754,7 @@ dSimplices<D, Precision>::verify(const Ids &partitionPoints,
     for (const auto &s : *this) {
         usedPoints.insert(s.vertices.begin(), s.vertices.end());
     }
-    if (partitionPoints != usedPoints) {
+    if (points != usedPoints) {
         // not all points of input used
         std::stringstream sNotUsed;
         for (const auto &p : points) {

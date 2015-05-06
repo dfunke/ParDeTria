@@ -64,8 +64,6 @@ void studyWhereUsedListSize(const uint N, const char splitter) {
     std::uniform_real_distribution<Precision> distribution(0, 1);
     std::function<Precision()> dice = std::bind(distribution, startGen);
 
-    DCTriangulator<D, Precision>::VERIFY = false;
-
     std::mutex mtx;
     tbb::parallel_for(
             std::size_t(0), std::size_t((9 * (log10(N) - 1) + 1)), [&](const uint i) {

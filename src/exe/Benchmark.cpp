@@ -29,16 +29,18 @@ DBConnection db("db_" + getHostname() + ".dat", "benchmarks");
 
 dBox<D, Precision> bounds(dVector<D, Precision>( {{ 0, 0, 0 }}
 
-), dVector<D, Precision>({{ 100,100,100}}));
+), dVector<D, Precision>({
+{
+100,100,100}}));
 
 void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
     //quite all output and unnecessary computations
     LOGGER.setLogLevel(Logger::Verbosity::SILENT);
-    DCTriangulator<D, Precision>::VERIFY = false;
 
     //get point set
-    unsigned char dist = run.getTrait<unsigned char>("dist");
+    unsigned char dist = run.getTrait < unsigned
+    char > ("dist");
     uint nPoints = run.getTrait<uint>("nP");
 
     //use same start seed for all experiment runs
@@ -47,7 +49,8 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
     auto points = genPoints(nPoints, bounds, dice);
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
-    unsigned char alg = run.getTrait<unsigned char>("alg");
+    unsigned char alg = run.getTrait < unsigned
+    char > ("alg");
 
     uint threads = 1;
 
@@ -63,7 +66,8 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
                     std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
         } else {
             uint basecase = run.getTrait<uint>("basecase");
-            unsigned char splitter = run.getTrait<unsigned char>("splitter");
+            unsigned char splitter = run.getTrait < unsigned
+            char > ("splitter");
             bool parBase = run.getTrait<bool>("parallel-base");
 
             triangulator_ptr =
@@ -107,7 +111,7 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10) {
 
     for (uint i = 0; i < runs.size(); ++i) {
-        std::cout << i+1 << "/" << runs.size() << ": " << runs[i].str() << std::endl;
+        std::cout << i + 1 << "/" << runs.size() << ": " << runs[i].str() << std::endl;
 
         runExperiment(runs[i], reps);
 
@@ -128,9 +132,9 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
     std::vector<ExperimentRun> runs;
 
     //determine maximum number of threads
-    if(maxThreads == -1)
+    if (maxThreads == -1)
         maxThreads = tbb::task_scheduler_init::default_num_threads();
-    if(minThreads == -1)
+    if (minThreads == -1)
         minThreads = maxThreads;
 
     //determine the latest run number
