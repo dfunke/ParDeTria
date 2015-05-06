@@ -287,84 +287,103 @@ def plotProfiling():
 
     stopCrit = dh.getStoppingCriterion(prof)
 
-    # #plot each counter over N
-    # for counter in counters:
-    #     label = counter.replace('counter_', '')
-    #     print("Plotting metric %s over n" % label)
-    #
-    #     plt = ph.Plot()
-    #     plt.title = r"%s over $n$" % label
-    #     plt.xlabel = r"$n$"
-    #     plt.ylabel = "%s" % label
-    #
-    #     for sc in chars[stopCrit.field]:
-    #         data = dh.select(prof, {stopCrit.field : sc})
-    #
-    #         series = ph.Series()
-    #         series.xvalues = data['nP']
-    #         series.yvalues = data[counter]
-    #         series.label = "%s: %i" % (stopCrit.label, sc)
-    #
-    #         plt.addSeries(series)
-    #
-    #     plt.plot("profiling/01_%s_over_n.png" % label)
-    #
-    # #plot stackplots for each stop crit over n
-    # for sc in chars[stopCrit.field]:
-    #     print("Plotting stackplot for %s %i" % (stopCrit.label, sc))
-    #
-    #     pCt = ph.StackPlot()
-    #     pCt.title = r"Ops over $n$"
-    #     pCt.xlabel = r"$n$"
-    #     pCt.ylabel = "a.u."
-    #     pCt.desc = "%s %i" % (stopCrit.label, sc)
-    #
-    #     data = dh.select(prof, {stopCrit.field : sc})
-    #
-    #     total = None
-    #
-    #     for counter in counters:
-    #         label = counter.replace('counter_', '')
-    #
-    #         series = ph.Series()
-    #         series.xvalues = data['nP']
-    #         series.yvalues = data[counter]
-    #         series.label = label
-    #
-    #         if total is None:
-    #             total = copy.copy(series.yvalues)
-    #         else:
-    #             total += series.yvalues
-    #
-    #         pCt.addSeries(series)
-    #
-    #     pCt.plot("profiling/02_ops_over_n_%s%i.png" % (stopCrit.shortLabel, sc),
-    #              figureArgs={'figsize': (11,6)},
-    #              axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
-    #              legendArgs={'ncol' : 1, 'loc' : 5,
-    #                          'fontsize' : 'small'}, figureLegend=True)
-    #
-    #     pSh = ph.StackPlot()
-    #     pSh.title = r"Ops over $n$"
-    #     pSh.xlabel = r"$n$"
-    #     pSh.ylabel = "%"
-    #     pCt.desc = "%s %i" % (stopCrit.label, sc)
-    #
-    #     for counter in counters:
-    #         label = counter.replace('counter_', '')
-    #
-    #         series = ph.Series()
-    #         series.xvalues = data['nP']
-    #         series.yvalues = data[counter] / total
-    #         series.label = label
-    #
-    #         pSh.addSeries(series)
-    #
-    #     pSh.plot("profiling/03_ops_perc_over_n_%s%i.png" % (stopCrit.shortLabel, sc),
-    #              figureArgs={'figsize': (11,6)},
-    #              axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
-    #              legendArgs={'ncol' : 1, 'loc' : 5,
-    #                          'fontsize' : 'small'}, figureLegend=True)
+    #plot each counter over N
+    for counter in counters:
+        label = counter.replace('counter_', '')
+        print("Plotting metric %s over n" % label)
+
+        plt = ph.Plot()
+        plt.title = r"%s over $n$" % label
+        plt.xlabel = r"$n$"
+        plt.ylabel = "%s" % label
+
+        for sc in chars[stopCrit.field]:
+            data = dh.select(prof, {stopCrit.field : sc})
+
+            series = ph.Series()
+            series.xvalues = data['nP']
+            series.yvalues = data[counter]
+            series.label = "%s: %i" % (stopCrit.label, sc)
+
+            plt.addSeries(series)
+
+        plt.plot("profiling/01_%s_over_n.png" % label)
+
+    #plot stackplots for each stop crit over n
+    # accumulate totals
+    totalOps = {}
+
+    for sc in chars[stopCrit.field]:
+        print("Plotting stackplot for %s %i" % (stopCrit.label, sc))
+
+        pCt = ph.StackPlot()
+        pCt.title = r"Ops over $n$"
+        pCt.xlabel = r"$n$"
+        pCt.ylabel = "a.u."
+        pCt.desc = "%s %i" % (stopCrit.label, sc)
+
+        data = dh.select(prof, {stopCrit.field : sc})
+
+        for counter in counters:
+            label = counter.replace('counter_', '')
+
+            series = ph.Series()
+            series.xvalues = data['nP']
+            series.yvalues = data[counter]
+            series.label = label
+
+            if not sc in totalOps:
+                totalOps[sc] = copy.copy(series.yvalues)
+            else:
+                totalOps[sc] += series.yvalues
+
+            pCt.addSeries(series)
+
+        pCt.plot("profiling/02_ops_over_n_%s%i.png" % (stopCrit.shortLabel, sc),
+                 figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
+
+        pSh = ph.StackPlot()
+        pSh.title = r"Ops over $n$"
+        pSh.xlabel = r"$n$"
+        pSh.ylabel = "%"
+        pCt.desc = "%s %i" % (stopCrit.label, sc)
+
+        for counter in counters:
+            label = counter.replace('counter_', '')
+
+            series = ph.Series()
+            series.xvalues = data['nP']
+            series.yvalues = data[counter] / totalOps[sc]
+            series.label = label
+
+            pSh.addSeries(series)
+
+        pSh.plot("profiling/03_ops_perc_over_n_%s%i.png" % (stopCrit.shortLabel, sc),
+                 figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
+
+    # plot total operations
+    plt = ph.Plot()
+    plt.title = r"Total Operations over $n$"
+    plt.xlabel = r"$n$"
+    plt.ylabel = "ops"
+
+    for sc in chars[stopCrit.field]:
+        data = dh.select(prof, {stopCrit.field : sc})
+
+        series = ph.Series()
+        series.xvalues = data['nP']
+        series.yvalues = totalOps[sc]
+        series.label = "%s: %i" % (stopCrit.label, sc)
+
+        plt.addSeries(series)
+
+    plt.plot("profiling/01_totalOps_over_n.png")
 
     # plot box plots of basecase size over base case
     for sc in chars[stopCrit.field]:
