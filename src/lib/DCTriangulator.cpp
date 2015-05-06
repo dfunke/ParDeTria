@@ -574,30 +574,6 @@ DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
 
     ASSERT(saveDT == dt); // only performed if not NDEBUG
 
-    TriangulationReportEntry rep;
-    rep.provenance = provenance;
-    rep.base_case = true;
-    rep.valid = false;
-    rep.edge_triangulation = provenance.find('e') != std::string::npos;
-    rep.nPoints = partitionPoints.size();
-    rep.nSimplices = dt.size();
-    rep.nEdgePoints = 0;
-    rep.nEdgeSimplices = 0;
-
-    if (isTOP && Triangulator<D, Precision>::VERIFY) {
-        LOG("Consistency check of triangulation" << std::endl);
-        auto vr = dt.verify(partitionPoints, this->points);
-        evaluateVerificationReport(vr, provenance);
-
-        LOG("Cross check with real triangulation" << std::endl);
-        auto ccr = dt.crossCheck(*realDT);
-        evaluateCrossCheckReport(ccr, provenance, dt, *realDT);
-
-        rep.valid = vr.valid && ccr.valid;
-    }
-
-    triangulationReport.push_back(rep);
-
     return dt;
 }
 
@@ -696,30 +672,6 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
 
         auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                            partioning, provenance);
-
-        TriangulationReportEntry rep;
-        rep.provenance = provenance;
-        rep.base_case = false;
-        rep.valid = false;
-        rep.edge_triangulation = provenance.find('e') != std::string::npos;
-        rep.nPoints = partitionPoints.size();
-        rep.nSimplices = mergedDT.size();
-        rep.nEdgePoints = edgePointIds.size();
-        rep.nEdgeSimplices = edgeDT.size();
-
-        if (isTOP & Triangulator<D, Precision>::VERIFY) {
-            LOG("Consistency check of triangulation" << std::endl);
-            auto vr = mergedDT.verify(partitionPoints, this->points);
-            evaluateVerificationReport(vr, provenance);
-
-            LOG("Cross check with real triangulation" << std::endl);
-            auto ccr = mergedDT.crossCheck(*realDT);
-            evaluateCrossCheckReport(ccr, provenance, mergedDT, *realDT, &partioning);
-
-            rep.valid = vr.valid && ccr.valid;
-        }
-
-        triangulationReport.push_back(rep);
 
         return mergedDT;
 

@@ -27,7 +27,6 @@
 //**************************
 
 struct TriangulateReturn {
-    TriangulationReport tr;
     bool exception;
     tDuration time;
 };
@@ -63,7 +62,6 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     auto dt = triangulator_ptr->triangulate();
     auto t2 = Clock::now();
 
-    //ret.tr = triangulator.getTriangulationReport();
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
@@ -94,11 +92,6 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
     uint nIterations = 9 * (log10(N) - 1) + 1;
     ProgressDisplay progress(splitters.size() * nIterations, std::cout);
 
-    std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
-    f << CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
-                  "valid", "nPoints", "nSimplices", "nEdgePoints",
-                  "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
-
     // generate test points deterministically
     std::vector<dPoints<D, Precision>> pointss;
     for (uint i = 0; i < nIterations; ++i) {
@@ -106,34 +99,13 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint baseCase,
         pointss.push_back(genPoints(n, bounds, dice));
     }
 
-    std::mutex mtx;
     tbb::parallel_for(std::size_t(0), pointss.size(), [&](const uint i) {
         tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint j) {
 
             auto &points = pointss[i];
             unsigned char p = splitters[j];
 
-            auto ret = triangulate(bounds, baseCase, points, p);
-
-            // evaluate the triangulation report
-
-            for (const auto &tr : ret.tr) {
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                                  tr.edge_triangulation, tr.valid, tr.nPoints,
-                                  tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
-                                  ret.time.count(), getCurrentRSS(), getPeakRSS())
-                    << std::endl;
-                }
-                if (DCTriangulator<D, Precision>::VERIFY &&
-                    DCTriangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
-
-                    // output points
-                    storeObject(points, "invalid_" + std::to_string(points.size()) + "_" +
-                                        (char) p + ".dat");
-                }
-            }
+            triangulate(bounds, baseCase, points, p);
 
             ++progress;
         });
@@ -284,20 +256,6 @@ int main(int argc, char *argv[]) {
             << points.size() << " points took "
             << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
                     .count() << " ms" << std::endl);
-
-        VLOG(std::endl
-             << "Triangulation report: " << std::endl);
-
-        VLOG(CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
-                      "valid", "nPoints", "nSimplices", "nEdgePoints",
-                      "nEdgeSimplices", "time", "mem", "max_mem"));
-
-        for (const auto &tr : ret.tr) {
-            VLOG(CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                          tr.edge_triangulation, tr.valid, tr.nPoints, tr.nSimplices,
-                          tr.nEdgePoints, tr.nEdgeSimplices, ret.time.count(),
-                          getCurrentRSS(), getPeakRSS()));
-        }
 
         returnCode = EXIT_SUCCESS;
     }
