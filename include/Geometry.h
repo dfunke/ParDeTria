@@ -675,7 +675,7 @@ public:
     }
 
     VerificationReport<D, Precision>
-            verify(const Ids &partitionPoints, const dPoints<D, Precision> &points) const;
+            verify(const dPoints<D, Precision> &points) const;
 
     CrossCheckReport<D, Precision>
             crossCheck(const dSimplices<D, Precision> &realDT) const;

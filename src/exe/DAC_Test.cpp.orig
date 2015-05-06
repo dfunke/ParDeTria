@@ -27,8 +27,8 @@
 //**************************
 
 struct TriangulateReturn {
-    bool exception;
     bool valid;
+    bool exception;
     tDuration time;
     ExperimentRun run;
 };
@@ -58,7 +58,6 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     }
 
     TriangulateReturn ret;
-    PROFILER.setRun(&ret.run);
 
     //try {
 
@@ -98,6 +97,45 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
 //**************************
 
+<<<<<<< HEAD
+int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint recursionDepth,
+            std::function<Precision()> &&dice) {
+    // define splitter test cases
+    std::vector<unsigned char> splitters = {'d', 'c', '0', '1'};
+
+    LOGGER.setLogLevel(Logger::Verbosity::SILENT);
+
+    uint nIterations = 9 * (log10(N) - 1) + 1;
+    ProgressDisplay progress(splitters.size() * nIterations, std::cout);
+
+    // generate test points deterministically
+    std::vector<dPoints<D, Precision>> pointss;
+    for (uint i = 0; i < nIterations; ++i) {
+        uint n = ((i % 9) + 1) * std::pow(10, std::floor(i / 9 + 1));
+        pointss.push_back(genPoints(n, bounds, dice));
+    }
+
+    tbb::parallel_for(std::size_t(0), pointss.size(), [&](const uint i) {
+        tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint j) {
+
+            auto &points = pointss[i];
+            unsigned char p = splitters[j];
+
+            triangulate(bounds, recursionDepth, points, p);
+
+            ++progress;
+        });
+    });
+
+    std::cout << LOGGER << std::endl;
+
+    LOG("Finished" << std::endl);
+
+    return EXIT_SUCCESS;
+}
+
+=======
+>>>>>>> master
 int main(int argc, char *argv[]) {
 
     // define program options
@@ -197,14 +235,37 @@ int main(int argc, char *argv[]) {
      */
 
     uint returnCode = 0;
+<<<<<<< HEAD
+    if (study) {
+        returnCode = doStudy(N, bounds, recursionDepth, std::move(dice));
+=======
 
-        dPoints<D, Precision> points;
-        if (loadPoints) {
-            points = loadObject<dPoints<D, Precision>>(pointFile);
-        } else {
+    dPoints<D, Precision> points;
+    if (loadPoints) {
+        points = loadObject<dPoints<D, Precision>>(pointFile);
+>>>>>>> master
+    } else {
+        points = genPoints(N, bounds, dice);
+    }
+
+    TriangulateReturn ret;
+    if (vm.count("seq-fault")) {
+        ulong i = 0;
+        std::random_device rd;
+        tGenerator gen(rd());
+        std::function<Precision()> dice = std::bind(distribution, gen);
+        for (; ;) {
+            std::cout << "." << std::flush;
+            if (++i % 80 == 0)
+                std::cout << std::endl;
+
             points = genPoints(N, bounds, dice);
+            triangulate(bounds, baseCase, points, p, alg, verify);
         }
+    } else
+        ret = triangulate(bounds, baseCase, points, p, alg, verify);
 
+<<<<<<< HEAD
         TriangulateReturn ret;
         if (vm.count("seq-fault")) {
             ulong i = 0;
@@ -217,10 +278,10 @@ int main(int argc, char *argv[]) {
                     std::cout << std::endl;
 
                 points = genPoints(N, bounds, dice);
-            triangulate(bounds, recursionDepth, points, p, alg, verify);
+                triangulate(bounds, recursionDepth, points, p, alg);
             }
         } else
-        ret = triangulate(bounds, recursionDepth, points, p, alg, verify);
+            ret = triangulate(bounds, recursionDepth, points, p, alg);
 
         LOG("Triangulating "
             << points.size() << " points took "
@@ -235,7 +296,16 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-        returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
+        returnCode = EXIT_SUCCESS;
+    }
+=======
+    LOG("Triangulating "
+        << points.size() << " points took "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
+                .count() << " ms" << std::endl);
+
+    returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
+>>>>>>> master
 
     if (LOGGER.getLogLevel() >= Logger::Verbosity::NORMAL) {
         LOGGER.printLog(std::cout);

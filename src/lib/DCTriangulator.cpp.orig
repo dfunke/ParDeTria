@@ -153,8 +153,8 @@ Ids DCTriangulator<D, Precision>::getEdge(
 
     simplices.wuFaces.reserve((D + 1) * (D + 1) * edgeSimplices.size());
     for (const auto &edgeSimplex : edgeSimplices) {
-        for (const auto &firstLayer : simplices[edgeSimplex].neighbors) {
-            if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
+        for(const auto & firstLayer : simplices[edgeSimplex].neighbors){
+            if(dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)){
                 // we have an "inward" neighbor, add it to the wuFaces DS
                 if (wqa.insert(firstLayer).second) {
                     for (uint i = 0; i < D + 1; ++i) {
@@ -164,9 +164,9 @@ Ids DCTriangulator<D, Precision>::getEdge(
                 }
                 // now loop over its neighbors, adding the ones not belonging to the edge
                 // TODO maybe we can avoid this
-                for (const auto &secondLayer : simplices[firstLayer].neighbors) {
-                    if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
-                        && wqa.insert(secondLayer).second) {
+                for(const auto & secondLayer : simplices[firstLayer].neighbors){
+                    if(dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
+                            && wqa.insert(secondLayer).second){
 
                         for (uint i = 0; i < D + 1; ++i) {
                             auto facetteHash = simplices[secondLayer].faceFingerprint(i);
@@ -428,6 +428,8 @@ DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
                                                const dBox<D, Precision> &bounds,
                                                const std::string provenance) {
 
+    PROFILER_MEAS("basecaseSize", partitionPoints.size());
+
     LOGGER.setIndent(provenance.length());
 
     LOG("triangulateBASE called on level " << provenance << " with "
@@ -454,8 +456,13 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         << partitionPoints.size() << " points"
         << std::endl);
 
+<<<<<<< HEAD
+    bool isTOP = this->isTOP(provenance);
 
-    if (provenance.length() - 1 < recursionDepth && partitionPoints.size() > BASE_CUTOFF) {
+    if (provenance.length()-1 < recursionDepth && partitionPoints.size() > BASE_CUTOFF) {
+=======
+    if (partitionPoints.size() > baseThreshold) {
+>>>>>>> master
         LOG("Recursive case" << std::endl);
 
         // partition input
@@ -505,10 +512,26 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
             << edgePointIds.size() << " points" << std::endl);
 
+        LOG("Triangulating edges recursively" << std::endl);
         INDENT
         auto edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
 
+<<<<<<< HEAD
+        LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra"
+            << std::endl
+            << std::endl);
+=======
+        if (edgePointIds.size() < ADAPTION_FACTOR * partitionPoints.size()) {
+            LOG("Triangulating edges recursively" << std::endl);
+            INDENT
+            edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
+        } else {
+            LOG("Triangulating edges with basecase" << std::endl);
+            INDENT
+            edgeDT = _triangulateBase(edgePointIds, bounds, provenance + "e");
+        }
         LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl);
+>>>>>>> master
         DEDENT
 
         auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
