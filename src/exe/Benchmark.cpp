@@ -35,9 +35,7 @@ DBConnection db("db_" + getHostname() + ".dat",
 
 dBox<D, Precision> bounds(dVector<D, Precision>( {{ 0, 0, 0 }}
 
-), dVector<D, Precision>({
-{
-100,100,100}}));
+), dVector<D, Precision>({{ 100,100,100}}));
 
 void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
@@ -55,20 +53,20 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
     auto points = genPoints(nPoints, bounds, dice);
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
-    unsigned char alg = run.traits().at("alg")[0];
+    unsigned char alg = run.getTrait<unsigned char>("alg");
 
     uint threads = 1;
 
     if (alg == 'c') {
         triangulator_ptr =
-                std::make_unique<CGALTriangulator<D, Precision, false>>(bounds, points);
+                std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
     } else {
         uint gridOccupancy = run.getTrait<uint>("occupancy");
         threads = run.getTrait<uint>("threads");
 
         if (alg == 'm') {
             triangulator_ptr =
-                    std::make_unique<CGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
+                    std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, gridOccupancy);
         } else {
             uint recursionDepth = run.getTrait<uint>("recursion-depth");
             unsigned char splitter = run.getTrait<unsigned char>("splitter");
@@ -117,7 +115,7 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10) {
 
     for (uint i = 0; i < runs.size(); ++i) {
-        std::cout << i << "/" << runs.size() << ": " << runs[i].str() << std::endl;
+        std::cout << i+1 << "/" << runs.size() << ": " << runs[i].str() << std::endl;
 
         runExperiment(runs[i], reps);
 
@@ -331,7 +329,7 @@ int main(int argc, char *argv[]) {
 
         if (vm.count("algorithm")) {
             triangulators = {alg};
-        }
+    }
 
         parallelBase = !vm.count("no-parallel-base");
 

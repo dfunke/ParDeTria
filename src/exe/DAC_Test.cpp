@@ -27,7 +27,6 @@
 //**************************
 
 struct TriangulateReturn {
-    TriangulationReport tr;
     bool exception;
     tDuration time;
     ExperimentRun run;
@@ -38,20 +37,32 @@ struct TriangulateReturn {
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint recursionDepth,
                               dPoints<D, Precision> &points,
-                              const unsigned char splitter) {
+                              const unsigned char splitter,
+                              const unsigned char alg = 'd') {
 
-    DCTriangulator<D, Precision> triangulator(bounds, points, recursionDepth, splitter);
+    std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
+    if (alg == 'c') {
+        triangulator_ptr =
+                std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
+    } else {
+        if (alg == 'm') {
+            triangulator_ptr =
+                    std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
+        } else {
+            triangulator_ptr =
+                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, recursionDepth, splitter, 100,
+                                                                   false);
+        }
+    }
 
     TriangulateReturn ret;
-    PROFILER.setRun(&ret.run);
 
     //try {
 
     auto t1 = Clock::now();
-    auto dt = triangulator.triangulate();
+    auto dt = triangulator_ptr->triangulate();
     auto t2 = Clock::now();
 
-    ret.tr = triangulator.getTriangulationReport();
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
@@ -82,11 +93,6 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint recursion
     uint nIterations = 9 * (log10(N) - 1) + 1;
     ProgressDisplay progress(splitters.size() * nIterations, std::cout);
 
-    std::ofstream f("triangulation_report.csv", std::ios::out | std::ios::trunc);
-    f << CSV::csv("n", "splitter", "provenance", "recursionDepth", "edge_tria",
-                  "valid", "nPoints", "nSimplices", "nEdgePoints",
-                  "nEdgeSimplices", "time", "mem", "max_mem") << std::endl;
-
     // generate test points deterministically
     std::vector<dPoints<D, Precision>> pointss;
     for (uint i = 0; i < nIterations; ++i) {
@@ -94,34 +100,13 @@ int doStudy(const uint N, const dBox<D, Precision> &bounds, const uint recursion
         pointss.push_back(genPoints(n, bounds, dice));
     }
 
-    std::mutex mtx;
     tbb::parallel_for(std::size_t(0), pointss.size(), [&](const uint i) {
         tbb::parallel_for(std::size_t(0), splitters.size(), [&](const uint j) {
 
             auto &points = pointss[i];
             unsigned char p = splitters[j];
 
-            auto ret = triangulate(bounds, recursionDepth, points, p);
-
-            // evaluate the triangulation report
-
-            for (const auto &tr : ret.tr) {
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    f << CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                                  tr.edge_triangulation, tr.valid, tr.nPoints,
-                                  tr.nSimplices, tr.nEdgePoints, tr.nEdgeSimplices,
-                                  ret.time.count(), getCurrentRSS(), getPeakRSS())
-                    << std::endl;
-                }
-                if (DCTriangulator<D, Precision>::VERIFY &&
-                    DCTriangulator<D, Precision>::isTOP(tr.provenance) && !tr.valid) {
-
-                    // output points
-                    storeObject(points, "invalid_" + std::to_string(points.size()) + "_" +
-                                        (char) p + ".dat");
-                }
-            }
+            triangulate(bounds, recursionDepth, points, p);
 
             ++progress;
         });
@@ -146,6 +131,7 @@ int main(int argc, char *argv[]) {
     uint N;
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
+    unsigned char alg = 'd';
 
     bool study = false;
 
@@ -169,6 +155,8 @@ int main(int argc, char *argv[]) {
                                "load points from file");
     cCommandLine.add_options()("threads", po::value<uint>(&threads),
                                "specify number of threads");
+    cCommandLine.add_options()("alg", po::value<unsigned char>(&alg),
+                               "specify algorithm to use");
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -260,29 +248,15 @@ int main(int argc, char *argv[]) {
                     std::cout << std::endl;
 
                 points = genPoints(N, bounds, dice);
-                triangulate(bounds, recursionDepth, points, p);
+                triangulate(bounds, recursionDepth, points, p, alg);
             }
         } else
-            ret = triangulate(bounds, recursionDepth, points, p);
+            ret = triangulate(bounds, recursionDepth, points, p, alg);
 
         LOG("Triangulating "
             << points.size() << " points took "
             << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
                     .count() << " ms" << std::endl);
-
-        VLOG(std::endl
-             << "Triangulation report: " << std::endl);
-
-        VLOG(CSV::csv("n", "splitter", "provenance", "base_case", "edge_tria",
-                      "valid", "nPoints", "nSimplices", "nEdgePoints",
-                      "nEdgeSimplices", "time", "mem", "max_mem") << std::endl);
-
-        for (const auto &tr : ret.tr) {
-            VLOG(CSV::csv(points.size(), p, tr.provenance, tr.base_case,
-                          tr.edge_triangulation, tr.valid, tr.nPoints, tr.nSimplices,
-                          tr.nEdgePoints, tr.nEdgeSimplices, ret.time.count(),
-                          getCurrentRSS(), getPeakRSS()) << std::endl);
-        }
 
 #ifdef ENABLE_PROFILING
         VLOG(std::endl << "Profiling Counters:" << std::endl);

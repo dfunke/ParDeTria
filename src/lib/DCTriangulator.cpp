@@ -576,30 +576,6 @@ DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
 
     ASSERT(saveDT == dt); // only performed if not NDEBUG
 
-    TriangulationReportEntry rep;
-    rep.provenance = provenance;
-    rep.base_case = true;
-    rep.valid = false;
-    rep.edge_triangulation = provenance.find('e') != std::string::npos;
-    rep.nPoints = partitionPoints.size();
-    rep.nSimplices = dt.size();
-    rep.nEdgePoints = 0;
-    rep.nEdgeSimplices = 0;
-
-    if (isTOP && Triangulator<D, Precision>::VERIFY) {
-        LOG("Consistency check of triangulation" << std::endl);
-        auto vr = dt.verify(partitionPoints, this->points);
-        evaluateVerificationReport(vr, provenance);
-
-        LOG("Cross check with real triangulation" << std::endl);
-        auto ccr = dt.crossCheck(*realDT);
-        evaluateCrossCheckReport(ccr, provenance, dt, *realDT);
-
-        rep.valid = vr.valid && ccr.valid;
-    }
-
-    triangulationReport.push_back(rep);
-
     return dt;
 }
 
@@ -643,6 +619,10 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         std::vector<dSimplices<D, Precision>> partialDTs;
         partialDTs.resize(partioning.size());
 
+        Ids edgePointIds;
+        Ids edgeSimplexIds;
+        tbb::spin_mutex insertMtx;
+
         tbb::parallel_for(
                 std::size_t(0), partioning.size(),
                 [&](const uint i) {
@@ -654,29 +634,24 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
                     partialDTs[i] =
                             _triangulate(partioning[i].points, partioning[i].bounds,
                                          provenance + std::to_string(i));
-                    LOG("Triangulation " << i << " contains " << partialDTs[i].size()
-                        << " tetrahedra" << std::endl);
+                    LOG("Triangulation " << provenance + std::to_string(i)
+                        << " contains " << partialDTs[i].size() << " tetrahedra" << std::endl);
+
+                    auto edge = getEdge(partialDTs[i], partioning, i);
+                    auto ep = extractPoints(edge, partialDTs[i]);
+
+                    LOG("Edge " << provenance + std::to_string(i)
+                        << " contains " << edge.size() << " tetrahedra" << std::endl);
+
+                    {
+                        tbb::spin_mutex::scoped_lock lock(insertMtx);
+                        edgeSimplexIds.insert(edge.begin(), edge.end());
+                        edgePointIds.insert(ep.begin(), ep.end());
+                    }
+
                     DEDENT
                 }
         );
-
-        LOG("Extracting edges" << std::endl);
-        INDENT
-
-        Ids edgePointIds;
-        Ids edgeSimplexIds;
-
-        for (uint i = 0; i < partioning.size(); ++i) {
-            // points are in different partitions, there can be no overlap
-
-            auto edge = getEdge(partialDTs[i], partioning, i);
-            edgeSimplexIds.insert(edge.begin(), edge.end());
-
-            // ignore infinite vertices if this is the top most triangulation
-            auto ep = extractPoints(edge, partialDTs[i]);
-            edgePointIds.insert(ep.begin(), ep.end());
-        }
-        DEDENT
 
         LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
             << edgePointIds.size() << " points" << std::endl);
@@ -692,30 +667,6 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
 
         auto mergedDT = mergeTriangulation(partialDTs, edgeSimplexIds, edgeDT,
                                            partioning, provenance);
-
-        TriangulationReportEntry rep;
-        rep.provenance = provenance;
-        rep.base_case = false;
-        rep.valid = false;
-        rep.edge_triangulation = provenance.find('e') != std::string::npos;
-        rep.nPoints = partitionPoints.size();
-        rep.nSimplices = mergedDT.size();
-        rep.nEdgePoints = edgePointIds.size();
-        rep.nEdgeSimplices = edgeDT.size();
-
-        if (isTOP & Triangulator<D, Precision>::VERIFY) {
-            LOG("Consistency check of triangulation" << std::endl);
-            auto vr = mergedDT.verify(partitionPoints, this->points);
-            evaluateVerificationReport(vr, provenance);
-
-            LOG("Cross check with real triangulation" << std::endl);
-            auto ccr = mergedDT.crossCheck(*realDT);
-            evaluateCrossCheckReport(ccr, provenance, mergedDT, *realDT, &partioning);
-
-            rep.valid = vr.valid && ccr.valid;
-        }
-
-        triangulationReport.push_back(rep);
 
         return mergedDT;
 
