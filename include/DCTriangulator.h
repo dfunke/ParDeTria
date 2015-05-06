@@ -37,10 +37,6 @@ public:
                    const uint gridOccupancy = 1,
                    const bool parallelBaseSolver = false);
 
-    const TriangulationReport &getTriangulationReport() const {
-        return triangulationReport;
-    }
-
 protected:
     dSimplices<D, Precision> _triangulateBase(const Ids partitionPoints,
                                               const dBox<D, Precision> &bounds,
@@ -81,7 +77,6 @@ protected:
 protected:
     const uint baseThreshold;
 
-    TriangulationReport triangulationReport;
     std::unique_ptr<Partitioner<D, Precision>> partitioner;
     std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
 
