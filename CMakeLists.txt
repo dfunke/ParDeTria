@@ -30,6 +30,7 @@ find_package(TBB REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
 find_package(Threads REQUIRED)
 find_package(EJDB REQUIRED)
+find_package(VTune)
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
@@ -61,6 +62,16 @@ option(PROFILING "Enable fine-grained profiling" OFF)
 if(PROFILING)
   message(STATUS "Profiling enabled")
   add_definitions(-DENABLE_PROFILING)
+endif()
+
+option(VTUNE "Enable instrumentation for VTUNE" OFF)
+if(VTUNE)
+    if(VTUNE_FOUND)
+        message(STATUS "VTUNE instrumentation enabled")
+        add_definitions(-DENABLE_VTUNE)
+    else()
+        message(WARNING "VTUNE requested but not found")
+    endif()
 endif()
 
 # add src subdirectory
