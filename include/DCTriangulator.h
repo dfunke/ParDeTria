@@ -73,5 +73,5 @@ protected:
 
 public:
     static constexpr Precision SAFETY = 100;
-    static constexpr uint BASE_CUTOFF = 100;
+    static constexpr uint BASE_CUTOFF = 500;
 };

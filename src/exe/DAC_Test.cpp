@@ -69,7 +69,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
-    if(verify){
+    if (verify) {
         CGALTriangulator<D, Precision, false> cgal(bounds, points);
         auto realDT = cgal.triangulate();
 
@@ -198,34 +198,36 @@ int main(int argc, char *argv[]) {
 
     uint returnCode = 0;
 
-        dPoints<D, Precision> points;
-        if (loadPoints) {
-            points = loadObject<dPoints<D, Precision>>(pointFile);
-        } else {
+    dPoints<D, Precision> points;
+    if (loadPoints) {
+        points = loadObject<dPoints<D, Precision>>(pointFile);
+    } else {
+        points = genPoints(N, bounds, dice);
+    }
+
+    TriangulateReturn ret;
+    if (vm.count("seq-fault")) {
+        ulong i = 0;
+        std::random_device rd;
+        tGenerator gen(rd());
+        std::function<Precision()> dice = std::bind(distribution, gen);
+        for (; ;) {
+            std::cout << "." << std::flush;
+            if (++i % 80 == 0)
+                std::cout << std::endl;
+
             points = genPoints(N, bounds, dice);
-        }
-
-        TriangulateReturn ret;
-        if (vm.count("seq-fault")) {
-            ulong i = 0;
-            std::random_device rd;
-            tGenerator gen(rd());
-            std::function<Precision()> dice = std::bind(distribution, gen);
-            for (; ;) {
-                std::cout << "." << std::flush;
-                if (++i % 80 == 0)
-                    std::cout << std::endl;
-
-                points = genPoints(N, bounds, dice);
             triangulate(bounds, recursionDepth, points, p, alg, verify);
-            }
-        } else
+        }
+    } else
         ret = triangulate(bounds, recursionDepth, points, p, alg, verify);
 
-        LOG("Triangulating "
-            << points.size() << " points took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
-                    .count() << " ms" << std::endl);
+    LOG("Triangulating "
+        << points.size() << " points took "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
+                .count() << " ms" << std::endl);
+
+    returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
 
 #ifdef ENABLE_PROFILING
         VLOG(std::endl << "Profiling Counters:" << std::endl);
@@ -234,12 +236,13 @@ int main(int argc, char *argv[]) {
         }
 #endif
 
-
-        returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
-
     if (LOGGER.getLogLevel() >= Logger::Verbosity::NORMAL) {
         LOGGER.printLog(std::cout);
     }
+
+#ifdef ENABLE_PROFILING
+        std::cout << "Profiling enabled!" << std::endl;
+#endif
 
     return returnCode;
 }
