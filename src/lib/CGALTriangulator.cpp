@@ -266,7 +266,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
         for (uint d = 0; d < D + 1; ++d) {
             a.vertices[d] = it->vertex(d)->info();
-            a.neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<3, Precision>::cINF
+            a.neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<D, Precision>::cINF
                                                             : it->neighbor(d)->m_id;
         }
 
@@ -279,7 +279,10 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
         if (!a.isFinite())
             tria.convexHull.insert(a.id);
 
+        ASSERT((a.id != dSimplex<D, Precision>::cINF));
+
         PLOG(a << std::endl);
+
         tria.insert(a);
     }
     DEDENT
