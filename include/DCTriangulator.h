@@ -46,9 +46,15 @@ protected:
                                           const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
-    std::pair<Ids, Ids> getEdge(dSimplices<D, Precision> &simplices,
-                                const Partitioning<D, Precision> &partitioning,
-                                const uint &partition);
+    void getEdge(const dSimplices<D, Precision> &simplices,
+                 const Partitioning<D, Precision> &partitioning,
+                 const uint &partition,
+                 Ids &edgePoints, Ids &edgeSimplices);
+
+    void buildWhereUsed(const std::vector<dSimplex<D, Precision>> &edgeSimplices,
+                        const dSimplices<D, Precision> &innerSimplices,
+                        const Ids & edgeSimlexIds,
+                        cWuFaces & wuFaces);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices, const Ids &toCheck,
                          const std::string &provenance);
