@@ -68,9 +68,13 @@ option(VTUNE "Enable instrumentation for VTUNE" OFF)
 if(VTUNE)
     if(VTUNE_FOUND)
         message(STATUS "VTUNE instrumentation enabled")
+        include_directories(
+          SYSTEM
+          ${VTUNE_INCLUDE_DIRS}
+        )
         add_definitions(-DENABLE_VTUNE)
     else()
-        message(WARNING "VTUNE requested but not found")
+        message(ERROR "VTUNE requested but not found")
     endif()
 endif()
 

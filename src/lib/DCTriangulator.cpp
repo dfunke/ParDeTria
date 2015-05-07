@@ -33,6 +33,7 @@
 #include "utils/Timings.h"
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
+#include "utils/VTuneAdapter.h"
 
 //**************************
 
@@ -98,6 +99,8 @@ Ids DCTriangulator<D, Precision>::getEdge(
      */
 
     INDENT
+
+    VTUNE_TASK(IdentifyEdge);
     while (!wq.empty()) {
         uint x = wq.front();
         wq.pop_front();
@@ -125,6 +128,8 @@ Ids DCTriangulator<D, Precision>::getEdge(
             }
         }
     }
+    VTUNE_END_TASK(IdentifyEdge);
+
     DEDENT
 
     wqa.clear();
@@ -133,24 +138,8 @@ Ids DCTriangulator<D, Precision>::getEdge(
      * plus one more layer, to re-find their neighbors
      */
 
-    std::function<void(const uint &, const uint &)> insertFaceHashes =
-            [&simplices, &wqa, &insertFaceHashes, &edgeSimplices](const uint &id, const uint &recDepth) {
 
-                if (recDepth < 2 && dSimplex<D, Precision>::isFinite(id)) {
-                    if (wqa.insert(id).second && !edgeSimplices.count(id)) {
-
-                        for (uint i = 0; i < D + 1; ++i) {
-                            auto facetteHash = simplices[id].faceFingerprint(i);
-                            simplices.wuFaces.emplace(facetteHash, id);
-                        }
-                    }
-
-                    for (const auto &n : simplices[id].neighbors) {
-                        insertFaceHashes(n, recDepth + 1);
-                    }
-                }
-            };
-
+    VTUNE_TASK(BuildWU);
     simplices.wuFaces.reserve((D + 1) * (D + 1) * edgeSimplices.size());
     for (const auto &edgeSimplex : edgeSimplices) {
         for (const auto &firstLayer : simplices[edgeSimplex].neighbors) {
@@ -177,6 +166,7 @@ Ids DCTriangulator<D, Precision>::getEdge(
             }
         }
     }
+    VTUNE_END_TASK(BuildWU);
 
     return edgeSimplices;
 }
@@ -186,6 +176,8 @@ Ids DCTriangulator<D, Precision>::extractPoints(
         const Ids &edgeSimplices, const dSimplices<D, Precision> &simplices,
         bool ignoreInfinite) {
     Ids outPoints;
+
+    VTUNE_TASK(ExtractPoints);
 
     for (const auto &id : edgeSimplices) {
         ASSERT(simplices.contains(id));
@@ -224,6 +216,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     std::atomic<uint> updated(0);
 #endif
 
+    VTUNE_TASK(UpdateNeighbors);
     tbb::parallel_do(toCheck, [&](const uint &id,
                                   tbb::parallel_do_feeder<uint> &feeder) {
 
@@ -321,6 +314,9 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     LOG("Merging partial DTs into one triangulation" << std::endl);
 
+    VTUNE_TASK(MergeTriangulations);
+
+    VTUNE_TASK(CombineTriangulations);
     dSimplices<D, Precision> DT;
     // use the first partition as estimator for the size of the triangulation
     DT.reserve(partialDTs.size() * partialDTs[0].size());
@@ -351,18 +347,24 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
         // edgeSimplices are not added to the list in the first place
         DT.wuFaces.insert(partialDTs[i].wuFaces.begin(), partialDTs[i].wuFaces.end());
     }
+    VTUNE_END_TASK(CombineTriangulations);
 
     auto cmpFingerprint =
             [](const dSimplex<D, Precision> &a, const dSimplex<D, Precision> &b) {
                 return a.fingerprint() < b.fingerprint();
             };
+
+    VTUNE_TASK(SortDeletedVertices);
     tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpFingerprint);
+    VTUNE_END_TASK(SortDeletedVertices);
+
 
     // merge partial DTs and edge DT
     LOG("Merging triangulations" << std::endl);
     tbb::spin_mutex insertMtx;
     Ids insertedSimplices;
 
+    VTUNE_TASK(AddBorderSimplices);
     tbb::parallel_for(std::size_t(0), edgeDT.bucket_count(), [&](const uint i) {
 
         for (auto it = edgeDT.begin(i); it != edgeDT.end(i); ++it) {
@@ -413,6 +415,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             }
         }
     });
+    VTUNE_END_TASK(AddBorderSimplices);
 
     ASSERT(DT.countDuplicates() == 0);
 
@@ -427,6 +430,8 @@ dSimplices<D, Precision>
 DCTriangulator<D, Precision>::_triangulateBase(const Ids partitionPoints,
                                                const dBox<D, Precision> &bounds,
                                                const std::string provenance) {
+
+    VTUNE_TASK(TriangulateBase);
 
     LOGGER.setIndent(provenance.length());
 
@@ -456,13 +461,19 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
 
 
     if (provenance.length() - 1 < recursionDepth && partitionPoints.size() > BASE_CUTOFF) {
+        VTUNE_TASK(TriangulateRecursive);
+
         LOG("Recursive case" << std::endl);
 
         // partition input
         LOG("Partioning" << std::endl);
         INDENT
+
+        VTUNE_TASK(Partitioning);
         const auto partioning =
                 partitioner->partition(partitionPoints, this->points, provenance);
+        VTUNE_END_TASK(Partitioning);
+
         DEDENT
 
         std::vector<dSimplices<D, Precision>> partialDTs;
@@ -472,6 +483,7 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
         Ids edgeSimplexIds;
         tbb::spin_mutex insertMtx;
 
+        VTUNE_TASK(TriangulatePartitions);
         tbb::parallel_for(
                 std::size_t(0), partioning.size(),
                 [&](const uint i) {
@@ -501,12 +513,16 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
                     DEDENT
                 }
         );
+        VTUNE_END_TASK(TriangulatePartitions);
 
         LOG("Edge has " << edgeSimplexIds.size() << " simplices with "
             << edgePointIds.size() << " points" << std::endl);
 
         INDENT
+
+        VTUNE_TASK(TriangulateEdge);
         auto edgeDT = _triangulate(edgePointIds, bounds, provenance + "e");
+        VTUNE_END_TASK(TriangulateEdge);
 
         LOG("Edge triangulation contains " << edgeDT.size() << " tetrahedra" << std::endl);
         DEDENT

@@ -11,6 +11,7 @@
 
 #include "utils/ASSERT.h"
 #include "utils/StaticSort.h"
+#include "utils/VTuneAdapter.h"
 
 // define a static counter for the tetrahedronID
 std::atomic<uint> gAtomicTetrahedronID(0);
@@ -237,9 +238,11 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
         return std::make_pair(helper.make_point(p), p.id);
     };
 
+    VTUNE_TASK(CgalTriangulation);
     Tria t = helper.make_tria();
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
+    VTUNE_END_TASK(CgalTriangulation);
 
     ASSERT(t.is_valid());
 
@@ -256,6 +259,7 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     //uint saveTetrahedronID = tetrahedronID;
 #endif
 
+    VTUNE_TASK(CollectCgal);
     dSimplex<D, Precision> a;
     for (auto it = helper.begin(t); it != helper.end(t); ++it) {
         a.id = it->m_id;

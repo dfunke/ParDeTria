@@ -34,6 +34,10 @@ find_library(VTUNE_LIBRARY
   PATH_SUFFIXES lib64
 )
 
+if(UNIX)
+  list(APPEND VTUNE_LIBRARY dl)
+endif()
+
 # Set the include dir variables and the libraries and let libfind_process do the rest.
 # NOTE: Singular variables for this library, plural for libraries this this lib depends on.
 set(VTUNE_PROCESS_INCLUDES VTUNE_INCLUDE_DIR)

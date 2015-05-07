@@ -36,3 +36,7 @@ target_link_libraries(DCTriangulator
   Geometry
 )
 
+if(VTUNE)
+  target_link_libraries(DCTriangulator VTune)
+  target_link_libraries(CGALTriangulator VTune)
+endif()
