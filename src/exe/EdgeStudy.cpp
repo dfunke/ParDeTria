@@ -35,11 +35,10 @@ public:
                     this->_triangulateBase(partitioning[i].points, partitioning[i].bounds,
                                            "0" + std::to_string(i));
 
-            auto eS = this->getEdge(partialDTs[i], partitioning, i);
-            edgeSimplices.insert(eS.begin(), eS.end());
+            auto edge = this->getEdge(partialDTs[i], partitioning, i);
 
-            auto eP = this->extractPoints(eS, partialDTs[i]);
-            edgePoints.insert(eP.begin(), eP.end());
+            edgeSimplices.insert(edge.first.begin(), edge.first.end());
+            edgePoints.insert(edge.second.begin(), edge.second.end());
         }
         DEDENT
 

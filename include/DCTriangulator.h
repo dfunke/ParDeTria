@@ -46,13 +46,9 @@ protected:
                                           const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
-    Ids getEdge(dSimplices<D, Precision> &simplices,
-                const Partitioning<D, Precision> &partitioning,
-                const uint &partition);
-
-    Ids extractPoints(const Ids &edgeSimplices,
-                      const dSimplices<D, Precision> &simplices,
-                      bool ignoreInfinite = false);
+    std::pair<Ids, Ids> getEdge(dSimplices<D, Precision> &simplices,
+                                const Partitioning<D, Precision> &partitioning,
+                                const uint &partition);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices, const Ids &toCheck,
                          const std::string &provenance);

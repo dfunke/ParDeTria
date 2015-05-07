@@ -86,10 +86,18 @@ DCTriangulator<D, Precision>::DCTriangulator(
 }
 
 template<uint D, typename Precision>
-Ids DCTriangulator<D, Precision>::getEdge(
+std::pair<Ids, Ids> DCTriangulator<D, Precision>::getEdge(
         dSimplices<D, Precision> &simplices,
         const Partitioning<D, Precision> &partitioning, const uint &partition) {
+
     Ids edgeSimplices;
+    Ids edgePoints;
+
+    // infinite points to edge
+    for (uint k = dPoint<D, Precision>::cINF; k != 0; ++k) {
+        edgePoints.insert(k);
+    }
+
     Ids wqa;
     wqa.insert(simplices.convexHull.begin(), simplices.convexHull.end()); // set of already checked simplices
     std::deque<uint> wq(simplices.convexHull.begin(), simplices.convexHull.end());
@@ -119,6 +127,10 @@ Ids DCTriangulator<D, Precision>::getEdge(
                      << " to edge -> circumcircle criterion"
                      << std::endl);
                 edgeSimplices.insert(simplices[x].id);
+
+                for (uint i = 0; i < D + 1; ++i) {
+                    edgePoints.insert(simplices[x].vertices[i]);
+                }
 
                 for (const auto &n : simplices[x].neighbors) {
                     if (wqa.insert(n).second) {
@@ -173,34 +185,7 @@ Ids DCTriangulator<D, Precision>::getEdge(
     });
     VTUNE_END_TASK(BuildWU);
 
-    return edgeSimplices;
-}
-
-template<uint D, typename Precision>
-Ids DCTriangulator<D, Precision>::extractPoints(
-        const Ids &edgeSimplices, const dSimplices<D, Precision> &simplices,
-        bool ignoreInfinite) {
-    Ids outPoints;
-
-    VTUNE_TASK(ExtractPoints);
-
-    for (const auto &id : edgeSimplices) {
-        ASSERT(simplices.contains(id));
-
-        for (uint i = 0; i < D + 1; ++i) {
-            if (dPoint<D, Precision>::isFinite(simplices[id].vertices[i]))
-                outPoints.insert(simplices[id].vertices[i]);
-        }
-    }
-
-    // add the extreme infinite points to the set
-    if (!ignoreInfinite) {
-        for (uint k = dPoint<D, Precision>::cINF; k != 0; ++k) {
-            outPoints.insert(k);
-        }
-    }
-
-    return outPoints;
+    return std::make_pair(std::move(edgeSimplices), std::move(edgePoints));
 }
 
 template<uint D, typename Precision>
@@ -366,7 +351,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     // merge partial DTs and edge DT
     LOG("Merging triangulations" << std::endl);
-    tbb::spin_mutex insertMtx;
     Ids insertedSimplices;
 
     VTUNE_TASK(AddBorderSimplices);
@@ -381,7 +365,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             bool inOnePartition = partitioning[p0].contains(edgeSimplex);
 
             if (!inOnePartition) {
-                tbb::spin_mutex::scoped_lock lock(insertMtx);
                 DT.insert(edgeSimplex);
 
                 //convex hull treatment
@@ -402,7 +385,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
                 for (auto it = range.first; it != range.second; ++it) {
                     if (edgeSimplex.equalVertices(*it)) {
-                        tbb::spin_mutex::scoped_lock lock(insertMtx);
                         DT.insert(edgeSimplex);
 
                         //convex hull treatment
@@ -486,7 +468,6 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
 
         Ids edgePointIds;
         Ids edgeSimplexIds;
-        tbb::spin_mutex insertMtx;
 
         VTUNE_TASK(TriangulatePartitions);
         tbb::parallel_for(
@@ -504,16 +485,12 @@ DCTriangulator<D, Precision>::_triangulate(const Ids &partitionPoints,
                         << " contains " << partialDTs[i].size() << " tetrahedra" << std::endl);
 
                     auto edge = getEdge(partialDTs[i], partioning, i);
-                    auto ep = extractPoints(edge, partialDTs[i]);
 
                     LOG("Edge " << provenance + std::to_string(i)
-                        << " contains " << edge.size() << " tetrahedra" << std::endl);
+                        << " contains " << edge.first.size() << " tetrahedra" << std::endl);
 
-                    {
-                        tbb::spin_mutex::scoped_lock lock(insertMtx);
-                        edgeSimplexIds.insert(edge.begin(), edge.end());
-                        edgePointIds.insert(ep.begin(), ep.end());
-                    }
+                    edgeSimplexIds.insert(edge.first.begin(), edge.first.end());
+                    edgePointIds.insert(edge.second.begin(), edge.second.end());
 
                     DEDENT
                 }
