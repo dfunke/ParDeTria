@@ -19,10 +19,152 @@
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
 #include "utils/Timings.h"
+#include "utils/Misc.h"
 
 typedef uint tHashType;
 typedef uint tIdType;
-typedef std::unordered_set<tIdType> Ids;
+
+class Ids : private tbb::concurrent_unordered_set<tIdType> {
+
+private:
+    typedef tbb::concurrent_unordered_set<tIdType> base;
+
+public:
+
+    Ids() : base() {  }
+
+    Ids(const Ids & other) : base(other) {
+        PROFILER_INC("Ids_copy");
+    }
+
+    Ids(const Ids && other) : base(std::move(other)) {
+        PROFILER_INC("Ids_move");
+    }
+
+    Ids(const base & other) : base(other) {
+        PROFILER_INC("Ids_copy");
+    }
+
+    Ids(const base && other) : base(std::move(other)) {
+        PROFILER_INC("Ids_move");
+    }
+
+    auto operator=(const Ids & other){
+        PROFILER_INC("Ids_copy");
+
+        return base::operator=(other);
+    }
+
+    auto operator=(const base & other){
+        PROFILER_INC("Ids_copy");
+
+        return base::operator=(other);
+    }
+
+    auto operator=(const Ids && other){
+        PROFILER_INC("Ids_move");
+
+        return base::operator=(std::move(other));
+    }
+
+    auto operator=(const base && other){
+        PROFILER_INC("Ids_move");
+
+        return base::operator=(std::move(other));
+    }
+
+    auto insert(const tIdType &id) {
+        PROFILER_INC("Ids_insert");
+
+        return base::insert(id);
+    }
+
+    template<typename IT>
+    void insert(IT first, IT last){
+        PROFILER_ADD("Ids_insert", std::distance(first, last));
+
+        base::insert(first, last);
+    }
+
+    auto begin() {
+        PROFILER_INC("Ids_begin");
+
+        return base::begin();
+    }
+
+    auto end() {
+        return base::end();
+    }
+
+    auto begin() const {
+        PROFILER_INC("Ids_begin");
+
+        return base::begin();
+    }
+
+    auto end() const {
+        return base::end();
+    }
+
+    auto range() {
+        PROFILER_INC("Ids_begin");
+
+        return base::range();
+    }
+
+    auto range() const {
+        PROFILER_INC("Ids_begin");
+
+        return base::range();
+    }
+
+    auto begin(std::size_t i) {
+        PROFILER_INC("Ids_localBegin");
+
+        return base::unsafe_begin(i);
+    }
+
+    auto end(std::size_t i) {
+
+        return base::unsafe_end(i);
+    }
+
+    auto begin(std::size_t i) const {
+        PROFILER_INC("Ids_localBegin");
+
+        return base::unsafe_begin(i);
+    }
+
+    auto end(std::size_t i) const {
+
+        return base::unsafe_end(i);
+    }
+
+    void reserve(std::size_t s) {
+        PROFILER_INC("Ids_reserve");
+
+        base::rehash(nextPow2(s));
+    }
+
+    auto size() const{
+        return base::size();
+    }
+
+    auto bucket_count() const {
+        return base::unsafe_bucket_count();
+    }
+
+    auto count(tIdType k) const {
+        PROFILER_INC("Ids_count");
+
+        return base::count(k);
+    }
+
+    auto clear() {
+        return base::clear();
+    }
+
+};
 
 // basic data structure for d-dimensional data
 template<std::size_t D, typename Precision>
@@ -477,77 +619,98 @@ struct CrossCheckReport;
 template<uint D, typename Precision>
 struct VerificationReport;
 
-class cConvexHull : public Ids {
+class cConvexHull : private tbb::concurrent_unordered_set<tIdType> {
+
+private:
+    typedef tbb::concurrent_unordered_set<tIdType> base;
 
 public:
 
     auto insert(const tIdType &id) {
         PROFILER_INC("dSimplices_convexHull_insert");
 
-        return Ids::insert(id);
+        return base::insert(id);
     }
 
     auto begin() {
         PROFILER_INC("dSimplices_convexHull_begin");
 
-        return Ids::begin();
+        return base::begin();
     }
 
     auto end() {
-        return Ids::end();
+        return base::end();
     }
 
     auto begin() const {
         PROFILER_INC("dSimplices_convexHull_begin");
 
-        return Ids::begin();
+        return base::begin();
     }
 
     auto end() const {
-        return Ids::end();
+        return base::end();
     }
 
     auto begin(std::size_t i) {
         PROFILER_INC("dSimplices_convexHull_localBegin");
 
-        return Ids::begin(i);
+        return base::unsafe_begin(i);
     }
 
     auto end(std::size_t i) {
 
-        return Ids::end(i);
+        return base::unsafe_end(i);
     }
 
     auto begin(std::size_t i) const {
         PROFILER_INC("dSimplices_convexHull_localBegin");
 
-        return Ids::begin(i);
+        return base::unsafe_begin(i);
     }
 
     auto end(std::size_t i) const {
 
-        return Ids::end(i);
+        return base::unsafe_end(i);
     }
 
     void reserve(std::size_t s) {
         PROFILER_INC("dSimplices_convexHull_reserve");
 
-        Ids::reserve(s);
+        base::rehash(nextPow2(s));
+    }
+
+    auto size() const{
+        return base::size();
+    }
+
+    auto bucket_count() const {
+        return base::unsafe_bucket_count();
+    }
+
+    auto count(tIdType k) const {
+        PROFILER_INC("dSimplices_convexHull_count");
+
+        return base::count(k);
+    }
+
+    auto clear() {
+        return base::clear();
     }
 
 };
 
-class cWuFaces : public std::unordered_multimap<tHashType, tIdType> {
+class cWuFaces : private tbb::concurrent_unordered_multimap<tHashType, tIdType> {
 
 private:
-    typedef std::unordered_multimap<tHashType, tIdType> base;
+    typedef tbb::concurrent_unordered_multimap<tHashType, tIdType> base;
 
 public:
 
     void reserve(std::size_t s) {
         PROFILER_INC("dSimplices_wuFaces_reserve");
 
-        base::reserve(s);
+        base::rehash(nextPow2(s));
     }
 
     auto begin() {
@@ -573,23 +736,23 @@ public:
     auto begin(std::size_t i) {
         PROFILER_INC("dSimplices_wuFaces_localBegin");
 
-        return base::begin(i);
+        return base::unsafe_begin(i);
     }
 
     auto end(std::size_t i) {
 
-        return base::end(i);
+        return base::unsafe_end(i);
     }
 
     auto begin(std::size_t i) const {
         PROFILER_INC("dSimplices_wuFaces_localBegin");
 
-        return base::begin(i);
+        return base::unsafe_begin(i);
     }
 
     auto end(std::size_t i) const {
 
-        return base::end(i);
+        return base::unsafe_end(i);
     }
 
     template<typename Pair>
@@ -623,6 +786,14 @@ public:
         PROFILER_INC("dSimplices_wuFaces_equal_range");
 
         return base::equal_range(key);
+    }
+
+    auto size() const{
+        return base::size();
+    }
+
+    auto bucket_count() const {
+        return base::unsafe_bucket_count();
     }
 
 };

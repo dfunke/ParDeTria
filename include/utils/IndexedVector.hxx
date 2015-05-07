@@ -4,13 +4,15 @@
 #include <vector>
 #include <iterator>
 
+#include "utils/TBB_Containers.h"
+#include "utils/Misc.h"
 #include "utils/Timings.h"
 
 template<typename V, typename K = uint>
-class IndexedVector : public std::unordered_map<K, V> {
+class IndexedVector : private tbb::concurrent_unordered_map<K, V> {
 
 public:
-    typedef typename std::unordered_map<K, V> map;
+    typedef typename tbb::concurrent_unordered_map<K, V> map;
 
 public:
     template<class IT>
@@ -179,6 +181,18 @@ public:
         return map::at(idx);
     }
 
+    V &at(uint idx) {
+        PROFILER_INC("IndexedVector_access");
+
+        return map::at(idx);
+    }
+
+    const V &at(uint idx) const {
+        PROFILER_INC("IndexedVector_access");
+
+        return map::at(idx);
+    }
+
     void insert(const V &value) {
         PROFILER_INC("IndexedVector_insert");
 
@@ -202,6 +216,12 @@ public:
         PROFILER_INC("IndexedVector_contains");
 
         return map::count(key);
+    }
+
+    void reserve(std::size_t s) {
+        PROFILER_INC("IndexedVector_reserve");
+
+        map::rehash(nextPow2(s));
     }
 
     template<class Container>
@@ -232,6 +252,14 @@ public:
             res.insert(operator[](*it));
 
         return res;
+    }
+
+    auto size() const{
+        return map::size();
+    }
+
+    auto bucket_count() const {
+        return map::unsafe_bucket_count();
     }
 
     iterator<typename map::iterator> begin() {
@@ -267,20 +295,20 @@ public:
     iterator<typename map::local_iterator> begin(const std::size_t i) {
         PROFILER_INC("IndexedVector_begin");
 
-        return iterator<typename map::local_iterator>(map::begin(i));
+        return iterator<typename map::local_iterator>(map::unsafe_begin(i));
     }
 
     iterator<typename map::local_iterator> end(const std::size_t i) {
-        return iterator<typename map::local_iterator>(map::end(i));
+        return iterator<typename map::local_iterator>(map::unsafe_end(i));
     }
 
     const_iterator<typename map::const_local_iterator> begin(const std::size_t i) const {
         PROFILER_INC("IndexedVector_localBegin");
 
-        return const_iterator<typename map::const_local_iterator>(map::begin(i));
+        return const_iterator<typename map::const_local_iterator>(map::unsafe_begin(i));
     }
 
     const_iterator<typename map::const_local_iterator> end(const std::size_t i) const {
-        return const_iterator<typename map::const_local_iterator>(map::end(i));
+        return const_iterator<typename map::const_local_iterator>(map::unsafe_end(i));
     }
 };

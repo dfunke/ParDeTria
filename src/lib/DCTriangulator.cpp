@@ -90,7 +90,8 @@ Ids DCTriangulator<D, Precision>::getEdge(
         dSimplices<D, Precision> &simplices,
         const Partitioning<D, Precision> &partitioning, const uint &partition) {
     Ids edgeSimplices;
-    Ids wqa = simplices.convexHull; // set of already checked simplices
+    Ids wqa;
+    wqa.insert(simplices.convexHull.begin(), simplices.convexHull.end()); // set of already checked simplices
     std::deque<uint> wq(simplices.convexHull.begin(), simplices.convexHull.end());
 
     /* Walk along the neighbors,
