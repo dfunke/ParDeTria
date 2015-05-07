@@ -142,31 +142,35 @@ Ids DCTriangulator<D, Precision>::getEdge(
 
     VTUNE_TASK(BuildWU);
     simplices.wuFaces.reserve((D + 1) * (D + 1) * edgeSimplices.size());
-    for (const auto &edgeSimplex : edgeSimplices) {
-        for (const auto &firstLayer : simplices[edgeSimplex].neighbors) {
-            if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
-                // we have an "inward" neighbor, add it to the wuFaces DS
-                if (wqa.insert(firstLayer).second) {
-                    for (uint i = 0; i < D + 1; ++i) {
-                        auto facetteHash = simplices[firstLayer].faceFingerprint(i);
-                        simplices.wuFaces.emplace(facetteHash, firstLayer);
-                    }
-                }
-                // now loop over its neighbors, adding the ones not belonging to the edge
-                // TODO maybe we can avoid this
-                for (const auto &secondLayer : simplices[firstLayer].neighbors) {
-                    if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
-                        && wqa.insert(secondLayer).second) {
 
+    tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
+
+        for (const auto &edgeSimplex : range) {
+            for (const auto &firstLayer : simplices[edgeSimplex].neighbors) {
+                if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
+                    // we have an "inward" neighbor, add it to the wuFaces DS
+                    if (wqa.insert(firstLayer).second) {
                         for (uint i = 0; i < D + 1; ++i) {
-                            auto facetteHash = simplices[secondLayer].faceFingerprint(i);
-                            simplices.wuFaces.emplace(facetteHash, secondLayer);
+                            auto facetteHash = simplices[firstLayer].faceFingerprint(i);
+                            simplices.wuFaces.emplace(facetteHash, firstLayer);
+                        }
+                    }
+                    // now loop over its neighbors, adding the ones not belonging to the edge
+                    // TODO maybe we can avoid this
+                    for (const auto &secondLayer : simplices[firstLayer].neighbors) {
+                        if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
+                            && wqa.insert(secondLayer).second) {
+
+                            for (uint i = 0; i < D + 1; ++i) {
+                                auto facetteHash = simplices[secondLayer].faceFingerprint(i);
+                                simplices.wuFaces.emplace(facetteHash, secondLayer);
+                            }
                         }
                     }
                 }
             }
         }
-    }
+    });
     VTUNE_END_TASK(BuildWU);
 
     return edgeSimplices;
