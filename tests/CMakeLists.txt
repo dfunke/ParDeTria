@@ -1,6 +1,9 @@
+file(GLOB tests_SRC
+  "Test*.cpp"
+)
+
 add_executable(runTests
-  TestGeometry3D.cpp
-  TestExperimentRun.cpp
+  ${tests_SRC}
 )
 
 target_link_libraries(runTests
