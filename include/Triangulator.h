@@ -6,6 +6,8 @@
 
 #include "Geometry.h"
 
+#include "utils/VTuneAdapter.h"
+
 struct PartialTriangulation {
     Ids simplices;
     Ids convexHull;
@@ -28,6 +30,8 @@ public:
         dSimplices<D, Precision> tmpDT;
         PartialTriangulation pt = this->_triangulate(tmpDT, allPoints(), baseBounds, std::to_string(TOP));
 
+
+        VTUNE_TASK(FilterResult);
         dSimplices<D, Precision> DT = tmpDT.project(pt.simplices);
         DT.convexHull.insert(pt.convexHull.begin(), pt.convexHull.end());
 
