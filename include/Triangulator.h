@@ -6,6 +6,11 @@
 
 #include "Geometry.h"
 
+struct PartialTriangulation {
+    Ids simplices;
+    Ids convexHull;
+};
+
 template<uint D, typename Precision>
 class Triangulator {
 
@@ -20,13 +25,20 @@ protected:
 public:
 
     dSimplices<D, Precision> triangulate() {
-        return this->_triangulate(allPoints(), baseBounds, std::to_string(TOP));
+        dSimplices<D, Precision> tmpDT;
+        PartialTriangulation pt = this->_triangulate(tmpDT, allPoints(), baseBounds, std::to_string(TOP));
+
+        dSimplices<D, Precision> DT = tmpDT.project(pt.simplices);
+        DT.convexHull.insert(pt.convexHull.begin(), pt.convexHull.end());
+
+        return DT;
     };
 
 protected:
-    virtual dSimplices<D, Precision> _triangulate(const Ids &partitionPoints,
-                                                  const dBox<D, Precision> &bounds,
-                                                  const std::string provenance) = 0;
+    virtual PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
+                                              const Ids &partitionPoints,
+                                              const dBox<D, Precision> &bounds,
+                                              const std::string provenance) = 0;
 
     Ids allPoints() const;
 

@@ -28,24 +28,3 @@ target_link_libraries(Benchmark
   ${EJDB_LIBRARIES}
 )
 
-
-add_executable(EdgeStudy
-  EdgeStudy.cpp
-)
-
-target_link_libraries(EdgeStudy
-  Logging
-  Geometry
-  DCTriangulator
-)
-
-add_executable(WhereUsedStudy
-  WhereUsedStudy.cpp
-)
-
-target_link_libraries(WhereUsedStudy
-  Logging
-  Geometry
-  DCTriangulator
-)
-

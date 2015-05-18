@@ -262,6 +262,10 @@ public:
         return map::unsafe_bucket_count();
     }
 
+    void earse(const K &key){
+        map::unsafe_erase(key);
+    }
+
     iterator<typename map::iterator> begin() {
         PROFILER_INC("IndexedVector_begin");
 

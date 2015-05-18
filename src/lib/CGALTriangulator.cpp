@@ -224,10 +224,10 @@ private:
 };
 
 template<uint D, typename Precision, class Tria, bool Parallel>
-dSimplices<D, Precision>
-_delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
-              const dBox<D, Precision> &bounds,
-              const uint gridOccupancy
+PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
+                                   const Ids &ids, dPoints<D, Precision> &points,
+                                   const dBox<D, Precision> &bounds,
+                                   const uint gridOccupancy
         /*, bool filterInfinite */) {
 
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
@@ -251,8 +251,10 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     PLOG("Collecting simplices" << std::endl);
     INDENT
 
-    dSimplices<D, Precision> tria;
-    tria.reserve(helper.size(t));
+    PartialTriangulation pt;
+    pt.simplices.reserve(helper.size(t));
+
+    DT.reserve(DT.size() + helper.size(t));
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
 #ifndef NDEBUG
@@ -277,19 +279,20 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
 
         //check whether vertex belongs to the convex hull
         if (!a.isFinite())
-            tria.convexHull.insert(a.id);
+            pt.convexHull.insert(a.id);
 
         ASSERT((a.id != dSimplex<D, Precision>::cINF));
 
         PLOG(a << std::endl);
 
-        tria.insert(a);
+        DT.insert(a);
+        pt.simplices.insert(a.id);
     }
     DEDENT
 
     //ASSERT(tetrahedronID == saveTetrahedronID + helper.size(t));
 
-    return tria;
+    return pt;
 }
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -305,9 +308,10 @@ public:
             : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
 
 protected:
-    dSimplices<2, Precision> _triangulate(const Ids &ids,
-                                          const dBox<2, Precision> &bounds,
-                                          __attribute__((unused)) const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<2, Precision> &DT,
+                                      const Ids &ids,
+                                      const dBox<2, Precision> &bounds,
+                                      __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
@@ -315,7 +319,7 @@ protected:
         typedef CGAL::Triangulation_data_structure_2<Vb, Cb> Tds;
         typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
-        return _delaunayCgal<2, Precision, CT, Parallel>(ids, this->points, bounds,
+        return _delaunayCgal<2, Precision, CT, Parallel>(DT, ids, this->points, bounds,
                                                          this->gridOccupancy /*, filterInfinite */);
     }
 
@@ -333,9 +337,9 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
-                                          const dBox<3, Precision> &bounds,
-                                          __attribute__((unused)) const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+                                      const dBox<3, Precision> &bounds,
+                                      __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
@@ -343,7 +347,7 @@ protected:
         typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-        return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds,
+        return _delaunayCgal<3, Precision, CT, true>(DT, ids, this->points, bounds,
                                                      this->gridOccupancy /*, filterInfinite */);
     }
 
@@ -361,9 +365,9 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
-                                          const dBox<3, Precision> &bounds,
-                                          __attribute__((unused)) const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+                                      const dBox<3, Precision> &bounds,
+                                      __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
@@ -371,7 +375,7 @@ protected:
         typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-        return _delaunayCgal<3, Precision, CT, false>(ids, this->points, bounds,
+        return _delaunayCgal<3, Precision, CT, false>(DT, ids, this->points, bounds,
                                                       this->gridOccupancy /*, filterInfinite */);
     }
 
@@ -407,10 +411,10 @@ class CGALTriangulator<3, double, false>;
 // pure CGAL triangulators for comparision study
 
 template<uint D, typename Precision, class Tria, bool Parallel>
-dSimplices<D, Precision>
-_pureCgal(const Ids &ids, dPoints<D, Precision> &points,
-          const dBox<D, Precision> &bounds,
-          const uint gridOccupancy
+PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> &DT,
+                               const Ids &ids, dPoints<D, Precision> &points,
+                               const dBox<D, Precision> &bounds,
+                               const uint gridOccupancy
         /*, bool filterInfinite */) {
 
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
@@ -425,7 +429,7 @@ _pureCgal(const Ids &ids, dPoints<D, Precision> &points,
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
 
-    dSimplices<D, Precision> dummy;
+    PartialTriangulation dummy;
     return dummy;
 }
 
@@ -440,9 +444,9 @@ public:
             : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
 
 protected:
-    dSimplices<2, Precision> _triangulate(const Ids &ids,
-                                          const dBox<2, Precision> &bounds,
-                                          __attribute__((unused)) const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<2, Precision> &DT, const Ids &ids,
+                                      const dBox<2, Precision> &bounds,
+                                      __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
@@ -450,7 +454,7 @@ protected:
         typedef CGAL::Triangulation_data_structure_2<Vb, Cb> Tds;
         typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
-        return _pureCgal<2, Precision, CT, Parallel>(ids, this->points, bounds,
+        return _pureCgal<2, Precision, CT, Parallel>(DT, ids, this->points, bounds,
                                                      this->gridOccupancy /*, filterInfinite */);
     }
 
@@ -468,9 +472,9 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
-                                          const dBox<3, Precision> &bounds,
-                                          __attribute__((unused)) const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+                                      const dBox<3, Precision> &bounds,
+                                      __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
@@ -478,7 +482,7 @@ protected:
         typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-        return _pureCgal<3, Precision, CT, true>(ids, this->points, bounds,
+        return _pureCgal<3, Precision, CT, true>(DT, ids, this->points, bounds,
                                                  this->gridOccupancy /*, filterInfinite */);
     }
 
@@ -496,9 +500,9 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
-                                          const dBox<3, Precision> &bounds,
-                                          __attribute__((unused)) const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+                                      const dBox<3, Precision> &bounds,
+                                      __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
@@ -506,7 +510,7 @@ protected:
         typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
-        return _pureCgal<3, Precision, CT, false>(ids, this->points, bounds,
+        return _pureCgal<3, Precision, CT, false>(DT, ids, this->points, bounds,
                                                   this->gridOccupancy /*, filterInfinite */);
     }
 

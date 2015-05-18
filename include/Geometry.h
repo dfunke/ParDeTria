@@ -164,6 +164,10 @@ public:
         return base::clear();
     }
 
+    void erase(tIdType k){
+        base::unsafe_erase(k);
+    }
+
 };
 
 // basic data structure for d-dimensional data
@@ -630,6 +634,13 @@ public:
         PROFILER_INC("dSimplices_convexHull_insert");
 
         return base::insert(id);
+    }
+
+    template<typename IT>
+    void insert(IT first, IT last){
+        PROFILER_ADD("dSimplices_convexHull_insert", std::distance(first, last));
+
+        base::insert(first, last);
     }
 
     auto begin() {

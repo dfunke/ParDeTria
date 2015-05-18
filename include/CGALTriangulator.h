@@ -12,9 +12,10 @@ public:
                      const uint _gridOccupancy = 1);
 
 protected:
-    dSimplices<D, Precision> _triangulate(const Ids &ids,
-                                          const dBox<D, Precision> &bounds,
-                                          const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
+                                      const Ids &ids,
+                                      const dBox<D, Precision> &bounds,
+                                      const std::string provenance
             /*, bool filterInfinite = false */);
 
 protected:
@@ -27,12 +28,13 @@ class PureCGALTriangulator : public Triangulator<D, Precision> {
 
 public:
     PureCGALTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
-                     const uint _gridOccupancy = 1);
+                         const uint _gridOccupancy = 1);
 
 protected:
-    dSimplices<D, Precision> _triangulate(const Ids &ids,
-                                          const dBox<D, Precision> &bounds,
-                                          const std::string provenance
+    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
+                                      const Ids &ids,
+                                      const dBox<D, Precision> &bounds,
+                                      const std::string provenance
             /*, bool filterInfinite = false */);
 
 protected:

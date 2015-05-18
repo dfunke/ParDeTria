@@ -38,33 +38,39 @@ public:
                    const bool parallelBaseSolver = false);
 
 protected:
-    dSimplices<D, Precision> _triangulateBase(const Ids partitionPoints,
-                                              const dBox<D, Precision> &bounds,
-                                              const std::string provenance);
-
-    dSimplices<D, Precision> _triangulate(const Ids &partitionPoints,
+    PartialTriangulation _triangulateBase(dSimplices<D, Precision> &DT,
+                                          const Ids partitionPoints,
                                           const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
-    void getEdge(const dSimplices<D, Precision> &simplices,
+    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
+                                      const Ids &partitionPoints,
+                                      const dBox<D, Precision> &bounds,
+                                      const std::string provenance
+    );
+
+    void getEdge(const Ids &convexHull,
+                 const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,
                  Ids &edgePoints, Ids &edgeSimplices);
 
-    void buildWhereUsed(const std::vector<dSimplex<D, Precision>> &edgeSimplices,
-                        const dSimplices<D, Precision> &innerSimplices,
-                        const Ids & edgeSimlexIds,
-                        cWuFaces & wuFaces);
+    void buildWhereUsed(const dSimplices<D, Precision> &DT,
+                        const Ids &edgeSimplices,
+                        cWuFaces &wuFaces);
 
-    void updateNeighbors(dSimplices<D, Precision> &simplices, const Ids &toCheck,
+    void updateNeighbors(dSimplices<D, Precision> &simplices,
+                         const PartialTriangulation &pt,
+                         const Ids &toCheck,
                          const std::string &provenance);
 
-    dSimplices<D, Precision>
-            mergeTriangulation(std::vector<dSimplices<D, Precision>> &partialDTs,
-                               const Ids &edgeSimplices,
-                               const dSimplices<D, Precision> &edgeDT,
-                               const Partitioning<D, Precision> &partitioning,
-                               const std::string &provenance);
+    PartialTriangulation mergeTriangulation(std::vector<PartialTriangulation> &partialDTs,
+                                            dSimplices<D, Precision> &DT,
+                                            const Ids &edgeSimplices,
+                                            const Ids &edgeDT,
+                                            const Partitioning<D, Precision> &partitioning,
+                                            const std::string &provenance
+    );
 
 
 protected:
