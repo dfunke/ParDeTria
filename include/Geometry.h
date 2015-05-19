@@ -31,43 +31,43 @@ private:
 
 public:
 
-    Ids() : base() {  }
+    Ids() : base() { }
 
-    Ids(const Ids & other) : base(other) {
+    Ids(const Ids &other) : base(other) {
         PROFILER_INC("Ids_copy");
     }
 
-    Ids(const Ids && other) : base(std::move(other)) {
+    Ids(const Ids &&other) : base(std::move(other)) {
         PROFILER_INC("Ids_move");
     }
 
-    Ids(const base & other) : base(other) {
+    Ids(const base &other) : base(other) {
         PROFILER_INC("Ids_copy");
     }
 
-    Ids(const base && other) : base(std::move(other)) {
+    Ids(const base &&other) : base(std::move(other)) {
         PROFILER_INC("Ids_move");
     }
 
-    auto operator=(const Ids & other){
+    auto operator=(const Ids &other) {
         PROFILER_INC("Ids_copy");
 
         return base::operator=(other);
     }
 
-    auto operator=(const base & other){
+    auto operator=(const base &other) {
         PROFILER_INC("Ids_copy");
 
         return base::operator=(other);
     }
 
-    auto operator=(const Ids && other){
+    auto operator=(const Ids &&other) {
         PROFILER_INC("Ids_move");
 
         return base::operator=(std::move(other));
     }
 
-    auto operator=(const base && other){
+    auto operator=(const base &&other) {
         PROFILER_INC("Ids_move");
 
         return base::operator=(std::move(other));
@@ -80,7 +80,7 @@ public:
     }
 
     template<typename IT>
-    void insert(IT first, IT last){
+    void insert(IT first, IT last) {
         PROFILER_ADD("Ids_insert", std::distance(first, last));
 
         base::insert(first, last);
@@ -146,7 +146,7 @@ public:
         base::rehash(nextPow2(s));
     }
 
-    auto size() const{
+    auto size() const {
         return base::size();
     }
 
@@ -164,7 +164,7 @@ public:
         return base::clear();
     }
 
-    void erase(tIdType k){
+    void erase(tIdType k) {
         base::unsafe_erase(k);
     }
 
@@ -637,7 +637,7 @@ public:
     }
 
     template<typename IT>
-    void insert(IT first, IT last){
+    void insert(IT first, IT last) {
         PROFILER_ADD("dSimplices_convexHull_insert", std::distance(first, last));
 
         base::insert(first, last);
@@ -691,7 +691,7 @@ public:
         base::rehash(nextPow2(s));
     }
 
-    auto size() const{
+    auto size() const {
         return base::size();
     }
 
@@ -781,7 +781,7 @@ public:
     }
 
     template<typename IT>
-    void insert(IT first, IT last){
+    void insert(IT first, IT last) {
         PROFILER_ADD("dSimplices_wuFaces_insert", std::distance(first, last));
 
         base::insert(first, last);
@@ -799,7 +799,7 @@ public:
         return base::equal_range(key);
     }
 
-    auto size() const{
+    auto size() const {
         return base::size();
     }
 
@@ -808,6 +808,9 @@ public:
     }
 
 };
+
+//forward declare
+struct PartialTriangulation;
 
 template<uint D, typename Precision>
 class dSimplices : public IndexedVector<dSimplex<D, Precision>> {
@@ -857,10 +860,13 @@ public:
     }
 
     VerificationReport<D, Precision>
-            verify(const dPoints<D, Precision> &points) const;
+            verify(const PartialTriangulation &pt,
+                   const dPoints<D, Precision> &points) const;
 
     CrossCheckReport<D, Precision>
-            crossCheck(const dSimplices<D, Precision> &realDT) const;
+            crossCheck(const PartialTriangulation &pt,
+                       const dSimplices<D, Precision> &realSimplices,
+                       const PartialTriangulation &realPT) const;
 
     uint countDuplicates() const;
 
@@ -888,7 +894,6 @@ public:
     }
 
 public:
-    cConvexHull convexHull;
     cWuFaces wuFaces;
 };
 

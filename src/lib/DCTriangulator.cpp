@@ -98,6 +98,7 @@ void DCTriangulator<D, Precision>::getEdge(const Ids &convexHull,
 
     Ids wqa;
     wqa.insert(convexHull.begin(), convexHull.end()); // set of already checked simplices
+    wqa.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
     std::deque<uint> wq(convexHull.begin(), convexHull.end());
 
     /* Walk along the neighbors,
@@ -112,30 +113,32 @@ void DCTriangulator<D, Precision>::getEdge(const Ids &convexHull,
         uint x = wq.front();
         wq.pop_front();
 
-        if (simplices.contains(x)) {
-            const auto &simplex = simplices[x];
-            const auto cs = simplex.circumsphere(this->points);
-            bool intersectsBounds = false;
-            for (uint i = 0; i < partitioning.size(); ++i) {
-                if (i != partition && partitioning[i].bounds.intersects(cs))
-                    intersectsBounds = true;
+        const auto &simplex = simplices[x];
+        const auto cs = simplex.circumsphere(this->points);
+        bool intersectsBounds = false;
+        for (uint i = 0; i < partitioning.size(); ++i) {
+            if (i != partition && partitioning[i].bounds.intersects(cs))
+                intersectsBounds = true;
+        }
+        if (intersectsBounds) {
+
+            PLOG("Adding " << simplex
+                 << " to edge -> circumcircle criterion"
+                 << std::endl);
+            edgeSimplices.insert(simplex.id);
+            if(simplex.id == dSimplex<D, Precision>::cINF) {
+                std::cerr << x << " " << simplices.size() << std::endl;
+                raise(SIGINT);
             }
-            if (intersectsBounds) {
 
-                PLOG("Adding " << simplex
-                     << " to edge -> circumcircle criterion"
-                     << std::endl);
-                edgeSimplices.insert(simplex.id);
+            for (uint i = 0; i < D + 1; ++i) {
+                edgePoints.insert(simplex.vertices[i]);
+            }
 
-                for (uint i = 0; i < D + 1; ++i) {
-                    edgePoints.insert(simplex.vertices[i]);
-                }
-
-                for (const auto &n : simplex.neighbors) {
-                    if (wqa.insert(n).second) {
-                        // n was not yet inspected
-                        wq.push_back(n);
-                    }
+            for (const auto &n : simplex.neighbors) {
+                if (wqa.insert(n).second) {
+                    // n was not yet inspected
+                    wq.push_back(n);
                 }
             }
         }
@@ -396,7 +399,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     });
     VTUNE_END_TASK(AddBorderSimplices);
 
-    ASSERT(DT.countDuplicates() == 0);
+    //ASSERT(DT.countDuplicates() == 0);
 
     LOG("Updating neighbors" << std::endl);
     updateNeighbors(DT, pt, insertedSimplices, provenance);

@@ -26,16 +26,12 @@ protected:
 
 public:
 
-    dSimplices<D, Precision> triangulate() {
-        dSimplices<D, Precision> tmpDT;
-        PartialTriangulation pt = this->_triangulate(tmpDT, allPoints(), baseBounds, std::to_string(TOP));
+    std::pair<dSimplices<D, Precision>, PartialTriangulation> triangulate() {
+        dSimplices<D, Precision> DT;
+        DT.grow(611253);
+        PartialTriangulation pt = this->_triangulate(DT, allPoints(), baseBounds, std::to_string(TOP));
 
-
-        VTUNE_TASK(FilterResult);
-        dSimplices<D, Precision> DT = tmpDT.project(pt.simplices);
-        DT.convexHull.insert(pt.convexHull.begin(), pt.convexHull.end());
-
-        return DT;
+        return std::make_pair(std::move(DT), std::move(pt));
     };
 
 protected:

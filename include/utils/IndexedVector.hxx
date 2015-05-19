@@ -8,195 +8,71 @@
 #include "utils/Misc.h"
 #include "utils/Timings.h"
 
-template<typename V, typename K = uint>
-class IndexedVector : private tbb::concurrent_unordered_map<K, V> {
+#include <csignal>
+
+template<typename V>
+class IndexedVector : private tbb::concurrent_vector<V> {
 
 public:
-    typedef typename tbb::concurrent_unordered_map<K, V> map;
-
-public:
-    template<class IT>
-    struct const_iterator; // forward declare for friend declaration
-
-    template<class IT>
-    struct iterator : public std::iterator<std::bidirectional_iterator_tag, V> {
-
-        friend struct const_iterator<IT>;
-
-    public:
-        iterator() { }
-
-        iterator(IT j) : i(j) { }
-
-        iterator &operator++() {
-            ++i;
-            return *this;
-        }
-
-        iterator operator++(int) {
-            auto tmp = *this;
-            ++(*this);
-            return tmp;
-        }
-
-        iterator &operator--() {
-            --i;
-            return *this;
-        }
-
-        iterator operator--(int) {
-            auto tmp = *this;
-            --(*this);
-            return tmp;
-        }
-
-        iterator &operator=(const iterator &other) {
-            i = other.i;
-
-            return *this;
-        }
-
-        bool operator==(iterator j) const { return i == j.i; }
-
-        bool operator!=(iterator j) const { return !(*this == j); }
-
-        V &operator*() { return i->second; }
-
-        V *operator->() { return &i->second; }
-
-    protected:
-        IT i;
-    };
-
-    template<class IT>
-    struct const_iterator
-            : public std::iterator<std::bidirectional_iterator_tag, V> {
-
-    public:
-        const_iterator() { }
-
-        const_iterator(IT j) : i(j) { }
-
-        const_iterator(iterator<IT> &o) : i(o.i) { }
-
-        const_iterator &operator++() {
-            ++i;
-            return *this;
-        }
-
-        const_iterator operator++(int) {
-            auto tmp = *this;
-            ++(*this);
-            return tmp;
-        }
-
-        const_iterator &operator--() {
-            --i;
-            return *this;
-        }
-
-        const_iterator operator--(int) {
-            auto tmp = *this;
-            --(*this);
-            return tmp;
-        }
-
-        const_iterator &operator=(const const_iterator &other) {
-            i = other.i;
-
-            return *this;
-        }
-
-        const_iterator &operator=(const iterator<IT> &other) {
-            i = other.i;
-
-            return *this;
-        }
-
-        bool operator==(const_iterator j) const { return i == j.i; }
-
-        bool operator!=(const_iterator j) const { return !(*this == j); }
-
-        const V &operator*() const { return i->second; }
-
-        const V *operator->() const { return &i->second; }
-
-    protected:
-        IT i;
-    };
-
-    template<class IT>
-    struct const_key_iterator
-            : public std::iterator<std::bidirectional_iterator_tag, K> {
-
-    public:
-        const_key_iterator() { }
-
-        const_key_iterator(IT j) : i(j) { }
-
-        const_key_iterator &operator++() {
-            ++i;
-            return *this;
-        }
-
-        const_key_iterator operator++(int) {
-            auto tmp = *this;
-            ++(*this);
-            return tmp;
-        }
-
-        const_key_iterator &operator--() {
-            --i;
-            return *this;
-        }
-
-        const_key_iterator operator--(int) {
-            auto tmp = *this;
-            --(*this);
-            return tmp;
-        }
-
-        bool operator==(const_key_iterator j) const { return i == j.i; }
-
-        bool operator!=(const_key_iterator j) const { return !(*this == j); }
-
-        const K &operator*() const { return i->first; }
-
-        const K *operator->() const { return &i->first; }
-
-    protected:
-        IT i;
-    };
+    typedef typename tbb::concurrent_vector<V> base;
 
 public:
     V &operator[](uint idx) {
         PROFILER_INC("IndexedVector_access");
 
-        return map::operator[](idx);
+        try {
+            return base::at(idx);
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            std::cerr << "size: " << base::size() << " index: " << idx << std::endl;
+            raise(SIGINT);
+            throw e;
+        }
     }
 
     const V &operator[](uint idx) const {
         PROFILER_INC("IndexedVector_access");
 
-        return map::at(idx);
+        try {
+            return base::at(idx);
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            std::cerr << "size: " << base::size() << " index: " << idx << std::endl;
+            raise(SIGINT);
+            throw e;
+        }
     }
 
     V &at(uint idx) {
         PROFILER_INC("IndexedVector_access");
 
-        return map::at(idx);
+        try {
+            return base::at(idx);
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            std::cerr << "size: " << base::size() << " index: " << idx << std::endl;
+            raise(SIGINT);
+            throw e;
+        }
     }
 
     const V &at(uint idx) const {
         PROFILER_INC("IndexedVector_access");
 
-        return map::at(idx);
+        try {
+            return base::at(idx);
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            std::cerr << "size: " << base::size() << " index: " << idx << std::endl;
+            raise(SIGINT);
+            throw e;
+        }
     }
 
     void insert(const V &value) {
         PROFILER_INC("IndexedVector_insert");
 
-        map::insert(std::make_pair(value.id, value));
+        base::push_back(value);
     }
 
     template<class InputIt>
@@ -206,22 +82,16 @@ public:
         }
     }
 
-    bool contains(const V &value) const {
-        PROFILER_INC("IndexedVector_contains");
-
-        return map::count(value.id);
-    }
-
-    bool contains(const K &key) const {
-        PROFILER_INC("IndexedVector_contains");
-
-        return map::count(key);
-    }
-
     void reserve(std::size_t s) {
         PROFILER_INC("IndexedVector_reserve");
 
-        map::rehash(nextPow2(s));
+        base::reserve(nextPow2(s));
+    }
+
+    void grow(std::size_t s) {
+        PROFILER_INC("IndexedVector_reserve");
+
+        base::grow_to_at_least(s);
     }
 
     template<class Container>
@@ -254,65 +124,27 @@ public:
         return res;
     }
 
-    auto size() const{
-        return map::size();
+    auto size() const {
+        return base::size();
     }
 
-    auto bucket_count() const {
-        return map::unsafe_bucket_count();
-    }
-
-    void earse(const K &key){
-        map::unsafe_erase(key);
-    }
-
-    iterator<typename map::iterator> begin() {
+    auto begin() {
         PROFILER_INC("IndexedVector_begin");
 
-        return iterator<typename map::iterator>(map::begin());
+        return base::begin();
     }
 
-    iterator<typename map::iterator> end() {
-        return iterator<typename map::iterator>(map::end());
+    auto end() {
+        return base::end();
     }
 
-    const_iterator<typename map::const_iterator> begin() const {
+    auto begin() const {
         PROFILER_INC("IndexedVector_begin");
 
-        return const_iterator<typename map::const_iterator>(map::begin());
+        return base::begin();
     }
 
-    const_iterator<typename map::const_iterator> end() const {
-        return const_iterator<typename map::const_iterator>(map::end());
-    }
-
-    const_key_iterator<typename map::const_iterator> begin_keys() const {
-        PROFILER_INC("IndexedVector_begin");
-
-        return const_key_iterator<typename map::const_iterator>(map::begin());
-    }
-
-    const_key_iterator<typename map::const_iterator> end_keys() const {
-        return const_key_iterator<typename map::const_iterator>(map::end());
-    }
-
-    iterator<typename map::local_iterator> begin(const std::size_t i) {
-        PROFILER_INC("IndexedVector_begin");
-
-        return iterator<typename map::local_iterator>(map::unsafe_begin(i));
-    }
-
-    iterator<typename map::local_iterator> end(const std::size_t i) {
-        return iterator<typename map::local_iterator>(map::unsafe_end(i));
-    }
-
-    const_iterator<typename map::const_local_iterator> begin(const std::size_t i) const {
-        PROFILER_INC("IndexedVector_localBegin");
-
-        return const_iterator<typename map::const_local_iterator>(map::unsafe_begin(i));
-    }
-
-    const_iterator<typename map::const_local_iterator> end(const std::size_t i) const {
-        return const_iterator<typename map::const_local_iterator>(map::unsafe_end(i));
+    auto end() const {
+        return base::end();
     }
 };

@@ -34,6 +34,8 @@ struct TriangulateReturn {
 };
 
 //**************************
+extern std::atomic<uint> gAtomicCgalID;
+//
 
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint recursionDepth,
@@ -70,11 +72,12 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
     if (verify) {
+        gAtomicCgalID = 0;
         CGALTriangulator<D, Precision, false> cgal(bounds, points);
         auto realDT = cgal.triangulate();
 
-        auto vr = dt.verify(points);
-        auto ccr = dt.crossCheck(realDT);
+        auto vr = dt.first.verify(dt.second, points);
+        auto ccr = dt.first.crossCheck(dt.second, realDT.first, realDT.second);
 
         ret.valid = vr.valid && ccr.valid;
     } else {

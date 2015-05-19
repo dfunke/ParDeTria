@@ -254,7 +254,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     PartialTriangulation pt;
     pt.simplices.reserve(helper.size(t));
 
-    DT.reserve(DT.size() + helper.size(t));
+    ///DT.grow(gAtomicCgalID);
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
 #ifndef NDEBUG
@@ -285,7 +285,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
         PLOG(a << std::endl);
 
-        DT.insert(a);
+        DT[a.id] = a;
         pt.simplices.insert(a.id);
     }
     DEDENT

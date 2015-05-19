@@ -7,6 +7,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/spin_mutex.h>
 
+#include "Triangulator.h"
+
 // static variables
 template<uint D, typename Precision> constexpr uint dPoint<D, Precision>::cINF;
 
@@ -630,14 +632,11 @@ uint dSimplices<D, Precision>::countDuplicates() const {
 
     std::atomic<uint> duplicates(0);
 
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(std::size_t(0), this->size(), [&](const uint i) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
-
-            const dSimplex<D, Precision> &s = *it;
-            auto simplices = findSimplices(s.vertices, true);
-            duplicates += simplices.size() - 1;
-        }
+        const dSimplex<D, Precision> &s = this->at(i);
+        auto simplices = findSimplices(s.vertices, true);
+        duplicates += simplices.size() - 1;
     });
 
     PLOG("Found " << duplicates << " duplicates" << std::endl);
@@ -647,27 +646,28 @@ uint dSimplices<D, Precision>::countDuplicates() const {
 
 template<uint D, typename Precision>
 CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
-        const dSimplices<D, Precision> &realDT) const {
+        const PartialTriangulation &pt,
+        const dSimplices<D, Precision> &realSimplices,
+        const PartialTriangulation &realPT) const {
     CrossCheckReport<D, Precision> result;
     result.valid = true;
 
     //build hashmap for simplex lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(this->size() + realDT.size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(pt.simplices.size() + realPT.simplices.size());
 
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &i : r) {
 
-            const dSimplex<D, Precision> &a = *it;
+            const dSimplex<D, Precision> &a = this->at(i);
             simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
         }
     });
 
-    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(realPT.simplices.range(), [&](const auto & r) {
 
-        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
-
-            const dSimplex<D, Precision> &a = *it;
+        for (const auto &i : r) {
+            const dSimplex<D, Precision> &a = realSimplices.at(i);
             simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
         }
     });
@@ -675,11 +675,10 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     tbb::spin_mutex mtx;
 
     // check whether all simplices of real DT are present
-    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(realPT.simplices.range(), [&](const auto &r) {
 
-        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
-
-            const dSimplex<D, Precision> &realSimplex = *it;
+        for(const auto & i : r) {
+            const dSimplex<D, Precision> &realSimplex = realSimplices.at(i);
 
             // find corresponding mySimplex for realSimplex
             // we can limit the search by using the face where-used ds
@@ -689,7 +688,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                                           range.second,
                                           [&](const auto &i) {
                                               return dSimplex<D, Precision>::isFinite(i.second)
-                                                     && this->contains(i.second)
+                                                     && pt.simplices.count(i.second)
                                                      && this->at(i.second).equalVertices(realSimplex);
                                           });
 
@@ -698,7 +697,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                 LOG("did not find simplex " << realSimplex << std::endl);
                 result.valid = false;
                 result.missing.insert(realSimplex);
-                continue;
+                return;
             }
 
             // check neighbors
@@ -709,7 +708,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                 bool found = false;
                 for (const auto &nn : this->at(mySimplex->second).neighbors) {
                     if (dSimplex<D, Precision>::isFinite(nn) &&
-                        this->operator[](nn).equalVertices(realDT[n])) {
+                        this->operator[](nn).equalVertices(realSimplices[n])) {
                         found = true;
                         break;
                     }
@@ -717,8 +716,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
                 if (!found) {
                     tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("did not find neighbor " << realDT[n] << " of simplex "
-                        << realSimplex << std::endl);
+                    LOG("did not find neighbor " << realSimplices[n] << " of simplex "
+                                                                 << realSimplex << std::endl);
                     result.valid = false;
                 }
             }
@@ -726,11 +725,11 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     // check for own simplices that are not in real DT
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &i : r) {
 
-            const dSimplex<D, Precision> &mySimplex = *it;
+            const dSimplex<D, Precision> &mySimplex = this->at(i);
 
             // again we use the face where-used ds for the lookup
             auto hash = mySimplex.fingerprint();
@@ -739,8 +738,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                                             range.second,
                                             [&](const auto &i) {
                                                 return dSimplex<D, Precision>::isFinite(i.second)
-                                                       && realDT.contains(i.second)
-                                                       && realDT.at(i.second).equalVertices(mySimplex);
+                                                       && realPT.simplices.count(i.second)
+                                                       && realSimplices.at(i.second).equalVertices(mySimplex);
                                             });
 
             if (realSimplex == range.second /*&& mySimplex.isFinite()*/) {
@@ -755,10 +754,10 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     // check whether sizes are equal
-    if (dSimplices<D, Precision>::size() != realDT.size()) {
-        LOG("my size: " + std::to_string(dSimplices<D, Precision>::size()) +
+    if (pt.simplices.size() != realPT.simplices.size()) {
+        LOG("my size: " + std::to_string(pt.simplices.size()) +
             " other size: "
-            << std::to_string(realDT.size()) + "\n");
+            << std::to_string(realPT.simplices.size()) + "\n");
         result.valid = false;
     }
 
@@ -770,7 +769,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
 template<uint D, typename Precision>
 VerificationReport<D, Precision>
-dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
+dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D, Precision> &points) const {
     INDENT
     VerificationReport<D, Precision> result;
     result.valid = true;
@@ -779,8 +778,8 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     // verify that every input point is used
     LOG("Checking points" << std::endl);
     Ids usedPoints;
-    for (const auto &s : *this) {
-        usedPoints.insert(s.vertices.begin(), s.vertices.end());
+    for (const auto &s : pt.simplices) {
+        usedPoints.insert(this->at(s).vertices.begin(), this->at(s).vertices.end());
     }
     if (points != usedPoints) {
         // not all points of input used
@@ -809,12 +808,12 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
     // verify convex hull
     LOG("Checking convex-hull" << std::endl);
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &i : r) {
 
-            const dSimplex<D, Precision> &s = *it;
-            if (!s.isFinite() && !this->convexHull.count(s.id)) {
+            const dSimplex<D, Precision> &s = this->at(i);
+            if (!s.isFinite() && !pt.convexHull.count(s.id)) {
                 // s is infinite but not part of the convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("Infinite simplex " << s << " NOT in convex hull" << std::endl);
@@ -823,9 +822,9 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
         }
     });
 
-    tbb::parallel_for(std::size_t(0), this->convexHull.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(std::size_t(0), pt.convexHull.bucket_count(), [&](const uint i) {
 
-        for (auto it = this->convexHull.begin(i); it != this->convexHull.end(i); ++it) {
+        for (auto it = pt.convexHull.begin(i); it != pt.convexHull.end(i); ++it) {
 
             const dSimplex<D, Precision> &s = this->at(*it);
             if (s.isFinite()) {
@@ -840,13 +839,13 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     // verify that all simplices with a shared D-1 simplex are neighbors
 
     //build hashmap for face lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1)*this->size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D + 1) * pt.simplices.size());
 
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &i : r) {
 
-            const dSimplex<D, Precision> &a = *it;
+            const dSimplex<D, Precision> &a = this->at(i);
             for (uint i = 0; i < D + 1; ++i) {
                 auto facetteHash = a.faceFingerprint(i);
 
@@ -856,11 +855,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     });
 
     LOG("Checking neighbors" << std::endl);
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &i : r) {
 
-            const dSimplex<D, Precision> &a = *it;
+            const dSimplex<D, Precision> &a = this->at(i);
 
             // we already verified that the face where-used data structure is correct
             // we can use it to verify the neighbor relation
@@ -868,7 +867,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
                 auto faceHash = a.faceFingerprint(i);
                 auto range = faceLookup.equal_range(faceHash);
                 for (auto it = range.first; it != range.second; ++it) {
-                    if (!dSimplex<D, Precision>::isFinite(it->second) || !this->contains(it->second))
+                    if (!dSimplex<D, Precision>::isFinite(it->second) || !pt.simplices.count(it->second))
                         // infinite/deleted simplex or not belonging to this triangulation
                         continue;
 
@@ -901,11 +900,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
     // check in circle criterion
     LOG("Checking empty circle criterion" << std::endl);
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &i : r) {
 
-            const dSimplex<D, Precision> &s = *it;
+            const dSimplex<D, Precision> &s = this->at(i);
 
             // we have established that the neighboorhood is correctly set
             // we check for all neighbors whether the NOT shared point is in the circle
