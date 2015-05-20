@@ -49,7 +49,7 @@ protected:
                                       const std::string provenance
     );
 
-    void getEdge(const Concurrent_LP_Set &convexHull,
+    void getEdge(const PartialTriangulation &pt,
                  const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,

@@ -86,7 +86,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
 }
 
 template<uint D, typename Precision>
-void DCTriangulator<D, Precision>::getEdge(const Concurrent_LP_Set &convexHull,
+void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
                                            const dSimplices<D, Precision> &simplices,
                                            const Partitioning<D, Precision> &partitioning, const uint &partition,
                                            Ids &edgePoints, Ids &edgeSimplices) {
@@ -97,9 +97,9 @@ void DCTriangulator<D, Precision>::getEdge(const Concurrent_LP_Set &convexHull,
     }
 
     Ids wqa;
-    wqa.insert(convexHull.begin(), convexHull.end()); // set of already checked simplices
+    wqa.insert(pt.convexHull.begin(), pt.convexHull.end()); // set of already checked simplices
     wqa.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
-    std::deque<uint> wq(convexHull.begin(), convexHull.end());
+    std::deque<uint> wq(pt.convexHull.begin(), pt.convexHull.end());
 
     /* Walk along the neighbors,
      * testing for each neighbor whether its circumsphere is within the
@@ -469,7 +469,7 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
 
                     VLOG("Partition " << i << ": extracting edge" << std::endl);
                     //TODO how to handle edge detection
-                    getEdge(partialDTs[i].convexHull, DT, partioning, i, edgePointIds, edgeSimplexIds);
+                    getEdge(partialDTs[i], DT, partioning, i, edgePointIds, edgeSimplexIds);
                     DEDENT
                 }
         );
