@@ -1,3 +1,5 @@
+#pragma once
+
 #include <atomic>
 #include <functional>
 #include <cstring>
@@ -11,6 +13,8 @@
 #include "Random.h"
 
 #include <tbb/tbb_stddef.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 
 template<typename T>
 struct Hasher {
@@ -187,21 +191,10 @@ public:
 
 public:
 
-    LP_Set(std::size_t size, Hasher<tKeyType> &hasher)
+    LP_Set(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_array(nullptr),
               m_hasher(hasher) {
-        // Initialize cells
-        m_arraySize = nextPow2(size);
-        m_array = std::make_unique<std::vector<tKeyType>>();
-        m_array->resize(m_arraySize);
-
-        m_hasher.l = log2(m_arraySize);
-    }
-
-    LP_Set(std::size_t size)
-            : m_items(0),
-              m_array(nullptr) {
         // Initialize cells
         m_arraySize = nextPow2(size);
         m_array = std::make_unique<std::vector<tKeyType>>();
@@ -233,38 +226,38 @@ public:
         if (!m_rehashing && m_items / m_arraySize > 0.5)
             rehash(m_arraySize << 1);
 
-            for (tKeyType idx = m_hasher(key); ; idx++) {
-                idx &= m_arraySize - 1;
-                ASSERT(idx < m_arraySize);
+        for (tKeyType idx = m_hasher(key); ; idx++) {
+            idx &= m_arraySize - 1;
+            ASSERT(idx < m_arraySize);
 
-                // Load the key that was there.
-                tKeyType probedKey = m_array->at(idx);
+            // Load the key that was there.
+            tKeyType probedKey = m_array->at(idx);
 
-                if (probedKey == key)
-                    return false; // the key is already in the set, return false;
-                else {
-                    // The entry was either free, or contains another key.
-                    if (probedKey != 0)
-                        continue; // Usually, it contains another key. Keep probing.
-                    // The entry was free. take it
-                    m_array->at(idx) = key;
-                    ++m_items;
-                    return true;
-                }
+            if (probedKey == key)
+                return false; // the key is already in the set, return false;
+            else {
+                // The entry was either free, or contains another key.
+                if (probedKey != 0)
+                    continue; // Usually, it contains another key. Keep probing.
+                // The entry was free. take it
+                m_array->at(idx) = key;
+                ++m_items;
+                return true;
             }
+        }
     }
 
     bool contains(const tKeyType &key) const {
         ASSERT(key != 0);
 
-            for (tKeyType idx = m_hasher(key); ; idx++) {
-                idx &= m_arraySize - 1;
-                tKeyType probedKey = m_array->at(idx);
-                if (probedKey == key)
-                    return true;;
-                if (probedKey == 0)
-                    return false;
-            }
+        for (tKeyType idx = m_hasher(key); ; idx++) {
+            idx &= m_arraySize - 1;
+            tKeyType probedKey = m_array->at(idx);
+            if (probedKey == key)
+                return true;;
+            if (probedKey == 0)
+                return false;
+        }
 
     }
 
@@ -275,12 +268,12 @@ public:
     bool empty() const { return m_items == 0; };
 
     bool empty(const std::size_t idx) const {
-            return m_array->at(idx) == 0;
+        return m_array->at(idx) == 0;
     };
 
     tKeyType at(const std::size_t idx) const {
 
-            return m_array->at(idx);
+        return m_array->at(idx);
     }
 
     auto capacity() const { return m_arraySize; }
@@ -302,8 +295,8 @@ public:
         m_array->resize(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-                if (oldArray->at(i) != 0)
-                    insert(oldArray->at(i));
+            if (oldArray->at(i) != 0)
+                insert(oldArray->at(i));
         }
 
         m_rehashing = false;
@@ -336,8 +329,8 @@ public:
         m_array->resize(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-                if (oldArray->at(i) != 0 && !filter.count(oldArray->at(i)))
-                    insert(oldArray->at(i));
+            if (oldArray->at(i) != 0 && !filter.count(oldArray->at(i)))
+                insert(oldArray->at(i));
         }
 
         m_rehashing = false;
@@ -348,8 +341,8 @@ public:
         rehash((capacity() + other.capacity()) << 1, filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
-                if (other.m_array->at(i) != 0 && !filter.count(other.m_array->at(i)))
-                    insert(other.m_array->at(i));
+            if (other.m_array->at(i) != 0 && !filter.count(other.m_array->at(i)))
+                insert(other.m_array->at(i));
         }
     }
 
@@ -388,25 +381,13 @@ public:
 
 public:
 
-    Concurrent_LP_Set(std::size_t size, Hasher<tKeyType> &hasher)
+    Concurrent_LP_Set(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_array(nullptr),
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]);
-        std::fill(m_array.get(), m_array.get() + m_arraySize, 0);
-
-        m_hasher.l = log2(m_arraySize);
-    }
-
-    Concurrent_LP_Set(std::size_t size)
-            : m_items(0),
-              m_array(nullptr) {
-        // Initialize cells
-        m_arraySize = nextPow2(size);
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]);
-        std::fill(m_array.get(), m_array.get() + m_arraySize, 0);
+        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
 
         m_hasher.l = log2(m_arraySize);
     }
@@ -497,53 +478,56 @@ public:
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]);
-        std::fill(m_array.get(), m_array.get() + m_arraySize, 0);
+        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
 
-        for (std::size_t i = 0; i < oldSize; ++i) {
+        tbb::parallel_for(std::size_t(0), oldSize, [&oldArray, this](const uint i) {
             if (oldArray[i].load(std::memory_order_relaxed) != 0)
                 insert(oldArray[i].load(std::memory_order_relaxed));
-        }
+        });
     }
 
     void unsafe_merge(Concurrent_LP_Set &&other) {
 
         unsafe_rehash((capacity() + other.capacity()) << 1);
 
-        for (std::size_t i = 0; i < other.capacity(); ++i) {
+        tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const uint i) {
             if (other.m_array[i].load(std::memory_order_relaxed) != 0)
                 insert(other.m_array[i].load(std::memory_order_relaxed));
-        }
+        });
     }
 
+
     template<class Set>
-    void unsafe_rehash(std::size_t newSize, const Set &filter) {
+    void unsafe_merge(Concurrent_LP_Set &&other, const Set &filter) {
+
         std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2(newSize);
+        m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
         m_hasher.l = log2(m_arraySize);
 
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]);
-        std::fill(m_array.get(), m_array.get() + m_arraySize, 0);
+        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
 
-        for (std::size_t i = 0; i < oldSize; ++i) {
-            if (oldArray[i].load(std::memory_order_relaxed) != 0 &&
-                !filter.count(oldArray[i].load(std::memory_order_relaxed)))
-                insert(oldArray[i].load(std::memory_order_relaxed));
-        }
-    }
+        tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())), [&oldArray, oldSize, &other, &filter, this](const auto & r) {
 
-    template<class Set>
-    void unsafe_merge(Concurrent_LP_Set &&other, const Set &filter) {
-        unsafe_rehash((capacity() + other.capacity()) << 1, filter);
+            tKeyType  val = 0;
+            for(auto i = r.begin(); i != r.end(); ++i) {
+                if (i < oldSize){
+                    val = oldArray[i].load(std::memory_order_relaxed);
 
-        for (std::size_t i = 0; i < other.capacity(); ++i) {
-            if (other.m_array[i].load(std::memory_order_relaxed) != 0 &&
-                !filter.count(other.m_array[i].load(std::memory_order_relaxed)))
-                insert(other.m_array[i].load(std::memory_order_relaxed));
-        }
+                    if(val != 0 && !filter.count(val))
+                        this->insert(val);
+                }
+
+                if (i < other.capacity()){
+                    val = other.m_array[i].load(std::memory_order_relaxed);
+
+                    if(val != 0 && !filter.count(val))
+                        this->insert(val);
+                }
+            }
+        });
     }
 
 public:
