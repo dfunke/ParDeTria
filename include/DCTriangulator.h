@@ -55,13 +55,13 @@ protected:
                  const uint &partition,
                  Ids &edgePoints, Ids &edgeSimplices);
 
-    void buildWhereUsed(const dSimplices<D, Precision> &DT,
-                        const Ids &edgeSimplices,
-                        cWuFaces &wuFaces);
+    cWuFaces buildWhereUsed(const dSimplices<D, Precision> &DT,
+                            const Ids &edgeSimplices);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices,
                          const PartialTriangulation &pt,
                          const Ids &toCheck,
+                         const cWuFaces &wuFaces,
                          const std::string &provenance);
 
     PartialTriangulation mergeTriangulation(std::vector<PartialTriangulation> &partialDTs,

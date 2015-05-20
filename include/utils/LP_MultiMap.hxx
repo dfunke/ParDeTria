@@ -28,7 +28,7 @@ namespace _detail {
                 : m_container(container),
                   m_idx(idx),
                   m_bound(bound),
-                  m_filter(filter) {  }
+                  m_filter(filter) { }
 
         filtered_iterator(const filtered_iterator &o)
                 : m_container(o.m_container),
@@ -38,8 +38,8 @@ namespace _detail {
 
         filtered_iterator &operator++() {
             while (m_idx = (m_idx + 1) & (m_container.capacity() - 1),
-                   (m_idx != m_bound &&
-                             (m_container.empty(m_idx) || m_container.at(m_idx).first != m_filter))) { }
+                    (m_idx != m_bound &&
+                     (m_container.empty(m_idx) || m_container.at(m_idx).first != m_filter))) { }
             return *this;
         }
 
@@ -141,6 +141,9 @@ public:
     ~LP_MultiMap() { }
 
     bool insert(const tKeyType &key, const tValueType &value) {
+        if(key == 0)
+            raise(SIGINT);
+
         ASSERT(key != 0);
 
         if (!m_rehashing && m_items / m_arraySize > 0.5)

@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <array>
 #include <cmath>
+#include <functional>
 
 #include "utils/IndexedVector.hxx"
 #include "utils/VectorAdapter.hxx"
@@ -20,6 +21,7 @@
 #include "utils/ASSERT.h"
 #include "utils/Timings.h"
 #include "utils/Misc.h"
+#include "utils/LP_MultiMap.hxx"
 
 typedef uint tHashType;
 typedef uint tIdType;
@@ -558,7 +560,7 @@ public:
 
     inline tHashType faceFingerprint(const uint i) const {
         PROFILER_INC("dSimplex_faceFingerprint");
-        return vFingerprint ^ _rol(vertices[i]);
+        return (vFingerprint ^ _rol(vertices[i])) | 1; //guarantee that hash does _not_ become zero
     }
 
 private:
@@ -623,191 +625,194 @@ struct CrossCheckReport;
 template<uint D, typename Precision>
 struct VerificationReport;
 
-class cConvexHull : private tbb::concurrent_unordered_set<tIdType> {
+//class cConvexHull : private tbb::concurrent_unordered_set<tIdType> {
+//
+//private:
+//    typedef tbb::concurrent_unordered_set<tIdType> base;
+//
+//public:
+//
+//    auto insert(const tIdType &id) {
+//        PROFILER_INC("dSimplices_convexHull_insert");
+//
+//        return base::insert(id);
+//    }
+//
+//    template<typename IT>
+//    void insert(IT first, IT last) {
+//        PROFILER_ADD("dSimplices_convexHull_insert", std::distance(first, last));
+//
+//        base::insert(first, last);
+//    }
+//
+//    auto begin() {
+//        PROFILER_INC("dSimplices_convexHull_begin");
+//
+//        return base::begin();
+//    }
+//
+//    auto end() {
+//        return base::end();
+//    }
+//
+//    auto begin() const {
+//        PROFILER_INC("dSimplices_convexHull_begin");
+//
+//        return base::begin();
+//    }
+//
+//    auto end() const {
+//        return base::end();
+//    }
+//
+//    auto begin(std::size_t i) {
+//        PROFILER_INC("dSimplices_convexHull_localBegin");
+//
+//        return base::unsafe_begin(i);
+//    }
+//
+//    auto end(std::size_t i) {
+//
+//        return base::unsafe_end(i);
+//    }
+//
+//    auto begin(std::size_t i) const {
+//        PROFILER_INC("dSimplices_convexHull_localBegin");
+//
+//        return base::unsafe_begin(i);
+//    }
+//
+//    auto end(std::size_t i) const {
+//
+//        return base::unsafe_end(i);
+//    }
+//
+//    void reserve(std::size_t s) {
+//        PROFILER_INC("dSimplices_convexHull_reserve");
+//
+//        base::rehash(nextPow2(s));
+//    }
+//
+//    auto size() const {
+//        return base::size();
+//    }
+//
+//    auto bucket_count() const {
+//        return base::unsafe_bucket_count();
+//    }
+//
+//    auto count(tIdType k) const {
+//        PROFILER_INC("dSimplices_convexHull_count");
+//
+//        return base::count(k);
+//    }
+//
+//    auto clear() {
+//        return base::clear();
+//    }
+//
+//};
 
-private:
-    typedef tbb::concurrent_unordered_set<tIdType> base;
+typedef Concurrent_LP_MultiMap cWuFaces;
+//typedef tbb::concurrent_unordered_multimap<tHashType, tIdType> cWuFaces;
 
-public:
-
-    auto insert(const tIdType &id) {
-        PROFILER_INC("dSimplices_convexHull_insert");
-
-        return base::insert(id);
-    }
-
-    template<typename IT>
-    void insert(IT first, IT last) {
-        PROFILER_ADD("dSimplices_convexHull_insert", std::distance(first, last));
-
-        base::insert(first, last);
-    }
-
-    auto begin() {
-        PROFILER_INC("dSimplices_convexHull_begin");
-
-        return base::begin();
-    }
-
-    auto end() {
-        return base::end();
-    }
-
-    auto begin() const {
-        PROFILER_INC("dSimplices_convexHull_begin");
-
-        return base::begin();
-    }
-
-    auto end() const {
-        return base::end();
-    }
-
-    auto begin(std::size_t i) {
-        PROFILER_INC("dSimplices_convexHull_localBegin");
-
-        return base::unsafe_begin(i);
-    }
-
-    auto end(std::size_t i) {
-
-        return base::unsafe_end(i);
-    }
-
-    auto begin(std::size_t i) const {
-        PROFILER_INC("dSimplices_convexHull_localBegin");
-
-        return base::unsafe_begin(i);
-    }
-
-    auto end(std::size_t i) const {
-
-        return base::unsafe_end(i);
-    }
-
-    void reserve(std::size_t s) {
-        PROFILER_INC("dSimplices_convexHull_reserve");
-
-        base::rehash(nextPow2(s));
-    }
-
-    auto size() const {
-        return base::size();
-    }
-
-    auto bucket_count() const {
-        return base::unsafe_bucket_count();
-    }
-
-    auto count(tIdType k) const {
-        PROFILER_INC("dSimplices_convexHull_count");
-
-        return base::count(k);
-    }
-
-    auto clear() {
-        return base::clear();
-    }
-
-};
-
-class cWuFaces : private tbb::concurrent_unordered_multimap<tHashType, tIdType> {
-
-private:
-    typedef tbb::concurrent_unordered_multimap<tHashType, tIdType> base;
-
-public:
-
-    void reserve(std::size_t s) {
-        PROFILER_INC("dSimplices_wuFaces_reserve");
-
-        base::rehash(nextPow2(s));
-    }
-
-    auto begin() {
-        PROFILER_INC("dSimplices_wuFaces_begin");
-
-        return base::begin();
-    }
-
-    auto end() {
-        return base::end();
-    }
-
-    auto begin() const {
-        PROFILER_INC("dSimplices_wuFaces_begin");
-
-        return base::begin();
-    }
-
-    auto end() const {
-        return base::end();
-    }
-
-    auto begin(std::size_t i) {
-        PROFILER_INC("dSimplices_wuFaces_localBegin");
-
-        return base::unsafe_begin(i);
-    }
-
-    auto end(std::size_t i) {
-
-        return base::unsafe_end(i);
-    }
-
-    auto begin(std::size_t i) const {
-        PROFILER_INC("dSimplices_wuFaces_localBegin");
-
-        return base::unsafe_begin(i);
-    }
-
-    auto end(std::size_t i) const {
-
-        return base::unsafe_end(i);
-    }
-
-    template<typename Pair>
-    auto insert(Pair &&__x) {
-        PROFILER_INC("dSimplices_wuFaces_insert");
-
-        return base::insert(std::forward<Pair>(__x));
-    }
-
-    template<typename... Args>
-    auto emplace(Args &&... __args) {
-        PROFILER_INC("dSimplices_wuFaces_emplace");
-
-        return base::emplace(std::forward<Args>(__args)...);
-    }
-
-    template<typename IT>
-    void insert(IT first, IT last) {
-        PROFILER_ADD("dSimplices_wuFaces_insert", std::distance(first, last));
-
-        base::insert(first, last);
-    }
-
-    auto equal_range(const tHashType &key) const {
-        PROFILER_INC("dSimplices_wuFaces_equal_range");
-
-        return base::equal_range(key);
-    }
-
-    auto equal_range(const tHashType &key) {
-        PROFILER_INC("dSimplices_wuFaces_equal_range");
-
-        return base::equal_range(key);
-    }
-
-    auto size() const {
-        return base::size();
-    }
-
-    auto bucket_count() const {
-        return base::unsafe_bucket_count();
-    }
-
-};
+//class cWuFaces : private tbb::concurrent_unordered_multimap<tHashType, tIdType> {
+//
+//private:
+//    typedef tbb::concurrent_unordered_multimap<tHashType, tIdType> base;
+//
+//public:
+//
+//    void reserve(std::size_t s) {
+//        PROFILER_INC("dSimplices_wuFaces_reserve");
+//
+//        base::rehash(nextPow2(s));
+//    }
+//
+//    auto begin() {
+//        PROFILER_INC("dSimplices_wuFaces_begin");
+//
+//        return base::begin();
+//    }
+//
+//    auto end() {
+//        return base::end();
+//    }
+//
+//    auto begin() const {
+//        PROFILER_INC("dSimplices_wuFaces_begin");
+//
+//        return base::begin();
+//    }
+//
+//    auto end() const {
+//        return base::end();
+//    }
+//
+//    auto begin(std::size_t i) {
+//        PROFILER_INC("dSimplices_wuFaces_localBegin");
+//
+//        return base::unsafe_begin(i);
+//    }
+//
+//    auto end(std::size_t i) {
+//
+//        return base::unsafe_end(i);
+//    }
+//
+//    auto begin(std::size_t i) const {
+//        PROFILER_INC("dSimplices_wuFaces_localBegin");
+//
+//        return base::unsafe_begin(i);
+//    }
+//
+//    auto end(std::size_t i) const {
+//
+//        return base::unsafe_end(i);
+//    }
+//
+//    template<typename Pair>
+//    auto insert(Pair &&__x) {
+//        PROFILER_INC("dSimplices_wuFaces_insert");
+//
+//        return base::insert(std::forward<Pair>(__x));
+//    }
+//
+//    template<typename... Args>
+//    auto emplace(Args &&... __args) {
+//        PROFILER_INC("dSimplices_wuFaces_emplace");
+//
+//        return base::emplace(std::forward<Args>(__args)...);
+//    }
+//
+//    template<typename IT>
+//    void insert(IT first, IT last) {
+//        PROFILER_ADD("dSimplices_wuFaces_insert", std::distance(first, last));
+//
+//        base::insert(first, last);
+//    }
+//
+//    auto equal_range(const tHashType &key) const {
+//        PROFILER_INC("dSimplices_wuFaces_equal_range");
+//
+//        return base::equal_range(key);
+//    }
+//
+//    auto equal_range(const tHashType &key) {
+//        PROFILER_INC("dSimplices_wuFaces_equal_range");
+//
+//        return base::equal_range(key);
+//    }
+//
+//    auto size() const {
+//        return base::size();
+//    }
+//
+//    auto bucket_count() const {
+//        return base::unsafe_bucket_count();
+//    }
+//
+//};
 
 //forward declare
 struct PartialTriangulation;
@@ -892,9 +897,6 @@ public:
 
         return result;
     }
-
-public:
-    cWuFaces wuFaces;
 };
 
 template<uint D, typename Precision>
@@ -913,3 +915,29 @@ struct VerificationReport {
 };
 
 //#############################################################################
+
+template<uint D, typename Precision>
+dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
+                                std::function<Precision()> &dice) {
+    dPoints<D, Precision> points;
+    points.reserve(n);
+
+    dVector<D, Precision> dim = bounds.high;
+    for (uint d = 0; d < D; ++d) {
+        dim[d] -= bounds.low[d];
+    }
+
+    for (uint i = 0; i < n; ++i) {
+        dPoint<D, Precision> p;
+        p.id = i;
+        for (uint d = 0; d < D; ++d) {
+            p.coords[d] = bounds.low[d] + dim[d] * dice();
+        }
+
+        points.emplace_back(p);
+    }
+
+    // TODO checks for colliding points, straight lines, etc.
+
+    return points;
+}

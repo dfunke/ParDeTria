@@ -126,7 +126,7 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
                  << " to edge -> circumcircle criterion"
                  << std::endl);
             edgeSimplices.insert(simplex.id);
-            if(simplex.id == dSimplex<D, Precision>::cINF) {
+            if (simplex.id == dSimplex<D, Precision>::cINF) {
                 std::cerr << x << " " << simplices.size() << std::endl;
                 raise(SIGINT);
             }
@@ -148,9 +148,8 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
 }
 
 template<uint D, typename Precision>
-void DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision> &DT,
-                                                  const Ids &edgeSimplices,
-                                                  cWuFaces &wuFaces) {
+cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision> &DT,
+                                                      const Ids &edgeSimplices) {
 
     Ids wqa; // set of already checked simplices
 
@@ -160,7 +159,7 @@ void DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision>
 
 
     VTUNE_TASK(BuildWU);
-    wuFaces.reserve((D + 1) * (D + 1) * edgeSimplices.size());
+    cWuFaces wuFaces((D + 1) * (D + 1) * (D + 1) * edgeSimplices.size());
 
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
 
@@ -172,7 +171,7 @@ void DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision>
                     if (wqa.insert(firstLayer).second) {
                         for (uint i = 0; i < D + 1; ++i) {
                             auto facetteHash = DT[firstLayer].faceFingerprint(i);
-                            wuFaces.emplace(facetteHash, firstLayer);
+                            wuFaces.insert(facetteHash, firstLayer);
                         }
                     }
                     // now loop over its neighbors, adding the ones not belonging to the edge
@@ -183,7 +182,7 @@ void DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision>
 
                             for (uint i = 0; i < D + 1; ++i) {
                                 auto facetteHash = DT[secondLayer].faceFingerprint(i);
-                                wuFaces.emplace(facetteHash, secondLayer);
+                                wuFaces.insert(facetteHash, secondLayer);
                             }
                         }
                     }
@@ -191,6 +190,8 @@ void DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision>
             }
         }
     });
+
+    return wuFaces;
 }
 
 template<uint D, typename Precision>
@@ -198,6 +199,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         dSimplices<D, Precision> &simplices,
         const PartialTriangulation &pt,
         const Ids &toCheck,
+        const cWuFaces & wuFaces,
         __attribute__((unused)) const std::string &provenance) {
 
     INDENT
@@ -259,16 +261,17 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         for (uint i = 0; i < D + 1; ++i) {
 
             auto facetteHash = simplex.faceFingerprint(i);
-            auto range = simplices.wuFaces.equal_range(facetteHash);
+            auto range = wuFaces.get(facetteHash);
             PLOG("Key: " << facetteHash << " #Results: " << std::distance(range.first, range.second) << std::endl;);
             for (auto it = range.first; it != range.second; ++it) {
-                if (it->second != simplex.id && dSimplex<D, Precision>::isFinite(it->second)
-                    && pt.simplices.count(it->second) && simplex.isNeighbor(simplices[it->second])) {
-                    PLOG("Neighbor with " << simplices[it->second] << std::endl);
+                auto i = *it;
+                if (i.second != simplex.id && dSimplex<D, Precision>::isFinite(i.second)
+                    && pt.simplices.count(i.second) && simplex.isNeighbor(simplices[i.second])) {
+                    PLOG("Neighbor with " << simplices[i.second] << std::endl);
 
-                    if (neighborSet.insert(it->second).second) {
-                        simplex.neighbors[neighborIdx++] = it->second;
-                        feeder.add(it->second);
+                    if (neighborSet.insert(i.second).second) {
+                        simplex.neighbors[neighborIdx++] = i.second;
+                        feeder.add(i.second);
                     }
                 }
             }
@@ -324,7 +327,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     VTUNE_END_TASK(CombineTriangulations);
 
     //build the where used datastructure for the faces
-    buildWhereUsed(DT, edgeSimplices, DT.wuFaces);
+    cWuFaces wuFaces = buildWhereUsed(DT, edgeSimplices);
 
     auto cmpFingerprint =
             [&DT](const tIdType &a, const tIdType &b) {
@@ -343,9 +346,9 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     Ids insertedSimplices;
 
     VTUNE_TASK(AddBorderSimplices);
-    tbb::parallel_for(edgeDT.simplices.range(), [&](const auto & r) {
+    tbb::parallel_for(edgeDT.simplices.range(), [&](const auto &r) {
 
-        for (const auto & i : r) {
+        for (const auto &i : r) {
 
             const dSimplex<D, Precision> &edgeSimplex = DT[i];
 
@@ -361,7 +364,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
                     pt.convexHull.insert(edgeSimplex.id);
 
                 for (uint d = 0; d < D + 1; ++d) {
-                    DT.wuFaces.emplace((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
+                    wuFaces.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
                 }
 
                 insertedSimplices.insert(edgeSimplex.id);
@@ -381,7 +384,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
                             pt.convexHull.insert(edgeSimplex.id);
 
                         for (uint d = 0; d < D + 1; ++d) {
-                            DT.wuFaces.emplace((edgeSimplex.faceFingerprint(d)),
+                            wuFaces.insert((edgeSimplex.faceFingerprint(d)),
                                                edgeSimplex.id);
                         }
 
@@ -396,7 +399,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     //ASSERT(DT.countDuplicates() == 0);
 
     LOG("Updating neighbors" << std::endl);
-    updateNeighbors(DT, pt, insertedSimplices, provenance);
+    updateNeighbors(DT, pt, insertedSimplices, wuFaces, provenance);
 
     return pt;
 }

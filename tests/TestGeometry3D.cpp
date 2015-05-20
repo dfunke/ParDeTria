@@ -3,6 +3,7 @@
 #define GTEST_HAS_TR1_TUPLE 0
 
 #include <gtest/gtest.h>
+#include <bitset>
 
 TEST(Geometry3D, HashingTest) {
 
@@ -45,6 +46,24 @@ TEST(Geometry3D, HashingTest) {
 
     // the other simplex
     EXPECT_NE(s.fingerprint(), ne.fingerprint());
+
+}
+
+TEST(Geometry3D, ZeroHash) {
+
+    //typedef std::bitset<32> bs;
+
+    dSimplex<3, double> s;
+    s.vertices = {{97, 892, 1371, 3932}};
+    s.genFingerprint();
+
+    EXPECT_NE(s.fingerprint(), 0);
+    //std::cout << "Fingerprint: " << s.fingerprint() << " - " << bs(s.fingerprint()).to_string() << std::endl;
+
+    for(uint d = 0; d < 3 + 1; ++d) {
+        EXPECT_NE(s.faceFingerprint(d), 0);
+        //std::cout << "Face " << d << ": " << s.faceFingerprint(d) << " - " << bs(s.faceFingerprint(d)).to_string() << std::endl;
+    }
 
 }
 
