@@ -16,7 +16,7 @@
 
 const uint START_SEED = 1986;
 typedef std::mt19937 tGenerator;
-tGenerator startGen(START_SEED);
+extern tGenerator startGen;
 
 /* Prototype
  * std::uniform_int_distribution<uint> distribution(0,100);

@@ -147,6 +147,10 @@ namespace _detail {
                 m_end(r.m_midpoint),
                 m_midpoint(m_begin) {
 
+            if (m_begin > m_end) {
+                raise(SIGINT);
+            }
+
             r.m_begin = r.m_midpoint;
 
             set_midpoint();
@@ -176,6 +180,11 @@ namespace _detail {
             else {
                 m_midpoint.setIdx((m_end + m_begin) / 2, true);
             }
+
+            if (m_begin > m_end) {
+                raise(SIGINT);
+            }
+
         }
     };
 }
@@ -233,6 +242,8 @@ public:
         if (!m_rehashing && m_items / m_arraySize > 0.5)
             rehash(m_arraySize << 1);
 
+        try {
+
             for (tKeyType idx = m_hasher(key); ; idx++) {
                 idx &= m_arraySize - 1;
                 ASSERT(idx < m_arraySize);
@@ -252,11 +263,17 @@ public:
                     return true;
                 }
             }
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+            return false;
+        }
     }
 
     bool contains(const tKeyType &key) const {
         ASSERT(key != 0);
 
+        try {
             for (tKeyType idx = m_hasher(key); ; idx++) {
                 idx &= m_arraySize - 1;
                 tKeyType probedKey = m_array->at(idx);
@@ -265,6 +282,11 @@ public:
                 if (probedKey == 0)
                     return false;
             }
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+            return false;
+        }
 
     }
 
@@ -275,12 +297,24 @@ public:
     bool empty() const { return m_items == 0; };
 
     bool empty(const std::size_t idx) const {
+        try {
             return m_array->at(idx) == 0;
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+            return false;
+        }
     };
 
     tKeyType at(const std::size_t idx) const {
 
+        try {
             return m_array->at(idx);
+        } catch (std::exception &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+            return false;
+        }
     }
 
     auto capacity() const { return m_arraySize; }
@@ -302,8 +336,13 @@ public:
         m_array->resize(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
+            try {
                 if (oldArray->at(i) != 0)
                     insert(oldArray->at(i));
+            } catch (std::exception &e) {
+                std::cerr << e.what() << std::endl;
+                raise(SIGINT);
+            }
         }
 
         m_rehashing = false;
@@ -336,8 +375,13 @@ public:
         m_array->resize(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
+            try {
                 if (oldArray->at(i) != 0 && !filter.count(oldArray->at(i)))
                     insert(oldArray->at(i));
+            } catch (std::exception &e) {
+                std::cerr << e.what() << std::endl;
+                raise(SIGINT);
+            }
         }
 
         m_rehashing = false;
@@ -348,8 +392,13 @@ public:
         rehash((capacity() + other.capacity()) << 1, filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
+            try {
                 if (other.m_array->at(i) != 0 && !filter.count(other.m_array->at(i)))
                     insert(other.m_array->at(i));
+            } catch (std::exception &e) {
+                std::cerr << e.what() << std::endl;
+                raise(SIGINT);
+            }
         }
     }
 

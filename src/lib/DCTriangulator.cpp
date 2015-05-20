@@ -86,7 +86,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
 }
 
 template<uint D, typename Precision>
-void DCTriangulator<D, Precision>::getEdge(const Ids &convexHull,
+void DCTriangulator<D, Precision>::getEdge(const Concurrent_LP_Set &convexHull,
                                            const dSimplices<D, Precision> &simplices,
                                            const Partitioning<D, Precision> &partitioning, const uint &partition,
                                            Ids &edgePoints, Ids &edgeSimplices) {
@@ -306,7 +306,7 @@ template<uint D, typename Precision>
 PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vector<PartialTriangulation> &partialDTs,
                                                                       dSimplices<D, Precision> &DT,
                                                                       const Ids &edgeSimplices,
-                                                                      const Ids &edgeDT,
+                                                                      const PartialTriangulation &edgeDT,
                                                                       const Partitioning<D, Precision> &partitioning,
                                                                       const std::string &provenance) {
 
@@ -318,14 +318,8 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     PartialTriangulation pt = std::move(partialDTs[0]);
 
     for (uint i = 1; i < partialDTs.size(); ++i) {
-        pt.simplices.insert(partialDTs[i].simplices.begin(), partialDTs[i].simplices.end());
-        pt.convexHull.insert(partialDTs[i].convexHull.begin(), partialDTs[i].convexHull.end());
-    }
-
-    // copy the simplices not belonging to the edge
-    for (auto &edgeSimplex : edgeSimplices) {
-        pt.simplices.erase(edgeSimplex);
-        pt.convexHull.erase(edgeSimplex);
+        pt.simplices.unsafe_merge(std::move(partialDTs[i].simplices), edgeSimplices);
+        pt.convexHull.unsafe_merge(std::move(partialDTs[i].convexHull), edgeSimplices);
     }
     VTUNE_END_TASK(CombineTriangulations);
 
@@ -349,11 +343,11 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     Ids insertedSimplices;
 
     VTUNE_TASK(AddBorderSimplices);
-    tbb::parallel_for(std::size_t(0), edgeDT.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(edgeDT.simplices.range(), [&](const auto & r) {
 
-        for (auto it = edgeDT.begin(i); it != edgeDT.end(i); ++it) {
+        for (const auto & i : r) {
 
-            const dSimplex<D, Precision> &edgeSimplex = DT[*it];
+            const dSimplex<D, Precision> &edgeSimplex = DT[i];
 
             // check whether edgeSimplex is completely contained in one partition
             uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
@@ -494,7 +488,7 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
         DEDENT
 
         //TODO this is all wrong
-        return mergeTriangulation(partialDTs, DT, edgeSimplexIds, edgeDT.simplices, partioning, provenance);
+        return mergeTriangulation(partialDTs, DT, edgeSimplexIds, edgeDT, partioning, provenance);
 
     } else { // base case
         return _triangulateBase(DT, partitionPoints, bounds, provenance);

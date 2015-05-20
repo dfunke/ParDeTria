@@ -49,7 +49,7 @@ protected:
                                       const std::string provenance
     );
 
-    void getEdge(const Ids &convexHull,
+    void getEdge(const Concurrent_LP_Set &convexHull,
                  const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,
@@ -67,7 +67,7 @@ protected:
     PartialTriangulation mergeTriangulation(std::vector<PartialTriangulation> &partialDTs,
                                             dSimplices<D, Precision> &DT,
                                             const Ids &edgeSimplices,
-                                            const Ids &edgeDT,
+                                            const PartialTriangulation &edgeDT,
                                             const Partitioning<D, Precision> &partitioning,
                                             const std::string &provenance
     );

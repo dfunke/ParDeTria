@@ -14,8 +14,8 @@
 #include "utils/VTuneAdapter.h"
 
 // define a static counter for the tetrahedronID
-std::atomic<uint> gAtomicTetrahedronID(0);
-std::atomic<uint> gAtomicCgalID(0);
+std::atomic<uint> gAtomicTetrahedronID(1);
+std::atomic<uint> gAtomicCgalID(1);
 
 // CGAL
 #define CGAL_LINKED_WITH_TBB
@@ -251,8 +251,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     PLOG("Collecting simplices" << std::endl);
     INDENT
 
-    PartialTriangulation pt;
-    pt.simplices.reserve(helper.size(t));
+    PartialTriangulation pt(helper.size(t), helper.size(t)/2);
 
     ///DT.grow(gAtomicCgalID);
 
@@ -429,7 +428,7 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
 
-    PartialTriangulation dummy;
+    PartialTriangulation dummy(1,1);
     return dummy;
 }
 

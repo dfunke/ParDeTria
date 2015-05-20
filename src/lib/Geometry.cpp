@@ -822,11 +822,11 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
         }
     });
 
-    tbb::parallel_for(std::size_t(0), pt.convexHull.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(pt.convexHull.range(), [&](const auto & r) {
 
-        for (auto it = pt.convexHull.begin(i); it != pt.convexHull.end(i); ++it) {
+        for (const auto & i : r) {
 
-            const dSimplex<D, Precision> &s = this->at(*it);
+            const dSimplex<D, Precision> &s = this->at(i);
             if (s.isFinite()) {
                 // s is finite but part of convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);

@@ -7,10 +7,17 @@
 #include "Geometry.h"
 
 #include "utils/VTuneAdapter.h"
+#include "utils/LP_Set.hxx"
 
 struct PartialTriangulation {
-    Ids simplices;
-    Ids convexHull;
+    Concurrent_LP_Set simplices;
+    Concurrent_LP_Set convexHull;
+
+    PartialTriangulation(const std::size_t nSimplices, const std::size_t nConvexHull)
+            : simplices(nSimplices), convexHull(nConvexHull) { }
+
+    PartialTriangulation()
+            : simplices(1), convexHull(1) { }
 };
 
 template<uint D, typename Precision>
