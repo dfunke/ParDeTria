@@ -19,7 +19,9 @@
 #include <thread>
 
 #include <tbb/parallel_for.h>
-#include <tbb/parallel_do.h>
+// use own parallel_do
+//#include <tbb/parallel_do.h>
+#include "mods/parallel_do.h"
 #include <tbb/parallel_sort.h>
 #include <tbb/enumerable_thread_specific.h>
 
@@ -99,7 +101,6 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
     Ids wqa;
     wqa.insert(pt.convexHull.begin(), pt.convexHull.end()); // set of already checked simplices
     wqa.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
-    std::deque<uint> wq(pt.convexHull.begin(), pt.convexHull.end());
 
     /* Walk along the neighbors,
      * testing for each neighbor whether its circumsphere is within the
@@ -109,11 +110,13 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
     INDENT
 
     VTUNE_TASK(IdentifyEdge);
-    while (!wq.empty()) {
-        uint x = wq.front();
-        wq.pop_front();
+    tbb::parallel_do(pt.convexHull, [&](const uint id,
+                                  tbb::parallel_do_feeder<uint> &feeder) {
 
-        const auto &simplex = simplices[x];
+        if(!dSimplex<D,Precision>::isFinite(id))
+            return;
+
+        const auto &simplex = simplices[id];
         const auto cs = simplex.circumsphere(this->points);
         bool intersectsBounds = false;
         for (uint i = 0; i < partitioning.size(); ++i) {
@@ -126,10 +129,6 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
                  << " to edge -> circumcircle criterion"
                  << std::endl);
             edgeSimplices.insert(simplex.id);
-            if (simplex.id == dSimplex<D, Precision>::cINF) {
-                std::cerr << x << " " << simplices.size() << std::endl;
-                raise(SIGINT);
-            }
 
             for (uint i = 0; i < D + 1; ++i) {
                 edgePoints.insert(simplex.vertices[i]);
@@ -138,11 +137,11 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
             for (const auto &n : simplex.neighbors) {
                 if (wqa.insert(n).second) {
                     // n was not yet inspected
-                    wq.push_back(n);
+                    feeder.add(n);
                 }
             }
         }
-    }
+    });
 
     DEDENT
 }
