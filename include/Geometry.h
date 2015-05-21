@@ -22,6 +22,7 @@
 #include "utils/Timings.h"
 #include "utils/Misc.h"
 #include "utils/LP_MultiMap.hxx"
+#include "utils/BlockedArray.hxx"
 
 typedef uint tHashType;
 typedef uint tIdType;
@@ -818,51 +819,10 @@ typedef Concurrent_LP_MultiMap cWuFaces;
 struct PartialTriangulation;
 
 template<uint D, typename Precision>
-class dSimplices : public IndexedVector<dSimplex<D, Precision>> {
+class dSimplices : public Concurrent_BlockedArray<dSimplex<D, Precision>> {
 
 public:
-    dSimplices() : IndexedVector<dSimplex<D, Precision>>() { }
-
-    dSimplices(const IndexedVector<dSimplex<D, Precision>> &other)
-            : IndexedVector<dSimplex<D, Precision>>(other) { }
-
-    bool operator==(const dSimplices<D, Precision> &other) const {
-        PROFILER_INC("dSimplices_compare");
-
-        if (this->size() != other.size()) {
-            return false;
-        }
-
-        for (const auto &otherSimplex : other) {
-            // find my simplex, compares simplex id or vertices ids
-            auto mySimplex = std::find(this->begin(), this->end(), otherSimplex);
-
-            if (mySimplex == this->end()) {
-                PLOG("did not find simplex" << otherSimplex << std::endl);
-                return false;
-            }
-
-            // check neighbors
-            for (const auto &n : mySimplex->neighbors) {
-                // TODO handle infinite neighbors better
-                if (dSimplex<D, Precision>::isFinite(n) &&
-                    //TODO sorted array for binary search?
-                    std::find(otherSimplex.neighbors.begin(), otherSimplex.neighbors.end(), n) ==
-                    otherSimplex.neighbors.end()) {
-                    // the other triangulation does not contain n as neighbor
-                    PLOG("wrong neighbors: " << *mySimplex << " -- " << otherSimplex
-                         << std::endl);
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    bool operator!=(const dSimplices<D, Precision> &other) const {
-        return !operator==(other);
-    }
+    dSimplices() : Concurrent_BlockedArray<dSimplex<D, Precision>>() { }
 
     VerificationReport<D, Precision>
             verify(const PartialTriangulation &pt,
@@ -902,8 +862,8 @@ public:
 template<uint D, typename Precision>
 struct CrossCheckReport {
     bool valid;
-    dSimplices<D, Precision> missing;
-    dSimplices<D, Precision> invalid;
+    std::vector<dSimplex<D, Precision>> missing;
+    std::vector<dSimplex<D, Precision>> invalid;
 };
 
 template<uint D, typename Precision>

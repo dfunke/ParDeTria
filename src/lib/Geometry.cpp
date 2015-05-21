@@ -627,24 +627,6 @@ dSphere<D, Precision> dSimplex<D, Precision>::circumsphere(
 }
 
 template<uint D, typename Precision>
-uint dSimplices<D, Precision>::countDuplicates() const {
-    PROFILER_INC("dSimplices_countDuplicates");
-
-    std::atomic<uint> duplicates(0);
-
-    tbb::parallel_for(std::size_t(0), this->size(), [&](const uint i) {
-
-        const dSimplex<D, Precision> &s = this->at(i);
-        auto simplices = findSimplices(s.vertices, true);
-        duplicates += simplices.size() - 1;
-    });
-
-    PLOG("Found " << duplicates << " duplicates" << std::endl);
-
-    return duplicates;
-}
-
-template<uint D, typename Precision>
 CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
         const PartialTriangulation &pt,
         const dSimplices<D, Precision> &realSimplices,
@@ -696,7 +678,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("did not find simplex " << realSimplex << std::endl);
                 result.valid = false;
-                result.missing.insert(realSimplex);
+                result.missing.push_back(realSimplex);
                 return;
             }
 
@@ -748,7 +730,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                 LOG("simplex " << mySimplex << " does not exist in real triangulation"
                     << std::endl);
                 result.valid = false;
-                result.invalid.insert(mySimplex);
+                result.invalid.push_back(mySimplex);
             }
         }
     });

@@ -35,7 +35,8 @@ public:
 
     std::pair<dSimplices<D, Precision>, PartialTriangulation> triangulate() {
         dSimplices<D, Precision> DT;
-        DT.grow(611253);
+        DT.reserve(points.size() * std::sqrt(points.size()));
+
         PartialTriangulation pt = this->_triangulate(DT, allPoints(), baseBounds, std::to_string(TOP));
 
         return std::make_pair(std::move(DT), std::move(pt));

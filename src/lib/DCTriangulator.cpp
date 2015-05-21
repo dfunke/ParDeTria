@@ -296,9 +296,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     });
 
 #ifndef NDEBUG
-    LOG("Updating neighbors - checked: " << checked << " updated: " << updated
-        << " simplices: " << simplices.size()
-        << std::endl);
+    LOG("Updating neighbors - checked: " << checked << " updated: " << updated << std::endl);
 #endif
 
     DEDENT

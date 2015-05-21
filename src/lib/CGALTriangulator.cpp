@@ -253,7 +253,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
     PartialTriangulation pt(helper.size(t), helper.size(t)/2);
 
-    ///DT.grow(gAtomicCgalID);
+    DT.reserve(gAtomicCgalID);
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
 #ifndef NDEBUG

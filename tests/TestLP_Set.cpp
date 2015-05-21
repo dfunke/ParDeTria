@@ -1,6 +1,7 @@
 #include "utils/LP_Set.hxx"
 #include "utils/LP_Map.hxx"
 #include "utils/LP_MultiMap.hxx"
+#include "utils/BlockedArray.hxx"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -67,8 +68,8 @@ TEST(Concurrent_LP_Set, Merge) {
 
     a.unsafe_merge(std::move(b));
 
-    for(uint i : cmp) {
-      EXPECT_TRUE(a.contains(i));
+    for (uint i : cmp) {
+        EXPECT_TRUE(a.contains(i));
     }
 }
 
@@ -132,7 +133,7 @@ TEST(LP_Set, Merge) {
 
     a.merge(std::move(b));
 
-    for(uint i : cmp) {
+    for (uint i : cmp) {
         EXPECT_TRUE(a.contains(i));
     }
 }
@@ -193,11 +194,11 @@ TEST(Concurrent_LP_Map, Merge) {
 
     for (auto i : cmp) {
         EXPECT_TRUE(a.contains(i.first) | b.contains(i.first));
-        if(a.contains(i.first)) {
+        if (a.contains(i.first)) {
             EXPECT_EQ(a.get(i.first), i.second);
             EXPECT_EQ(b.get(i.first), 0);
         }
-        if(b.contains(i.first)) {
+        if (b.contains(i.first)) {
             EXPECT_EQ(a.get(i.first), 0);
             EXPECT_EQ(b.get(i.first), i.second);
         }
@@ -205,7 +206,7 @@ TEST(Concurrent_LP_Map, Merge) {
 
     a.unsafe_merge(std::move(b));
 
-    for(auto i : cmp) {
+    for (auto i : cmp) {
         EXPECT_TRUE(a.contains(i.first));
         EXPECT_EQ(a.get(i.first), i.second);
     }
@@ -227,7 +228,7 @@ TEST(Concurrent_LP_MultiMap, InsertContains) {
     for (uint i = 0; i < 60; ++i) {
         auto key = valueDice();
         auto n = numberDice();
-        for(uint k = 0; k < n; ++k) {
+        for (uint k = 0; k < n; ++k) {
             auto x = std::make_pair(key, valueDice());
 
             EXPECT_TRUE(map.insert(x));
@@ -245,7 +246,7 @@ TEST(Concurrent_LP_MultiMap, InsertContains) {
 
         EXPECT_EQ(std::distance(mapRange.first, mapRange.second), std::distance(cmpRange.first, cmpRange.second));
 
-        for(auto it = mapRange.first; it != mapRange.second; ++it){
+        for (auto it = mapRange.first; it != mapRange.second; ++it) {
             EXPECT_TRUE(std::find(cmpRange.first, cmpRange.second, *it) != cmpRange.second);
         }
 
@@ -272,7 +273,7 @@ TEST(Concurrent_LP_MultiMap, Merge) {
         auto key = valueDice();
 
         auto n = numberDice();
-        for(uint k = 0; k < n; ++k) {
+        for (uint k = 0; k < n; ++k) {
             auto x = std::make_pair(key, valueDice());
 
             EXPECT_TRUE(a.insert(x));
@@ -280,7 +281,7 @@ TEST(Concurrent_LP_MultiMap, Merge) {
         }
 
         n = numberDice();
-        for(uint k = 0; k < n; ++k) {
+        for (uint k = 0; k < n; ++k) {
             auto x = std::make_pair(key, valueDice());
 
             EXPECT_TRUE(b.insert(x));
@@ -299,13 +300,14 @@ TEST(Concurrent_LP_MultiMap, Merge) {
         auto aRange = a.get(i.first);
         auto bRange = b.get(i.first);
 
-        EXPECT_EQ(std::distance(aRange.first, aRange.second) + std::distance(bRange.first, bRange.second), std::distance(cmpRange.first, cmpRange.second));
+        EXPECT_EQ(std::distance(aRange.first, aRange.second) + std::distance(bRange.first, bRange.second),
+                  std::distance(cmpRange.first, cmpRange.second));
 
-        for(auto it = aRange.first; it != aRange.second; ++it){
+        for (auto it = aRange.first; it != aRange.second; ++it) {
             EXPECT_TRUE(std::find(cmpRange.first, cmpRange.second, *it) != cmpRange.second);
         }
 
-        for(auto it = bRange.first; it != bRange.second; ++it){
+        for (auto it = bRange.first; it != bRange.second; ++it) {
             EXPECT_TRUE(std::find(cmpRange.first, cmpRange.second, *it) != cmpRange.second);
         }
 
@@ -324,10 +326,102 @@ TEST(Concurrent_LP_MultiMap, Merge) {
 
         EXPECT_EQ(std::distance(mapRange.first, mapRange.second), std::distance(cmpRange.first, cmpRange.second));
 
-        for(auto it = mapRange.first; it != mapRange.second; ++it){
+        for (auto it = mapRange.first; it != mapRange.second; ++it) {
             EXPECT_TRUE(std::find(cmpRange.first, cmpRange.second, *it) != cmpRange.second);
         }
 
         it = cmpRange.second;
     }
+}
+
+TEST(BlockedArray, OneBlock) {
+
+    const uint BS = 512;
+
+    BlockedArray<uint, BS> ba; // allocates one block;
+
+    for (uint i = 0; i < BS; ++i)
+        ba[i] = i;
+
+    for (uint i = 0; i < BS; ++i)
+            EXPECT_EQ(i, ba[i]);
+
+}
+
+TEST(BlockedArray, TwoBlocks) {
+
+    const uint BS = 512;
+
+    BlockedArray<uint, BS> ba(2 * BS); // allocates two block;
+
+    for (uint i = 0; i < 2 * BS; ++i)
+        ba[i] = i;
+
+    for (uint i = 0; i < 2 * BS; ++i)
+            EXPECT_EQ(i, ba[i]);
+
+}
+
+TEST(BlockedArray, ReserveBlock) {
+
+    const uint BS = 512;
+
+    BlockedArray<uint, BS> ba; // allocates one block;
+
+    for (uint i = 0; i < 2 * BS; ++i) {
+        if (i == BS / 2)
+            ba.reserve(2 * BS);
+
+        ba[i] = i;
+    }
+
+    for (uint i = 0; i < 2 * BS; ++i)
+            EXPECT_EQ(i, ba[i]);
+
+}
+
+TEST(Concurrent_BlockedArray, OneBlock) {
+
+    const uint BS = 512;
+
+    Concurrent_BlockedArray<uint, BS> ba; // allocates one block;
+
+    for (uint i = 0; i < BS; ++i)
+        ba[i] = i;
+
+    for (uint i = 0; i < BS; ++i)
+            EXPECT_EQ(i, ba[i]);
+
+}
+
+TEST(Concurrent_BlockedArray, TwoBlocks) {
+
+    const uint BS = 512;
+
+    Concurrent_BlockedArray<uint, BS> ba(2 * BS); // allocates two block;
+
+    for (uint i = 0; i < 2 * BS; ++i)
+        ba[i] = i;
+
+    for (uint i = 0; i < 2 * BS; ++i)
+            EXPECT_EQ(i, ba[i]);
+
+}
+
+TEST(Concurrent_BlockedArray, ReserveBlock) {
+
+    const uint BS = 512;
+
+    Concurrent_BlockedArray<uint, BS> ba; // allocates one block;
+
+    for (uint i = 0; i < 2 * BS; ++i) {
+        if (i == BS / 2)
+            ba.reserve(2 * BS);
+
+        ba[i] = i;
+    }
+
+    for (uint i = 0; i < 2 * BS; ++i)
+            EXPECT_EQ(i, ba[i]);
+
 }
