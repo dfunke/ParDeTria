@@ -15,14 +15,16 @@
 #include <cmath>
 #include <functional>
 
-#include "utils/IndexedVector.hxx"
-#include "utils/VectorAdapter.hxx"
+#include "datastructures/IndexedVector.hxx"
+#include "datastructures/VectorAdapter.hxx"
+#include "datastructures/LP_MultiMap.hxx"
+#include "datastructures/BlockedArray.hxx"
+
+
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
 #include "utils/Timings.h"
 #include "utils/Misc.h"
-#include "utils/LP_MultiMap.hxx"
-#include "utils/BlockedArray.hxx"
 
 typedef uint tHashType;
 typedef uint tIdType;
@@ -833,30 +835,6 @@ public:
                        const dSimplices<D, Precision> &realSimplices,
                        const PartialTriangulation &realPT) const;
 
-    uint countDuplicates() const;
-
-    template<typename Container>
-    dSimplices<D, Precision> findSimplices(const Container &points,
-                                           const bool all = false) const {
-
-        PROFILER_INC("dSimplices_findSimplices");
-
-        dSimplices<D, Precision> result;
-
-        if (all) {
-            for (const auto &s : *this) {
-                if (s.containsAll(points))
-                    result.insert(s);
-            }
-        } else {
-            for (const auto &s : *this) {
-                if (s.containsAny(points))
-                    result.insert(s);
-            }
-        }
-
-        return result;
-    }
 };
 
 template<uint D, typename Precision>

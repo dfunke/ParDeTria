@@ -1,110 +1,16 @@
 #pragma once
 
-#include <atomic>
-#include <functional>
-#include <cstring>
-#include <csignal>
-
-#include <iostream>
-#include <iomanip>
-
-#include "Misc.h"
-#include "ASSERT.h"
-#include "Random.h"
 #include "LP_Set.hxx"
 
-#include <tbb/tbb_stddef.h>
-#include <tbb/parallel_for.h>
-#include <tbb/blocked_range.h>
-
-namespace _detail {
-
-    template<class Container, typename KeyType, typename ValueType>
-    struct filtered_iterator
-            : public std::iterator<std::forward_iterator_tag, std::pair<const KeyType, ValueType>> {
-
-    public:
-        filtered_iterator(const Container &container, std::size_t idx, std::size_t bound, const KeyType &filter)
-                : m_container(container),
-                  m_idx(idx),
-                  m_bound(bound),
-                  m_filter(filter) { }
-
-        filtered_iterator(const filtered_iterator &o)
-                : m_container(o.m_container),
-                  m_idx(o.m_idx),
-                  m_bound(o.m_bound),
-                  m_filter(o.m_filter) { }
-
-        filtered_iterator &operator++() {
-            while (m_idx = (m_idx + 1) & (m_container.capacity() - 1),
-                    (m_idx != m_bound &&
-                     (m_container.empty(m_idx) || m_container.at(m_idx).first != m_filter))) { }
-            return *this;
-        }
-
-        filtered_iterator operator++(int) {
-            auto tmp = *this;
-            ++(*this);
-            return tmp;
-        }
-
-        std::size_t operator-(const filtered_iterator &other) const {
-            return m_idx - other.m_idx;
-        }
-
-        std::size_t operator+(const filtered_iterator &other) const {
-            return m_idx + other.m_idx;
-        }
-
-        bool operator==(const filtered_iterator &j) const {
-            return m_idx == j.m_idx;
-        }
-
-        bool operator!=(const filtered_iterator &j) const { return !(*this == j); }
-
-        bool operator<(const filtered_iterator &other) const {
-            return m_idx < other.m_idx;
-        }
-
-        bool operator<=(const filtered_iterator &other) const {
-            return m_idx <= other.m_idx;
-        }
-
-        bool operator>(const filtered_iterator &other) const {
-            return m_idx > other.m_idx;
-        }
-
-        bool operator>=(const filtered_iterator &other) const {
-            return m_idx >= other.m_idx;
-        }
-
-        const auto operator*() const { return m_container.at(m_idx); }
-
-        //const auto *operator->() const { return &m_container.at(m_idx); }
-
-    protected:
-        const Container &m_container;
-        std::size_t m_idx;
-        std::size_t m_bound;
-        const KeyType m_filter;
-    };
-}
-
-class LP_MultiMap {
+class LP_Map {
 
 public:
     typedef uint tKeyType;
     typedef uint tValueType;
 
 public:
-    typedef _detail::iterator<LP_MultiMap, std::pair<const tKeyType, tValueType>> iterator;
-    typedef _detail::filtered_iterator<LP_MultiMap, tKeyType, tValueType> filtered_iterator;
-    typedef _detail::range_type<LP_MultiMap, iterator> range_type;
 
-public:
-
-    LP_MultiMap(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    LP_Map(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_keys(nullptr),
               m_hasher(hasher) {
@@ -121,14 +27,14 @@ public:
         m_hasher.l = log2(m_arraySize);
     }
 
-    LP_MultiMap(LP_MultiMap &&other)
+    LP_Map(LP_Map &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
               m_hasher(std::move(other.m_hasher)) { }
 
-    LP_MultiMap &operator=(LP_MultiMap &&other) {
+    LP_Map &operator=(LP_Map &&other) {
         m_arraySize = other.m_arraySize;
         m_items = other.m_items;
         m_keys = std::move(other.m_keys);
@@ -138,12 +44,9 @@ public:
         return *this;
     }
 
-    ~LP_MultiMap() { }
+    ~LP_Map() { }
 
     bool insert(const tKeyType &key, const tValueType &value) {
-        if(key == 0)
-            raise(SIGINT);
-
         ASSERT(key != 0);
 
         if (!m_rehashing && m_items / m_arraySize > 0.5)
@@ -156,66 +59,43 @@ public:
             // Load the key that was there.
             tKeyType probedKey = m_keys->at(idx);
 
-            if (probedKey != 0)
-                continue; // Usually, it contains another key. Keep probing.
-
-            // The entry was free. take it
-            m_keys->at(idx) = key;
-            m_values->at(idx) = value;
-            ++m_items;
-            return true;
+            if (probedKey == key) {
+                m_values->at(idx) = value; // key already exists, update value
+                return false; // we didn't insert a new key
+            }
+            else {
+                // The entry was either free, or contains another key.
+                if (probedKey != 0)
+                    continue; // Usually, it contains another key. Keep probing.
+                // The entry was free. take it
+                m_keys->at(idx) = key;
+                m_values->at(idx) = value;
+                ++m_items;
+                return true;
+            }
         }
     }
 
-    bool insert(const std::pair<tKeyType, tValueType> &pair) {
+    bool insert(const std::pair<tKeyType, tValueType> & pair) {
         return insert(pair.first, pair.second);
     }
 
-    std::pair<filtered_iterator, filtered_iterator> get(const tKeyType &key) const {
-        ASSERT(key != 0);
-
-        std::size_t firstIdx = m_hasher(key) & (m_arraySize - 1);
-        std::size_t lastIdx = firstIdx;
-
-        for (tKeyType idx = firstIdx; ; idx++) {
-            idx &= m_arraySize - 1;
-            tKeyType probedKey = m_keys->at(idx);
-
-            if (probedKey == 0 && idx == firstIdx)
-                // the key can not be in the table, return to end() iterators
-                return std::make_pair(filtered_iterator(*this, m_arraySize, m_arraySize, key),
-                                      filtered_iterator(*this, m_arraySize, m_arraySize, key));
-            else {
-                if (probedKey != key && idx == firstIdx) {
-                    //there are entries with the hash corresponding to our key, but they don't equal the key
-                    //and we haven't found the first valid entry yet
-                    ++firstIdx;
-                    firstIdx &= m_arraySize - 1;
-                }
-
-                ++lastIdx;
-                lastIdx &= m_arraySize - 1;
-
-                if (probedKey == 0 /* implicitly && idx != firstIdx */)
-                    // we have found the end of the chain of equal hashes
-                    return std::make_pair(filtered_iterator(*this, firstIdx, lastIdx, key),
-                                          filtered_iterator(*this, lastIdx, lastIdx, key));
-            }
-        }
-
-    }
-
-    bool contains(const tKeyType &key) const {
+    tValueType get(const tKeyType &key) const {
         ASSERT(key != 0);
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
             tKeyType probedKey = m_keys->at(idx);
             if (probedKey == key)
-                return true;
+                return m_values->at(idx);;
             if (probedKey == 0)
-                return false;
+                return 0;
         }
+
+    }
+
+    bool contains(const tKeyType &key) const {
+        return get(key) != 0;
     }
 
     std::size_t count(const tKeyType &key) const {
@@ -229,7 +109,7 @@ public:
         return m_keys->at(idx) == 0;
     };
 
-    std::pair<const tKeyType, tValueType> at(const std::size_t idx) const {
+    std::pair<tKeyType, tValueType> at(const std::size_t idx) const {
 
         return std::make_pair(m_keys->at(idx), m_values->at(idx));
     }
@@ -265,7 +145,7 @@ public:
 
     }
 
-    void merge(LP_MultiMap &&other) {
+    void merge(LP_Map &&other) {
 
         rehash((capacity() + other.capacity()) << 1);
 
@@ -303,7 +183,7 @@ public:
     }
 
     template<class Set>
-    void merge(LP_MultiMap &&other, const Set &filter) {
+    void merge(LP_Map &&other, const Set &filter) {
         rehash((capacity() + other.capacity()) << 1, filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
@@ -311,6 +191,11 @@ public:
                 insert(other.m_keys->at(i), other.m_values->at(i));
         }
     }
+
+
+public:
+    typedef _detail::iterator<LP_Map, std::pair<const tKeyType, tValueType>> iterator;
+    typedef _detail::range_type<LP_Map, iterator> range_type;
 
     iterator begin() const {
         return iterator(*this, 0, true);
@@ -336,40 +221,34 @@ private:
 
 };
 
-class Concurrent_LP_MultiMap {
+class Concurrent_LP_Map {
 
 public:
     typedef uint tKeyType;
     typedef uint tValueType;
 
 public:
-    typedef _detail::iterator<Concurrent_LP_MultiMap, std::pair<const tKeyType, tValueType>> iterator;
-    typedef _detail::filtered_iterator<Concurrent_LP_MultiMap, tKeyType, tValueType> filtered_iterator;
-    typedef _detail::range_type<Concurrent_LP_MultiMap, iterator> range_type;
 
-public:
-
-    Concurrent_LP_MultiMap(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    Concurrent_LP_Map(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_keys(nullptr),
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
         m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-        m_values = std::unique_ptr<std::atomic<tKeyType>[]>(
-                new std::atomic<tValueType>[m_arraySize]); // random init
+        m_values = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tValueType>[m_arraySize]); // random init
 
         m_hasher.l = log2(m_arraySize);
     }
 
-    Concurrent_LP_MultiMap(Concurrent_LP_MultiMap &&other)
+    Concurrent_LP_Map(Concurrent_LP_Map &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items.load(std::memory_order_relaxed)),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
               m_hasher(std::move(other.m_hasher)) { }
 
-    Concurrent_LP_MultiMap &operator=(Concurrent_LP_MultiMap &&other) {
+    Concurrent_LP_Map &operator=(Concurrent_LP_Map &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load(std::memory_order_relaxed), std::memory_order_relaxed);
         m_keys = std::move(other.m_keys);
@@ -379,13 +258,13 @@ public:
         return *this;
     }
 
-    ~Concurrent_LP_MultiMap() { }
+    ~Concurrent_LP_Map() { }
 
     bool insert(const tKeyType &key, const tValueType &value) {
         ASSERT(key != 0);
 
         if (m_items.load(std::memory_order_relaxed) / m_arraySize > 0.75)
-            throw std::length_error("Overfull Concurrent Set");
+            throw std::length_error("Overfull Concurrent Map");
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
@@ -394,69 +273,50 @@ public:
             // Load the key that was there.
             tKeyType probedKey = m_keys[idx].load(std::memory_order_relaxed);
 
-            if (probedKey != 0)
-                continue; // Usually, it contains another key. Keep probing.
-            // The entry was free. Now let's try to take it using a CAS.
-            tKeyType prevKey = 0;
-            bool cas = m_keys[idx].compare_exchange_strong(prevKey, key, std::memory_order_relaxed);
-            if (cas) {
-                m_values[idx].store(value, std::memory_order_relaxed); // insert value
-                ++m_items;
-                return true; // we just added the key to the set
-            } else
-                continue; // another thread inserted in this position
+            if (probedKey == key) {
+                m_values[idx].store(value, std::memory_order_relaxed); // update value
+                return false; // the key is already in the set, return false;
+            }
+            else {
+                // The entry was either free, or contains another key.
+                if (probedKey != 0)
+                    continue; // Usually, it contains another key. Keep probing.
+                // The entry was free. Now let's try to take it using a CAS.
+                tKeyType prevKey = 0;
+                bool cas = m_keys[idx].compare_exchange_strong(prevKey, key, std::memory_order_relaxed);
+                if (cas) {
+                    m_values[idx].store(value, std::memory_order_relaxed); // insert value
+                    ++m_items;
+                    return true; // we just added the key to the set
+                }
+                else if (prevKey == key) {
+                    m_values[idx].store(value, std::memory_order_relaxed); // update value
+                    return false; // the key was already added by another thread update it
+                } else
+                    continue; // another thread inserted a different key in this position
+            }
         }
     }
 
-    bool insert(const std::pair<tKeyType, tValueType> &pair) {
+    bool insert(const std::pair<tKeyType, tValueType> & pair) {
         return insert(pair.first, pair.second);
     }
 
-    std::pair<filtered_iterator, filtered_iterator> get(const tKeyType &key) const {
-        ASSERT(key != 0);
-
-        std::size_t firstIdx = m_hasher(key) & (m_arraySize - 1);
-        std::size_t lastIdx = firstIdx;
-
-        for (tKeyType idx = firstIdx; ; idx++) {
-            idx &= m_arraySize - 1;
-            tKeyType probedKey = m_keys[idx].load(std::memory_order_relaxed);
-
-            if (probedKey == 0 && idx == firstIdx)
-                // the key can not be in the table, return to end() iterators
-                return std::make_pair(filtered_iterator(*this, m_arraySize, m_arraySize, key),
-                                      filtered_iterator(*this, m_arraySize, m_arraySize, key));
-            else {
-                if (probedKey != key && idx == firstIdx) {
-                    //there are entries with the hash corresponding to our key, but they don't equal the key
-                    //and we haven't found the first valid entry yet
-                    ++firstIdx;
-                    firstIdx &= m_arraySize - 1;
-                }
-
-                ++lastIdx;
-                lastIdx &= m_arraySize - 1;
-
-                if (probedKey == 0 /* implicitly && idx != firstIdx */)
-                    // we have found the end of the chain of equal hashes
-                    return std::make_pair(filtered_iterator(*this, firstIdx, lastIdx, key),
-                                          filtered_iterator(*this, lastIdx, lastIdx, key));
-            }
-        }
-
-    }
-
-    bool contains(const tKeyType &key) const {
+    tValueType get(const tKeyType &key) const {
         ASSERT(key != 0);
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
             tKeyType probedKey = m_keys[idx].load(std::memory_order_relaxed);
             if (probedKey == key)
-                return true;
+                return m_values[idx].load(std::memory_order_relaxed);;
             if (probedKey == 0)
-                return false;
+                return 0;
         }
 
+    }
+
+    bool contains(const tKeyType &key) const {
+        return get(key) != 0;
     }
 
     std::size_t count(const tKeyType &key) const {
@@ -467,7 +327,7 @@ public:
 
     bool empty(const std::size_t idx) const { return m_keys[idx].load(std::memory_order_relaxed) == 0; };
 
-    std::pair<const tKeyType, tValueType> at(const std::size_t idx) const {
+    std::pair<tKeyType, tValueType> at(const std::size_t idx) const {
         return std::make_pair(m_keys[idx].load(std::memory_order_relaxed),
                               m_values[idx].load(std::memory_order_relaxed));
     }
@@ -494,7 +354,7 @@ public:
         });
     }
 
-    void unsafe_merge(Concurrent_LP_MultiMap &&other) {
+    void unsafe_merge(Concurrent_LP_Map &&other) {
 
         unsafe_rehash((capacity() + other.capacity()) << 1);
 
@@ -507,7 +367,7 @@ public:
 
 
     template<class Set>
-    void unsafe_merge(Concurrent_LP_MultiMap &&other, const Set &filter) {
+    void unsafe_merge(Concurrent_LP_Map &&other, const Set &filter) {
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
@@ -541,6 +401,10 @@ public:
                               }
                           });
     }
+
+public:
+    typedef _detail::iterator<Concurrent_LP_Map, std::pair<const tKeyType, tValueType>> iterator;
+    typedef _detail::range_type<Concurrent_LP_Map, iterator> range_type;
 
     iterator begin() const {
         return iterator(*this, 0, true);

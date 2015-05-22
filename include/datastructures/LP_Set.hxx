@@ -8,9 +8,10 @@
 #include <iostream>
 #include <iomanip>
 
-#include "Misc.h"
-#include "ASSERT.h"
-#include "Random.h"
+#include "utils/Misc.h"
+#include "utils/ASSERT.h"
+#include "utils/Random.h"
+#include "utils/VTuneAdapter.h"
 
 #include <tbb/tbb_stddef.h>
 #include <tbb/parallel_for.h>
@@ -500,6 +501,7 @@ public:
     template<class Set>
     void unsafe_merge(Concurrent_LP_Set &&other, const Set &filter) {
 
+        VTUNE_TASK(MergeAllocate);
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
         m_hasher.l = log2(m_arraySize);
@@ -507,8 +509,18 @@ public:
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
+        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+        VTUNE_END_TASK(MergeAllocate);
 
+        VTUNE_TASK(MergeFill);
+        tbb::parallel_for(tbb::blocked_range<std::size_t>(0, m_arraySize), [this](const auto & r) {
+            for (auto i = r.begin(); i != r.end(); ++i) {
+                m_array[i].store(0, std::memory_order_relaxed);
+            }
+        });
+        VTUNE_END_TASK(MergeFill);
+
+        VTUNE_TASK(MergeCopy);
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())), [&oldArray, oldSize, &other, &filter, this](const auto & r) {
 
             tKeyType  val = 0;

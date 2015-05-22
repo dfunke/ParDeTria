@@ -1,7 +1,7 @@
-#include "utils/LP_Set.hxx"
-#include "utils/LP_Map.hxx"
-#include "utils/LP_MultiMap.hxx"
-#include "utils/BlockedArray.hxx"
+#include "datastructures/LP_Set.hxx"
+#include "datastructures/LP_Map.hxx"
+#include "datastructures/LP_MultiMap.hxx"
+#include "datastructures/BlockedArray.hxx"
 
 #include <unordered_set>
 #include <unordered_map>

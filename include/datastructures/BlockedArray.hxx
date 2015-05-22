@@ -4,7 +4,7 @@
 #include <memory>
 #include <atomic>
 
-#include "TBB_Containers.h"
+#include "utils/TBB_Containers.h"
 
 template<typename T, std::size_t BS = 512>
 class BlockedArray {

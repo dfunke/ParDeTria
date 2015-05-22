@@ -7,7 +7,7 @@
 #include "Geometry.h"
 
 #include "utils/VTuneAdapter.h"
-#include "utils/LP_Set.hxx"
+#include "datastructures/LP_Set.hxx"
 
 struct PartialTriangulation {
     Concurrent_LP_Set simplices;
@@ -35,7 +35,7 @@ public:
 
     std::pair<dSimplices<D, Precision>, PartialTriangulation> triangulate() {
         dSimplices<D, Precision> DT;
-        DT.reserve(points.size() * std::sqrt(points.size()));
+        DT.reserve((D+1)*points.size());
 
         PartialTriangulation pt = this->_triangulate(DT, allPoints(), baseBounds, std::to_string(TOP));
 
