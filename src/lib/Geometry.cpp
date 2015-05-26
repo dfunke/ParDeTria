@@ -773,7 +773,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
             }
         }
         if (!result.valid) {
-            LOG("Points of input not used: " << sNotUsed << std::endl);
+            LOG("Points of input not used: " << sNotUsed.str() << std::endl);
         }
 
         std::stringstream sInvalidP;
@@ -784,7 +784,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
             }
         }
         if (!result.valid) {
-            LOG("Used points not in input: " << sInvalidP << std::endl);
+            LOG("Used points not in input: " << sInvalidP.str() << std::endl);
         }
     }
 
