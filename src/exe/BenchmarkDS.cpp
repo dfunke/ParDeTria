@@ -18,7 +18,7 @@
 
 #include "utils/Timings.h"
 
-const uint N = 1e6;
+const uint N = 1e7;
 const uint R = 10;
 
 struct tOp {
@@ -33,25 +33,29 @@ template<typename T>
 tDuration timeOps(const tOps & ops){
 
     T set(ops.size());
+    tbb::blocked_range<std::size_t> range(std::size_t(0), ops.size(), 1e4);
 
     auto t1 = Clock::now();
-    tbb::parallel_for(tbb::blocked_range<std::size_t>(std::size_t(0), ops.size()), [&set, &ops] (const auto & r){
+    tbb::parallel_for(range, [&set, &ops] (const auto & r){
         for(auto i = r.begin(); i != r.end(); ++i){
             const tOp & op = ops[i];
 
-            switch(op.op){
-                case 0:
-                    set.insert(op.val);
-                    break;
-                case 1:
-                    set.count(op.val);
-                    break;
-            }
+            set.insert(op.val);
         }
     });
     auto t2 = Clock::now();
 
-    return t2 - t1;
+    auto t3 = Clock::now();
+    tbb::parallel_for(range, [&set, &ops] (const auto & r){
+        for(auto i = r.begin(); i != r.end(); ++i){
+            const tOp & op = ops[i];
+
+            set.count(op.val);
+        }
+    });
+    auto t4 = Clock::now();
+
+    return (t2 - t1) + (t4 - t3);
 }
 
 int main() {
