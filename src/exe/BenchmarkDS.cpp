@@ -21,36 +21,28 @@
 const uint N = 1e7;
 const uint R = 10;
 
-struct tOp {
-    char op;
-    uint val;
-    bool res;
-};
-
-typedef std::vector<tOp> tOps;
+typedef std::vector<uint> tVals;
 
 template<typename T>
-tDuration timeOps(const tOps & ops){
+tDuration timeOps(const tVals & vals){
 
-    T set(ops.size());
-    tbb::blocked_range<std::size_t> range(std::size_t(0), ops.size(), 1e4);
+    T set(vals.size());
+    tbb::blocked_range<std::size_t> range(std::size_t(0), vals.size(), 1e4);
 
     auto t1 = Clock::now();
-    tbb::parallel_for(range, [&set, &ops] (const auto & r){
+    tbb::parallel_for(range, [&set, &vals] (const auto & r){
         for(auto i = r.begin(); i != r.end(); ++i){
-            const tOp & op = ops[i];
-
-            set.insert(op.val);
+            set.insert(vals[i]);
         }
     });
     auto t2 = Clock::now();
 
     auto t3 = Clock::now();
-    tbb::parallel_for(range, [&set, &ops] (const auto & r){
-        for(auto i = r.begin(); i != r.end(); ++i){
-            const tOp & op = ops[i];
-
-            set.count(op.val);
+    tbb::parallel_for(range, [&set, &vals] (const auto & r){
+        for(uint k = 0; k < R; ++k) {
+            for (auto i = r.begin(); i != r.end(); ++i) {
+                set.count(vals[i]);
+            }
         }
     });
     auto t4 = Clock::now();
@@ -60,28 +52,17 @@ tDuration timeOps(const tOps & ops){
 
 int main() {
 
-    tOps ops;
+    tVals vals;
     std::unordered_set<uint> cmp;
 
     auto distKey = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto diceKey = std::bind(distKey, startGen);
 
-    auto distOp = std::uniform_int_distribution<char>(0, 1);
-    auto diceOp = std::bind(distOp, startGen);
+    while(cmp.size() < N){
+        uint val = diceKey();
 
-    for (uint i = 0; i < N; ++i) {
-        tOp op;
-        op.op = diceOp();
-        op.val = diceKey();
-
-        switch(op.op){
-            case 0:
-                op.res = cmp.insert(op.val).second; break;
-            case 1:
-                op.res = cmp.count(op.val); break; //only meaningful in sequential case
-        }
-
-        ops.push_back(op);
+        if(cmp.insert(val).second)
+            vals.push_back(val);
     }
 
     std::ofstream f("benchmark_set.csv");
@@ -95,8 +76,8 @@ int main() {
         tDuration tTBB(0);
         tDuration tOwn(0);
         for(uint r = 0; r < R; ++r){
-            tTBB += timeOps<tbb::concurrent_unordered_set<uint>>(ops);
-            tOwn += timeOps<Concurrent_LP_Set>(ops);
+            tTBB += timeOps<tbb::concurrent_unordered_set<uint>>(vals);
+            tOwn += timeOps<Concurrent_LP_Set>(vals);
             std::cout << "." << std::flush;
         }
         tTBB /= R; tOwn /= R;
