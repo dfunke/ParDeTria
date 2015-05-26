@@ -28,3 +28,13 @@ target_link_libraries(Benchmark
   ${EJDB_LIBRARIES}
 )
 
+add_executable (BenchmarkDS
+  BenchmarkDS.cpp
+)
+
+target_link_libraries(BenchmarkDS
+  Logging
+  Measurements
+  ${TBB_MALLOC_PROXY_LIBRARIES}
+)
+
