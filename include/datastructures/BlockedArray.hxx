@@ -72,13 +72,13 @@ public:
     }
 
     Concurrent_BlockedArray(Concurrent_BlockedArray && other){
-        m_nBlocks.store(other.m_nBlocks.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        m_nBlocks.store(other.m_nBlocks.load());
         m_blocks = std::move(other.m_blocks);
     }
 
     void reserve(const std::size_t &capacity) {
 
-        while (m_nBlocks.load(std::memory_order_relaxed) * BS < capacity) {
+        while (m_nBlocks.load() * BS < capacity) {
             m_blocks.emplace_back(new T[BS]);
             ++m_nBlocks;
         }

@@ -243,14 +243,14 @@ public:
 
     Concurrent_LP_Map(Concurrent_LP_Map &&other)
             : m_arraySize(other.m_arraySize),
-              m_items(other.m_items.load(std::memory_order_relaxed)),
+              m_items(other.m_items.load()),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
               m_hasher(std::move(other.m_hasher)) { }
 
     Concurrent_LP_Map &operator=(Concurrent_LP_Map &&other) {
         m_arraySize = other.m_arraySize;
-        m_items.store(other.m_items.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        m_items.store(other.m_items.load());
         m_keys = std::move(other.m_keys);
         m_values = std::move(other.m_values);
         m_hasher = std::move(other.m_hasher);
@@ -263,7 +263,7 @@ public:
     bool insert(const tKeyType &key, const tValueType &value) {
         ASSERT(key != 0);
 
-        if (m_items.load(std::memory_order_relaxed) / m_arraySize > 0.75)
+        if (m_items.load() / m_arraySize > 0.75)
             throw std::length_error("Overfull Concurrent Map");
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
@@ -271,7 +271,7 @@ public:
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
-            tKeyType probedKey = m_keys[idx].load(std::memory_order_relaxed);
+            tKeyType probedKey = m_keys[idx].load();
 
             if (probedKey == key) {
                 m_values[idx].store(value, std::memory_order_relaxed); // update value
@@ -283,7 +283,7 @@ public:
                     continue; // Usually, it contains another key. Keep probing.
                 // The entry was free. Now let's try to take it using a CAS.
                 tKeyType prevKey = 0;
-                bool cas = m_keys[idx].compare_exchange_strong(prevKey, key, std::memory_order_relaxed);
+                bool cas = m_keys[idx].compare_exchange_strong(prevKey, key);
                 if (cas) {
                     m_values[idx].store(value, std::memory_order_relaxed); // insert value
                     ++m_items;
@@ -306,9 +306,9 @@ public:
         ASSERT(key != 0);
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
-            tKeyType probedKey = m_keys[idx].load(std::memory_order_relaxed);
+            tKeyType probedKey = m_keys[idx].load();
             if (probedKey == key)
-                return m_values[idx].load(std::memory_order_relaxed);;
+                return m_values[idx].load();;
             if (probedKey == 0)
                 return 0;
         }
@@ -323,7 +323,7 @@ public:
         return contains(key);
     }
 
-    bool empty() const { return m_items.load(std::memory_order_relaxed) == 0; };
+    bool empty() const { return m_items.load() == 0; };
 
     bool empty(const std::size_t idx) const { return m_keys[idx].load(std::memory_order_relaxed) == 0; };
 

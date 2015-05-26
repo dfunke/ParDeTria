@@ -395,13 +395,13 @@ public:
 
     Concurrent_LP_Set(Concurrent_LP_Set &&other)
             : m_arraySize(other.m_arraySize),
-              m_items(other.m_items.load(std::memory_order_relaxed)),
+              m_items(other.m_items.load()),
               m_array(std::move(other.m_array)),
               m_hasher(std::move(other.m_hasher)) { }
 
     Concurrent_LP_Set &operator=(Concurrent_LP_Set &&other) {
         m_arraySize = other.m_arraySize;
-        m_items.store(other.m_items.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        m_items.store(other.m_items.load());
         m_array = std::move(other.m_array);
         m_hasher = std::move(other.m_hasher);
 
@@ -413,7 +413,7 @@ public:
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
 
-        if (m_items.load(std::memory_order_relaxed) / m_arraySize > 0.75)
+        if (m_items.load() / m_arraySize > 0.75)
             throw std::length_error("Overfull Concurrent Set");
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
@@ -421,7 +421,7 @@ public:
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
-            tKeyType probedKey = m_array[idx].load(std::memory_order_relaxed);
+            tKeyType probedKey = m_array[idx].load();
 
             if (probedKey == key)
                 return false; // the key is already in the set, return false;
@@ -431,7 +431,7 @@ public:
                     continue; // Usually, it contains another key. Keep probing.
                 // The entry was free. Now let's try to take it using a CAS.
                 tKeyType prevKey = 0;
-                bool cas = m_array[idx].compare_exchange_strong(prevKey, key, std::memory_order_relaxed);
+                bool cas = m_array[idx].compare_exchange_strong(prevKey, key);
                 if (cas) {
                     ++m_items;
                     return true; // we just added the key to the set
@@ -448,7 +448,7 @@ public:
         ASSERT(key != 0);
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
-            tKeyType probedKey = m_array[idx].load(std::memory_order_relaxed);
+            tKeyType probedKey = m_array[idx].load();
             if (probedKey == key)
                 return true;;
             if (probedKey == 0)
@@ -461,7 +461,7 @@ public:
         return contains(key);
     }
 
-    bool empty() const { return m_items.load(std::memory_order_relaxed) == 0; };
+    bool empty() const { return m_items.load() == 0; };
 
     bool empty(const std::size_t idx) const { return m_array[idx].load(std::memory_order_relaxed) == 0; };
 
