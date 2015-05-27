@@ -250,7 +250,7 @@ public:
 
     void merge(LP_MultiMap &&other) {
 
-        rehash((capacity() + other.capacity()) << 1);
+        rehash((capacity() + other.capacity()));
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
             if (other.m_keys->at(i) != 0)
@@ -287,7 +287,7 @@ public:
 
     template<class Set>
     void merge(LP_MultiMap &&other, const Set &filter) {
-        rehash((capacity() + other.capacity()) << 1, filter);
+        rehash((capacity() + other.capacity()), filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
             if (other.m_keys->at(i) != 0 && !filter.count(other.m_keys->at(i)))
@@ -373,18 +373,30 @@ public:
     bool insert(const tKeyType &key, const tValueType &value) {
         ASSERT(key != 0);
 
-        if (m_items.load() / m_arraySize > 0.75)
-            throw std::length_error("Overfull Concurrent MultiMap");
 
+        std::size_t steps = 0; //count number of steps
         for (tKeyType idx = m_hasher(key); ; idx++) {
+
+            if (steps > m_arraySize / 4) {
+                throw std::length_error("Overfull MultiMap");
+                /*//we stepped through more than a quarter the array > grow
+                grow();
+
+                //reset insertion
+                steps = 0;
+                idx = m_hasher(key);*/
+            }
+
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
             tKeyType probedKey = m_keys[idx].load();
 
-            if (probedKey != 0)
+            if (probedKey != 0) {
+                ++steps;
                 continue; // Usually, it contains another key. Keep probing.
+            }
             // The entry was free. Now let's try to take it using a CAS.
             tKeyType prevKey = 0;
             bool cas = m_keys[idx].compare_exchange_strong(prevKey, key);
@@ -392,8 +404,10 @@ public:
                 m_values[idx].store(value, std::memory_order_relaxed); // insert value
                 ++m_items;
                 return true; // we just added the key to the set
-            } else
+            } else {
+                ++steps;
                 continue; // another thread inserted in this position
+            }
         }
     }
 
@@ -490,7 +504,7 @@ public:
 
     void unsafe_merge(Concurrent_LP_MultiMap &&other) {
 
-        unsafe_rehash((capacity() + other.capacity()) << 1);
+        unsafe_rehash((capacity() + other.capacity()));
 
         tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const uint i) {
             if (other.m_keys[i].load(std::memory_order_relaxed) != 0)
@@ -504,7 +518,7 @@ public:
     void unsafe_merge(Concurrent_LP_MultiMap &&other, const Set &filter) {
 
         std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
+        m_arraySize = nextPow2((capacity() + other.capacity()));
         m_hasher.l = log2(m_arraySize);
 
         auto oldKeys = std::move(m_keys);

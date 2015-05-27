@@ -308,7 +308,7 @@ public:
 
     void merge(LP_Set &&other) {
 
-        rehash((capacity() + other.capacity()) << 1);
+        rehash((capacity() + other.capacity()));
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
             if (other.m_array->at(i) != 0)
@@ -341,7 +341,7 @@ public:
 
     template<class Set>
     void merge(LP_Set &&other, const Set &filter) {
-        rehash((capacity() + other.capacity()) << 1, filter);
+        rehash((capacity() + other.capacity()), filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
             if (other.m_array->at(i) != 0 && !filter.count(other.m_array->at(i)))
@@ -540,7 +540,7 @@ public:
 
     void unsafe_merge(Concurrent_LP_Set &&other) {
 
-        unsafe_rehash((capacity() + other.capacity()) << 1);
+        unsafe_rehash((capacity() + other.capacity()));
 
         tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const uint i) {
             if (other.m_array[i].load(std::memory_order_relaxed) != 0)
@@ -554,7 +554,7 @@ public:
 
         VTUNE_TASK(MergeAllocate);
         std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
+        m_arraySize = nextPow2((capacity() + other.capacity()));
         m_hasher.l = log2(m_arraySize);
 
         auto oldArray = std::move(m_array);
