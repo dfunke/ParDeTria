@@ -391,7 +391,12 @@ public:
               m_fGrowing(false) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
+        try {
+            m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //value init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
 
         m_hasher.l = log2(m_arraySize);
     }
@@ -417,7 +422,7 @@ public:
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
 
-        if(m_fGrowing.load())
+        if (m_fGrowing.load())
             helpGrowing();
 
         bool result = false;
@@ -426,7 +431,7 @@ public:
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
 
-            if(steps > m_arraySize/4){
+            if (steps > m_arraySize / 4) {
                 //we stepped through more than a quarter the array > grow
                 grow();
 
@@ -442,7 +447,7 @@ public:
             tKeyType probedKey = m_array[idx].load();
 
             if (probedKey == key) {
-                result =  false; // the key is already in the set, return false;
+                result = false; // the key is already in the set, return false;
                 break;
             }
             else {
@@ -470,7 +475,7 @@ public:
             }
         }
 
-        if(result && (m_fGrowing.load() || currArr != m_array.get())) {
+        if (result && (m_fGrowing.load() || currArr != m_array.get())) {
             //we inserted a key but the array has changed or we are currently growing -> re-insert element
             //TODO ABA problem
 
@@ -484,7 +489,7 @@ public:
     bool contains(const tKeyType &key) const {
         ASSERT(key != 0);
 
-        if(m_fGrowing.load())
+        if (m_fGrowing.load())
             helpGrowing();
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
@@ -520,7 +525,12 @@ public:
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
+        try {
+            m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //value init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
 
         tbb::parallel_for(std::size_t(0), oldSize, [&oldArray, this](const uint i) {
             if (oldArray[i].load(std::memory_order_relaxed) != 0)
@@ -550,11 +560,16 @@ public:
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+        try {
+            m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
         VTUNE_END_TASK(MergeAllocate);
 
         VTUNE_TASK(MergeFill);
-        tbb::parallel_for(tbb::blocked_range<std::size_t>(0, m_arraySize), [this](const auto & r) {
+        tbb::parallel_for(tbb::blocked_range<std::size_t>(0, m_arraySize), [this](const auto &r) {
             for (auto i = r.begin(); i != r.end(); ++i) {
                 m_array[i].store(0, std::memory_order_relaxed);
             }
@@ -562,37 +577,38 @@ public:
         VTUNE_END_TASK(MergeFill);
 
         VTUNE_TASK(MergeCopy);
-        tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())), [&oldArray, oldSize, &other, &filter, this](const auto & r) {
+        tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())),
+                          [&oldArray, oldSize, &other, &filter, this](const auto &r) {
 
-            tKeyType  val = 0;
-            for(auto i = r.begin(); i != r.end(); ++i) {
-                if (i < oldSize){
-                    val = oldArray[i].load(std::memory_order_relaxed);
+                              tKeyType val = 0;
+                              for (auto i = r.begin(); i != r.end(); ++i) {
+                                  if (i < oldSize) {
+                                      val = oldArray[i].load(std::memory_order_relaxed);
 
-                    if(val != 0 && !filter.count(val))
-                        this->insert(val);
-                }
+                                      if (val != 0 && !filter.count(val))
+                                          this->insert(val);
+                                  }
 
-                if (i < other.capacity()){
-                    val = other.m_array[i].load(std::memory_order_relaxed);
+                                  if (i < other.capacity()) {
+                                      val = other.m_array[i].load(std::memory_order_relaxed);
 
-                    if(val != 0 && !filter.count(val))
-                        this->insert(val);
-                }
-            }
-        });
+                                      if (val != 0 && !filter.count(val))
+                                          this->insert(val);
+                                  }
+                              }
+                          });
     }
 
 private:
     void helpGrowing() const {
         std::unique_lock<std::mutex> lk(m_growWaitMtx);
-        m_growCV.wait(lk, [this] {return !m_fGrowing.load();});
+        m_growCV.wait(lk, [this] { return !m_fGrowing.load(); });
     }
 
     void grow() {
 
         bool exp = false;
-        if(m_fGrowing.compare_exchange_strong(exp, true)) {
+        if (m_fGrowing.compare_exchange_strong(exp, true)) {
 
             VTUNE_TASK(GrowAllocate);
             std::size_t newSize = nextPow2(m_arraySize << 1);
@@ -600,11 +616,17 @@ private:
             auto newHasher(m_hasher);
             newHasher.l = log2(newSize);
 
-            std::unique_ptr<std::atomic<tKeyType>[]> newArray(new std::atomic<tKeyType>[newSize]); //random init
+            std::unique_ptr<std::atomic<tKeyType>[]> newArray;
+            try {
+                newArray.reset(new std::atomic<tKeyType>[newSize]); //random init
+            } catch (std::bad_alloc &e) {
+                std::cerr << e.what() << std::endl;
+                raise(SIGINT);
+            }
             VTUNE_END_TASK(GrowAllocate);
 
             VTUNE_TASK(GrowFill);
-            tbb::parallel_for(tbb::blocked_range<std::size_t>(0, newSize), [&newArray](const auto & r) {
+            tbb::parallel_for(tbb::blocked_range<std::size_t>(0, newSize), [&newArray](const auto &r) {
                 for (auto i = r.begin(); i != r.end(); ++i) {
                     newArray[i].store(0, std::memory_order_relaxed);
                 }
@@ -633,8 +655,8 @@ private:
         }
     }
 
-    void migrate(const tKeyType &key, std::unique_ptr<std::atomic<tKeyType>[]> & array,
-                 const std::size_t & size, const Hasher<tKeyType> & hasher) {
+    void migrate(const tKeyType &key, std::unique_ptr<std::atomic<tKeyType>[]> &array,
+                 const std::size_t &size, const Hasher<tKeyType> &hasher) {
 
         ASSERT(key != 0);
 

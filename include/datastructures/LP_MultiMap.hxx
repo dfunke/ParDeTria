@@ -126,8 +126,6 @@ public:
     ~LP_MultiMap() { }
 
     bool insert(const tKeyType &key, const tValueType &value) {
-        if(key == 0)
-            raise(SIGINT);
 
         ASSERT(key != 0);
 
@@ -340,9 +338,15 @@ public:
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-        m_values = std::unique_ptr<std::atomic<tKeyType>[]>(
-                new std::atomic<tValueType>[m_arraySize]); // random init
+
+        try {
+            m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
+            m_values = std::unique_ptr<std::atomic<tKeyType>[]>(
+                    new std::atomic<tValueType>[m_arraySize]); // random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
 
         m_hasher.l = log2(m_arraySize);
     }
@@ -470,8 +474,13 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //zero init
-        m_values = std::unique_ptr<std::atomic<tValueType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+        try {
+            m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //zero init
+            m_values = std::unique_ptr<std::atomic<tValueType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
 
         tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const uint i) {
             if (oldKeys[i].load(std::memory_order_relaxed) != 0)
@@ -502,8 +511,14 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-        m_keys = std::unique_ptr<std::atomic<tValueType>[]>(new std::atomic<tKeyType>[m_arraySize]); // random init
+        try {
+            m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
+            m_keys = std::unique_ptr<std::atomic<tValueType>[]>(new std::atomic<tKeyType>[m_arraySize]); // random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
+
 
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())),
                           [&oldKeys, &oldValues, oldSize, &other, &filter, this](const auto &r) {
