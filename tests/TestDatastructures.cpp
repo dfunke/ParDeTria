@@ -15,7 +15,7 @@ TEST(Concurrent_LP_Set, InsertContains) {
     EXPECT_EQ(set.capacity(), 128);
 
     std::unordered_set<uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto dice = std::bind(distribution, startGen);
 
     for (uint i = 0; i < 60; ++i) {
@@ -48,7 +48,7 @@ TEST(Concurrent_LP_Set, Merge) {
     EXPECT_EQ(b.capacity(), 128);
 
     std::unordered_set<uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto dice = std::bind(distribution, startGen);
 
     for (uint i = 0; i < 60; ++i) {
@@ -73,13 +73,37 @@ TEST(Concurrent_LP_Set, Merge) {
     }
 }
 
+TEST(Concurrent_LP_Set, Grow) {
+
+    Concurrent_LP_Set set(120);
+    EXPECT_EQ(set.capacity(), 128);
+
+    tbb::concurrent_unordered_set<uint> cmp;
+
+    //auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
+    //auto dice = std::bind(distribution, startGen);
+
+    tbb::parallel_for(tbb::blocked_range<uint>(1, 2000), [&](const auto & r) {
+        for(auto i = r.begin(); i != r.end(); ++i) {
+            set.insert(i);
+            cmp.insert(i);
+        }
+    });
+
+    EXPECT_EQ(cmp.size(), set.size());
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(set.contains(i));
+    }
+}
+
 TEST(LP_Set, InsertContains) {
 
     LP_Set set(120);
     EXPECT_EQ(set.capacity(), 128);
 
     std::unordered_set<uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto dice = std::bind(distribution, startGen);
 
     for (uint i = 0; i < 60; ++i) {
@@ -113,7 +137,7 @@ TEST(LP_Set, Merge) {
     EXPECT_EQ(b.capacity(), 128);
 
     std::unordered_set<uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto dice = std::bind(distribution, startGen);
 
     for (uint i = 0; i < 60; ++i) {
@@ -144,7 +168,7 @@ TEST(Concurrent_LP_Map, InsertContains) {
     EXPECT_EQ(map.capacity(), 128);
 
     std::unordered_map<uint, uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto dice = std::bind(distribution, startGen);
 
     for (uint i = 0; i < 60; ++i) {
@@ -178,7 +202,7 @@ TEST(Concurrent_LP_Map, Merge) {
     EXPECT_EQ(b.capacity(), 128);
 
     std::unordered_map<uint, uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto dice = std::bind(distribution, startGen);
 
     for (uint i = 0; i < 60; ++i) {
@@ -219,7 +243,7 @@ TEST(Concurrent_LP_MultiMap, InsertContains) {
 
     std::unordered_multimap<uint, uint> cmp;
 
-    auto valueDistribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto valueDistribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto valueDice = std::bind(valueDistribution, startGen);
 
     auto numberDistribution = std::uniform_int_distribution<uint>(1, 10);
@@ -263,7 +287,7 @@ TEST(Concurrent_LP_MultiMap, Merge) {
 
     std::unordered_multimap<uint, uint> cmp;
 
-    auto valueDistribution = std::uniform_int_distribution<uint>(0, std::numeric_limits<uint>::max());
+    auto valueDistribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     auto valueDice = std::bind(valueDistribution, startGen);
 
     auto numberDistribution = std::uniform_int_distribution<uint>(1, 10);

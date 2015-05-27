@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
 #include <functional>
 #include <cstring>
 #include <csignal>
@@ -385,7 +387,8 @@ public:
     Concurrent_LP_Set(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_array(nullptr),
-              m_hasher(hasher) {
+              m_hasher(hasher),
+              m_fGrowing(false) {
         // Initialize cells
         m_arraySize = nextPow2(size);
         m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]());
@@ -397,7 +400,8 @@ public:
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items.load()),
               m_array(std::move(other.m_array)),
-              m_hasher(std::move(other.m_hasher)) { }
+              m_hasher(std::move(other.m_hasher)),
+              m_fGrowing(false) { }
 
     Concurrent_LP_Set &operator=(Concurrent_LP_Set &&other) {
         m_arraySize = other.m_arraySize;
@@ -413,39 +417,76 @@ public:
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
 
-        if (m_items.load() / m_arraySize > 0.75)
-            throw std::length_error("Overfull Concurrent Set");
+        if(m_fGrowing.load())
+            helpGrowing();
+
+        bool result = false;
+        std::size_t steps = 0; // count number of steps
+        auto currArr = m_array.get(); // store current array pointer for later comparision
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
+
+            if(steps > m_arraySize/4){
+                //we stepped through more than a quarter the array > grow
+                grow();
+
+                //reset insertion
+                steps = 0;
+                idx = m_hasher(key);
+            }
+
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
             tKeyType probedKey = m_array[idx].load();
 
-            if (probedKey == key)
-                return false; // the key is already in the set, return false;
+            if (probedKey == key) {
+                result =  false; // the key is already in the set, return false;
+                break;
+            }
             else {
                 // The entry was either free, or contains another key.
-                if (probedKey != 0)
+                if (probedKey != 0) {
+                    ++steps;
                     continue; // Usually, it contains another key. Keep probing.
+                }
                 // The entry was free. Now let's try to take it using a CAS.
                 tKeyType prevKey = 0;
                 bool cas = m_array[idx].compare_exchange_strong(prevKey, key);
                 if (cas) {
                     ++m_items;
-                    return true; // we just added the key to the set
+                    result = true; // we just added the key to the set
+                    break;
                 }
-                else if (prevKey == key)
-                    return false; // the key was already added by another thread
-                else
+                else if (prevKey == key) {
+                    result = false; // the key was already added by another thread
+                    break;
+                }
+                else {
+                    ++steps;
                     continue; // another thread inserted a different key in this position
+                }
             }
         }
+
+        if(result && (m_fGrowing.load() || currArr != m_array.get())) {
+            //we inserted a key but the array has changed or we are currently growing -> re-insert element
+            //TODO ABA problem
+
+            helpGrowing();
+            migrate(key, m_array, m_arraySize, m_hasher);
+        }
+
+        return result;
     }
 
     bool contains(const tKeyType &key) const {
         ASSERT(key != 0);
+
+        if(m_fGrowing.load())
+            helpGrowing();
+
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
             tKeyType probedKey = m_array[idx].load();
@@ -542,6 +583,90 @@ public:
         });
     }
 
+private:
+    void helpGrowing() const {
+        std::unique_lock<std::mutex> lk(m_growWaitMtx);
+        m_growCV.wait(lk, [this] {return !m_fGrowing.load();});
+    }
+
+    void grow() {
+
+        bool exp = false;
+        if(m_fGrowing.compare_exchange_strong(exp, true)) {
+
+            VTUNE_TASK(GrowAllocate);
+            std::size_t newSize = nextPow2(m_arraySize << 1);
+
+            auto newHasher(m_hasher);
+            newHasher.l = log2(newSize);
+
+            std::unique_ptr<std::atomic<tKeyType>[]> newArray(new std::atomic<tKeyType>[newSize]); //random init
+            VTUNE_END_TASK(GrowAllocate);
+
+            VTUNE_TASK(GrowFill);
+            tbb::parallel_for(tbb::blocked_range<std::size_t>(0, newSize), [&newArray](const auto & r) {
+                for (auto i = r.begin(); i != r.end(); ++i) {
+                    newArray[i].store(0, std::memory_order_relaxed);
+                }
+            });
+            VTUNE_END_TASK(GrowFill);
+
+            VTUNE_TASK(GrowCopy);
+            tbb::parallel_for(std::size_t(0), m_arraySize, [&newArray, &newSize, &newHasher, this](const uint i) {
+                auto val = m_array[i].load(std::memory_order_relaxed);
+                if (val != 0)
+                    migrate(val, newArray, newSize, newHasher);
+            });
+            VTUNE_END_TASK(GrowCopy);
+
+            //TODO this is all one transaction
+            m_array = std::move(newArray);
+            m_arraySize = newSize;
+            m_hasher.l = newHasher.l;
+
+            //wake up other threads;
+            m_fGrowing.store(false);
+            m_growCV.notify_all();
+        } else {
+            //somebody else already locked the mutex
+            helpGrowing();
+        }
+    }
+
+    void migrate(const tKeyType &key, std::unique_ptr<std::atomic<tKeyType>[]> & array,
+                 const std::size_t & size, const Hasher<tKeyType> & hasher) {
+
+        ASSERT(key != 0);
+
+        for (tKeyType idx = hasher(key); ; idx++) {
+            idx &= size - 1;
+            ASSERT(idx < size);
+
+            // Load the key that was there.
+            tKeyType probedKey = array[idx].load();
+
+            if (probedKey == key) {
+                return; // the key is already in the set, return false;
+            }
+            else {
+                // The entry was either free, or contains another key.
+                if (probedKey != 0)
+                    continue; // Usually, it contains another key. Keep probing.
+                // The entry was free. Now let's try to take it using a CAS.
+                tKeyType prevKey = 0;
+                bool cas = array[idx].compare_exchange_strong(prevKey, key);
+                if (cas) {
+                    return; // we just added the key to the set
+                }
+                else if (prevKey == key) {
+                    return; // the key was already added by another thread
+                }
+                else
+                    continue; // another thread inserted a different key in this position
+            }
+        }
+    }
+
 public:
     typedef _detail::iterator<Concurrent_LP_Set, tKeyType> iterator;
     typedef _detail::range_type<Concurrent_LP_Set, iterator> range_type;
@@ -564,5 +689,9 @@ private:
     std::atomic<std::size_t> m_items;
     std::unique_ptr<std::atomic<tKeyType>[]> m_array;
     Hasher<tKeyType> m_hasher;
+
+    std::atomic<bool> m_fGrowing;
+    mutable std::mutex m_growWaitMtx;
+    mutable std::condition_variable m_growCV;
 
 };
