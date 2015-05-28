@@ -2,6 +2,7 @@
 
 #include "Geometry.h"
 #include "Triangulator.h"
+#include "utils/IndexHandler.h"
 
 template<uint D, typename Precision,
         bool Parallel = false>
