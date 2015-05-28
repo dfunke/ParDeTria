@@ -121,7 +121,7 @@ namespace _detail {
             return m_idx >= other.m_idx;
         }
 
-        const auto operator*() const { return m_container.at(m_idx); }
+        auto operator*() const { return m_container.at(m_idx); }
 
         //const auto *operator->() const { return &m_container.at(m_idx); }
 
