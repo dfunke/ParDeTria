@@ -111,9 +111,12 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
 //**************************
 
-void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10) {
+void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10, bool reverse = false) {
 
-    for (uint i = 0; i < runs.size(); ++i) {
+    signed long start = !reverse ? 0 : runs.size() - 1;
+    signed long end = !reverse ? runs.size() : -1;
+
+    for (auto i = start; i != end; i += (!reverse ? 1 : -1)) {
         std::cout << i+1 << "/" << runs.size() << ": " << runs[i].str() << std::endl;
 
         runExperiment(runs[i], reps);
@@ -288,6 +291,7 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                                "string describing an experiment to run");
     cCommandLine.add_options()("gen-only", "just generate test-cases");
+    cCommandLine.add_options()("reverse", "reverse test-case execution");
 
 #ifdef ENABLE_PROFILING
     cCommandLine.add_options()("profiling",
@@ -360,7 +364,7 @@ int main(int argc, char *argv[]) {
         for (const auto &r : runs)
             std::cout << r.str() << std::endl;
     } else {
-        runExperiments(runs, reps);
+        runExperiments(runs, reps, vm.count("reverse"));
     }
 
     return EXIT_SUCCESS;
