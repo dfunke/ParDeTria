@@ -3,6 +3,10 @@
 #include <exception>
 #include <string>
 
+#ifndef NDEBUG
+#include <csignal>
+#endif
+
 class AssertionException : public std::exception {
 
 public:
@@ -22,10 +26,14 @@ private:
 #ifdef NDEBUG
 
 #define ASSERT(e) ((void)(0))
+#define RAISE(e) ((void)(0))
 
 #else // NDEBUG
 
 #define ASSERT(e)                                                              \
   ((void)((e) ? 0 : throw AssertionException(#e, __FILE__, __LINE__)))
+
+#define RAISE(e)                                                              \
+  ((void)((e) ? 0 : raise(SIGINT)))
 
 #endif
