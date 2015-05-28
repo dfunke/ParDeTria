@@ -221,8 +221,6 @@ public:
         return *this;
     }
 
-    ~LP_Set() { }
-
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
 
@@ -392,7 +390,7 @@ public:
         // Initialize cells
         m_arraySize = nextPow2(size);
         try {
-            m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //value init
+            m_array.reset(new std::atomic<tKeyType>[m_arraySize]()); //value init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
@@ -417,7 +415,6 @@ public:
         return *this;
     }
 
-    ~Concurrent_LP_Set() { }
 
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
@@ -526,7 +523,7 @@ public:
         m_items.store(0, std::memory_order_relaxed);
 
         try {
-            m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //value init
+            m_array.reset(new std::atomic<tKeyType>[m_arraySize]()); //value init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
@@ -561,7 +558,7 @@ public:
         m_items.store(0, std::memory_order_relaxed);
 
         try {
-            m_array = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+            m_array.reset(new std::atomic<tKeyType>[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);

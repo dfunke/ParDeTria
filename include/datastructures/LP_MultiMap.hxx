@@ -123,8 +123,6 @@ public:
         return *this;
     }
 
-    ~LP_MultiMap() { }
-
     bool insert(const tKeyType &key, const tValueType &value) {
 
         ASSERT(key != 0);
@@ -340,9 +338,8 @@ public:
         m_arraySize = nextPow2(size);
 
         try {
-            m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-            m_values = std::unique_ptr<std::atomic<tKeyType>[]>(
-                    new std::atomic<tValueType>[m_arraySize]); // random init
+            m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); // zero init
+            m_values.reset(new std::atomic<tValueType>[m_arraySize]); // random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
@@ -368,7 +365,6 @@ public:
         return *this;
     }
 
-    ~Concurrent_LP_MultiMap() { }
 
     bool insert(const tKeyType &key, const tValueType &value) {
         ASSERT(key != 0);
@@ -489,8 +485,8 @@ public:
         m_items.store(0, std::memory_order_relaxed);
 
         try {
-            m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); //zero init
-            m_values = std::unique_ptr<std::atomic<tValueType>[]>(new std::atomic<tKeyType>[m_arraySize]); //random init
+            m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); //zero init
+            m_values.reset(new std::atomic<tValueType>[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
@@ -526,8 +522,8 @@ public:
         m_items.store(0, std::memory_order_relaxed);
 
         try {
-            m_keys = std::unique_ptr<std::atomic<tKeyType>[]>(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-            m_keys = std::unique_ptr<std::atomic<tValueType>[]>(new std::atomic<tKeyType>[m_arraySize]); // random init
+            m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); // zero init
+            m_values.reset(new std::atomic<tValueType>[m_arraySize]); // random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
