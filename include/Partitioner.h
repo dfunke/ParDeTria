@@ -57,8 +57,7 @@ public:
                 return part.id;
         }
 
-        throw std::out_of_range("Partition of point " + std::to_string(p) +
-                                "not found");
+        throw std::out_of_range("Partition of point " + std::to_string(p) + " not found");
     }
 
     uint partition(const dPoint<D, Precision> &p) const {
