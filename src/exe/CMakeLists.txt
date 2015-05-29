@@ -49,3 +49,4 @@ target_link_libraries(WhereUsedStudy
   DCTriangulator
 )
 
+file(INSTALL runExperiments.sh DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} USE_SOURCE_PERMISSIONS)
