@@ -258,6 +258,7 @@ int main(int argc, char *argv[]) {
     uint reps = 10;
     std::string runFile;
     std::string run;
+    int runNumber = -1;
 
     po::options_description cCommandLine("Command Line Options");
     // point options
@@ -290,6 +291,8 @@ int main(int argc, char *argv[]) {
                                "file containing experiments to run");
     cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                                "string describing an experiment to run");
+    cCommandLine.add_options()("run-number", po::value<int>(&runNumber),
+                               "specify run-number, default -1 = automatic");
     cCommandLine.add_options()("gen-only", "just generate test-cases");
     cCommandLine.add_options()("reverse", "reverse test-case execution");
 
@@ -319,7 +322,13 @@ int main(int argc, char *argv[]) {
             runs.emplace_back(line);
         }
     } else if (vm.count("run-string")) {
-        runs.emplace_back(run);
+        ExperimentRun exRun(run);
+        if(runNumber != -1){
+            // a run-number was specified on the command line
+            exRun.addTrait("run-number", runNumber);
+        }
+
+        runs.push_back(std::move(exRun));
     } else {
         if ((!vm.count("n"))) {
             std::cout << "Please specify number of points" << std::endl;
