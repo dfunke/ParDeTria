@@ -6,11 +6,12 @@
 #define _UNDEF_LIBCPP 1
 #endif
 
-#include <tbb/concurrent_unordered_set.h>
-#include <tbb/concurrent_unordered_map.h>
 #include <tbb/concurrent_vector.h>
 
 #ifdef _UNDEF_LIBCPP
 #undef _LIBCPP_VERSION
 #undef _UNDEF_LIBCPP
 #endif
+
+#include <tbb/concurrent_unordered_set.h>
+#include <tbb/concurrent_unordered_map.h>
