@@ -27,6 +27,9 @@ class Triangulator {
     friend
     class DCTriangulator;
 
+public:
+    virtual ~Triangulator() = default;
+
 protected:
     Triangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points)
             : baseBounds(_bounds), points(_points) { }

@@ -119,7 +119,7 @@ template<uint D, typename Precision>
 class Partitioner {
 
 public:
-    virtual ~Partitioner() { }
+    virtual ~Partitioner() = default;
 
     virtual Partitioning<D, Precision>
             partition(const Ids &ids, const dPoints<D, Precision> &points,
