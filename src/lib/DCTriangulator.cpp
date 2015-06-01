@@ -215,7 +215,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 #endif
 
     VTUNE_TASK(UpdateNeighbors);
-    tbb::parallel_do(toCheck, [&](const uint &id,
+    tbb::parallel_do(toCheck.range(), [&](const uint &id,
                                   tbb::parallel_do_feeder<uint> &feeder) {
 
         LOGGER.setIndent(saveIndent);
