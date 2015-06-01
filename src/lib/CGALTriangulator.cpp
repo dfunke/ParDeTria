@@ -565,3 +565,7 @@ class PureCGALTriangulator<3, double, true>;
 
 template
 class PureCGALTriangulator<3, double, false>;
+
+void resetCgalId() {
+    gAtomicTetrahedronID.store(1);
+}

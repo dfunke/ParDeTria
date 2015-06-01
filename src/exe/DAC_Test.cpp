@@ -71,6 +71,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
         LOGGER.setIndent(0);
         LOG("Generate Reference Triangulation" << std::endl);
 
+        resetCgalId();
         INDENT;
         CGALTriangulator<D, Precision, false> cgal(bounds, points);
         auto realDT = cgal.triangulate();
