@@ -824,7 +824,11 @@ template<uint D, typename Precision>
 class dSimplices : public Concurrent_BlockedArray<dSimplex<D, Precision>> {
 
 public:
-    dSimplices() : Concurrent_BlockedArray<dSimplex<D, Precision>>() { }
+    dSimplices() : Concurrent_BlockedArray<dSimplex<D, Precision>>(),
+                   tetrahedronID(1) { }
+
+    dSimplices(dSimplices && other) : Concurrent_BlockedArray<dSimplex<D, Precision>>(std::move(other)),
+                                      tetrahedronID(other.tetrahedronID.load()) { }
 
     VerificationReport<D, Precision>
             verify(const PartialTriangulation &pt,
@@ -834,6 +838,9 @@ public:
             crossCheck(const PartialTriangulation &pt,
                        const dSimplices<D, Precision> &realSimplices,
                        const PartialTriangulation &realPT) const;
+
+public:
+    std::atomic<uint> tetrahedronID;
 
 };
 

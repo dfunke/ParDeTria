@@ -14,7 +14,7 @@
 #include "utils/VTuneAdapter.h"
 
 // define a static counter for the tetrahedronID
-std::atomic<uint> gAtomicTetrahedronID(1);
+//std::atomic<uint> gAtomicTetrahedronID(1);
 //std::atomic<uint> gAtomicCgalID(1);
 
 // CGAL
@@ -273,7 +273,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
     PartialTriangulation pt(2*triaSize, triaSize);
 
-    uint startId = gAtomicTetrahedronID.fetch_add(lastId);
+    uint startId = DT.tetrahedronID.fetch_add(lastId);
     DT.reserve(startId + lastId);
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
@@ -565,7 +565,3 @@ class PureCGALTriangulator<3, double, true>;
 
 template
 class PureCGALTriangulator<3, double, false>;
-
-void resetCgalId() {
-    gAtomicTetrahedronID.store(1);
-}

@@ -41,6 +41,3 @@ protected:
 protected:
     const uint gridOccupancy;
 };
-
-// free standing method to reset CGAL ID
-void resetCgalId();

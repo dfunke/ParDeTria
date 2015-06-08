@@ -93,8 +93,7 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
             run.addMeasurement("memory", getCurrentRSS());
             run.addMeasurement("times", std::chrono::duration_cast<tDuration>(t2 - t1).count());
-
-            resetCgalId();
+            
         }
 
     } catch (std::exception &e) {
