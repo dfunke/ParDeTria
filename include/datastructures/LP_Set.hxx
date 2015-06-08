@@ -527,11 +527,11 @@ public:
 
 
     template<class Set>
-    void unsafe_merge(Concurrent_LP_Set &&other, const Set &filter) {
+    void unsafe_merge(Concurrent_LP_Set &&other, const Set &filter, const std::size_t padding = 0) {
 
         VTUNE_TASK(MergeAllocate);
         std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2((capacity() + other.capacity()));
+        m_arraySize = nextPow2((capacity() + other.capacity() + padding));
         m_hasher.l = log2(m_arraySize);
 
         auto oldArray = std::move(m_array);

@@ -318,8 +318,8 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     PartialTriangulation pt = std::move(partialDTs[0]);
 
     for (uint i = 1; i < partialDTs.size(); ++i) {
-        pt.simplices.unsafe_merge(std::move(partialDTs[i].simplices), edgeSimplices);
-        pt.convexHull.unsafe_merge(std::move(partialDTs[i].convexHull), edgeSimplices);
+        pt.simplices.unsafe_merge(std::move(partialDTs[i].simplices), edgeSimplices, edgeDT.simplices.size());
+        pt.convexHull.unsafe_merge(std::move(partialDTs[i].convexHull), edgeSimplices, edgeDT.simplices.size());
     }
     VTUNE_END_TASK(CombineTriangulations);
 
