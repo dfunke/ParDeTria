@@ -385,8 +385,7 @@ public:
     Concurrent_LP_Set(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_array(nullptr),
-              m_hasher(hasher),
-              m_fGrowing(false) {
+              m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
         try {
@@ -403,8 +402,7 @@ public:
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items.load()),
               m_array(std::move(other.m_array)),
-              m_hasher(std::move(other.m_hasher)),
-              m_fGrowing(false) { }
+              m_hasher(std::move(other.m_hasher)) { }
 
     Concurrent_LP_Set &operator=(Concurrent_LP_Set &&other) {
         m_arraySize = other.m_arraySize;
@@ -419,22 +417,15 @@ public:
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
 
-        if (m_fGrowing.load())
-            helpGrowing();
-
         bool result = false;
         std::size_t steps = 0; // count number of steps
-        auto currArr = m_array.get(); // store current array pointer for later comparision
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
 
             if (steps > m_arraySize / 4) {
                 //we stepped through more than a quarter the array > grow
-                grow();
-
-                //reset insertion
-                steps = 0;
-                idx = m_hasher(key);
+                //throw std::out_of_range("overfull set");
+                raise(SIGINT);
             }
 
             idx &= m_arraySize - 1;
@@ -472,22 +463,11 @@ public:
             }
         }
 
-        if (result && (m_fGrowing.load() || currArr != m_array.get())) {
-            //we inserted a key but the array has changed or we are currently growing -> re-insert element
-            //TODO ABA problem
-
-            helpGrowing();
-            migrate(key, m_array, m_arraySize, m_hasher);
-        }
-
         return result;
     }
 
     bool contains(const tKeyType &key) const {
         ASSERT(key != 0);
-
-        if (m_fGrowing.load())
-            helpGrowing();
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
@@ -597,60 +577,6 @@ public:
     }
 
 private:
-    void helpGrowing() const {
-        std::unique_lock<std::mutex> lk(m_growWaitMtx);
-        m_growCV.wait(lk, [this] { return !m_fGrowing.load(); });
-    }
-
-    void grow() {
-
-        bool exp = false;
-        if (m_fGrowing.compare_exchange_strong(exp, true)) {
-
-            VTUNE_TASK(GrowAllocate);
-            std::size_t newSize = nextPow2(m_arraySize << 1);
-
-            auto newHasher(m_hasher);
-            newHasher.l = log2(newSize);
-
-            std::unique_ptr<std::atomic<tKeyType>[]> newArray;
-            try {
-                newArray.reset(new std::atomic<tKeyType>[newSize]); //random init
-            } catch (std::bad_alloc &e) {
-                std::cerr << e.what() << std::endl;
-                raise(SIGINT);
-            }
-            VTUNE_END_TASK(GrowAllocate);
-
-            VTUNE_TASK(GrowFill);
-            tbb::parallel_for(tbb::blocked_range<std::size_t>(0, newSize), [&newArray](const auto &r) {
-                for (auto i = r.begin(); i != r.end(); ++i) {
-                    newArray[i].store(0, std::memory_order_relaxed);
-                }
-            });
-            VTUNE_END_TASK(GrowFill);
-
-            VTUNE_TASK(GrowCopy);
-            tbb::parallel_for(std::size_t(0), m_arraySize, [&newArray, &newSize, &newHasher, this](const uint i) {
-                auto val = m_array[i].load(std::memory_order_relaxed);
-                if (val != 0)
-                    migrate(val, newArray, newSize, newHasher);
-            });
-            VTUNE_END_TASK(GrowCopy);
-
-            //TODO this is all one transaction
-            m_array = std::move(newArray);
-            m_arraySize = newSize;
-            m_hasher.l = newHasher.l;
-
-            //wake up other threads;
-            m_fGrowing.store(false);
-            m_growCV.notify_all();
-        } else {
-            //somebody else already locked the mutex
-            helpGrowing();
-        }
-    }
 
     void migrate(const tKeyType &key, std::unique_ptr<std::atomic<tKeyType>[]> &array,
                  const std::size_t &size, const Hasher<tKeyType> &hasher) {
@@ -708,9 +634,5 @@ private:
     std::atomic<std::size_t> m_items;
     std::unique_ptr<std::atomic<tKeyType>[]> m_array;
     Hasher<tKeyType> m_hasher;
-
-    std::atomic<bool> m_fGrowing;
-    mutable std::mutex m_growWaitMtx;
-    mutable std::condition_variable m_growCV;
 
 };
