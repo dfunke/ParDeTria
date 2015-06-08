@@ -154,6 +154,9 @@ class Plot:
             fig.text(0.12, 0.9, self.desc, va='bottom', ha='left')
 
         if figureLegend:
+            handles, labels = ax.get_legend_handles_labels()
+            legendArgs['handles'] = handles
+            legendArgs['labels'] = labels
             self._legend(fig, **legendArgs)
         else:
             self._legend(ax, **legendArgs)

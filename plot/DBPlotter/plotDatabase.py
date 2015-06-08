@@ -67,13 +67,21 @@ def plotBaseCase():
     pSpeedup.ylabel = "speedup"
     pSpeedup.desc = r"$10^%i$ points" % math.log10(charsBenchmarks['nP'][0])
 
-    for bs in charsBenchmarks['basecase']:
+    stopCrit = dh.getStoppingCriterion(benchmarks)
+
+    for bs in charsBenchmarks[stopCrit.field]:
         # sequential base solver
         sRSeq = ph.Series()
         sRSeq.xvalues = charsBenchmarks['threads']
-        sRSeq.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'basecase' : bs, 'parallel-base': False}).sort(columns='threads')['times']]
+        sRSeq.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {stopCrit.field : bs, 'parallel-base': False}).sort(columns='threads')['times']]
 
-        sRSeq.label = "seq. Base %i" % bs
+        if len(sRSeq.xvalues) != len(sRSeq.yvalues):
+            # we don't have a yvalue for every x -> delete the corresponding x values
+            for i,x in enumerate(sRSeq.xvalues):
+                if dh.select(benchmarks, {stopCrit.field : bs, 'parallel-base': False, 'threads' : x}).empty:
+                    sRSeq.xvalues = np.delete(sRSeq.xvalues, i)
+
+        sRSeq.label = "%s %i" % (stopCrit.label, bs)
 
         pRuntime.addSeries(sRSeq)
 
@@ -81,22 +89,6 @@ def plotBaseCase():
         sSSeq.yvalues = sSSeq.yvalues[0] / sSSeq.yvalues
 
         pSpeedup.addSeries(sSSeq)
-        
-    for bs in charsBenchmarks['basecase']:
-        # parallel base solver
-        
-        sRPar = ph.Series()
-        sRPar.xvalues = charsBenchmarks['threads']
-        sRPar.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'basecase' : bs, 'parallel-base': True}).sort(columns='threads')['times']]
-
-        sRPar.label = "par. Base %i" % bs
-
-        pRuntime.addSeries(sRPar)
-
-        sSPar = ph.Series(sRPar)
-        sSPar.yvalues = sSPar.yvalues[0] / sSPar.yvalues
-
-        pSpeedup.addSeries(sSPar)
 
     pRuntime.plot("basecase_time_over_threads.png", {'ncol' : 2})
     pSpeedup.plot("basecase_speedup_over_threads.png", {'ncol' : 2, 'loc' : 2})
@@ -110,6 +102,7 @@ def plotComparison():
     benchmarks = dh.load(database, 'benchmarks', {'run-number' : lastRunBenchmarks, 'nP' : maxPoints})
 
     charsBenchmarks = dh.getCharacteristics(benchmarks)
+    stopCrit = dh.getStoppingCriterion(benchmarks)
 
     pRuntime = ph.Plot()
     pRuntime.title = "Runtime over Threads"
@@ -163,40 +156,41 @@ def plotComparison():
     #################################################
     # small base case, seq. base
 
-    sSeqBase = ph.Series()
-    sSeqBase.xvalues = charsBenchmarks['threads']
-    sSeqBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'alg': 'd', 'parallel-base' : False, 'basecase' : np.min(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
-    sSeqBase.label = "Seq. Base %i" % np.min(charsBenchmarks['basecase'])
-    pRuntime.addSeries(sSeqBase)
+    for bs in charsBenchmarks[stopCrit.field]:
+        sSeqBase = ph.Series()
+        sSeqBase.xvalues = charsBenchmarks['threads']
+        sSeqBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'alg': 'd', 'parallel-base' : False, stopCrit.field : bs}).sort(columns='threads')['times']]
 
-    sSSeqBase = ph.Series(sSeqBase)
-    sSSeqBase.yvalues = sSeqBase.yvalues[0] / sSeqBase.yvalues
-    pSpeedupRel.addSeries(sSSeqBase)
+        if len(sSeqBase.xvalues) != len(sSeqBase.yvalues):
+            # we don't have a yvalue for every x -> delete the corresponding x values
+            for i,x in enumerate(sSeqBase.xvalues):
+                if dh.select(benchmarks, {stopCrit.field : bs, 'parallel-base': False, 'threads' : x}).empty:
+                    sSeqBase.xvalues = np.delete(sSeqBase.xvalues, i)
 
-    sASSeqBase = ph.Series(sSeqBase)
-    sASSeqBase.yvalues = sCGAL.yvalue / sSeqBase.yvalues
-    pSpeedupAbs.addSeries(sASSeqBase)
 
-    #################################################
-    # large base case, par. base
+        sSeqBase.label = "%s %i" % (stopCrit.label, bs)
+        pRuntime.addSeries(sSeqBase)
 
-    sParBase = ph.Series()
-    sParBase.xvalues = charsBenchmarks['threads']
-    sParBase.yvalues = [np.mean(x) / 1e6 for x in dh.select(benchmarks, {'alg': 'd', 'parallel-base' : True, 'basecase': np.max(charsBenchmarks['basecase'])}).sort(columns='threads')['times']]
-    sParBase.label = "Par. Base %i" % np.max(charsBenchmarks['basecase'])
-    pRuntime.addSeries(sParBase)
+        sSSeqBase = ph.Series(sSeqBase)
+        sSSeqBase.yvalues = sSeqBase.yvalues[0] / sSeqBase.yvalues
+        pSpeedupRel.addSeries(sSSeqBase)
 
-    ssParBase = ph.Series(sParBase)
-    ssParBase.yvalues = sParBase.yvalues[0] / sParBase.yvalues
-    pSpeedupRel.addSeries(ssParBase)
+        sASSeqBase = ph.Series(sSeqBase)
+        sASSeqBase.yvalues = sCGAL.yvalue / sSeqBase.yvalues
+        pSpeedupAbs.addSeries(sASSeqBase)
 
-    sASParBase = ph.Series(sParBase)
-    sASParBase.yvalues = sCGAL.yvalue / sParBase.yvalues
-    pSpeedupAbs.addSeries(sASParBase)
-
-    pRuntime.plot("comparison_time_over_threads.png")
-    pSpeedupRel.plot("comparison_rel_speedup_over_threads.png")
-    pSpeedupAbs.plot("comparison_abs_speedup_over_threads.png")
+    pRuntime.plot("comparison_time_over_threads.png", figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
+    pSpeedupRel.plot("comparison_rel_speedup_over_threads.png", figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
+    pSpeedupAbs.plot("comparison_abs_speedup_over_threads.png", figureArgs={'figsize': (11,6)},
+                 axesArgs={'position' : (0.075, 0.1, 0.6, 0.8)},
+                 legendArgs={'ncol' : 1, 'loc' : 5,
+                             'fontsize' : 'small'}, figureLegend=True)
 
 def plotImprovement():
     ########################################################################################################################
@@ -429,14 +423,14 @@ database = sys.argv[1]
 # print("Plotting pure CGAL")
 # plotCGAL()
 #
-# print("Plot Base Case")
-# plotBaseCase()
+print("Plot Base Case")
+plotBaseCase()
 #
-# print("Plotting Comparision")
-# plotComparison()
+print("Plotting Comparision")
+plotComparison()
 #
 # print("Plotting Improvement")
 # plotImprovement()
 
-print("Plotting Profiling")
-plotProfiling()
+# print("Plotting Profiling")
+# plotProfiling()
