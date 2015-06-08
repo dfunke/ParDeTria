@@ -416,17 +416,11 @@ public:
 
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
+        ASSERT(m_items < m_arraySize);
 
         bool result = false;
-        std::size_t steps = 0; // count number of steps
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
-
-            if (steps > m_arraySize / 4) {
-                //we stepped through more than a quarter the array > grow
-                //throw std::out_of_range("overfull set");
-                raise(SIGINT);
-            }
 
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
@@ -441,7 +435,6 @@ public:
             else {
                 // The entry was either free, or contains another key.
                 if (probedKey != 0) {
-                    ++steps;
                     continue; // Usually, it contains another key. Keep probing.
                 }
                 // The entry was free. Now let's try to take it using a CAS.
@@ -457,7 +450,6 @@ public:
                     break;
                 }
                 else {
-                    ++steps;
                     continue; // another thread inserted a different key in this position
                 }
             }

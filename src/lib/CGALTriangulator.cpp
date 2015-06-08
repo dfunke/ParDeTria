@@ -271,7 +271,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     auto lastId = t.tds().maxId();
     t.tds().disableId();
 
-    PartialTriangulation pt(triaSize, triaSize / 2);
+    PartialTriangulation pt(2*triaSize, triaSize);
 
     uint startId = gAtomicTetrahedronID.fetch_add(lastId);
     DT.reserve(startId + lastId);
