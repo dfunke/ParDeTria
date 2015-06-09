@@ -83,31 +83,31 @@ TEST(Geometry3D, SimpleInSphere) {
     const uint O = 6;
 
     // A (0,0,0)
-    points[A].id = A;
+    //points[A].id = A;
     points[A].coords = {{0, 0, 0}};
 
     // B (2,0,0)
-    points[B].id = B;
+    //points[B].id = B;
     points[B].coords = {{2, 0, 0}};
 
     // C (1,2,0)
-    points[C].id = C;
+    //points[C].id = C;
     points[C].coords = {{1, 2, 0}};
 
     // D_u (1,1,1)
-    points[Du].id = Du;
+    //points[Du].id = Du;
     points[Du].coords = {{1, 1, 1}};
 
     // D_d (1,1,-1)
-    points[Dd].id = Dd;
+    //points[Dd].id = Dd;
     points[Dd].coords = {{1, 1, -1}};
 
     // I (1,1,0)
-    points[I].id = I;
+    //points[I].id = I;
     points[I].coords = {{1, 1, 0}};
 
     // O (5,5,5)
-    points[O].id = O;
+    //points[O].id = O;
     points[O].coords = {{5, 5, 5}};
 
     auto test = [&](const std::array<uint, 4> &v) {

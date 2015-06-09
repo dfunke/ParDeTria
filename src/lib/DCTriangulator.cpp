@@ -65,7 +65,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
              << stats.max << std::endl);
 
         dPoint<D, Precision> p;
-        p.id = dPoint<D, Precision>::cINF | i;
+        //p.id = dPoint<D, Precision>::cINF | i;
         p.coords = stats.mid;
 
         for (uint d = 0; d < D; ++d)

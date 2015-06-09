@@ -39,7 +39,7 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
         ASSERT(partitioning[part].bounds.contains(p.coords));
 
         // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(p.id);
+        partitioning[part].points.insert(id);
     }
 
     // add infinite points
@@ -89,7 +89,7 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
         ASSERT(partitioning[part].bounds.contains(p.coords));
 
         // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(p.id);
+        partitioning[part].points.insert(id);
     }
 
     // add infinite points
@@ -143,7 +143,7 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
         ASSERT(partitioning[part].bounds.contains(p.coords));
 
         // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(p.id);
+        partitioning[part].points.insert(id);
     }
 
     // add infinite points

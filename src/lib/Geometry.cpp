@@ -766,8 +766,9 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
     if (points != usedPoints) {
         // not all points of input used
         std::stringstream sNotUsed;
-        for (const auto &p : points) {
-            if (usedPoints.count(p.id) != 1 && p.isFinite()) {
+        for (std::size_t i = 0; i < points.finite_size(); ++i) {
+            const auto & p = points[i];
+            if (usedPoints.count(i) != 1 && dPoint<D,Precision>::isFinite(i)) {
                 sNotUsed << p << " ";
                 result.valid = false;
             }
@@ -897,17 +898,16 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
 
                 const dSimplex<D, Precision> &nn = this->at(n);
                 for (uint d = 0; d < D + 1; ++d) {
-                    const auto &p = points[nn.vertices[d]];
-
-                    if (p.isFinite() && !s.contains(p)) {
+                    if (dPoint<D,Precision>::isFinite(nn.vertices[d]) && !s.contains(nn.vertices[d])) {
                         // we have found the point of nn that is NOT shared with s
+                        const auto &p = points[nn.vertices[d]];
                         if (s.inSphere(p, points)) {
                             LOG("Point " << p << " is in circle of " << s << std::endl);
 
                             tbb::spin_mutex::scoped_lock lock(mtx);
                             result.valid = false;
 
-                            result.inCircle[s].insert(p.id);
+                            result.inCircle[s].insert(nn.vertices[d]);
                         }
                     }
                 }

@@ -4,6 +4,7 @@
 #include "Partitioner.h"
 
 #include "utils/Random.h"
+#include "utils/Generator.h"
 #include "utils/Logger.h"
 #include "utils/CSV.h"
 #include "utils/Timings.h"

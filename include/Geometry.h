@@ -274,10 +274,10 @@ template<uint D, typename Precision>
 class dPoint {
 
 public:
-    dPoint() : id(dPoint<D, Precision>::cINF) { }
+    dPoint() { }
 
     dPoint(const dVector<D, Precision> &_coords)
-            : id(dPoint<D, Precision>::cINF), coords(_coords) { }
+            : coords(_coords) { }
 
     /*dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
 
@@ -288,40 +288,27 @@ public:
       return *this;
     }*/
 
-    bool operator==(const dPoint<D, Precision> &a) const {
+    /*bool operator==(const dPoint<D, Precision> &a) const {
         PROFILER_INC("dPoint_compare");
 
-        if (!(isFinite() ^ a.isFinite())) {
-            // either none or both points are infinity
-            // compare ids
-            PROFILER_INC("dPoint_compare-Id");
-
-            return id == a.id;
-        } else {
-            // either one is infinity
-            // compare coordinates
-
-            PROFILER_INC("dPoint_compare-Coords");
-
-            for (uint i = 0; i < D; ++i) {
-                if (coords[i] != a.coords[i]) {
-                    return false;
-                }
+        for (uint i = 0; i < D; ++i) {
+            if (coords[i] != a.coords[i]) {
+                return false;
             }
-            return true;
         }
-    }
+        return true;
+    }*/
 
-    bool operator==(const tIdType &a) const { return id == a; }
+    //bool operator==(const tIdType &a) const { return id == a; }
 
-    inline bool isFinite() const {
+    /*inline bool isFinite() const {
         PROFILER_INC("dPoint_isFinite");
 
         return isFinite(id);
-    }
+    }*/
 
 public:
-    tIdType id;
+    //tIdType id;
     dVector<D, Precision> coords;
 
 public:
@@ -480,7 +467,7 @@ public:
         return false;
     }
 
-    bool contains(const dPoint<D, Precision> &p) const {
+    /*bool contains(const dPoint<D, Precision> &p) const {
         PROFILER_INC("dSimplex_containsPoint");
 
         for (uint d = 0; d < D + 1; ++d) {
@@ -489,7 +476,7 @@ public:
         }
 
         return false;
-    }
+    }*/
 
     template<typename Container>
     bool containsAll(const Container &p) const {
@@ -827,8 +814,8 @@ public:
     dSimplices() : Concurrent_BlockedArray<dSimplex<D, Precision>>(),
                    tetrahedronID(1) { }
 
-    dSimplices(dSimplices && other) : Concurrent_BlockedArray<dSimplex<D, Precision>>(std::move(other)),
-                                      tetrahedronID(other.tetrahedronID.load()) { }
+    dSimplices(dSimplices &&other) : Concurrent_BlockedArray<dSimplex<D, Precision>>(std::move(other)),
+                                     tetrahedronID(other.tetrahedronID.load()) { }
 
     VerificationReport<D, Precision>
             verify(const PartialTriangulation &pt,
@@ -860,29 +847,3 @@ struct VerificationReport {
 };
 
 //#############################################################################
-
-template<uint D, typename Precision>
-dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
-                                std::function<Precision()> &dice) {
-    dPoints<D, Precision> points;
-    points.reserve(n);
-
-    dVector<D, Precision> dim = bounds.high;
-    for (uint d = 0; d < D; ++d) {
-        dim[d] -= bounds.low[d];
-    }
-
-    for (uint i = 0; i < n; ++i) {
-        dPoint<D, Precision> p;
-        p.id = i;
-        for (uint d = 0; d < D; ++d) {
-            p.coords[d] = bounds.low[d] + dim[d] * dice();
-        }
-
-        points.emplace_back(p);
-    }
-
-    // TODO checks for colliding points, straight lines, etc.
-
-    return points;
-}

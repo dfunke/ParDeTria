@@ -16,7 +16,7 @@ std::string to_string(const dVector<D, Precision> &p) {
 template<uint D, typename Precision>
 std::string to_string(const dPoint<D, Precision> &p) {
     std::stringstream o;
-    o << p.id << "-[" << p.coords[0];
+    o << "[" << p.coords[0];
     for (uint i = 1; i < D; ++i)
         o << ", " << p.coords[i];
     o << "]";
