@@ -167,6 +167,17 @@ public:
         Tria t;
         return t;
     }
+
+    void insert(Tria & tria, const Ids &ids, dPoints<2, Precision> &points){
+        // transform points into CGAL points with info
+        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+            const auto &p = points[i];
+            return std::make_pair(make_point(p), i);
+        };
+
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                 boost::make_transform_iterator(ids.end(), transform));
+    }
 };
 
 template<typename Precision, class Tria>
@@ -197,6 +208,11 @@ public:
     Tria make_tria() {
         Tria t;
         return t;
+    }
+
+    void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+
+        tria.custom_insert_with_info(ids, points);
     }
 };
 
@@ -235,6 +251,17 @@ public:
         return t;
     }
 
+    void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+        // transform points into CGAL points with info
+        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+            const auto &p = points[i];
+            return std::make_pair(make_point(p), i);
+        };
+
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                    boost::make_transform_iterator(ids.end(), transform));
+    }
+
 private:
     typename Tria::Lock_data_structure lockingDS;
 };
@@ -248,16 +275,9 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
-    // transform points into CGAL points with info
-    auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
-        const auto &p = points[i];
-        return std::make_pair(helper.make_point(p), p.id);
-    };
-
     VTUNE_TASK(CgalTriangulation);
     Tria t = helper.make_tria();
-    t.insert(boost::make_transform_iterator(ids.begin(), transform),
-             boost::make_transform_iterator(ids.end(), transform));
+    helper.insert(t, ids, points);
     VTUNE_END_TASK(CgalTriangulation);
 
     ASSERT(t.is_valid());
@@ -445,7 +465,7 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
     // transform points into CGAL points with info
     auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
         const auto &p = points[i];
-        return std::make_pair(helper.make_point(p), p.id);
+        return std::make_pair(helper.make_point(p), i);
     };
 
     Tria t = helper.make_tria();

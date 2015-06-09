@@ -61,6 +61,9 @@
 #  error "The old remove() code has been removed.  Please report any issue you may have with the current one."
 #endif
 
+#include "Geometry.h"
+
+
 namespace CGAL {
 
 // Here is the declaration of a class template with three arguments, one
@@ -480,7 +483,39 @@ private:
     return number_of_vertices() - n;
   }
 
-public:
+    public:
+        template<uint D, typename Precision>
+        std::ptrdiff_t custom_insert_with_info(const Ids &ids, dPoints<D, Precision> &points)
+        {
+            size_type n = number_of_vertices();
+            /* do not copy the elements again
+            std::vector<std::ptrdiff_t> indices;
+            std::vector<Point> points;
+            std::vector<typename Triangulation_data_structure::Vertex::Info> infos;
+            std::ptrdiff_t index=0;
+            for (InputIterator it=first;it!=last;++it){
+                Tuple_or_pair value=*it;
+                points.push_back( top_get_first(value)  );
+                infos.push_back ( top_get_second(value) );
+                indices.push_back(index++);
+            }*/
+
+            // points are already sorted
+            //typedef Spatial_sort_traits_adapter_3<Geom_traits,Point*> Search_traits;
+            //spatial_sort(indices.begin(),indices.end(),Search_traits(&(points[0]),geom_traits()));
+
+                Vertex_handle hint;
+                for (const auto id : ids) {
+                    auto &p = points[id];
+                    hint = insert(Point(p.coords[0], p.coords[1], p.coords[2]), hint);
+                    if (hint != Vertex_handle()) hint->info() = id;
+                }
+
+            return number_of_vertices() - n;
+        }
+
+
+    public:
 
   template < class InputIterator >
   std::ptrdiff_t

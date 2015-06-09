@@ -24,6 +24,19 @@ target_link_libraries(CGALTriangulator
   ${CMAKE_THREAD_LIBS_INIT}
 )
 
+add_library(SpatialSort
+  SpatialSort.cpp
+)
+
+target_link_libraries(CGALTriangulator
+  Logging
+  Geometry
+  ${CGAL_LIBRARY}
+  ${GMP_LIBRARIES}
+  ${TBB_MALLOC_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
+)
+
 add_library(DCTriangulator
   DCTriangulator.cpp
   Partitioner.cpp
@@ -32,6 +45,7 @@ add_library(DCTriangulator
 target_link_libraries(DCTriangulator
   Triangulator
   CGALTriangulator
+  SpatialSort
   Logging
   Geometry
 )
