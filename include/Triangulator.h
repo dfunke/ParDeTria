@@ -8,10 +8,11 @@
 
 #include "utils/VTuneAdapter.h"
 #include "datastructures/LP_Set.hxx"
+#include "datastructures/Growing_LP.hxx"
 
 struct PartialTriangulation {
-    Concurrent_LP_Set simplices;
-    Concurrent_LP_Set convexHull;
+    GrowingHashTable<Concurrent_LP_Set> simplices;
+    GrowingHashTable<Concurrent_LP_Set> convexHull;
 
     PartialTriangulation(const std::size_t nSimplices, const std::size_t nConvexHull)
             : simplices(nSimplices), convexHull(nConvexHull) { }
@@ -38,7 +39,7 @@ public:
 
     std::pair<dSimplices<D, Precision>, PartialTriangulation> triangulate() {
         dSimplices<D, Precision> DT;
-        DT.reserve((D+1)*points.size());
+        DT.reserve(points.size());
 
         PartialTriangulation pt = this->_triangulate(DT, allPoints(), baseBounds, std::to_string(TOP));
 

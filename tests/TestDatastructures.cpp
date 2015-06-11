@@ -2,6 +2,7 @@
 #include "datastructures/LP_Map.hxx"
 #include "datastructures/LP_MultiMap.hxx"
 #include "datastructures/BlockedArray.hxx"
+#include "datastructures/Growing_LP.hxx"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -66,34 +67,38 @@ TEST(Concurrent_LP_Set, Merge) {
         EXPECT_TRUE(a.contains(i) | b.contains(i));
     }
 
-    a.unsafe_merge(std::move(b));
+    a.unsafe_merge(std::move(b), cmp);
+
+    EXPECT_EQ(a.size(), 120);
 
     for (uint i : cmp) {
         EXPECT_TRUE(a.contains(i));
     }
 }
 
-TEST(Concurrent_LP_Set, Grow) {
+TEST(Concurrent_LP_Set, ConcurrentGrow) {
 
-    Concurrent_LP_Set set(120);
-    EXPECT_EQ(set.capacity(), 128);
+    GrowingHashTable<Concurrent_LP_Set> set(120);
+    GrowingHashTableHandle<Concurrent_LP_Set> handle(set);
+    EXPECT_EQ(handle.capacity(), 128);
 
     tbb::concurrent_unordered_set<uint> cmp;
 
     //auto distribution = std::uniform_int_distribution<uint>(1, std::numeric_limits<uint>::max());
     //auto dice = std::bind(distribution, startGen);
 
-    tbb::parallel_for(tbb::blocked_range<uint>(1, 2000), [&](const auto & r) {
-        for(auto i = r.begin(); i != r.end(); ++i) {
-            set.insert(i);
+    tbb::parallel_for(tbb::blocked_range<uint>(1, 1e6), [&](const auto &r) {
+        GrowingHashTableHandle<Concurrent_LP_Set> handle(set);
+        for (auto i = r.begin(); i != r.end(); ++i) {
+            handle.insert(i);
             cmp.insert(i);
         }
     });
 
-    EXPECT_EQ(cmp.size(), set.size());
+    EXPECT_EQ(cmp.size(), handle.size());
 
     for (uint i : cmp) {
-        EXPECT_TRUE(set.contains(i));
+        EXPECT_TRUE(handle.contains(i));
     }
 }
 

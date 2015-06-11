@@ -291,7 +291,9 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     auto lastId = t.tds().maxId();
     t.tds().disableId();
 
-    PartialTriangulation pt(2*triaSize, triaSize);
+    PartialTriangulation pt(triaSize, triaSize / 4);
+    auto simplexHandle = pt.simplices.handle();
+    auto convexHullHandle = pt.convexHull.handle();
 
     uint startId = DT.tetrahedronID.fetch_add(lastId);
     DT.reserve(startId + lastId);
@@ -322,14 +324,14 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
         //check whether vertex belongs to the convex hull
         if (!a.isFinite())
-            pt.convexHull.insert(a.id);
+            convexHullHandle.insert(a.id);
 
         ASSERT((a.id != dSimplex<D, Precision>::cINF));
 
         PLOG(a << std::endl);
 
         DT[a.id] = a;
-        pt.simplices.insert(a.id);
+        simplexHandle.insert(a.id);
     }
     DEDENT
 

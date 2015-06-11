@@ -98,8 +98,10 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
         edgePoints.insert(k);
     }
 
+    auto convexHullHandle = pt.convexHull.handle();
+
     Ids wqa;
-    wqa.insert(pt.convexHull.begin(), pt.convexHull.end()); // set of already checked simplices
+    wqa.insert(convexHullHandle.begin(), convexHullHandle.end()); // set of already checked simplices
     wqa.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
 
     /* Walk along the neighbors,
@@ -110,7 +112,7 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
     INDENT
 
     VTUNE_TASK(IdentifyEdge);
-    tbb::parallel_do(pt.convexHull, [&](const uint id,
+    tbb::parallel_do(convexHullHandle, [&](const uint id,
                                   tbb::parallel_do_feeder<uint> &feeder) {
 
         if(!dSimplex<D,Precision>::isFinite(id))
@@ -205,8 +207,13 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     const uint saveIndent = LOGGER.getIndent();
 
     tbb::concurrent_unordered_set<uint> wqa(toCheck.size());
-    tbb::enumerable_thread_specific<std::set<uint>,
-            tbb::cache_aligned_allocator<std::set<uint>>,
+
+    tbb::enumerable_thread_specific<ConstGrowingHashTableHandle<Concurrent_LP_Set>,
+            tbb::cache_aligned_allocator<ConstGrowingHashTableHandle<Concurrent_LP_Set>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(pt.simplices));
+
+    tbb::enumerable_thread_specific<std::set<tIdType>,
+            tbb::cache_aligned_allocator<std::set<tIdType>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsNeighborSet;
 
 #ifndef NDEBUG
@@ -225,6 +232,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         }
 
         dSimplex<D, Precision> &simplex = simplices[id];
+        auto simplicesHandle = tsSimplicesHandle.local();
 
         PLOG("Checking neighbors of " << simplex << std::endl);
 #ifndef NDEBUG
@@ -234,7 +242,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         bool requiresUpdate = false;
         for (const auto &n : simplex.neighbors) {
             if (dSimplex<D, Precision>::isFinite(n) &&
-                (!pt.simplices.count(n) || !simplex.isNeighbor(simplices[n]))) {
+                (!simplicesHandle.count(n) || !simplex.isNeighbor(simplices[n]))) {
                 requiresUpdate = true;
                 break;
             }
@@ -265,7 +273,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
             for (auto it = range.first; it != range.second; ++it) {
                 auto i = *it;
                 if (i.second != simplex.id && dSimplex<D, Precision>::isFinite(i.second)
-                    && pt.simplices.count(i.second) && simplex.isNeighbor(simplices[i.second])) {
+                    && simplicesHandle.count(i.second) && simplex.isNeighbor(simplices[i.second])) {
                     PLOG("Neighbor with " << simplices[i.second] << std::endl);
 
                     if (neighborSet.insert(i.second).second) {
@@ -316,10 +324,12 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
     VTUNE_TASK(CombineTriangulations);
     PartialTriangulation pt = std::move(partialDTs[0]);
+    auto simplicesHandle = pt.simplices.handle();
+    auto convexHullHandle = pt.convexHull.handle();
 
     for (uint i = 1; i < partialDTs.size(); ++i) {
-        pt.simplices.unsafe_merge(std::move(partialDTs[i].simplices), edgeSimplices, edgeDT.simplices.size());
-        pt.convexHull.unsafe_merge(std::move(partialDTs[i].convexHull), edgeSimplices, edgeDT.simplices.size());
+        simplicesHandle.unsafe_merge(partialDTs[i].simplices.handle(), edgeSimplices);
+        convexHullHandle.unsafe_merge(partialDTs[i].convexHull.handle(), edgeSimplices);
     }
     VTUNE_END_TASK(CombineTriangulations);
 
@@ -343,7 +353,19 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     Ids insertedSimplices;
 
     VTUNE_TASK(AddBorderSimplices);
-    tbb::parallel_for(edgeDT.simplices.range(), [&](const auto &r) {
+
+    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
+            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(pt.simplices));
+
+    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
+            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsConvexHullHandle(std::ref(pt.convexHull));
+
+    tbb::parallel_for(edgeDT.simplices.handle().range(), [&](const auto &r) {
+
+        auto simplicesHandle = tsSimplicesHandle.local();
+        auto convexHullHandle = tsConvexHullHandle.local();
 
         for (const auto &i : r) {
 
@@ -354,11 +376,11 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
             bool inOnePartition = partitioning[p0].contains(edgeSimplex);
 
             if (!inOnePartition) {
-                pt.simplices.insert(edgeSimplex.id);
+                simplicesHandle.insert(edgeSimplex.id);
 
                 //convex hull treatment
                 if (!edgeSimplex.isFinite())
-                    pt.convexHull.insert(edgeSimplex.id);
+                    convexHullHandle.insert(edgeSimplex.id);
 
                 for (uint d = 0; d < D + 1; ++d) {
                     wuFaces.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
@@ -374,11 +396,11 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
                 for (auto it = range.first; it != range.second; ++it) {
                     if (edgeSimplex.equalVertices(DT[*it])) {
-                        pt.simplices.insert(edgeSimplex.id);
+                        simplicesHandle.insert(edgeSimplex.id);
 
                         //convex hull treatment
                         if (!edgeSimplex.isFinite())
-                            pt.convexHull.insert(edgeSimplex.id);
+                            convexHullHandle.insert(edgeSimplex.id);
 
                         for (uint d = 0; d < D + 1; ++d) {
                             wuFaces.insert((edgeSimplex.faceFingerprint(d)),

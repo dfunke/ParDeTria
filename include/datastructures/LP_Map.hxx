@@ -22,9 +22,6 @@ public:
 
         m_values = std::make_unique<std::vector<tValueType>>();
         m_values->resize(m_arraySize);
-
-
-        m_hasher.l = log2(m_arraySize);
     }
 
     LP_Map(LP_Map &&other)
@@ -122,7 +119,6 @@ public:
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2(newSize);
-        m_hasher.l = log2(m_arraySize);
 
         auto oldKeys = std::move(m_keys);
         auto oldValues = std::move(m_values);
@@ -160,7 +156,6 @@ public:
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2(newSize);
-        m_hasher.l = log2(m_arraySize);
 
         auto oldKeys = std::move(m_keys);
         auto oldValues = std::move(m_values);
@@ -235,8 +230,6 @@ public:
         m_arraySize = nextPow2(size);
         m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); // zero init
         m_values.reset(new std::atomic<tValueType>[m_arraySize]); // random init
-
-        m_hasher.l = log2(m_arraySize);
     }
 
     Concurrent_LP_Map(Concurrent_LP_Map &&other)
@@ -336,7 +329,6 @@ public:
     void unsafe_rehash(std::size_t newSize) {
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2(newSize);
-        m_hasher.l = log2(m_arraySize);
 
         auto oldKeys = std::move(m_keys);
         auto oldValues = std::move(m_values);
@@ -368,7 +360,6 @@ public:
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
-        m_hasher.l = log2(m_arraySize);
 
         auto oldKeys = std::move(m_keys);
         auto oldValues = std::move(m_values);

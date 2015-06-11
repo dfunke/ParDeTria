@@ -25,16 +25,37 @@ struct Hasher {
     Hasher() {
         std::uniform_int_distribution<T> dist(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
         while (a = dist(startGen), a % 2 == 0) { } // find odd value
-
-        l = sizeof(T) * CHAR_BIT;
     }
 
     T operator()(const T x) const {
-        return (a * x) >> (sizeof(T) * CHAR_BIT - l);
+        return (a * x);
     }
 
     T a;
-    T l;
+};
+
+struct InsertReturn {
+public:
+    enum class State : unsigned char {
+        False, True, Full
+    };
+
+    InsertReturn() : m_state(State::False) { }
+
+    InsertReturn(bool b) : m_state(b ? State::True : State::False) { }
+
+    InsertReturn(const InsertReturn::State &s) : m_state(s) { }
+
+    InsertReturn(const InsertReturn &o) : m_state(o.m_state) { }
+
+    operator bool() const {
+        return m_state == State::True;
+    }
+
+    bool operator==(const InsertReturn::State & other) const { return m_state == other; }
+
+private:
+    State m_state;
 };
 
 namespace _detail {
@@ -202,8 +223,6 @@ public:
         m_arraySize = nextPow2(size);
         m_array = std::make_unique<std::vector<tKeyType>>();
         m_array->resize(m_arraySize);
-
-        m_hasher.l = log2(m_arraySize);
     }
 
     LP_Set(LP_Set &&other)
@@ -287,7 +306,6 @@ public:
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2(newSize);
-        m_hasher.l = log2(m_arraySize);
 
         auto oldArray = std::move(m_array);
         m_items = 0;
@@ -321,7 +339,6 @@ public:
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2(newSize);
-        m_hasher.l = log2(m_arraySize);
 
         auto oldArray = std::move(m_array);
         m_items = 0;
@@ -375,17 +392,35 @@ private:
 
 };
 
+template<class HT>
+class GrowingHashTableHandle;
+
+template<class HT>
+class ConstGrowingHashTableHandle;
+
+
+template<class HT>
+class GrowingHashTable;
+
 class Concurrent_LP_Set {
+
+    friend class GrowingHashTable<Concurrent_LP_Set>;
+
+    friend class GrowingHashTableHandle<Concurrent_LP_Set>;
+    friend class ConstGrowingHashTableHandle<Concurrent_LP_Set>;
 
 public:
     typedef uint tKeyType;
 
 public:
 
-    Concurrent_LP_Set(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    Concurrent_LP_Set(const std::size_t size, const uint version = 0,
+                      Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_array(nullptr),
-              m_hasher(hasher) {
+              m_version(version),
+              m_hasher(hasher),
+              m_currentCopyBlock(0){
         // Initialize cells
         m_arraySize = nextPow2(size);
         try {
@@ -394,33 +429,40 @@ public:
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
         }
-
-        m_hasher.l = log2(m_arraySize);
     }
 
     Concurrent_LP_Set(Concurrent_LP_Set &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items.load()),
               m_array(std::move(other.m_array)),
-              m_hasher(std::move(other.m_hasher)) { }
+              m_version(other.m_version),
+              m_hasher(std::move(other.m_hasher)),
+              m_currentCopyBlock(0){ }
 
     Concurrent_LP_Set &operator=(Concurrent_LP_Set &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load());
         m_array = std::move(other.m_array);
+        m_version = other.m_version;
         m_hasher = std::move(other.m_hasher);
+        m_currentCopyBlock.store(other.m_currentCopyBlock.load());
 
         return *this;
     }
 
 
-    bool insert(const tKeyType &key) {
+    InsertReturn insert(const tKeyType &key) {
         ASSERT(key != 0);
-        ASSERT(m_items < m_arraySize);
 
-        bool result = false;
+        if(m_items.load() > m_arraySize >> 1)
+            return InsertReturn::State::Full;
 
+        uint cols = 0;
         for (tKeyType idx = m_hasher(key); ; idx++) {
+
+            if (cols > c_growThreshold) {
+                return InsertReturn::State::Full;
+            }
 
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
@@ -429,12 +471,12 @@ public:
             tKeyType probedKey = m_array[idx].load();
 
             if (probedKey == key) {
-                result = false; // the key is already in the set, return false;
-                break;
+                return false; // the key is already in the set, return false;
             }
             else {
                 // The entry was either free, or contains another key.
                 if (probedKey != 0) {
+                    ++cols;
                     continue; // Usually, it contains another key. Keep probing.
                 }
                 // The entry was free. Now let's try to take it using a CAS.
@@ -442,20 +484,17 @@ public:
                 bool cas = m_array[idx].compare_exchange_strong(prevKey, key);
                 if (cas) {
                     ++m_items;
-                    result = true; // we just added the key to the set
-                    break;
+                    return true; // we just added the key to the set
                 }
                 else if (prevKey == key) {
-                    result = false; // the key was already added by another thread
-                    break;
+                    return false; // the key was already added by another thread
                 }
                 else {
+                    ++cols;
                     continue; // another thread inserted a different key in this position
                 }
             }
         }
-
-        return result;
     }
 
     bool contains(const tKeyType &key) const {
@@ -486,45 +525,20 @@ public:
 
     auto size() const { return m_items.load(); }
 
-    void unsafe_rehash(std::size_t newSize) {
-        std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2(newSize);
-        m_hasher.l = log2(m_arraySize);
 
-        auto oldArray = std::move(m_array);
-        m_items.store(0, std::memory_order_relaxed);
-
-        try {
-            m_array.reset(new std::atomic<tKeyType>[m_arraySize]()); //value init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
-
-        tbb::parallel_for(std::size_t(0), oldSize, [&oldArray, this](const uint i) {
-            if (oldArray[i].load(std::memory_order_relaxed) != 0)
-                insert(oldArray[i].load(std::memory_order_relaxed));
-        });
-    }
-
-    void unsafe_merge(Concurrent_LP_Set &&other) {
-
-        unsafe_rehash((capacity() + other.capacity()));
-
-        tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const uint i) {
-            if (other.m_array[i].load(std::memory_order_relaxed) != 0)
-                insert(other.m_array[i].load(std::memory_order_relaxed));
-        });
-    }
-
-
-    template<class Set>
-    void unsafe_merge(Concurrent_LP_Set &&other, const Set &filter, const std::size_t padding = 0) {
+    template<class Source, class Filter>
+    void unsafe_merge(Source &&other, const Filter &filter) {
 
         VTUNE_TASK(MergeAllocate);
         std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2((capacity() + other.capacity() + padding));
-        m_hasher.l = log2(m_arraySize);
+
+        std::size_t combinedItems = size() + other.size();
+        std::size_t newSize = nextPow2(combinedItems);
+
+        while(combinedItems > newSize >> 1)
+            newSize <<= 1;
+
+        m_arraySize = newSize;
 
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
@@ -555,14 +569,14 @@ public:
                                       val = oldArray[i].load(std::memory_order_relaxed);
 
                                       if (val != 0 && !filter.count(val))
-                                          this->insert(val);
+                                          this->_insert(val);
                                   }
 
                                   if (i < other.capacity()) {
-                                      val = other.m_array[i].load(std::memory_order_relaxed);
+                                      val = other.at(i);
 
                                       if (val != 0 && !filter.count(val))
-                                          this->insert(val);
+                                          this->_insert(val);
                                   }
                               }
                           });
@@ -570,17 +584,16 @@ public:
 
 private:
 
-    void migrate(const tKeyType &key, std::unique_ptr<std::atomic<tKeyType>[]> &array,
-                 const std::size_t &size, const Hasher<tKeyType> &hasher) {
+    void _insert(const tKeyType &key) {
 
         ASSERT(key != 0);
 
-        for (tKeyType idx = hasher(key); ; idx++) {
-            idx &= size - 1;
-            ASSERT(idx < size);
+        for (tKeyType idx = m_hasher(key); ; idx++) {
+            idx &= m_arraySize - 1;
+            ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
-            tKeyType probedKey = array[idx].load();
+            tKeyType probedKey = m_array[idx].load();
 
             if (probedKey == key) {
                 return; // the key is already in the set, return false;
@@ -591,8 +604,9 @@ private:
                     continue; // Usually, it contains another key. Keep probing.
                 // The entry was free. Now let's try to take it using a CAS.
                 tKeyType prevKey = 0;
-                bool cas = array[idx].compare_exchange_strong(prevKey, key);
+                bool cas = m_array[idx].compare_exchange_strong(prevKey, key);
                 if (cas) {
+                    ++m_items;
                     return; // we just added the key to the set
                 }
                 else if (prevKey == key) {
@@ -602,6 +616,12 @@ private:
                     continue; // another thread inserted a different key in this position
             }
         }
+    }
+
+    void _migrate(const std::size_t idx, Concurrent_LP_Set &target) {
+        auto val = at(idx);
+        if (val != 0)
+            target._insert(val);
     }
 
 public:
@@ -625,6 +645,11 @@ private:
     std::size_t m_arraySize;
     std::atomic<std::size_t> m_items;
     std::unique_ptr<std::atomic<tKeyType>[]> m_array;
+    uint m_version;
     Hasher<tKeyType> m_hasher;
+
+    std::atomic<std::size_t> m_currentCopyBlock;
+
+    const static uint c_growThreshold = 10;
 
 };
