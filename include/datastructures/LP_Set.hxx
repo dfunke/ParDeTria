@@ -529,6 +529,12 @@ public:
 
     auto size() const { return m_items.load(); }
 
+    template<class Source>
+    void unsafe_copy(const Source & other){
+        ASSERT(m_arraySize == other.size());
+        for(std::size_t i = 0; i < m_arraySize; ++i)
+            m_array[i] = other.at(i);
+    }
 
     template<class Source, class Filter>
     void unsafe_merge(Source &&other, const Filter &filter) {

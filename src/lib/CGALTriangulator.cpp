@@ -175,8 +175,9 @@ public:
             return std::make_pair(make_point(p), i);
         };
 
-        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
-                 boost::make_transform_iterator(ids.end(), transform));
+        auto handle = ids.handle();
+        tria.insert(boost::make_transform_iterator(handle.begin(), transform),
+                 boost::make_transform_iterator(handle.end(), transform));
     }
 };
 
@@ -258,8 +259,9 @@ public:
             return std::make_pair(make_point(p), i);
         };
 
-        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
-                    boost::make_transform_iterator(ids.end(), transform));
+        auto handle = ids.handle();
+        tria.insert(boost::make_transform_iterator(handle.begin(), transform),
+                    boost::make_transform_iterator(handle.end(), transform));
     }
 
 private:
@@ -273,7 +275,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
                                    const uint gridOccupancy
         /*, bool filterInfinite */) {
 
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.handle().size() / gridOccupancy));
 
     VTUNE_TASK(CgalTriangulation);
     Tria t = helper.make_tria();
@@ -462,7 +464,8 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
                                const uint gridOccupancy
         /*, bool filterInfinite */) {
 
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
+    auto idsHandle = ids.handle();
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(idsHandle.size() / gridOccupancy));
 
     // transform points into CGAL points with info
     auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
@@ -471,8 +474,8 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
     };
 
     Tria t = helper.make_tria();
-    t.insert(boost::make_transform_iterator(ids.begin(), transform),
-             boost::make_transform_iterator(ids.end(), transform));
+    t.insert(boost::make_transform_iterator(idsHandle.begin(), transform),
+             boost::make_transform_iterator(idsHandle.end(), transform));
 
     PartialTriangulation dummy(1, 1);
     return dummy;

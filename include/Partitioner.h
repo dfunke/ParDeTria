@@ -12,12 +12,16 @@ template<uint D, typename Precision>
 class Partition {
 
 public:
-    bool contains(const uint &p) const { return points.count(p) == 1; }
+    Partition(const std::size_t &nPoints) : points(nPoints), pointsHandle(points) { }
 
-    bool contains(const dPoint<D, Precision> &p) const {
-        assert(points.count(p.id) == 0 || bounds.contains(p.coords));
-        return points.count(p.id) == 1 && bounds.contains(p.coords);
-    }
+    Partition(Partition && other)
+            : id(other.id),
+              points(std::move(other.points)),
+              pointsHandle(std::move(other.pointsHandle)),
+              bounds(other.bounds) { }
+
+public:
+    bool contains(const uint &p) const { return points.handle().count(p) == 1; }
 
     bool contains(const dSimplex<D, Precision> &s, bool partially = false) const {
         for (const auto &p : s.vertices) {
@@ -38,6 +42,7 @@ public:
 public:
     uint id;
     Ids points;
+    ConstGrowingHashTableHandle<Concurrent_LP_Set> pointsHandle;
     dBox<D, Precision> bounds;
 };
 
@@ -53,15 +58,11 @@ class Partitioning : public std::vector<Partition<D, Precision>> {
 public:
     uint partition(const uint p) const {
         for (const auto &part : *this) {
-            if (part.points.count(p) > 0)
+            if (part.points.handle().count(p) > 0)
                 return part.id;
         }
 
         throw std::out_of_range("Partition of point " + std::to_string(p) + " not found");
-    }
-
-    uint partition(const dPoint<D, Precision> &p) const {
-        return partition(p.id);
     }
 };
 

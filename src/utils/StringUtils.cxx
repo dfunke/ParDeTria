@@ -62,9 +62,10 @@ std::string to_string(const dSphere<D, Precision> &b) {
 template<uint D, typename Precision>
 std::string to_string(const Partition<D, Precision> &p) {
     std::stringstream o;
+    auto handle = p.points.handle();
     o << p.id << " " << p.bounds << " [";
-    for (auto it = p.points.begin(); it != p.points.end(); ++it) {
-        if (it != p.points.begin())
+    for (auto it = handle.begin(); it != handle.end(); ++it) {
+        if (it != handle.begin())
             o << ", ";
         o << *it;
     }

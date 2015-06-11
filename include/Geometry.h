@@ -14,7 +14,9 @@
 #include <array>
 #include <cmath>
 #include <functional>
+#include <set>
 
+#include <datastructures/Growing_LP.hxx>
 #include "datastructures/IndexedVector.hxx"
 #include "datastructures/VectorAdapter.hxx"
 #include "datastructures/LP_MultiMap.hxx"
@@ -29,7 +31,9 @@
 typedef uint tHashType;
 typedef uint tIdType;
 
-class Ids : private tbb::concurrent_unordered_set<tIdType> {
+typedef GrowingHashTable<Concurrent_LP_Set> Ids;
+
+/*class Ids : private tbb::concurrent_unordered_set<tIdType> {
 
 private:
     typedef tbb::concurrent_unordered_set<tIdType> base;
@@ -173,7 +177,7 @@ public:
         base::unsafe_erase(k);
     }
 
-};
+};*/
 
 // basic data structure for d-dimensional data
 template<std::size_t D, typename Precision>
@@ -340,6 +344,11 @@ public:
             : VectorAdapter<dPoint<D, Precision>>(other) { }
 
     bool operator==(const Ids &other) const {
+        return operator==(other.handle());
+    }
+
+    template <class Container>
+    bool operator==(const Container &other) const {
         PROFILER_INC("dPoints_compare");
 
         if (this->size() != other.size())
@@ -353,7 +362,8 @@ public:
         return true;
     }
 
-    bool operator!=(const Ids &other) const { return !operator==(other); }
+    template <class Container>
+    bool operator!=(const Container &other) const { return !operator==(other); }
 };
 
 //#############################################################################
@@ -841,7 +851,7 @@ struct CrossCheckReport {
 template<uint D, typename Precision>
 struct VerificationReport {
     bool valid;
-    std::map<dSimplex<D, Precision>, Ids> inCircle;
+    std::map<dSimplex<D, Precision>, std::set<tIdType>> inCircle;
     std::vector<std::pair<dSimplex<D, Precision>, dSimplex<D, Precision>>>
             wrongNeighbors;
 };

@@ -765,7 +765,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
     tbb::spin_mutex mtx;
     // verify that every input point is used
     LOG("Checking points" << std::endl);
-    Ids usedPoints;
+    std::unordered_set<tIdType> usedPoints;
     for (const auto &s : simplexHandle) {
         usedPoints.insert(this->at(s).vertices.begin(), this->at(s).vertices.end());
     }

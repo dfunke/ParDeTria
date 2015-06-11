@@ -505,7 +505,7 @@ private:
             //spatial_sort(indices.begin(),indices.end(),Search_traits(&(points[0]),geom_traits()));
 
                 Vertex_handle hint;
-                for (const auto id : ids) {
+                for (const auto id : ids.handle()) {
                     auto &p = points[id];
                     hint = insert(Point(p.coords[0], p.coords[1], p.coords[2]), hint);
                     if (hint != Vertex_handle()) hint->info() = id;

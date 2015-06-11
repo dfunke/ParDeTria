@@ -500,6 +500,15 @@ public:
         });
     }
 
+    template<class Source>
+    void unsafe_copy(const Source & other){
+        ASSERT(m_arraySize == other.size());
+        for(std::size_t i = 0; i < m_arraySize; ++i) {
+            auto pair = other.at(i);
+            m_keys[i] = pair.first;
+            m_values[i] = pair.second;
+        }
+    }
 
     template<class Source, class Filter>
     void unsafe_merge(Source &&other, const Filter &filter) {

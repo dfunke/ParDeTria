@@ -28,6 +28,8 @@ public:
         g_table_w = g_table_r;
     }
 
+    GrowingHashTable(const GrowingHashTable<HT> & other) = delete;
+
     GrowingHashTable(GrowingHashTable<HT> &&other)
             : g_epoch_r(other.g_epoch_r.load()),
               g_table_r(other.g_table_r),
@@ -279,6 +281,15 @@ public:
             getTable();
         }
         return l_table->size();
+    }
+
+    template<class Source>
+    void unsafe_copy(const Source &other) {
+        uint t_epoch = parent.g_epoch_w.load();
+        if (t_epoch > l_epoch) {
+            getTable();
+        }
+        return l_table->unsafe_copy(other);
     }
 
     template<class Source, class Filter>
