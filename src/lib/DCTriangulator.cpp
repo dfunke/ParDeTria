@@ -436,7 +436,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
 template<uint D, typename Precision>
 PartialTriangulation DCTriangulator<D, Precision>::_triangulateBase(dSimplices<D, Precision> &DT,
-                                                                    const Ids partitionPoints,
+                                                                    const Ids &partitionPoints,
                                                                     const dBox<D, Precision> &bounds,
                                                                     const std::string provenance) {
 

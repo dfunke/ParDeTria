@@ -39,7 +39,7 @@ public:
 
 protected:
     PartialTriangulation _triangulateBase(dSimplices<D, Precision> &DT,
-                                          const Ids partitionPoints,
+                                          const Ids &partitionPoints,
                                           const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
