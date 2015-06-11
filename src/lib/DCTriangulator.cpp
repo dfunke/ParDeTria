@@ -158,11 +158,15 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
      * plus one more layer, to re-find their neighbors
      */
 
-
     VTUNE_TASK(BuildWU);
     cWuFaces wuFaces((D + 1) * (D + 1) * (D + 1) * edgeSimplices.size());
+    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_MultiMap>,
+            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_MultiMap>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
+
+        auto wuFacesHandle = tsWuFacesHandle.local();
 
         for (const auto &edgeSimplexID : range) {
             const auto &edgeSimplex = DT[edgeSimplexID];
@@ -172,7 +176,7 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
                     if (wqa.insert(firstLayer).second) {
                         for (uint i = 0; i < D + 1; ++i) {
                             auto facetteHash = DT[firstLayer].faceFingerprint(i);
-                            wuFaces.insert(facetteHash, firstLayer);
+                            wuFacesHandle.insert(facetteHash, firstLayer);
                         }
                     }
                     // now loop over its neighbors, adding the ones not belonging to the edge
@@ -183,7 +187,7 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
 
                             for (uint i = 0; i < D + 1; ++i) {
                                 auto facetteHash = DT[secondLayer].faceFingerprint(i);
-                                wuFaces.insert(facetteHash, secondLayer);
+                                wuFacesHandle.insert(facetteHash, secondLayer);
                             }
                         }
                     }
@@ -215,6 +219,8 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     tbb::enumerable_thread_specific<std::set<tIdType>,
             tbb::cache_aligned_allocator<std::set<tIdType>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsNeighborSet;
+
+    auto wuFacesHandle = wuFaces.handle();
 
 #ifndef NDEBUG
     std::atomic<uint> checked(0);
@@ -268,7 +274,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         for (uint i = 0; i < D + 1; ++i) {
 
             auto facetteHash = simplex.faceFingerprint(i);
-            auto range = wuFaces.get(facetteHash);
+            auto range = wuFacesHandle.get(facetteHash);
             PLOG("Key: " << facetteHash << " #Results: " << std::distance(range.first, range.second) << std::endl;);
             for (auto it = range.first; it != range.second; ++it) {
                 auto i = *it;
@@ -362,10 +368,15 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
             tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsConvexHullHandle(std::ref(pt.convexHull));
 
+    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_MultiMap>,
+            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_MultiMap>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tswuFacesHandle(std::ref(wuFaces));
+
     tbb::parallel_for(edgeDT.simplices.handle().range(), [&](const auto &r) {
 
         auto simplicesHandle = tsSimplicesHandle.local();
         auto convexHullHandle = tsConvexHullHandle.local();
+        auto wuFacesHandle = tswuFacesHandle.local();
 
         for (const auto &i : r) {
 
@@ -383,7 +394,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
                     convexHullHandle.insert(edgeSimplex.id);
 
                 for (uint d = 0; d < D + 1; ++d) {
-                    wuFaces.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
+                    wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
                 }
 
                 insertedSimplices.insert(edgeSimplex.id);
@@ -403,7 +414,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
                             convexHullHandle.insert(edgeSimplex.id);
 
                         for (uint d = 0; d < D + 1; ++d) {
-                            wuFaces.insert((edgeSimplex.faceFingerprint(d)),
+                            wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)),
                                                edgeSimplex.id);
                         }
 

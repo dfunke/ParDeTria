@@ -497,18 +497,22 @@ public:
         }
     }
 
-    bool contains(const tKeyType &key) const {
+    tKeyType get(const tKeyType &key) const {
         ASSERT(key != 0);
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
             tKeyType probedKey = m_array[idx].load();
             if (probedKey == key)
-                return true;;
+                return key;;
             if (probedKey == 0)
-                return false;
+                return 0;
         }
 
+    }
+
+    bool contains(const tKeyType &key) const {
+        return get(key);
     }
 
     std::size_t count(const tKeyType &key) const {
@@ -529,7 +533,7 @@ public:
     template<class Source, class Filter>
     void unsafe_merge(Source &&other, const Filter &filter) {
 
-        VTUNE_TASK(MergeAllocate);
+        VTUNE_TASK(SetMergeAllocate);
         std::size_t oldSize = m_arraySize;
 
         std::size_t combinedItems = size() + other.size();
@@ -549,17 +553,17 @@ public:
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
         }
-        VTUNE_END_TASK(MergeAllocate);
+        VTUNE_END_TASK(SetMergeAllocate);
 
-        VTUNE_TASK(MergeFill);
+        VTUNE_TASK(SetMergeFill);
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, m_arraySize), [this](const auto &r) {
             for (auto i = r.begin(); i != r.end(); ++i) {
                 m_array[i].store(0, std::memory_order_relaxed);
             }
         });
-        VTUNE_END_TASK(MergeFill);
+        VTUNE_END_TASK(SetMergeFill);
 
-        VTUNE_TASK(MergeCopy);
+        VTUNE_TASK(SetMergeCopy);
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())),
                           [&oldArray, oldSize, &other, &filter, this](const auto &r) {
 

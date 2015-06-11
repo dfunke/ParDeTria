@@ -92,6 +92,15 @@ public:
     }
 
     template<typename... Args>
+    auto get(Args... args) const {
+        uint t_epoch = parent.g_epoch_r.load();
+        if (t_epoch > l_epoch) {
+            getTable();
+        }
+        return l_table->get(args...);
+    }
+
+    template<typename... Args>
     std::size_t count(Args... args) const {
         return contains(args...);
     }
@@ -219,6 +228,15 @@ public:
     }
 
     template<typename... Args>
+    auto get(Args... args) const {
+        uint t_epoch = parent.g_epoch_r.load();
+        if (t_epoch > l_epoch) {
+            getTable();
+        }
+        return l_table->get(args...);
+    }
+
+    template<typename... Args>
     std::size_t count(Args... args) const {
         return contains(args...);
     }
@@ -309,6 +327,8 @@ private:
     void grow() {
         //generate table
         //CAS table into position
+
+        //std::cout << "Growing " << typeid(HT).name() <<std::endl;
 
         HashPtr w_table;
         { //should be atomic

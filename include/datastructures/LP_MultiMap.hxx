@@ -314,6 +314,11 @@ private:
 
 class Concurrent_LP_MultiMap {
 
+    friend class GrowingHashTable<Concurrent_LP_MultiMap>;
+
+    friend class GrowingHashTableHandle<Concurrent_LP_MultiMap>;
+    friend class ConstGrowingHashTableHandle<Concurrent_LP_MultiMap>;
+
 public:
     typedef uint tKeyType;
     typedef uint tValueType;
@@ -325,10 +330,13 @@ public:
 
 public:
 
-    Concurrent_LP_MultiMap(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    Concurrent_LP_MultiMap(std::size_t size, const uint version = 0,
+            Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_keys(nullptr),
-              m_hasher(hasher) {
+              m_version(version),
+              m_hasher(hasher),
+              m_currentCopyBlock(0){
         // Initialize cells
         m_arraySize = nextPow2(size);
 
@@ -347,35 +355,36 @@ public:
               m_items(other.m_items.load()),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
-              m_hasher(std::move(other.m_hasher)) { }
+              m_version(other.m_version),
+              m_hasher(std::move(other.m_hasher)),
+              m_currentCopyBlock(0){ }
 
     Concurrent_LP_MultiMap &operator=(Concurrent_LP_MultiMap &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load());
         m_keys = std::move(other.m_keys);
         m_values = std::move(other.m_values);
+        m_version = other.m_version;
         m_hasher = std::move(other.m_hasher);
+        m_currentCopyBlock.store(other.m_currentCopyBlock.load());
 
         return *this;
     }
 
 
-    bool insert(const tKeyType &key, const tValueType &value) {
+    InsertReturn insert(const tKeyType &key, const tValueType &value) {
         ASSERT(key != 0);
 
 
-        std::size_t steps = 0; //count number of steps
+        if(m_items.load() > m_arraySize >> 1)
+            return InsertReturn::State::Full;
+
+        std::size_t cols = 0; //count number of steps
         for (tKeyType idx = m_hasher(key); ; idx++) {
 
-            if (steps > m_arraySize / 4) {
-                throw std::length_error("Overfull MultiMap");
-                /*//we stepped through more than a quarter the array > grow
-                grow();
-
-                //reset insertion
-                steps = 0;
-                idx = m_hasher(key);*/
-            }
+            //if (cols > c_growThreshold) {
+            //    return InsertReturn::State::Full;
+            //}
 
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
@@ -384,7 +393,7 @@ public:
             tKeyType probedKey = m_keys[idx].load();
 
             if (probedKey != 0) {
-                ++steps;
+                cols += probedKey != key;
                 continue; // Usually, it contains another key. Keep probing.
             }
             // The entry was free. Now let's try to take it using a CAS.
@@ -395,13 +404,13 @@ public:
                 ++m_items;
                 return true; // we just added the key to the set
             } else {
-                ++steps;
+                cols += prevKey != key;
                 continue; // another thread inserted in this position
             }
         }
     }
 
-    bool insert(const std::pair<tKeyType, tValueType> &pair) {
+    InsertReturn insert(const std::pair<tKeyType, tValueType> &pair) {
         return insert(pair.first, pair.second);
     }
 
@@ -491,23 +500,20 @@ public:
         });
     }
 
-    void unsafe_merge(Concurrent_LP_MultiMap &&other) {
 
-        unsafe_rehash((capacity() + other.capacity()));
+    template<class Source, class Filter>
+    void unsafe_merge(Source &&other, const Filter &filter) {
 
-        tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const uint i) {
-            if (other.m_keys[i].load(std::memory_order_relaxed) != 0)
-                insert(other.m_keys[i].load(std::memory_order_relaxed),
-                       other.m_values[i].load(std::memory_order_relaxed));
-        });
-    }
-
-
-    template<class Set>
-    void unsafe_merge(Concurrent_LP_MultiMap &&other, const Set &filter) {
-
+        VTUNE_TASK(MultiMapMergeAllocate);
         std::size_t oldSize = m_arraySize;
-        m_arraySize = nextPow2((capacity() + other.capacity()));
+
+        std::size_t combinedItems = size() + other.size();
+        std::size_t newSize = nextPow2(combinedItems);
+
+        while(combinedItems > newSize >> 1)
+            newSize <<= 1;
+
+        m_arraySize = newSize;
 
         auto oldKeys = std::move(m_keys);
         auto oldValues = std::move(m_values);
@@ -520,25 +526,28 @@ public:
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
         }
+        VTUNE_END_TASK(MultiMapMergeAllocate);
 
 
+        VTUNE_TASK(MultiMapMergeCopy);
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())),
                           [&oldKeys, &oldValues, oldSize, &other, &filter, this](const auto &r) {
 
-                              tKeyType val = 0;
+                              tKeyType key = 0;
+                              std::pair<tKeyType, tValueType> pair;
                               for (auto i = r.begin(); i != r.end(); ++i) {
                                   if (i < oldSize) {
-                                      val = oldKeys[i].load(std::memory_order_relaxed);
+                                      key = oldKeys[i].load(std::memory_order_relaxed);
 
-                                      if (val != 0 && !filter.count(val))
-                                          this->insert(val, oldValues[i].load(std::memory_order_relaxed));
+                                      if (key != 0 && !filter.count(key))
+                                          this->_insert(key, oldValues[i].load(std::memory_order_relaxed));
                                   }
 
                                   if (i < other.capacity()) {
-                                      val = other.m_keys[i].load(std::memory_order_relaxed);
+                                      pair = other.at(i);
 
-                                      if (val != 0 && !filter.count(val))
-                                          this->insert(val, other.m_values[i].load(std::memory_order_relaxed));
+                                      if (pair.first != 0 && !filter.count(pair.first))
+                                          this->_insert(pair);
                                   }
                               }
                           });
@@ -556,12 +565,55 @@ public:
         return range_type(*this);
     }
 
+private:
+
+    void _insert(const tKeyType &key, const tValueType &value) {
+        ASSERT(key != 0);
+
+        for (tKeyType idx = m_hasher(key); ; idx++) {
+
+            idx &= m_arraySize - 1;
+            ASSERT(idx < m_arraySize);
+
+            // Load the key that was there.
+            tKeyType probedKey = m_keys[idx].load();
+
+            if (probedKey != 0) {
+                continue; // Usually, it contains another key. Keep probing.
+            }
+            // The entry was free. Now let's try to take it using a CAS.
+            tKeyType prevKey = 0;
+            bool cas = m_keys[idx].compare_exchange_strong(prevKey, key);
+            if (cas) {
+                m_values[idx].store(value, std::memory_order_relaxed); // insert value
+                ++m_items;
+                return; // we just added the key to the set
+            } else {
+                continue; // another thread inserted in this position
+            }
+        }
+    }
+
+    void _insert(const std::pair<tKeyType, tValueType> &pair) {
+        insert(pair.first, pair.second);
+    }
+
+    void _migrate(const std::size_t idx, Concurrent_LP_MultiMap &target) {
+        auto pair = at(idx);
+        if (pair.first != 0)
+            target._insert(pair);
+    }
 
 private:
     std::size_t m_arraySize;
     std::atomic<std::size_t> m_items;
     std::unique_ptr<std::atomic<tKeyType>[]> m_keys;
     std::unique_ptr<std::atomic<tValueType>[]> m_values;
+    uint m_version;
     Hasher<tKeyType> m_hasher;
+
+    std::atomic<std::size_t> m_currentCopyBlock;
+
+    const static uint c_growThreshold = 10;
 
 };

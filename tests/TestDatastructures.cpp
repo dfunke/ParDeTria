@@ -343,7 +343,7 @@ TEST(Concurrent_LP_MultiMap, Merge) {
         it = cmpRange.second;
     }
 
-    a.unsafe_merge(std::move(b));
+    a.unsafe_merge(std::move(b), cmp);
 
     for (auto it = cmp.begin(); it != cmp.end();) {
         auto i = *it;
