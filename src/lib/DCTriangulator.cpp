@@ -236,11 +236,15 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     const uint saveIndent = LOGGER.getIndent();
 
     auto toCheckHandle = toCheck.handle();
-    tbb::concurrent_unordered_set<uint> wqa(toCheckHandle.size());
+    Ids wqa(toCheckHandle.size());
 
     tbb::enumerable_thread_specific<ConstGrowingHashTableHandle<Concurrent_LP_Set>,
             tbb::cache_aligned_allocator<ConstGrowingHashTableHandle<Concurrent_LP_Set>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(pt.simplices));
+
+    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
+            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsWqaHandle(std::ref(wqa));
 
     tbb::enumerable_thread_specific<std::set<tIdType>,
             tbb::cache_aligned_allocator<std::set<tIdType>>,
@@ -258,8 +262,9 @@ void DCTriangulator<D, Precision>::updateNeighbors(
                                   tbb::parallel_do_feeder<uint> &feeder) {
 
         LOGGER.setIndent(saveIndent);
+        auto wqa = tsWqaHandle.local();
 
-        if (!wqa.insert(id).second) {
+        if (!wqa.insert(id)) {
             return;
         }
 
