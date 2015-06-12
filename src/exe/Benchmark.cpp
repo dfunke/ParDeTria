@@ -342,7 +342,7 @@ int main(int argc, char *argv[]) {
 
         runs.push_back(std::move(exRun));
     } else {
-        if ((!vm.count("n"))) {
+        if ((!vm.count("maxN"))) {
             std::cout << "Please specify number of points" << std::endl;
             return EXIT_FAILURE;
         }
