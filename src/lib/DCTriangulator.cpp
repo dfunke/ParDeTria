@@ -101,8 +101,9 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
 
     auto convexHullHandle = pt.convexHull.handle();
 
-    Ids wqa(convexHullHandle.size());
+    Ids wqa(convexHullHandle.capacity());
     auto wqaHandle = wqa.handle();
+
     wqaHandle.unsafe_copy(convexHullHandle); // set of already checked simplices
     wqaHandle.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
 

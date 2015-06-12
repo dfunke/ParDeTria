@@ -531,9 +531,10 @@ public:
 
     template<class Source>
     void unsafe_copy(const Source & other){
-        ASSERT(m_arraySize == other.size());
+        ASSERT(m_arraySize == other.capacity());
         for(std::size_t i = 0; i < m_arraySize; ++i)
             m_array[i] = other.at(i);
+        m_items.store(other.size());
     }
 
     template<class Source, class Filter>
