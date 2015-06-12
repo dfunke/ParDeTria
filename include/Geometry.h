@@ -351,7 +351,8 @@ public:
     bool operator==(const Container &other) const {
         PROFILER_INC("dPoints_compare");
 
-        if (this->size() != other.size())
+        //account for 0 not being used
+        if (this->size()-1 != other.size())
             return false;
 
         for (const auto &p : other) {

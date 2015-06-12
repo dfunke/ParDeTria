@@ -83,7 +83,7 @@ void CGALSpatialSorter<D, Precision>::sort(dPoints<D, Precision> &points
     SpatialSortingTraits<D, Precision> sst;
 
     VTUNE_TASK(SpatialSort);
-    CGAL::spatial_sort(points.begin(), points.end(), sst);
+    CGAL::spatial_sort(points.begin()+1, points.end(), sst);
 }
 
 // specializations
