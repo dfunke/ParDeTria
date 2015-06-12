@@ -21,7 +21,7 @@ public:
               bounds(other.bounds) { }
 
 public:
-    bool contains(const uint &p) const { return points.handle().count(p) == 1; }
+    bool contains(const uint &p) const { return pointsHandle.count(p) == 1; }
 
     bool contains(const dSimplex<D, Precision> &s, bool partially = false) const {
         for (const auto &p : s.vertices) {
@@ -58,7 +58,7 @@ class Partitioning : public std::vector<Partition<D, Precision>> {
 public:
     uint partition(const uint p) const {
         for (const auto &part : *this) {
-            if (part.points.handle().count(p) > 0)
+            if (part.pointsHandle.count(p) > 0)
                 return part.id;
         }
 
