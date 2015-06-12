@@ -135,6 +135,7 @@ void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10, bool
 
 std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10,
                                                   int maxThreads = -1, int minThreads = 1,
+                                                  int minRecDepth = 0, uint maxRecDepth = std::numeric_limits<uint>::max(),
                                                   bool parallel_base = true) {
 
     std::vector<ExperimentRun> runs;
@@ -195,8 +196,8 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                                 for (const unsigned char splitter : splitters) {
 
                                     //loop over recursion depth
-                                    for (uint recursionDepth = 0;
-                                         recursionDepth <= std::ceil(std::log2(nPoints / DCTriangulator<D, Precision>::BASE_CUTOFF));
+                                    for (uint recursionDepth = minRecDepth;
+                                         recursionDepth <= std::min(maxRecDepth, (uint) std::ceil(std::log2(nPoints / DCTriangulator<D, Precision>::BASE_CUTOFF)));
                                          ++recursionDepth) {
 
                                         if (firstOccupancy) { // we do not need to generate runs for the following occupancies
@@ -253,6 +254,8 @@ int main(int argc, char *argv[]) {
     uint maxN, minN = 10;
     int maxThreads = -1;
     int minThreads = 1;
+    uint minRecDepth = 0;
+    uint maxRecDepth = std::numeric_limits<uint>::max();
     uint occupancy = 1;
     unsigned char alg;
     bool parallelBase;
@@ -264,7 +267,7 @@ int main(int argc, char *argv[]) {
 
     po::options_description cCommandLine("Command Line Options");
     // point options
-    cCommandLine.add_options()("n", po::value<uint>(&maxN),
+    cCommandLine.add_options()("maxN", po::value<uint>(&maxN),
                                "maximum number of points");
     cCommandLine.add_options()("minN", po::value<uint>(&minN),
                                "minimum number of points, default 10");
@@ -274,6 +277,13 @@ int main(int argc, char *argv[]) {
                                "minimum number of threads, default 1");
     cCommandLine.add_options()("maxThreads", po::value<int>(&maxThreads),
                                "maximum number of threads, default -1 = automatic");
+
+    // rec depth options
+    // thread options
+    cCommandLine.add_options()("minRecDepth", po::value<uint>(&minRecDepth),
+                               "minimum recursion depth, default 0");
+    cCommandLine.add_options()("maxRecDepth", po::value<uint>(&maxRecDepth),
+                               "maximum recursion depth, default: expected size of min base case");
 
     // algorithm options
     cCommandLine.add_options()("algorithm", po::value<unsigned char>(&alg),
@@ -358,7 +368,7 @@ int main(int argc, char *argv[]) {
             maxThreads = -1;
         }
 
-        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, parallelBase);
+        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, minRecDepth, maxRecDepth, parallelBase);
     }
 
 #ifdef ENABLE_PROFILING
