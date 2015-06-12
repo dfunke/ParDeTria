@@ -775,7 +775,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
         for (std::size_t i = 0; i < points.finite_size(); ++i) {
             const auto & p = points[i];
             if (usedPoints.count(i) != 1 && dPoint<D,Precision>::isFinite(i)) {
-                sNotUsed << p << " ";
+                sNotUsed << "[" << i << "] " << p << " ";
                 result.valid = false;
             }
         }
