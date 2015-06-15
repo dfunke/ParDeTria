@@ -136,7 +136,8 @@ void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10, bool
 std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10,
                                                   int maxThreads = -1, int minThreads = 1,
                                                   int minRecDepth = 0, uint maxRecDepth = std::numeric_limits<uint>::max(),
-                                                  bool parallel_base = true) {
+                                                  bool parallel_base = true,
+                                                  int runNumber = -1) {
 
     std::vector<ExperimentRun> runs;
 
@@ -147,7 +148,8 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
         minThreads = maxThreads;
 
     //determine the latest run number
-    uint runNumber = db.getMaximum<uint>("run-number") + 1;
+    if(runNumber == -1)
+        runNumber = db.getMaximum<uint>("run-number") + 1;
 
     //loop over distributions
     for (const unsigned char dist : distributions) {
@@ -368,7 +370,7 @@ int main(int argc, char *argv[]) {
             maxThreads = -1;
         }
 
-        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, minRecDepth, maxRecDepth, parallelBase);
+        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, minRecDepth, maxRecDepth, parallelBase, runNumber);
     }
 
 #ifdef ENABLE_PROFILING
