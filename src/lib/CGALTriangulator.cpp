@@ -211,9 +211,21 @@ public:
         return t;
     }
 
-    void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+    /*void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
 
         tria.custom_insert_with_info(ids, points);
+    }*/
+
+    void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+        // transform points into CGAL points with info
+        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+            const auto &p = points[i];
+            return std::make_pair(make_point(p), i);
+        };
+
+        auto handle = ids.handle();
+        tria.insert(boost::make_transform_iterator(handle.begin(), transform),
+                    boost::make_transform_iterator(handle.end(), transform));
     }
 };
 
