@@ -634,13 +634,10 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     CrossCheckReport<D, Precision> result;
     result.valid = true;
 
-    auto simplicesHandle = pt.simplices.handle();
-    auto realSimplicesHandle = realPT.simplices.handle();
-
     //build hashmap for simplex lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(simplicesHandle.size() + realSimplicesHandle.size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(pt.simplices.size() + realPT.simplices.size());
 
-    tbb::parallel_for(simplicesHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
         for (const auto &i : r) {
 
@@ -649,7 +646,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
         }
     });
 
-    tbb::parallel_for(realSimplicesHandle.range(), [&](const auto & r) {
+    tbb::parallel_for(realPT.simplices.range(), [&](const auto & r) {
 
         for (const auto &i : r) {
             const dSimplex<D, Precision> &a = realSimplices.at(i);
@@ -660,7 +657,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     tbb::spin_mutex mtx;
 
     // check whether all simplices of real DT are present
-    tbb::parallel_for(realSimplicesHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(realPT.simplices.range(), [&](const auto &r) {
 
         for(const auto & i : r) {
             const dSimplex<D, Precision> &realSimplex = realSimplices.at(i);
@@ -673,7 +670,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                                           range.second,
                                           [&](const auto &i) {
                                               return dSimplex<D, Precision>::isFinite(i.second)
-                                                     && simplicesHandle.count(i.second)
+                                                     && pt.simplices.count(i.second)
                                                      && this->at(i.second).equalVertices(realSimplex);
                                           });
 
@@ -710,7 +707,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     // check for own simplices that are not in real DT
-    tbb::parallel_for(simplicesHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
         for (const auto &i : r) {
 
@@ -723,7 +720,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                                             range.second,
                                             [&](const auto &i) {
                                                 return dSimplex<D, Precision>::isFinite(i.second)
-                                                       && realSimplicesHandle.count(i.second)
+                                                       && realPT.simplices.count(i.second)
                                                        && realSimplices.at(i.second).equalVertices(mySimplex);
                                             });
 
@@ -739,10 +736,10 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     // check whether sizes are equal
-    if (simplicesHandle.size() != realSimplicesHandle.size()) {
-        LOG("my size: " + std::to_string(simplicesHandle.size()) +
-            " other size: "
-            << std::to_string(realSimplicesHandle.size()) + "\n");
+    if (pt.simplices.size() != realPT.simplices.size()) {
+        LOG("my size: " + std::to_string(pt.simplices.size()) +
+            " real size: "
+            << std::to_string(realPT.simplices.size()) + "\n");
         result.valid = false;
     }
 
@@ -759,14 +756,11 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
     VerificationReport<D, Precision> result;
     result.valid = true;
 
-    auto simplexHandle = pt.simplices.handle();
-    auto convexHullHandle = pt.convexHull.handle();
-
     tbb::spin_mutex mtx;
     // verify that every input point is used
     LOG("Checking points" << std::endl);
     std::unordered_set<tIdType> usedPoints;
-    for (const auto &s : simplexHandle) {
+    for (const auto &s : pt.simplices) {
         usedPoints.insert(this->at(s).vertices.begin(), this->at(s).vertices.end());
     }
     if (points != usedPoints) {
@@ -797,12 +791,12 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
 
     // verify convex hull
     LOG("Checking convex-hull" << std::endl);
-    tbb::parallel_for(simplexHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
         for (const auto &i : r) {
 
             const dSimplex<D, Precision> &s = this->at(i);
-            if (!s.isFinite() && !convexHullHandle.count(s.id)) {
+            if (!s.isFinite() && !pt.convexHull.count(s.id)) {
                 // s is infinite but not part of the convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("Infinite simplex " << s << " NOT in convex hull" << std::endl);
@@ -811,7 +805,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
         }
     });
 
-    tbb::parallel_for(convexHullHandle.range(), [&](const auto & r) {
+    tbb::parallel_for(pt.convexHull.range(), [&](const auto & r) {
 
         for (const auto & i : r) {
 
@@ -828,9 +822,9 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
     // verify that all simplices with a shared D-1 simplex are neighbors
 
     //build hashmap for face lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D + 1) * simplexHandle.size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D + 1) * pt.simplices.size());
 
-    tbb::parallel_for(simplexHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
         for (const auto &i : r) {
 
@@ -844,7 +838,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
     });
 
     LOG("Checking neighbors" << std::endl);
-    tbb::parallel_for(simplexHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
         for (const auto &i : r) {
 
@@ -856,7 +850,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
                 auto faceHash = a.faceFingerprint(i);
                 auto range = faceLookup.equal_range(faceHash);
                 for (auto it = range.first; it != range.second; ++it) {
-                    if (!dSimplex<D, Precision>::isFinite(it->second) || !simplexHandle.count(it->second))
+                    if (!dSimplex<D, Precision>::isFinite(it->second) || !pt.simplices.count(it->second))
                         // infinite/deleted simplex or not belonging to this triangulation
                         continue;
 
@@ -889,7 +883,7 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
 
     // check in circle criterion
     LOG("Checking empty circle criterion" << std::endl);
-    tbb::parallel_for(simplexHandle.range(), [&](const auto &r) {
+    tbb::parallel_for(pt.simplices.range(), [&](const auto &r) {
 
         for (const auto &i : r) {
 

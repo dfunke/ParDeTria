@@ -54,7 +54,7 @@ protected:
                  const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,
-                 Ids &edgePoints, Ids &edgeSimplices);
+                 Concurrent_Ids &edgePoints, Concurrent_Ids &edgeSimplices);
 
     cWuFaces buildWhereUsed(const dSimplices<D, Precision> &DT,
                             const Ids &edgeSimplices);

@@ -31,7 +31,8 @@
 typedef uint tHashType;
 typedef uint tIdType;
 
-typedef GrowingHashTable<Concurrent_LP_Set> Ids;
+typedef LP_Set Ids;
+typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Ids;
 
 /*class Ids : private tbb::concurrent_unordered_set<tIdType> {
 
@@ -343,7 +344,7 @@ public:
     dPoints(const VectorAdapter<dPoint<D, Precision>> &other)
             : VectorAdapter<dPoint<D, Precision>>(other) { }
 
-    bool operator==(const Ids &other) const {
+    bool operator==(const Concurrent_Ids &other) const {
         return operator==(other.handle());
     }
 

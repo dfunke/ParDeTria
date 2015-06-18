@@ -11,8 +11,8 @@
 #include "datastructures/Growing_LP.hxx"
 
 struct PartialTriangulation {
-    GrowingHashTable<Concurrent_LP_Set> simplices;
-    GrowingHashTable<Concurrent_LP_Set> convexHull;
+    LP_Set simplices;
+    LP_Set convexHull;
 
     PartialTriangulation(const std::size_t nSimplices, const std::size_t nConvexHull)
             : simplices(nSimplices), convexHull(nConvexHull) { }

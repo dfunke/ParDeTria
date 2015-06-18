@@ -94,7 +94,7 @@ template<uint D, typename Precision>
 void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
                                            const dSimplices<D, Precision> &simplices,
                                            const Partitioning<D, Precision> &partitioning, const uint &partition,
-                                           Ids &edgePoints, Ids &edgeSimplices) {
+                                           Concurrent_Ids &edgePoints, Concurrent_Ids &edgeSimplices) {
 
     // infinite points to edge
     auto edgePointsHandle = edgePoints.handle();
@@ -102,12 +102,10 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
         edgePointsHandle.insert(k);
     }
 
-    auto convexHullHandle = pt.convexHull.handle();
-
-    Ids wqa(convexHullHandle.capacity());
+    Concurrent_Ids wqa(pt.convexHull.capacity());
     auto wqaHandle = wqa.handle();
 
-    wqaHandle.unsafe_copy(convexHullHandle); // set of already checked simplices
+    wqaHandle.unsafe_copy(pt.convexHull); // set of already checked simplices
     wqaHandle.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
 
     tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
@@ -130,10 +128,10 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
     INDENT
 
     VTUNE_TASK(IdentifyEdge);
-    tbb::parallel_do(convexHullHandle, [&](const uint id,
-                                  tbb::parallel_do_feeder<uint> &feeder) {
+    tbb::parallel_do(pt.convexHull, [&](const uint id,
+                                        tbb::parallel_do_feeder<uint> &feeder) {
 
-        if(!dSimplex<D,Precision>::isFinite(id))
+        if (!dSimplex<D, Precision>::isFinite(id))
             return;
 
         auto wqaHandle = tsWqaHandle.local();
@@ -174,9 +172,8 @@ template<uint D, typename Precision>
 cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision> &DT,
                                                       const Ids &edgeSimplices) {
 
-    auto edgeSimplicesHandle = edgeSimplices.handle();
 
-    Ids wqa(edgeSimplicesHandle.size()); // set of already checked simplices
+    Concurrent_Ids wqa(edgeSimplices.size()); // set of already checked simplices
     tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
             tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWqaHandle(std::ref(wqa));
@@ -186,12 +183,12 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
      */
 
     VTUNE_TASK(BuildWU);
-    cWuFaces wuFaces((D + 1) * (D + 1) * (D + 1) * edgeSimplicesHandle.size());
+    cWuFaces wuFaces((D + 1) * (D + 1) * (D + 1) * edgeSimplices.size());
     tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_MultiMap>,
             tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_MultiMap>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
-    tbb::parallel_for(edgeSimplicesHandle.range(), [&](const auto &range) {
+    tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
 
         auto wqaHandle = tsWqaHandle.local();
         auto wuFacesHandle = tsWuFacesHandle.local();
@@ -199,7 +196,7 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
         for (const auto &edgeSimplexID : range) {
             const auto &edgeSimplex = DT[edgeSimplexID];
             for (const auto &firstLayer : edgeSimplex.neighbors) {
-                if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplicesHandle.count(firstLayer)) {
+                if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
                     // we have an "inward" neighbor, add it to the wuFaces DS
                     if (wqaHandle.insert(firstLayer)) {
                         for (uint i = 0; i < D + 1; ++i) {
@@ -210,7 +207,7 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
                     // now loop over its neighbors, adding the ones not belonging to the edge
                     // TODO maybe we can avoid this
                     for (const auto &secondLayer : DT[firstLayer].neighbors) {
-                        if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplicesHandle.count(secondLayer)
+                        if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
                             && wqaHandle.insert(secondLayer)) {
 
                             for (uint i = 0; i < D + 1; ++i) {
@@ -232,18 +229,13 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         dSimplices<D, Precision> &simplices,
         const PartialTriangulation &pt,
         const Ids &toCheck,
-        const cWuFaces & wuFaces,
+        const cWuFaces &wuFaces,
         __attribute__((unused)) const std::string &provenance) {
 
     INDENT
     const uint saveIndent = LOGGER.getIndent();
 
-    auto toCheckHandle = toCheck.handle();
-    Ids wqa(toCheckHandle.size());
-
-    tbb::enumerable_thread_specific<ConstGrowingHashTableHandle<Concurrent_LP_Set>,
-            tbb::cache_aligned_allocator<ConstGrowingHashTableHandle<Concurrent_LP_Set>>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(pt.simplices));
+    Concurrent_Ids wqa(toCheck.size());
 
     tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
             tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
@@ -261,8 +253,8 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 #endif
 
     VTUNE_TASK(UpdateNeighbors);
-    tbb::parallel_do(toCheckHandle.range(), [&](const uint &id,
-                                  tbb::parallel_do_feeder<uint> &feeder) {
+    tbb::parallel_do(toCheck.range(), [&](const uint &id,
+                                          tbb::parallel_do_feeder<uint> &feeder) {
 
         LOGGER.setIndent(saveIndent);
         auto wqa = tsWqaHandle.local();
@@ -272,7 +264,6 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         }
 
         dSimplex<D, Precision> &simplex = simplices[id];
-        auto simplicesHandle = tsSimplicesHandle.local();
 
         PLOG("Checking neighbors of " << simplex << std::endl);
 #ifndef NDEBUG
@@ -282,7 +273,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         bool requiresUpdate = false;
         for (const auto &n : simplex.neighbors) {
             if (dSimplex<D, Precision>::isFinite(n) &&
-                (!simplicesHandle.count(n) || !simplex.isNeighbor(simplices[n]))) {
+                (!pt.simplices.count(n) || !simplex.isNeighbor(simplices[n]))) {
                 requiresUpdate = true;
                 break;
             }
@@ -313,7 +304,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
             for (auto it = range.first; it != range.second; ++it) {
                 auto i = *it;
                 if (i.second != simplex.id && dSimplex<D, Precision>::isFinite(i.second)
-                    && simplicesHandle.count(i.second) && simplex.isNeighbor(simplices[i.second])) {
+                    && pt.simplices.count(i.second) && simplex.isNeighbor(simplices[i.second])) {
                     PLOG("Neighbor with " << simplices[i.second] << std::endl);
 
                     if (neighborSet.insert(i.second).second) {
@@ -364,13 +355,10 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
     VTUNE_TASK(CombineTriangulations);
     PartialTriangulation pt = std::move(partialDTs[0]);
-    auto simplicesHandle = pt.simplices.handle();
-    auto convexHullHandle = pt.convexHull.handle();
-    auto edgeSimplicesHandle = edgeSimplices.handle();
 
     for (uint i = 1; i < partialDTs.size(); ++i) {
-        simplicesHandle.unsafe_merge(partialDTs[i].simplices.handle(), edgeSimplicesHandle);
-        convexHullHandle.unsafe_merge(partialDTs[i].convexHull.handle(), edgeSimplicesHandle);
+        pt.simplices.merge(std::move(partialDTs[i].simplices), edgeSimplices);
+        pt.convexHull.merge(std::move(partialDTs[i].convexHull), edgeSimplices);
     }
     VTUNE_END_TASK(CombineTriangulations);
 
@@ -383,7 +371,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
             };
 
     VTUNE_TASK(SortDeletedVertices);
-    std::vector<tIdType> deletedSimplices(edgeSimplicesHandle.begin(), edgeSimplicesHandle.end());
+    std::vector<tIdType> deletedSimplices(edgeSimplices.begin(), edgeSimplices.end());
 
     tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpFingerprint);
     VTUNE_END_TASK(SortDeletedVertices);
@@ -391,17 +379,9 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
     // merge partial DTs and edge DT
     LOG("Merging triangulations" << std::endl);
-    Ids insertedSimplices(edgeSimplicesHandle.size() / 2);
+    Concurrent_Ids insertedSimplices(edgeSimplices.size() / 2);
 
     VTUNE_TASK(AddBorderSimplices);
-
-    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
-            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(pt.simplices));
-
-    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
-            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsConvexHullHandle(std::ref(pt.convexHull));
 
     tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_MultiMap>,
             tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_MultiMap>>,
@@ -411,10 +391,8 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
             tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsInsertedHandle(std::ref(insertedSimplices));
 
-    tbb::parallel_for(edgeDT.simplices.handle().range(), [&](const auto &r) {
+    tbb::parallel_for(edgeDT.simplices.range(), [&](const auto &r) {
 
-        auto simplicesHandle = tsSimplicesHandle.local();
-        auto convexHullHandle = tsConvexHullHandle.local();
         auto wuFacesHandle = tswuFacesHandle.local();
         auto insertedHandle = tsInsertedHandle.local();
 
@@ -427,16 +405,6 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
             bool inOnePartition = partitioning[p0].contains(edgeSimplex);
 
             if (!inOnePartition) {
-                simplicesHandle.insert(edgeSimplex.id);
-
-                //convex hull treatment
-                if (!edgeSimplex.isFinite())
-                    convexHullHandle.insert(edgeSimplex.id);
-
-                for (uint d = 0; d < D + 1; ++d) {
-                    wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
-                }
-
                 insertedHandle.insert(edgeSimplex.id);
             } else {
                 // the simplex is completely in one partition -> it must have been found
@@ -447,29 +415,34 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
                 for (auto it = range.first; it != range.second; ++it) {
                     if (edgeSimplex.equalVertices(DT[*it])) {
-                        simplicesHandle.insert(edgeSimplex.id);
-
-                        //convex hull treatment
-                        if (!edgeSimplex.isFinite())
-                            convexHullHandle.insert(edgeSimplex.id);
-
-                        for (uint d = 0; d < D + 1; ++d) {
-                            wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)),
-                                               edgeSimplex.id);
-                        }
-
                         insertedHandle.insert(edgeSimplex.id);
                     }
                 }
             }
         }
     });
+
+    auto wuFacesHandle = wuFaces.handle();
+    Ids insertedSimplicesSeq(std::move(insertedSimplices.data()));
+    for (const auto &id : insertedSimplicesSeq) {
+        const dSimplex<D, Precision> &edgeSimplex = DT[id];
+
+        pt.simplices.insert(edgeSimplex.id);
+
+        //convex hull treatment
+        if (!edgeSimplex.isFinite())
+            pt.convexHull.insert(edgeSimplex.id);
+
+        for (uint d = 0; d < D + 1; ++d) {
+            wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
+        }
+    }
     VTUNE_END_TASK(AddBorderSimplices);
 
     //ASSERT(DT.countDuplicates() == 0);
 
     LOG("Updating neighbors" << std::endl);
-    updateNeighbors(DT, pt, insertedSimplices, wuFaces, provenance);
+    updateNeighbors(DT, pt, insertedSimplicesSeq, wuFaces, provenance);
 
     return pt;
 }
@@ -481,11 +454,13 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulateBase(dSimplices<D
                                                                     const std::string provenance) {
 
     VTUNE_TASK(TriangulateBase);
-    PROFILER_MEAS(provenance.find('e') == std::string::npos? "basecaseSize" : "edgeBasecaseSize", partitionPoints.handle().size());
+    PROFILER_MEAS(provenance.find('e') == std::string::npos ? "basecaseSize" : "edgeBasecaseSize",
+                  partitionPoints.handle().size());
 
     LOGGER.setIndent(provenance.length());
+
     LOG("triangulateBASE called on level " << provenance << " with "
-        << partitionPoints.handle().size() << " points" << std::endl);
+        << partitionPoints.size() << " points" << std::endl);
 
     INDENT
     auto pt = baseTriangulator->_triangulate(DT, partitionPoints, bounds, provenance);
@@ -505,11 +480,10 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
     PROFILER_MEAS("nPoints", partitionPoints.handle().size());
 
     LOG("triangulateDAC called on level " << provenance << " with "
-        << partitionPoints.handle().size() << " points" << std::endl);
+        << partitionPoints.size() << " points" << std::endl);
 
 
-    auto partitionPointsHandle = partitionPoints.handle();
-    if (provenance.length() - 1 < recursionDepth && partitionPointsHandle.size() > BASE_CUTOFF) {
+    if (provenance.length() - 1 < recursionDepth && partitionPoints.size() > BASE_CUTOFF) {
         VTUNE_TASK(TriangulateRecursive);
 
         LOG("Recursive case" << std::endl);
@@ -525,8 +499,8 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
 
         DEDENT
 
-        Ids edgePointIds(partitionPointsHandle.size() / 4);
-        Ids edgeSimplexIds(partitionPointsHandle.size() / 4);
+        Concurrent_Ids edgePointIds(partitionPoints.size() / 4);
+        Concurrent_Ids edgeSimplexIds(partitionPoints.size() / 4);
 
         std::vector<PartialTriangulation> partialDTs;
         partialDTs.resize(partioning.size());
@@ -556,9 +530,9 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
 
 
         PROFILER_MEAS("edgeSimplices", edgeSimplexIds.handle().size());
-        PROFILER_MEAS("edgeSimplicesPerc", edgeSimplexIds.handle().size() / ([&] () -> std::size_t {
+        PROFILER_MEAS("edgeSimplicesPerc", edgeSimplexIds.handle().size() / ([&]() -> std::size_t {
             std::size_t size = 0;
-            for(uint i = 0; i < partialDTs.size(); ++i)
+            for (uint i = 0; i < partialDTs.size(); ++i)
                 size += partialDTs[i].simplices.handle().size();
             return size;
         })());
@@ -571,14 +545,16 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
         VTUNE_TASK(TriangulateEdge);
         //TODO how to identify the edge triangulation
         PartialTriangulation edgeDT = parallelEdgeTria ?
-                                      _triangulate(DT, edgePointIds, bounds, provenance + "e") :
-                                      _triangulateBase(DT, edgePointIds, bounds, provenance + "e");
+                                      _triangulate(DT, LP_Set(std::move(edgePointIds.data())), bounds, provenance + "e")
+                                                       :
+                                      _triangulateBase(DT, LP_Set(std::move(edgePointIds.data())), bounds,
+                                                       provenance + "e");
         VTUNE_END_TASK(TriangulateEdge);
 
         PROFILER_MEAS("edgeDT", edgeDT.simplices.handle().size());
-        PROFILER_MEAS("edgeDTPerc", edgeDT.simplices.handle().size()/ ([&] () -> std::size_t {
+        PROFILER_MEAS("edgeDTPerc", edgeDT.simplices.handle().size() / ([&]() -> std::size_t {
             std::size_t size = 0;
-            for(uint i = 0; i < partialDTs.size(); ++i)
+            for (uint i = 0; i < partialDTs.size(); ++i)
                 size += partialDTs[i].simplices.handle().size();
             return size;
         })());
@@ -586,7 +562,8 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
         DEDENT
 
         //TODO this is all wrong
-        return mergeTriangulation(partialDTs, DT, edgeSimplexIds, edgeDT, partioning, provenance);
+        return mergeTriangulation(partialDTs, DT, LP_Set(std::move(edgeSimplexIds.data())), edgeDT, partioning,
+                                  provenance);
 
     } else { // base case
         return _triangulateBase(DT, partitionPoints, bounds, provenance);

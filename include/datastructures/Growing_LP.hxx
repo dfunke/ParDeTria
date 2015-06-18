@@ -55,6 +55,10 @@ public:
 
     ConstGrowingHashTableHandle<HT> handle() const;
 
+    HT & data() {
+        return *g_table_r.get();
+    }
+
 private:
     using HashPtr = std::shared_ptr<HT>;
 

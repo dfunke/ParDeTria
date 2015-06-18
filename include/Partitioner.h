@@ -12,16 +12,15 @@ template<uint D, typename Precision>
 class Partition {
 
 public:
-    Partition(const std::size_t &nPoints) : points(nPoints), pointsHandle(points) { }
+    Partition(const std::size_t &nPoints) : points(nPoints) { }
 
     Partition(Partition && other)
             : id(other.id),
               points(std::move(other.points)),
-              pointsHandle(std::move(other.pointsHandle)),
               bounds(other.bounds) { }
 
 public:
-    bool contains(const uint &p) const { return pointsHandle.count(p) == 1; }
+    bool contains(const uint &p) const { return points.count(p) == 1; }
 
     bool contains(const dSimplex<D, Precision> &s, bool partially = false) const {
         for (const auto &p : s.vertices) {
@@ -42,7 +41,6 @@ public:
 public:
     uint id;
     Ids points;
-    ConstGrowingHashTableHandle<Concurrent_LP_Set> pointsHandle;
     dBox<D, Precision> bounds;
 };
 
@@ -58,7 +56,7 @@ class Partitioning : public std::vector<Partition<D, Precision>> {
 public:
     uint partition(const uint p) const {
         for (const auto &part : *this) {
-            if (part.pointsHandle.count(p) > 0)
+            if (part.points.count(p) > 0)
                 return part.id;
         }
 

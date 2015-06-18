@@ -52,7 +52,7 @@ public:
         return m_state == State::True;
     }
 
-    bool operator==(const InsertReturn::State & other) const { return m_state == other; }
+    bool operator==(const InsertReturn::State &other) const { return m_state == other; }
 
 private:
     State m_state;
@@ -208,7 +208,12 @@ namespace _detail {
     };
 }
 
+//forward declare concurrent version
+class Concurrent_LP_Set;
+
 class LP_Set {
+
+    friend class Concurrent_LP_Set;
 
 public:
     typedef uint tKeyType;
@@ -221,8 +226,12 @@ public:
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        m_array = std::make_unique<std::vector<tKeyType>>();
-        m_array->resize(m_arraySize);
+        try {
+            m_array.reset(new tKeyType[m_arraySize]()); //value init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
     }
 
     LP_Set(LP_Set &&other)
@@ -230,6 +239,9 @@ public:
               m_items(other.m_items),
               m_array(std::move(other.m_array)),
               m_hasher(std::move(other.m_hasher)) { }
+
+    //Conversion
+    LP_Set(Concurrent_LP_Set &&other);
 
     LP_Set &operator=(LP_Set &&other) {
         m_arraySize = other.m_arraySize;
@@ -251,7 +263,7 @@ public:
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
-            tKeyType probedKey = m_array->at(idx);
+            tKeyType probedKey = m_array[idx];
 
             if (probedKey == key)
                 return false; // the key is already in the set, return false;
@@ -260,7 +272,7 @@ public:
                 if (probedKey != 0)
                     continue; // Usually, it contains another key. Keep probing.
                 // The entry was free. take it
-                m_array->at(idx) = key;
+                m_array[idx] = key;
                 ++m_items;
                 return true;
             }
@@ -272,7 +284,7 @@ public:
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
-            tKeyType probedKey = m_array->at(idx);
+            tKeyType probedKey = m_array[idx];
             if (probedKey == key)
                 return true;;
             if (probedKey == 0)
@@ -288,12 +300,12 @@ public:
     bool empty() const { return m_items == 0; };
 
     bool empty(const std::size_t idx) const {
-        return m_array->at(idx) == 0;
+        return m_array[idx] == 0;
     };
 
     tKeyType at(const std::size_t idx) const {
 
-        return m_array->at(idx);
+        return m_array[idx];
     }
 
     auto capacity() const { return m_arraySize; }
@@ -310,12 +322,16 @@ public:
         auto oldArray = std::move(m_array);
         m_items = 0;
 
-        m_array = std::make_unique<std::vector<tKeyType>>();
-        m_array->resize(m_arraySize);
+        try {
+            m_array.reset(new tKeyType[m_arraySize]()); //value init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-            if (oldArray->at(i) != 0)
-                insert(oldArray->at(i));
+            if (oldArray[i] != 0)
+                insert(oldArray[i]);
         }
 
         m_rehashing = false;
@@ -327,8 +343,8 @@ public:
         rehash((capacity() + other.capacity()));
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
-            if (other.m_array->at(i) != 0)
-                insert(other.m_array->at(i));
+            if (other.m_array[i] != 0)
+                insert(other.m_array[i]);
         }
     }
 
@@ -343,12 +359,16 @@ public:
         auto oldArray = std::move(m_array);
         m_items = 0;
 
-        m_array = std::make_unique<std::vector<tKeyType>>();
-        m_array->resize(m_arraySize);
+        try {
+            m_array.reset(new tKeyType[m_arraySize]()); //value init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-            if (oldArray->at(i) != 0 && !filter.count(oldArray->at(i)))
-                insert(oldArray->at(i));
+            if (oldArray[i] != 0 && !filter.count(oldArray[i]))
+                insert(oldArray[i]);
         }
 
         m_rehashing = false;
@@ -359,8 +379,8 @@ public:
         rehash((capacity() + other.capacity()), filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
-            if (other.m_array->at(i) != 0 && !filter.count(other.m_array->at(i)))
-                insert(other.m_array->at(i));
+            if (other.m_array[i] != 0 && !filter.count(other.m_array[i]))
+                insert(other.m_array[i]);
         }
     }
 
@@ -385,7 +405,7 @@ public:
 private:
     std::size_t m_arraySize;
     std::size_t m_items;
-    std::unique_ptr<std::vector<tKeyType>> m_array;
+    std::unique_ptr<tKeyType[]> m_array;
     Hasher<tKeyType> m_hasher;
 
     bool m_rehashing = false;
@@ -404,9 +424,12 @@ class GrowingHashTable;
 
 class Concurrent_LP_Set {
 
+    friend class LP_Set;
+
     friend class GrowingHashTable<Concurrent_LP_Set>;
 
     friend class GrowingHashTableHandle<Concurrent_LP_Set>;
+
     friend class ConstGrowingHashTableHandle<Concurrent_LP_Set>;
 
 public:
@@ -420,7 +443,7 @@ public:
               m_array(nullptr),
               m_version(version),
               m_hasher(hasher),
-              m_currentCopyBlock(0){
+              m_currentCopyBlock(0) {
         // Initialize cells
         m_arraySize = nextPow2(size);
         try {
@@ -437,7 +460,10 @@ public:
               m_array(std::move(other.m_array)),
               m_version(other.m_version),
               m_hasher(std::move(other.m_hasher)),
-              m_currentCopyBlock(0){ }
+              m_currentCopyBlock(0) { }
+
+    //conversion
+    Concurrent_LP_Set(LP_Set &&other);
 
     Concurrent_LP_Set &operator=(Concurrent_LP_Set &&other) {
         m_arraySize = other.m_arraySize;
@@ -454,7 +480,7 @@ public:
     InsertReturn insert(const tKeyType &key) {
         ASSERT(key != 0);
 
-        if(m_items.load() > m_arraySize >> 1)
+        if (m_items.load() > m_arraySize >> 1)
             return InsertReturn::State::Full;
 
         uint cols = 0;
@@ -530,9 +556,9 @@ public:
     auto size() const { return m_items.load(); }
 
     template<class Source>
-    void unsafe_copy(const Source & other){
+    void unsafe_copy(const Source &other) {
         ASSERT(m_arraySize == other.capacity());
-        for(std::size_t i = 0; i < m_arraySize; ++i)
+        for (std::size_t i = 0; i < m_arraySize; ++i)
             m_array[i] = other.at(i);
         m_items.store(other.size());
     }
@@ -546,7 +572,7 @@ public:
         std::size_t combinedItems = size() + other.size();
         std::size_t newSize = nextPow2(combinedItems);
 
-        while(combinedItems > newSize >> 1)
+        while (combinedItems > newSize >> 1)
             newSize <<= 1;
 
         m_arraySize = newSize;

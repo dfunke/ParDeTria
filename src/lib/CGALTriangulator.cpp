@@ -175,9 +175,8 @@ public:
             return std::make_pair(make_point(p), i);
         };
 
-        auto handle = ids.handle();
-        tria.insert(boost::make_transform_iterator(handle.begin(), transform),
-                 boost::make_transform_iterator(handle.end(), transform));
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                 boost::make_transform_iterator(ids.end(), transform));
     }
 };
 
@@ -223,9 +222,8 @@ public:
             return std::make_pair(make_point(p), i);
         };
 
-        auto handle = ids.handle();
-        tria.insert(boost::make_transform_iterator(handle.begin(), transform),
-                    boost::make_transform_iterator(handle.end(), transform));
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                    boost::make_transform_iterator(ids.end(), transform));
     }
 };
 
@@ -271,9 +269,8 @@ public:
             return std::make_pair(make_point(p), i);
         };
 
-        auto handle = ids.handle();
-        tria.insert(boost::make_transform_iterator(handle.begin(), transform),
-                    boost::make_transform_iterator(handle.end(), transform));
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                    boost::make_transform_iterator(ids.end(), transform));
     }
 
 private:
@@ -287,7 +284,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
                                    const uint gridOccupancy
         /*, bool filterInfinite */) {
 
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.handle().size() / gridOccupancy));
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
     VTUNE_TASK(CgalTriangulation);
     Tria t = helper.make_tria();
@@ -306,8 +303,6 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     t.tds().disableId();
 
     PartialTriangulation pt(triaSize, triaSize / 4);
-    auto simplexHandle = pt.simplices.handle();
-    auto convexHullHandle = pt.convexHull.handle();
 
     uint startId = DT.tetrahedronID.fetch_add(lastId);
     DT.reserve(startId + lastId);
@@ -338,14 +333,14 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
         //check whether vertex belongs to the convex hull
         if (!a.isFinite())
-            convexHullHandle.insert(a.id);
+            pt.convexHull.insert(a.id);
 
         ASSERT((a.id != dSimplex<D, Precision>::cINF));
 
         PLOG(a << std::endl);
 
         DT[a.id] = a;
-        simplexHandle.insert(a.id);
+        pt.simplices.insert(a.id);
     }
     DEDENT
 
@@ -476,8 +471,7 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
                                const uint gridOccupancy
         /*, bool filterInfinite */) {
 
-    auto idsHandle = ids.handle();
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(idsHandle.size() / gridOccupancy));
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
     // transform points into CGAL points with info
     auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
@@ -486,8 +480,8 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
     };
 
     Tria t = helper.make_tria();
-    t.insert(boost::make_transform_iterator(idsHandle.begin(), transform),
-             boost::make_transform_iterator(idsHandle.end(), transform));
+    t.insert(boost::make_transform_iterator(ids.begin(), transform),
+             boost::make_transform_iterator(ids.end(), transform));
 
     PartialTriangulation dummy(1, 1);
     return dummy;
