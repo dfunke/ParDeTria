@@ -35,7 +35,8 @@ public:
                    const uint _recursionDepth,
                    const unsigned char splitter,
                    const uint gridOccupancy = 1,
-                   const bool parallelBaseSolver = false);
+                   const bool parallelBaseSolver = false,
+                   const bool parallelEdgeTria = true);
 
 protected:
     PartialTriangulation _triangulateBase(dSimplices<D, Precision> &DT,
@@ -75,6 +76,7 @@ protected:
 
 protected:
     const uint recursionDepth;
+    const bool parallelEdgeTria;
 
     std::unique_ptr<Partitioner<D, Precision>> partitioner;
     std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;

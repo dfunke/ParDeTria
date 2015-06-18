@@ -54,8 +54,11 @@ DCTriangulator<D, Precision>::DCTriangulator(
         const uint _recursionDepth,
         const unsigned char splitter,
         const uint gridOccupancy,
-        const bool parallelBaseSolver)
-        : Triangulator<D, Precision>(_bounds, _points), recursionDepth(_recursionDepth) {
+        const bool parallelBaseSolver,
+        const bool _parallelEdgeTria)
+        : Triangulator<D, Precision>(_bounds, _points),
+          recursionDepth(_recursionDepth),
+          parallelEdgeTria(_parallelEdgeTria) {
 
 
     // add infinite points to data set
@@ -478,9 +481,9 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulateBase(dSimplices<D
                                                                     const std::string provenance) {
 
     VTUNE_TASK(TriangulateBase);
+    PROFILER_MEAS(provenance.find('e') == std::string::npos? "basecaseSize" : "edgeBasecaseSize", partitionPoints.handle().size());
 
     LOGGER.setIndent(provenance.length());
-
     LOG("triangulateBASE called on level " << provenance << " with "
         << partitionPoints.handle().size() << " points" << std::endl);
 
@@ -498,6 +501,8 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
                                                                 const std::string provenance) {
 
     LOGGER.setIndent(provenance.length());
+
+    PROFILER_MEAS("nPoints", partitionPoints.handle().size());
 
     LOG("triangulateDAC called on level " << provenance << " with "
         << partitionPoints.handle().size() << " points" << std::endl);
@@ -546,6 +551,18 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
         );
         VTUNE_END_TASK(TriangulatePartitions);
 
+        PROFILER_MEAS("edgePoints", edgePointIds.handle().size());
+        PROFILER_MEAS("edgePointsPerc", edgePointIds.handle().size() / partitionPointsHandle.size());
+
+
+        PROFILER_MEAS("edgeSimplices", edgeSimplexIds.handle().size());
+        PROFILER_MEAS("edgeSimplicesPerc", edgeSimplexIds.handle().size() / ([&] () -> std::size_t {
+            std::size_t size = 0;
+            for(uint i = 0; i < partialDTs.size(); ++i)
+                size += partialDTs[i].simplices.handle().size();
+            return size;
+        })());
+
         LOG("Edge has " << edgeSimplexIds.handle().size() << " simplices with "
             << edgePointIds.handle().size() << " points" << std::endl);
 
@@ -553,8 +570,18 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
 
         VTUNE_TASK(TriangulateEdge);
         //TODO how to identify the edge triangulation
-        PartialTriangulation edgeDT = _triangulate(DT, edgePointIds, bounds, provenance + "e");
+        PartialTriangulation edgeDT = parallelEdgeTria ?
+                                      _triangulate(DT, edgePointIds, bounds, provenance + "e") :
+                                      _triangulateBase(DT, edgePointIds, bounds, provenance + "e");
         VTUNE_END_TASK(TriangulateEdge);
+
+        PROFILER_MEAS("edgeDT", edgeDT.simplices.handle().size());
+        PROFILER_MEAS("edgeDTPerc", edgeDT.simplices.handle().size()/ ([&] () -> std::size_t {
+            std::size_t size = 0;
+            for(uint i = 0; i < partialDTs.size(); ++i)
+                size += partialDTs[i].simplices.handle().size();
+            return size;
+        })());
 
         DEDENT
 

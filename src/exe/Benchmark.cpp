@@ -26,6 +26,8 @@ std::vector<unsigned char> triangulators = {'c', 'm', 'd'};
 std::vector<unsigned char> distributions = {'u'};
 std::vector<uint> occupancies = {10, 50, 100, 1000};
 
+enum class TriState : char { INDEF = -1, FALSE = 0, TRUE = 1};
+
 DBConnection db("db_" + getHostname() + ".dat",
 #ifndef ENABLE_PROFILING
                 "benchmarks"
@@ -71,10 +73,11 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
             uint recursionDepth = run.getTrait<uint>("recursion-depth");
             unsigned char splitter = run.getTrait<unsigned char>("splitter");
             bool parBase = run.getTrait<bool>("parallel-base");
+            bool parEdge = run.getTrait<bool>("parallel-edge");
 
             triangulator_ptr =
                     std::make_unique<DCTriangulator<D, Precision>>(bounds, points, recursionDepth, splitter, gridOccupancy,
-                                                                   parBase);
+                                                                   parBase, parEdge);
         }
     }
 
@@ -136,7 +139,8 @@ void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10, bool
 std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10,
                                                   int maxThreads = -1, int minThreads = 1,
                                                   int minRecDepth = 0, uint maxRecDepth = std::numeric_limits<uint>::max(),
-                                                  bool parallel_base = true,
+                                                  bool parallel_base = false,
+                                                  TriState parallel_edge = TriState::INDEF,
                                                   int runNumber = -1) {
 
     std::vector<ExperimentRun> runs;
@@ -214,7 +218,16 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                                             runSeq.addTrait("recursion-depth", recursionDepth);
                                             runSeq.addTrait("parallel-base", false);
 
+                                            if(parallel_edge == TriState::INDEF){
+                                                runSeq.addTrait("parallel-edge", false);
                                             runs.emplace_back(runSeq);
+
+                                                runSeq.updateTrait("parallel-edge", true);
+                                                runs.emplace_back(runSeq);
+                                            } else {
+                                                runSeq.addTrait("parallel-edge", parallel_edge == TriState::TRUE ? true : false);
+                                                runs.emplace_back(runSeq);
+                                            }
                                         }
 
                                         if (parallel_base) {
@@ -229,7 +242,16 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                                             runPar.addTrait("recursion-depth", recursionDepth);
                                             runPar.addTrait("parallel-base", true);
 
+                                            if(parallel_edge == TriState::INDEF){
+                                                runPar.addTrait("parallel-edge", false);
                                             runs.emplace_back(runPar);
+
+                                                runPar.updateTrait("parallel-edge", true);
+                                                runs.emplace_back(runPar);
+                                            } else {
+                                                runPar.addTrait("parallel-edge", parallel_edge == TriState::TRUE ? true : false);
+                                                runs.emplace_back(runPar);
+                                            }
                                         }
 
                                     }
@@ -261,6 +283,7 @@ int main(int argc, char *argv[]) {
     uint occupancy = 1;
     unsigned char alg;
     bool parallelBase;
+    TriState parallelEdge = TriState::TRUE;
 
     uint reps = 10;
     std::string runFile;
@@ -297,6 +320,10 @@ int main(int argc, char *argv[]) {
 
     // parallel base options
     cCommandLine.add_options()("no-parallel-base", "don't use parallel base solver");
+
+    // parallel edge
+    cCommandLine.add_options()("no-parallel-edge", "don't use parallel edge solver");
+    cCommandLine.add_options()("parallel-edge-study", "use both parallel and sequential edge solver");
 
     // operative options
     cCommandLine.add_options()("reps", po::value<uint>(&reps),
@@ -359,6 +386,12 @@ int main(int argc, char *argv[]) {
 
         parallelBase = !vm.count("no-parallel-base");
 
+        if(vm.count("no-parallel-edge"))
+            parallelEdge = TriState::FALSE;
+
+        if(vm.count("parallel-edge-study"))
+            parallelEdge = TriState::INDEF;
+
         if (vm.count("profiling")) {
             // only our algorithm is instrumented
             triangulators = {'d'};
@@ -370,7 +403,7 @@ int main(int argc, char *argv[]) {
             maxThreads = -1;
         }
 
-        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, minRecDepth, maxRecDepth, parallelBase, runNumber);
+        runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, minRecDepth, maxRecDepth, parallelBase, parallelEdge, runNumber);
     }
 
 #ifdef ENABLE_PROFILING
