@@ -54,8 +54,11 @@ DCTriangulator<D, Precision>::DCTriangulator(
         const uint _recursionDepth,
         const unsigned char splitter,
         const uint gridOccupancy,
-        const bool parallelBaseSolver)
-        : Triangulator<D, Precision>(_bounds, _points), recursionDepth(_recursionDepth) {
+        const bool parallelBaseSolver,
+        const bool _parallelEdgeTria)
+        : Triangulator<D, Precision>(_bounds, _points),
+          recursionDepth(_recursionDepth),
+          parallelEdgeTria(_parallelEdgeTria) {
 
 
     // add infinite points to data set
@@ -567,7 +570,9 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
 
         VTUNE_TASK(TriangulateEdge);
         //TODO how to identify the edge triangulation
-        PartialTriangulation edgeDT = _triangulate(DT, edgePointIds, bounds, provenance + "e");
+        PartialTriangulation edgeDT = parallelEdgeTria ?
+                                      _triangulate(DT, edgePointIds, bounds, provenance + "e") :
+                                      _triangulateBase(DT, edgePointIds, bounds, provenance + "e");
         VTUNE_END_TASK(TriangulateEdge);
 
         PROFILER_MEAS("edgeDT", edgeDT.simplices.handle().size());
