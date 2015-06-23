@@ -3,6 +3,7 @@
 #include "datastructures/LP_MultiMap.hxx"
 #include "datastructures/BlockedArray.hxx"
 #include "datastructures/Growing_LP.hxx"
+#include "datastructures/Bit_Set.hxx"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -67,7 +68,7 @@ TEST(Concurrent_LP_Set, Merge) {
         EXPECT_TRUE(a.contains(i) | b.contains(i));
     }
 
-    a.unsafe_merge(std::move(b), cmp);
+    a.unsafe_merge(std::move(b), std::set<uint>());
 
     EXPECT_EQ(a.size(), 120);
 
@@ -343,7 +344,7 @@ TEST(Concurrent_LP_MultiMap, Merge) {
         it = cmpRange.second;
     }
 
-    a.unsafe_merge(std::move(b), cmp);
+    a.unsafe_merge(std::move(b), std::set<uint>());
 
     for (auto it = cmp.begin(); it != cmp.end();) {
         auto i = *it;
@@ -453,4 +454,266 @@ TEST(Concurrent_BlockedArray, ReserveBlock) {
     for (uint i = 0; i < 2 * BS; ++i)
             EXPECT_EQ(i, ba[i]);
 
+}
+
+TEST(Bit_Set, InsertContains) {
+
+    const uint cap = 1e5;
+    Bit_Set set(cap);
+    EXPECT_GE(set.capacity(), cap);
+
+    std::unordered_set<uint> cmp;
+    auto distribution = std::uniform_int_distribution<uint>(1, cap);
+    auto dice = std::bind(distribution, startGen);
+
+    for (uint i = 0; i < 60; ++i) {
+        uint n = dice();
+        EXPECT_EQ(set.insert(n), cmp.insert(n).second);
+    }
+
+    EXPECT_EQ(set.size(), 60);
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(set.contains(i));
+    }
+
+    for (uint i : cmp) {
+        EXPECT_FALSE(set.insert(i));
+    }
+
+    for (uint i = 0; i < 60; ++i) {
+        uint n = dice();
+        EXPECT_EQ(set.contains(n), cmp.count(n));
+    }
+}
+
+TEST(Bit_Set, BatchInsert) {
+
+    const uint cap = 320;
+
+    auto setAndTest = [cap](const uint from, const uint to){
+        Bit_Set set(cap);
+        EXPECT_GE(set.capacity(), cap);
+
+        set.batchSet(from, to);
+
+        std::size_t i;
+        for(i = 0; i < from; ++i)
+            EXPECT_TRUE(set.zero(i));
+        for(; i < to; ++i)
+            EXPECT_TRUE(set.one(i));
+        for(; i < set.capacity(); ++i)
+            EXPECT_TRUE(set.zero(i));
+    };
+
+    //within one block
+    setAndTest(7, 29);
+
+    //one entire block
+    setAndTest(0, 32);
+    setAndTest(287, 320);
+
+    //two entire blocks
+    setAndTest(0, 64);
+    setAndTest(255, 320);
+
+    //two broken blocks
+    setAndTest(9, 53);
+    setAndTest(275, 309);
+
+    //several entire blocks
+    setAndTest(0, 320);
+    setAndTest(95, 320);
+
+    //several broken blocks
+    setAndTest(5, 309);
+    setAndTest(105, 289);
+}
+
+TEST(Bit_Set, Merge) {
+
+
+    const uint capA = 1e5;
+    Bit_Set a(capA);
+    EXPECT_GE(a.capacity(), capA);
+
+    const uint capB = 1e6;
+    Bit_Set b(capB);
+    EXPECT_GE(b.capacity(), capB);
+
+    std::unordered_set<uint> cmp;
+    auto distribution = std::uniform_int_distribution<uint>(1, std::min(capA, capB));
+    auto dice = std::bind(distribution, startGen);
+
+    for (uint i = 0; i < 60; ++i) {
+        uint n;
+        while (n = dice(), !cmp.insert(n).second);
+        EXPECT_TRUE(a.insert(n));
+        while (n = dice(), !cmp.insert(n).second);
+        EXPECT_TRUE(b.insert(n));
+    }
+
+    EXPECT_EQ(a.size(), 60);
+    EXPECT_EQ(b.size(), 60);
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(a.contains(i) | b.contains(i));
+    }
+
+    a.merge(std::move(b));
+    EXPECT_GE(a.capacity(), std::max(capA, capB));
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(a.contains(i));
+    }
+}
+
+TEST(Bit_Set, Resize) {
+
+
+    const uint cap = 1e5;
+    Bit_Set set(cap);
+    EXPECT_GE(set.capacity(), cap);
+
+    std::unordered_set<uint> cmp;
+    auto distribution = std::uniform_int_distribution<uint>(1, cap);
+    auto dice = std::bind(distribution, startGen);
+
+    for (uint i = 0; i < 60; ++i) {
+        uint n;
+        while (n = dice(), !cmp.insert(n).second);
+        EXPECT_TRUE(set.insert(n));
+    }
+
+    EXPECT_EQ(set.size(), 60);
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(set.contains(i));
+    }
+
+    set.resize(2 * cap);
+    EXPECT_GE(set.capacity(), 2 * cap);
+
+    for (uint i = 0; i < set.capacity(); ++i) {
+        EXPECT_EQ(set.contains(i), cmp.count(i));
+    }
+}
+
+TEST(Bit_Set, Filter) {
+
+
+    const uint cap = 1e5;
+    Bit_Set set(cap);
+    EXPECT_GE(set.capacity(), cap);
+
+    set.batchSet(0, cap);
+    EXPECT_EQ(set.ones(), cap);
+
+    Bit_Set filter(cap);
+    for(uint i = 1; i < cap; i += 2)
+        filter.insert(i);
+
+    set.filter(filter);
+
+    EXPECT_EQ(set.ones(), cap / 2);
+    for(uint i = 0; i < cap; ++i)
+        EXPECT_EQ(set.one(i), i % 2 == 0);
+}
+
+TEST(Bit_Set, MergeFilter) {
+
+
+    const uint capA = 1e5;
+    Bit_Set a(capA);
+    EXPECT_GE(a.capacity(), capA);
+
+    a.batchSet(0, capA);
+    EXPECT_EQ(a.ones(), capA);
+
+    const uint capB = 1e6;
+    Bit_Set b(capB);
+    EXPECT_GE(b.capacity(), capB);
+
+    b.batchSet(0, capB);
+    EXPECT_EQ(b.ones(), capB);
+
+    Bit_Set filter(std::max(capA, capB));
+    for(uint i = 1; i < std::max(capA, capB); i += 2)
+        filter.insert(i);
+
+    a.mergeFilter(std::move(b), filter);
+    EXPECT_GE(a.capacity(), std::max(capA, capB));
+
+    EXPECT_EQ(a.ones(), std::max(capA, capB) / 2);
+    for(uint i = 0; i < std::max(capA, capB); ++i)
+            EXPECT_EQ(a.one(i), i % 2 == 0);
+}
+
+TEST(Concurrent_Bit_Set, InsertContains) {
+
+    const uint cap = 1e5;
+    Concurrent_Bit_Set set(cap);
+    EXPECT_GE(set.capacity(), cap);
+
+    tbb::concurrent_unordered_set<uint> cmp;
+    auto distribution = std::uniform_int_distribution<uint>(1, cap);
+    auto dice = std::bind(distribution, startGen);
+
+    tbb::parallel_for(tbb::blocked_range<uint>(1, cap / 10), [&](__attribute__((unused)) const auto &r) {
+        uint n = dice();
+        EXPECT_EQ(set.insert(n), cmp.insert(n).second);
+    });
+
+    EXPECT_EQ(set.size(), cmp.size());
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(set.contains(i));
+    }
+
+    for (uint i : cmp) {
+        EXPECT_FALSE(set.insert(i));
+    }
+
+    tbb::parallel_for(tbb::blocked_range<uint>(1, cap / 10), [&](__attribute__((unused)) const auto &r) {
+        uint n = dice();
+        EXPECT_EQ(set.contains(n), cmp.count(n));
+    });
+}
+
+TEST(Concurrent_Bit_Set, Merge) {
+
+
+    const uint capA = 1e5;
+    Concurrent_Bit_Set a(capA);
+    EXPECT_GE(a.capacity(), capA);
+
+    const uint capB = 1e6;
+    Concurrent_Bit_Set b(capB);
+    EXPECT_GE(b.capacity(), capB);
+
+    std::unordered_set<uint> cmp;
+    auto distribution = std::uniform_int_distribution<uint>(1, std::min(capA, capB));
+    auto dice = std::bind(distribution, startGen);
+
+    for (uint i = 0; i < 60; ++i) {
+        uint n;
+        while (n = dice(), !cmp.insert(n).second);
+        EXPECT_TRUE(a.insert(n));
+        while (n = dice(), !cmp.insert(n).second);
+        EXPECT_TRUE(b.insert(n));
+    }
+
+    EXPECT_EQ(a.size(), 60);
+    EXPECT_EQ(b.size(), 60);
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(a.contains(i) | b.contains(i));
+    }
+
+    a.unsafe_merge(std::move(b));
+    EXPECT_GE(b.capacity(), std::max(capA, capB));
+
+    for (uint i : cmp) {
+        EXPECT_TRUE(a.contains(i));
+    }
 }
