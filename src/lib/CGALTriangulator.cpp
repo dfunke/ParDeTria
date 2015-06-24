@@ -298,13 +298,13 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     PLOG("Collecting simplices" << std::endl);
     INDENT
 
-    auto triaSize = helper.size(t);
+    //auto triaSize = helper.size(t);
     auto lastId = t.tds().maxId();
     t.tds().disableId();
 
-    PartialTriangulation pt(triaSize, triaSize / 4);
-
     uint startId = DT.tetrahedronID.fetch_add(lastId);
+
+    PartialTriangulation pt(startId + lastId);
     DT.reserve(startId + lastId);
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
@@ -483,7 +483,7 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
 
-    PartialTriangulation dummy(1, 1);
+    PartialTriangulation dummy(1);
     return dummy;
 }
 

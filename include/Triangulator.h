@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <datastructures/Bit_Set.hxx>
 #include "Geometry.h"
 
 #include "utils/VTuneAdapter.h"
@@ -14,8 +15,8 @@ struct PartialTriangulation {
     Simplex_Ids simplices;
     Simplex_Ids convexHull;
 
-    PartialTriangulation(const std::size_t nSimplices, const std::size_t nConvexHull)
-            : simplices(nSimplices), convexHull(nConvexHull) { }
+    PartialTriangulation(const std::size_t n)
+            : simplices(n), convexHull(n) { }
 
     PartialTriangulation()
             : simplices(1), convexHull(1) { }

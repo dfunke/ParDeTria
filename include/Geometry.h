@@ -31,8 +31,8 @@
 typedef uint tHashType;
 typedef uint tIdType;
 
-typedef LP_Set Simplex_Ids;
-typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Simplex_Ids;
+typedef Bit_Set Simplex_Ids;
+typedef Concurrent_Bit_Set Concurrent_Simplex_Ids;
 
 typedef LP_Set Point_Ids;
 typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Point_Ids;
