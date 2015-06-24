@@ -180,7 +180,7 @@ int main() {
     std::cout
     << std::setw(10) << "spatialPart. 0"
     << std::setw(10) << "spatialPart. 1"
-    << std::setw(1) << "|"
+    << std::setw(1) << "||"
     << std::setw(10) << "hilbertPart. 0"
     << std::setw(10) << "hilbertPart. 1"
     << std::endl;
@@ -195,7 +195,7 @@ int main() {
         std::cout
         << std::setw(10) << (spatialIT0 != spatialPart[0].end() ? *(spatialIT0++) : 0)
         << std::setw(10) << (spatialIT1 != spatialPart[1].end() ? *(spatialIT1++) : 0)
-        << std::setw(1) << "|"
+        << std::setw(1) << "||"
         << std::setw(10) << (hilbertIT0 != hilbertPart[0].end() ? *(hilbertIT0++) : 0)
         << std::setw(10) << (hilbertIT1 != hilbertPart[1].end() ? *(hilbertIT1++) : 0)
         << std::endl;
