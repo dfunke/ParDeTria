@@ -40,7 +40,7 @@ public:
 
 public:
     uint id;
-    Ids points;
+    Point_Ids points;
     dBox<D, Precision> bounds;
 };
 
@@ -121,7 +121,7 @@ public:
     virtual ~Partitioner() = default;
 
     virtual Partitioning<D, Precision>
-            partition(const Ids &ids, const dPoints<D, Precision> &points,
+            partition(const Point_Ids &ids, const dPoints<D, Precision> &points,
                       const std::string &provenance) const = 0;
 
 public:
@@ -132,7 +132,7 @@ template<uint D, typename Precision>
 class dPartitioner : public Partitioner<D, Precision> {
 
 public:
-    Partitioning<D, Precision> partition(const Ids &ids,
+    Partitioning<D, Precision> partition(const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
                                          const std::string &provenance) const;
 };
@@ -143,7 +143,7 @@ class kPartitioner : public Partitioner<D, Precision> {
 public:
     kPartitioner(uint _k) : k(_k) { }
 
-    Partitioning<D, Precision> partition(const Ids &ids,
+    Partitioning<D, Precision> partition(const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
                                          const std::string &provenance) const;
 
@@ -155,7 +155,7 @@ template<uint D, typename Precision>
 class CyclePartitioner : public Partitioner<D, Precision> {
 
 public:
-    Partitioning<D, Precision> partition(const Ids &ids,
+    Partitioning<D, Precision> partition(const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
                                          const std::string &provenance) const;
 };

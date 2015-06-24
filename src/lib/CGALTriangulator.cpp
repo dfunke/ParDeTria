@@ -168,7 +168,7 @@ public:
         return t;
     }
 
-    void insert(Tria & tria, const Ids &ids, dPoints<2, Precision> &points){
+    void insert(Tria & tria, const Point_Ids &ids, dPoints<2, Precision> &points){
         // transform points into CGAL points with info
         auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
             const auto &p = points[i];
@@ -210,12 +210,12 @@ public:
         return t;
     }
 
-    /*void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+    /*void insert(Tria & tria, const Point_Ids &ids, dPoints<3, Precision> &points){
 
         tria.custom_insert_with_info(ids, points);
     }*/
 
-    void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+    void insert(Tria & tria, const Point_Ids &ids, dPoints<3, Precision> &points){
         // transform points into CGAL points with info
         auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
             const auto &p = points[i];
@@ -262,7 +262,7 @@ public:
         return t;
     }
 
-    void insert(Tria & tria, const Ids &ids, dPoints<3, Precision> &points){
+    void insert(Tria & tria, const Point_Ids &ids, dPoints<3, Precision> &points){
         // transform points into CGAL points with info
         auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
             const auto &p = points[i];
@@ -279,7 +279,7 @@ private:
 
 template<uint D, typename Precision, class Tria, bool Parallel>
 PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
-                                   const Ids &ids, dPoints<D, Precision> &points,
+                                   const Point_Ids &ids, dPoints<D, Precision> &points,
                                    const dBox<D, Precision> &bounds,
                                    const uint gridOccupancy
         /*, bool filterInfinite */) {
@@ -363,7 +363,7 @@ public:
 
 protected:
     PartialTriangulation _triangulate(dSimplices<2, Precision> &DT,
-                                      const Ids &ids,
+                                      const Point_Ids &ids,
                                       const dBox<2, Precision> &bounds,
                                       __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -391,7 +391,7 @@ public:
 
 protected:
 
-    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Point_Ids &ids,
                                       const dBox<3, Precision> &bounds,
                                       __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -419,7 +419,7 @@ public:
 
 protected:
 
-    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Point_Ids &ids,
                                       const dBox<3, Precision> &bounds,
                                       __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -466,7 +466,7 @@ class CGALTriangulator<3, double, false>;
 
 template<uint D, typename Precision, class Tria, bool Parallel>
 PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> &DT,
-                               const Ids &ids, dPoints<D, Precision> &points,
+                               const Point_Ids &ids, dPoints<D, Precision> &points,
                                const dBox<D, Precision> &bounds,
                                const uint gridOccupancy
         /*, bool filterInfinite */) {
@@ -498,7 +498,7 @@ public:
             : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
 
 protected:
-    PartialTriangulation _triangulate(dSimplices<2, Precision> &DT, const Ids &ids,
+    PartialTriangulation _triangulate(dSimplices<2, Precision> &DT, const Point_Ids &ids,
                                       const dBox<2, Precision> &bounds,
                                       __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -526,7 +526,7 @@ public:
 
 protected:
 
-    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Point_Ids &ids,
                                       const dBox<3, Precision> &bounds,
                                       __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -554,7 +554,7 @@ public:
 
 protected:
 
-    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Ids &ids,
+    PartialTriangulation _triangulate(dSimplices<3, Precision> &DT, const Point_Ids &ids,
                                       const dBox<3, Precision> &bounds,
                                       __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {

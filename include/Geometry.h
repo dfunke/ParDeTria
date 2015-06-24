@@ -21,7 +21,7 @@
 #include "datastructures/VectorAdapter.hxx"
 #include "datastructures/LP_MultiMap.hxx"
 #include "datastructures/BlockedArray.hxx"
-
+#include "datastructures/Bit_Set.hxx"
 
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
@@ -31,8 +31,11 @@
 typedef uint tHashType;
 typedef uint tIdType;
 
-typedef LP_Set Ids;
-typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Ids;
+typedef LP_Set Simplex_Ids;
+typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Simplex_Ids;
+
+typedef LP_Set Point_Ids;
+typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Point_Ids;
 
 /*class Ids : private tbb::concurrent_unordered_set<tIdType> {
 
@@ -344,7 +347,7 @@ public:
     dPoints(const VectorAdapter<dPoint<D, Precision>> &other)
             : VectorAdapter<dPoint<D, Precision>>(other) { }
 
-    bool operator==(const Concurrent_Ids &other) const {
+    bool operator==(const Concurrent_Point_Ids &other) const {
         return operator==(other.handle());
     }
 

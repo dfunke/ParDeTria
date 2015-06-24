@@ -14,7 +14,7 @@ public:
 
 protected:
     PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Ids &ids,
+                                      const Point_Ids &ids,
                                       const dBox<D, Precision> &bounds,
                                       const std::string provenance
             /*, bool filterInfinite = false */);
@@ -33,7 +33,7 @@ public:
 
 protected:
     PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Ids &ids,
+                                      const Point_Ids &ids,
                                       const dBox<D, Precision> &bounds,
                                       const std::string provenance
             /*, bool filterInfinite = false */);

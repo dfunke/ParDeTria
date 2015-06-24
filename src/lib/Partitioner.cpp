@@ -2,7 +2,7 @@
 
 template<uint D, typename Precision>
 Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
-        const Ids &ids, const dPoints<D, Precision> &points,
+        const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
     // do mid-point based partitioning for now
 
@@ -56,7 +56,7 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
 
 template<uint D, typename Precision>
 Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
-        const Ids &ids, const dPoints<D, Precision> &points,
+        const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
     // do mid-point based partitioning for now
 
@@ -109,7 +109,7 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
 
 template<uint D, typename Precision>
 Partitioning<D, Precision>
-CyclePartitioner<D, Precision>::partition(const Ids &ids,
+CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
                                           const dPoints<D, Precision> &points,
                                           const std::string &provenance) const {
     // do mid-point based partitioning for now

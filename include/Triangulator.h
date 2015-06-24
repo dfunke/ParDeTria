@@ -11,8 +11,8 @@
 #include "datastructures/Growing_LP.hxx"
 
 struct PartialTriangulation {
-    LP_Set simplices;
-    LP_Set convexHull;
+    Simplex_Ids simplices;
+    Simplex_Ids convexHull;
 
     PartialTriangulation(const std::size_t nSimplices, const std::size_t nConvexHull)
             : simplices(nSimplices), convexHull(nConvexHull) { }
@@ -48,11 +48,11 @@ public:
 
 protected:
     virtual PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                              const Ids &partitionPoints,
+                                              const Point_Ids &partitionPoints,
                                               const dBox<D, Precision> &bounds,
                                               const std::string provenance) = 0;
 
-    Ids allPoints() const;
+    Point_Ids allPoints() const;
 
 protected:
     const dBox<D, Precision> baseBounds;

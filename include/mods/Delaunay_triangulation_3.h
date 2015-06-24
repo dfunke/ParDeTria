@@ -485,7 +485,7 @@ private:
 
     public:
         template<uint D, typename Precision>
-        std::ptrdiff_t custom_insert_with_info(const Ids &ids, dPoints<D, Precision> &points)
+        std::ptrdiff_t custom_insert_with_info(const Point_Ids &ids, dPoints<D, Precision> &points)
         {
             size_type n = number_of_vertices();
             /* do not copy the elements again

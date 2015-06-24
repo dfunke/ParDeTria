@@ -40,12 +40,12 @@ public:
 
 protected:
     PartialTriangulation _triangulateBase(dSimplices<D, Precision> &DT,
-                                          const Ids &partitionPoints,
+                                          const Point_Ids &partitionPoints,
                                           const dBox<D, Precision> &bounds,
                                           const std::string provenance);
 
     PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Ids &partitionPoints,
+                                      const Point_Ids &partitionPoints,
                                       const dBox<D, Precision> &bounds,
                                       const std::string provenance
     );
@@ -54,20 +54,20 @@ protected:
                  const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,
-                 Concurrent_Ids &edgePoints, Concurrent_Ids &edgeSimplices);
+                 Concurrent_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices);
 
     cWuFaces buildWhereUsed(const dSimplices<D, Precision> &DT,
-                            const Ids &edgeSimplices);
+                            const Simplex_Ids &edgeSimplices);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices,
                          const PartialTriangulation &pt,
-                         const Ids &toCheck,
+                         const Simplex_Ids &toCheck,
                          const cWuFaces &wuFaces,
                          const std::string &provenance);
 
     PartialTriangulation mergeTriangulation(std::vector<PartialTriangulation> &partialDTs,
                                             dSimplices<D, Precision> &DT,
-                                            const Ids &edgeSimplices,
+                                            const Simplex_Ids &edgeSimplices,
                                             const PartialTriangulation &edgeDT,
                                             const Partitioning<D, Precision> &partitioning,
                                             const std::string &provenance
