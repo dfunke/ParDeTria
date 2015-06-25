@@ -31,6 +31,7 @@ struct TriangulateReturn {
     bool exception;
     bool valid;
     tDuration time;
+    std::size_t rss;
     ExperimentRun run;
 };
 
@@ -64,6 +65,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     auto t1 = Clock::now();
     auto dt = triangulator_ptr->triangulate();
     auto t2 = Clock::now();
+
+    ret.rss = getCurrentRSS();
 
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
@@ -229,7 +232,7 @@ int main(int argc, char *argv[]) {
     LOG("Triangulating "
         << points.size() << " points took "
         << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
-                .count() << " ms" << std::endl);
+                .count() << " ms and " << ret.rss / 1e6 << " MB" << std::endl);
 
     returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
 
