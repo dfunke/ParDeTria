@@ -168,7 +168,7 @@ public:
         return t;
     }
 
-    void insert(Tria & tria, const Point_Ids &ids, dPoints<2, Precision> &points){
+    void insert(Tria &tria, const Point_Ids &ids, dPoints<2, Precision> &points) {
         // transform points into CGAL points with info
         auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
             const auto &p = points[i];
@@ -176,7 +176,7 @@ public:
         };
 
         tria.insert(boost::make_transform_iterator(ids.begin(), transform),
-                 boost::make_transform_iterator(ids.end(), transform));
+                    boost::make_transform_iterator(ids.end(), transform));
     }
 };
 
@@ -215,7 +215,7 @@ public:
         tria.custom_insert_with_info(ids, points);
     }*/
 
-    void insert(Tria & tria, const Point_Ids &ids, dPoints<3, Precision> &points){
+    void insert(Tria &tria, const Point_Ids &ids, dPoints<3, Precision> &points) {
         // transform points into CGAL points with info
         auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
             const auto &p = points[i];
@@ -262,7 +262,7 @@ public:
         return t;
     }
 
-    void insert(Tria & tria, const Point_Ids &ids, dPoints<3, Precision> &points){
+    void insert(Tria &tria, const Point_Ids &ids, dPoints<3, Precision> &points) {
         // transform points into CGAL points with info
         auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
             const auto &p = points[i];
@@ -304,7 +304,8 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
     uint startId = DT.tetrahedronID.fetch_add(lastId);
 
-    PartialTriangulation pt(startId + lastId);
+    PartialTriangulation pt(startId, startId + lastId);
+
     DT.reserve(startId + lastId);
 
     //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
@@ -483,7 +484,7 @@ PartialTriangulation _pureCgal(__attribute__((unused)) dSimplices<D, Precision> 
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
 
-    PartialTriangulation dummy(1);
+    PartialTriangulation dummy;
     return dummy;
 }
 

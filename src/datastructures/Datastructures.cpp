@@ -19,12 +19,14 @@ Concurrent_LP_Set::Concurrent_LP_Set(LP_Set &&other)
 
 Bit_Set::Bit_Set(Concurrent_Bit_Set &&other)
         : m_arraySize(other.m_arraySize),
-          m_capacity(other.m_capacity),
+          m_lowerBound(other.m_lowerBound),
+          m_upperBound(other.m_upperBound),
           m_array(reinterpret_cast<uint *>(other.m_array.release())),
           m_ones(other.m_ones.load()) { }
 
 Concurrent_Bit_Set::Concurrent_Bit_Set(Bit_Set &&other)
         : m_arraySize(other.m_arraySize),
-          m_capacity(other.m_capacity),
+          m_lowerBound(other.m_lowerBound),
+          m_upperBound(other.m_upperBound),
           m_array(reinterpret_cast<std::atomic<uint> *>(other.m_array.release())),
           m_ones(other.m_ones) { }

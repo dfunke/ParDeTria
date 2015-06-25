@@ -107,9 +107,10 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
             tbb::ets_key_usage_type::ets_key_per_instance> tsEdgePointsHandle(std::ref(edgePoints));
 
 
-    Concurrent_Simplex_Ids wqa(pt.simplices.capacity());
+    Simplex_Ids sWqa(0,1);
+    sWqa.copy(pt.convexHull); // set of already checked simplices
 
-    wqa.unsafe_copy(pt.convexHull); // set of already checked simplices
+    Concurrent_Simplex_Ids wqa(std::move(sWqa));
     //wqa.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
 
     /* Walk along the neighbors,
@@ -163,7 +164,7 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
                                                       const Simplex_Ids &edgeSimplices) {
 
 
-    Concurrent_Simplex_Ids wqa(edgeSimplices.capacity()); // set of already checked simplices
+    Concurrent_Simplex_Ids wqa(edgeSimplices.lowerBound(), edgeSimplices.upperBound()); // set of already checked simplices
 
     /* We need to build the wuFaces DS for the simplices of the first layer "inward" of the edge
      * plus one more layer, to re-find their neighbors
@@ -221,7 +222,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     INDENT
     const uint saveIndent = LOGGER.getIndent();
 
-    Concurrent_Simplex_Ids wqa(pt.simplices.capacity());
+    Concurrent_Simplex_Ids wqa(pt.simplices.lowerBound(), pt.simplices.upperBound());
 
     tbb::enumerable_thread_specific<std::set<tIdType>,
             tbb::cache_aligned_allocator<std::set<tIdType>>,
@@ -360,7 +361,7 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
     // merge partial DTs and edge DT
     LOG("Merging triangulations" << std::endl);
-    Concurrent_Simplex_Ids insertedSimplices(edgeDT.simplices.capacity());
+    Concurrent_Simplex_Ids insertedSimplices(edgeDT.simplices.lowerBound(), edgeDT.simplices.upperBound());
 
     VTUNE_TASK(AddBorderSimplices);
 
@@ -401,8 +402,8 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
     auto wuFacesHandle = wuFaces.handle();
     Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices));
 
-    pt.simplices.resize(edgeDT.simplices.capacity());
-    pt.convexHull.resize(edgeDT.convexHull.capacity());
+    pt.simplices.resize(edgeDT.simplices.lowerBound(), edgeDT.simplices.upperBound());
+    pt.convexHull.resize(edgeDT.simplices.lowerBound(), edgeDT.convexHull.upperBound());
 
     for (const auto &id : insertedSimplicesSeq) {
         const dSimplex<D, Precision> &edgeSimplex = DT[id];
@@ -499,8 +500,15 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
         VTUNE_END_TASK(TriangulatePartitions);
 
         VTUNE_TASK(ExtractEdge);
+        std::size_t minId = std::numeric_limits<std::size_t>::max();
+        std::size_t maxId = std::numeric_limits<std::size_t>::min();
+        for(const auto & p : partialDTs){
+            minId = std::min(minId, p.simplices.lowerBound());
+            maxId = std::max(maxId, p.simplices.upperBound());
+        }
+
         Concurrent_Point_Ids edgePointIds(partitionPoints.size() / 4);
-        Concurrent_Simplex_Ids edgeSimplexIds(DT.tetrahedronID.load());
+        Concurrent_Simplex_Ids edgeSimplexIds(minId, maxId);
 
         tbb::parallel_for(
                 std::size_t(0), partioning.size(),

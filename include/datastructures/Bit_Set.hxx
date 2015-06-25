@@ -16,15 +16,20 @@ public:
 
 public:
 
-    Bit_Set(std::size_t size)
+    Bit_Set(std::size_t lowerBound, std::size_t upperBound, bool zero = true)
             : m_array(nullptr),
               m_ones(0) {
 
         // Initialize cells
-        m_arraySize = (size + cENTRIES - 1) / cENTRIES; //get the ceiling
-        m_capacity = m_arraySize * cENTRIES;
+        m_lowerBound = (lowerBound / cENTRIES) * cENTRIES; // round down
+        m_upperBound = ((upperBound + cENTRIES - 1) / cENTRIES) * cENTRIES; // round up
+
+        m_arraySize = (m_upperBound - m_lowerBound) / cENTRIES;
         try {
-            m_array.reset(new tKeyType[m_arraySize]()); //value init
+            if (zero)
+                m_array.reset(new tKeyType[m_arraySize]()); //value init
+            else
+                m_array.reset(new tKeyType[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
@@ -33,7 +38,8 @@ public:
 
     Bit_Set(Bit_Set &&other)
             : m_arraySize(other.m_arraySize),
-              m_capacity(other.m_capacity),
+              m_lowerBound(other.m_lowerBound),
+              m_upperBound(other.m_upperBound),
               m_array(std::move(other.m_array)),
               m_ones(other.m_ones) { }
 
@@ -42,7 +48,8 @@ public:
 
     Bit_Set &operator=(Bit_Set &&other) {
         m_arraySize = other.m_arraySize;
-        m_capacity = other.m_capacity;
+        m_lowerBound = other.m_lowerBound;
+        m_upperBound = other.m_upperBound;
         m_array = std::move(other.m_array);
         m_ones = other.m_ones;
 
@@ -50,17 +57,19 @@ public:
     }
 
     bool testAndSet(const tKeyType &idx) {
-        RAISE(idx / cENTRIES < m_arraySize);
-        RAISE(idx < m_capacity);
+        RAISE(m_lowerBound <= idx && idx < m_upperBound);
+        RAISE(_block(idx) < m_arraySize);
 
         bool test = isSet(idx);
-        m_array[idx / cENTRIES] |= 1 << (idx % cENTRIES);
+        m_array[_block(idx)] |= 1 << (idx % cENTRIES);
         m_ones += !test;
 
         return test;
     }
 
     void batchSet(const tKeyType &from, const tKeyType &to) {
+        RAISE(m_lowerBound <= from && from < m_upperBound);
+        RAISE(m_lowerBound <= to && to <= m_upperBound);
 
         /*auto print = [this] (const std::string & msg) {
             std::cout << msg << ": ";
@@ -69,8 +78,8 @@ public:
             std::cout << std::endl;
         };*/
 
-        std::size_t fromBlock = from / cENTRIES;
-        std::size_t toBlock = (to - 1) / cENTRIES; // to not included
+        std::size_t fromBlock = _block(from);
+        std::size_t toBlock = _block(to - 1); // to not included
 
         //print("before");
 
@@ -97,10 +106,10 @@ public:
 
     bool isSet(const tKeyType &idx) const {
 
-        if (idx < m_capacity) {
-            RAISE(idx / cENTRIES < m_arraySize);
+        if (m_lowerBound <= idx && idx < m_upperBound) {
+            RAISE(_block(idx) < m_arraySize);
 
-            return m_array[idx / cENTRIES] && (m_array[idx / cENTRIES] & (1 << (idx % cENTRIES)));
+            return m_array[_block(idx)] && (m_array[_block(idx)] & (1 << (idx % cENTRIES)));
         } else {
             return false;
         }
@@ -108,7 +117,7 @@ public:
 
     bool zero() const { return m_ones == 0; }
 
-    bool one() const { return m_ones == m_capacity; }
+    bool one() const { return m_ones == m_upperBound - m_lowerBound; }
 
     bool zero(const std::size_t idx) const {
         return !isSet(idx);
@@ -118,9 +127,11 @@ public:
         return isSet(idx);
     }
 
-    std::size_t capacity() const { return m_capacity; }
+    //std::size_t capacity() const { return m_upperBound - m_lowerBound; }
+    std::size_t lowerBound() const { return m_lowerBound; }
+    std::size_t upperBound() const { return m_upperBound; }
 
-    std::size_t zeros() const { return m_capacity - m_ones; }
+    std::size_t zeros() const { return m_upperBound - m_lowerBound - m_ones; }
 
     std::size_t ones() const { return m_ones; }
 
@@ -128,7 +139,8 @@ public:
     void copy(const BitSet &other) {
 
         m_arraySize = other.m_arraySize;
-        m_capacity = other.m_capacity;
+        m_lowerBound = other.m_lowerBound;
+        m_upperBound = other.m_upperBound;
         m_ones = other.m_ones;
 
         try {
@@ -143,13 +155,23 @@ public:
         }
     }
 
-    void resize(const std::size_t &newSize) {
+    void resize(const std::size_t &upperBound) {
+        resize(m_lowerBound, upperBound);
+    }
+
+    void resize(const std::size_t &lowerBound, const std::size_t &upperBound) {
 
         tArrayPtr oldArray = std::move(m_array);
-        std::size_t oldSize = m_arraySize;
+        std::size_t oldLowerBound = m_lowerBound;
+        std::size_t oldUpperBound = m_upperBound;
 
-        m_arraySize = (newSize + cENTRIES - 1) / cENTRIES; //get the ceiling
-        m_capacity = m_arraySize * cENTRIES;
+        m_lowerBound = std::min(m_lowerBound, (lowerBound / cENTRIES) * cENTRIES); // round down
+        m_upperBound = std::max(m_upperBound, ((upperBound + cENTRIES - 1) / cENTRIES) * cENTRIES); // round up
+
+        oldLowerBound = _block(oldLowerBound);
+        oldUpperBound = _block(oldUpperBound);
+
+        m_arraySize = (m_upperBound - m_lowerBound) / cENTRIES;
 
         try {
             m_array.reset(new tKeyType[m_arraySize]); //random init
@@ -159,8 +181,11 @@ public:
         }
 
         std::size_t i;
-        for (i = 0; i < oldSize; ++i) {
-            m_array[i] = oldArray[i];
+        for (i = 0; i < oldLowerBound; ++i) {
+            m_array[i] = (tKeyType) 0;
+        }
+        for (; i < oldUpperBound; ++i) {
+            m_array[i] = oldArray[i - oldLowerBound];
         }
         for (; i < m_arraySize; ++i) {
             m_array[i] = (tKeyType) 0;
@@ -170,24 +195,31 @@ public:
     template<class BitSet>
     void merge(BitSet &&other) {
 
-        std::size_t bSize;
-        tArrayPtr bArray;
-        if (m_capacity >= other.m_capacity) {
-            bSize = other.m_arraySize;
-            bArray = std::move(other.m_array);
-        } else {
-            bSize = m_arraySize;
-            bArray = std::move(m_array);
+        tArrayPtr oldArray = std::move(m_array);
+        std::size_t oldLowerBound = m_lowerBound;
+        std::size_t oldUpperBound = m_upperBound;
 
-            m_arraySize = other.m_arraySize;
-            m_capacity = other.m_capacity;
-            m_array = std::move(other.m_array);
+        m_lowerBound = std::min(oldLowerBound, other.m_lowerBound);
+        m_upperBound = std::max(oldUpperBound, other.m_upperBound);
+
+        m_arraySize = (m_upperBound - m_lowerBound) / cENTRIES;
+
+        try {
+            m_array.reset(new tKeyType[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
         }
 
         m_ones = 0;
-        for (std::size_t i = 0; i < bSize; ++i) {
-            m_array[i] |= bArray[i];
-            m_ones += popcount(m_array[i]);
+        for (std::size_t i = m_lowerBound;
+             i < m_upperBound;
+             i += cENTRIES) {
+            m_array[_block(i)] = ((oldLowerBound <= i && i < oldUpperBound) ? oldArray[(i - oldLowerBound) / cENTRIES]
+                                                                            : (tKeyType) 0)
+                                 | ((other.m_lowerBound <= i && i < other.m_upperBound) ? other.m_array[other._block(i)]
+                                                                                        : (tKeyType) 0);
+            m_ones += popcount(m_array[_block(i)]);
         }
 
     }
@@ -196,42 +228,47 @@ public:
     void filter(const BitSet &filter) {
 
         m_ones = 0;
-        for (std::size_t i = 0; i < std::min(m_arraySize, filter.m_arraySize); ++i) {
-            m_array[i] &= ~filter.m_array[i];
-            m_ones += popcount(m_array[i]);
+        for (std::size_t i = std::max(m_lowerBound, filter.m_lowerBound);
+             i < std::min(m_upperBound, filter.m_upperBound);
+             i += cENTRIES) {
+            m_array[_block(i)] &= ~filter.m_array[filter._block(i)];
+            m_ones += popcount(m_array[_block(i)]);
         }
     }
 
     template<class BitSet, class Filter>
     void mergeFilter(BitSet &&other, const Filter &filter) {
 
-        std::size_t fSize = filter.m_arraySize;
+        tArrayPtr oldArray = std::move(m_array);
+        std::size_t oldLowerBound = m_lowerBound;
+        std::size_t oldUpperBound = m_upperBound;
 
-        std::size_t bSize;
-        tArrayPtr bArray;
-        if (m_capacity >= other.m_capacity) {
-            bSize = other.m_arraySize;
-            bArray = std::move(other.m_array);
-        } else {
-            bSize = m_arraySize;
-            bArray = std::move(m_array);
+        m_lowerBound = std::min(oldLowerBound, other.m_lowerBound);
+        m_upperBound = std::max(oldUpperBound, other.m_upperBound);
 
-            m_arraySize = other.m_arraySize;
-            m_capacity = other.m_capacity;
-            m_array = std::move(other.m_array);
+        m_arraySize = (m_upperBound - m_lowerBound) / cENTRIES;
+
+        try {
+            m_array.reset(new tKeyType[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
         }
 
         m_ones = 0;
-        std::size_t i;
-        for (i = 0; i < bSize; ++i) {
-            m_array[i] = (m_array[i] | bArray[i]) & ~(i < fSize ? filter.m_array[i] : (tKeyType) 0);
-            m_ones += popcount(m_array[i]);
+        for (std::size_t i = m_lowerBound;
+             i < m_upperBound;
+             i += cENTRIES) {
+            m_array[_block(i)] = (((oldLowerBound <= i && i < oldUpperBound) ? oldArray[(i - oldLowerBound) / cENTRIES]
+                                                                             : (tKeyType) 0)
+                                  |
+                                  ((other.m_lowerBound <= i && i < other.m_upperBound) ? other.m_array[other._block(i)]
+                                                                                       : (tKeyType) 0))
+                                 &
+                                 ~(filter.m_lowerBound <= i && i < filter.m_upperBound ? filter.m_array[filter._block(
+                                         i)] : (tKeyType) 0);
+            m_ones += popcount(m_array[_block(i)]);
         }
-        for (; i < fSize; ++i) {
-            m_array[i] &= ~filter.m_array[i];
-            m_ones += popcount(m_array[i]);
-        }
-
     }
 
     // compat definitions
@@ -248,18 +285,27 @@ public:
     tKeyType at(const std::size_t idx) const { return idx * isSet(idx); }
 
     std::size_t size() const { return ones(); }
+    std::size_t capacity() const { return upperBound(); }
 
+private:
+    inline std::size_t _idx(const std::size_t &idx) const {
+        return idx - m_lowerBound;
+    }
+
+    inline std::size_t _block(const std::size_t &idx) const {
+        return _idx(idx) / cENTRIES;
+    }
 
 public:
     typedef _detail::iterator<Bit_Set, tKeyType> iterator;
     typedef _detail::range_type<Bit_Set, iterator> range_type;
 
     iterator begin() const {
-        return iterator(*this, 0, true);
+        return iterator(*this, m_lowerBound, true);
     }
 
     iterator end() const {
-        return iterator(*this, m_capacity, false);
+        return iterator(*this, m_upperBound, false);
     }
 
     range_type range() const {
@@ -271,7 +317,9 @@ private:
 
 private:
     std::size_t m_arraySize;
-    std::size_t m_capacity;
+
+    std::size_t m_lowerBound;
+    std::size_t m_upperBound;
 
     tArrayPtr m_array;
 
@@ -290,15 +338,20 @@ public:
 
 public:
 
-    Concurrent_Bit_Set(std::size_t size)
+    Concurrent_Bit_Set(std::size_t lowerBound, std::size_t upperBound, bool zero = true)
             : m_array(nullptr),
               m_ones(0) {
 
         // Initialize cells
-        m_arraySize = (size + cENTRIES - 1) / cENTRIES; //get the ceiling
-        m_capacity = m_arraySize * cENTRIES;
+        m_lowerBound = (lowerBound / cENTRIES) * cENTRIES; // round down
+        m_upperBound = ((upperBound + cENTRIES - 1) / cENTRIES) * cENTRIES; // round up
+
+        m_arraySize = (m_upperBound - m_lowerBound) / cENTRIES;
         try {
-            m_array.reset(new std::atomic<tKeyType>[m_arraySize]()); //value init
+            if (zero)
+                m_array.reset(new std::atomic<tKeyType>[m_arraySize]()); //value init
+            else
+                m_array.reset(new std::atomic<tKeyType>[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
             raise(SIGINT);
@@ -307,7 +360,8 @@ public:
 
     Concurrent_Bit_Set(Concurrent_Bit_Set &&other)
             : m_arraySize(other.m_arraySize),
-              m_capacity(other.m_capacity),
+              m_lowerBound(other.m_lowerBound),
+              m_upperBound(other.m_upperBound),
               m_array(std::move(other.m_array)),
               m_ones(other.m_ones.load()) { }
 
@@ -316,7 +370,8 @@ public:
 
     Concurrent_Bit_Set &operator=(Concurrent_Bit_Set &&other) {
         m_arraySize = other.m_arraySize;
-        m_capacity = other.m_capacity;
+        m_lowerBound = other.m_lowerBound;
+        m_upperBound = other.m_upperBound;
         m_array = std::move(other.m_array);
         m_ones.store(other.m_ones.load());
 
@@ -324,10 +379,10 @@ public:
     }
 
     bool testAndSet(const tKeyType &idx) {
-        RAISE(idx / cENTRIES < m_arraySize);
-        RAISE(idx < m_capacity);
+        RAISE(m_lowerBound <= idx && idx < m_upperBound);
+        RAISE(_block(idx) < m_arraySize);
 
-        std::size_t i = idx / cENTRIES;
+        std::size_t i = _block(idx);
         tKeyType mask = 1 << (idx % cENTRIES);
 
         tKeyType des, val = m_array[i].load();
@@ -348,16 +403,20 @@ public:
     }
 
     bool isSet(const tKeyType &idx) const {
-        RAISE(idx / cENTRIES < m_arraySize);
-        RAISE(idx < m_capacity);
 
-        tKeyType val = m_array[idx / cENTRIES].load();
-        return val && (val & (1 << (idx % cENTRIES)));
+        if (m_lowerBound <= idx && idx < m_upperBound) {
+            RAISE(_block(idx) < m_arraySize);
+
+            tKeyType val = m_array[_block(idx)].load();
+            return val && (val & (1 << (idx % cENTRIES)));
+        } else {
+            return false;
+        }
     }
 
     bool zero() const { return m_ones.load() == 0; }
 
-    bool one() const { return m_ones.load() == m_capacity; }
+    bool one() const { return m_ones.load() == m_upperBound - m_lowerBound; }
 
     bool zero(const std::size_t idx) const {
         return !isSet(idx);
@@ -367,66 +426,13 @@ public:
         return isSet(idx);
     }
 
-    auto capacity() const { return m_capacity; }
+    //std::size_t capacity() const { return m_upperBound - m_lowerBound; }
+    std::size_t lowerBound() const { return m_lowerBound; }
+    std::size_t upperBound() const { return m_upperBound; }
 
-    auto zeros() const { return m_capacity - m_ones.load(); }
+    std::size_t zeros() const { return m_upperBound - m_lowerBound - m_ones.load(); }
 
-    auto ones() const { return m_ones.load(); }
-
-    template<class BitSet>
-    void unsafe_copy(const BitSet &other) {
-
-        m_arraySize = other.m_arraySize;
-        m_capacity = other.m_capacity;
-        m_ones.store(other.m_ones);
-
-        try {
-            m_array.reset(new std::atomic<tKeyType>[m_arraySize]); //random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
-
-        for (std::size_t i = 0; i < m_arraySize; ++i) {
-            m_array[i].store(other.m_array[i]);
-        }
-
-    }
-
-    template<class BitSet>
-    void unsafe_merge(BitSet &&other) {
-
-        std::size_t bSize;
-        tArrayPtr bArray;
-        if (m_capacity >= other.m_capacity) {
-            bSize = other.m_arraySize;
-            bArray = std::move(other.m_array);
-        } else {
-            bSize = m_arraySize;
-            bArray = std::move(m_array);
-
-            m_arraySize = other.m_arraySize;
-            m_capacity = other.m_capacity;
-            m_array = std::move(other.m_array);
-        }
-
-        m_ones.store(0);
-        for (std::size_t i = 0; i < bSize; ++i) {
-            m_array[i].fetch_or(bArray[i].load());
-            m_ones.fetch_add(popcount(m_array[i].load()));
-        }
-
-    }
-
-    template<class BitSet>
-    void unsafe_filter(const BitSet &filter) {
-
-        m_ones.store(0);
-        for (std::size_t i = 0; i < std::min(m_arraySize, filter.m_arraySize); ++i) {
-            m_array[i].fetch_and(~filter.m_array[i].load());
-            m_ones.fetch_add(popcount(m_array[i].load()));
-        }
-    }
+    std::size_t ones() const { return m_ones.load(); }
 
     // compat definitions
     bool insert(const tKeyType &key) { return !testAndSet(key); }
@@ -441,19 +447,28 @@ public:
 
     tKeyType at(const std::size_t idx) const { return idx * isSet(idx); }
 
-    auto size() const { return ones(); }
+    std::size_t size() const { return ones(); }
+    std::size_t capacity() const { return upperBound(); }
 
+private:
+    inline std::size_t _idx(const std::size_t &idx) const {
+        return idx - m_lowerBound;
+    }
+
+    inline std::size_t _block(const std::size_t &idx) const {
+        return _idx(idx) / cENTRIES;
+    }
 
 public:
     typedef _detail::iterator<Concurrent_Bit_Set, tKeyType> iterator;
     typedef _detail::range_type<Concurrent_Bit_Set, iterator> range_type;
 
     iterator begin() const {
-        return iterator(*this, 0, true);
+        return iterator(*this, m_lowerBound, true);
     }
 
     iterator end() const {
-        return iterator(*this, m_capacity, false);
+        return iterator(*this, m_upperBound, false);
     }
 
     range_type range() const {
@@ -465,7 +480,8 @@ private:
 
 private:
     std::size_t m_arraySize;
-    std::size_t m_capacity;
+    std::size_t m_lowerBound;
+    std::size_t m_upperBound;
 
     tArrayPtr m_array;
 

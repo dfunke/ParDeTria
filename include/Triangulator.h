@@ -15,11 +15,12 @@ struct PartialTriangulation {
     Simplex_Ids simplices;
     Simplex_Ids convexHull;
 
-    PartialTriangulation(const std::size_t n)
-            : simplices(n), convexHull(n) { }
+    PartialTriangulation(const std::size_t lowerBound, const std::size_t upperBound)
+            : simplices(lowerBound, upperBound),
+              convexHull(lowerBound, upperBound) { }
 
     PartialTriangulation()
-            : simplices(1), convexHull(1) { }
+            : simplices(0, 1), convexHull(0, 1) { }
 };
 
 template<uint D, typename Precision>

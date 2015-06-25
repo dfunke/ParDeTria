@@ -459,7 +459,7 @@ TEST(Concurrent_BlockedArray, ReserveBlock) {
 TEST(Bit_Set, InsertContains) {
 
     const uint cap = 1e5;
-    Bit_Set set(cap);
+    Bit_Set set(0, cap);
     EXPECT_GE(set.capacity(), cap);
 
     std::unordered_set<uint> cmp;
@@ -492,7 +492,7 @@ TEST(Bit_Set, BatchInsert) {
     const uint cap = 320;
 
     auto setAndTest = [cap](const uint from, const uint to){
-        Bit_Set set(cap);
+        Bit_Set set(0, cap);
         EXPECT_GE(set.capacity(), cap);
 
         set.batchSet(from, to);
@@ -534,11 +534,11 @@ TEST(Bit_Set, Merge) {
 
 
     const uint capA = 1e5;
-    Bit_Set a(capA);
+    Bit_Set a(0, capA);
     EXPECT_GE(a.capacity(), capA);
 
     const uint capB = 1e6;
-    Bit_Set b(capB);
+    Bit_Set b(0, capB);
     EXPECT_GE(b.capacity(), capB);
 
     std::unordered_set<uint> cmp;
@@ -572,7 +572,7 @@ TEST(Bit_Set, Resize) {
 
 
     const uint cap = 1e5;
-    Bit_Set set(cap);
+    Bit_Set set(0, cap);
     EXPECT_GE(set.capacity(), cap);
 
     std::unordered_set<uint> cmp;
@@ -603,13 +603,13 @@ TEST(Bit_Set, Filter) {
 
 
     const uint cap = 1e5;
-    Bit_Set set(cap);
+    Bit_Set set(0, cap);
     EXPECT_GE(set.capacity(), cap);
 
     set.batchSet(0, cap);
     EXPECT_EQ(set.ones(), cap);
 
-    Bit_Set filter(cap);
+    Bit_Set filter(0, cap);
     for(uint i = 1; i < cap; i += 2)
         filter.insert(i);
 
@@ -624,20 +624,20 @@ TEST(Bit_Set, MergeFilter) {
 
 
     const uint capA = 1e5;
-    Bit_Set a(capA);
+    Bit_Set a(0, capA);
     EXPECT_GE(a.capacity(), capA);
 
     a.batchSet(0, capA);
     EXPECT_EQ(a.ones(), capA);
 
     const uint capB = 1e6;
-    Bit_Set b(capB);
+    Bit_Set b(0, capB);
     EXPECT_GE(b.capacity(), capB);
 
     b.batchSet(0, capB);
     EXPECT_EQ(b.ones(), capB);
 
-    Bit_Set filter(std::max(capA, capB));
+    Bit_Set filter(0, std::max(capA, capB));
     for(uint i = 1; i < std::max(capA, capB); i += 2)
         filter.insert(i);
 
@@ -651,8 +651,8 @@ TEST(Bit_Set, MergeFilter) {
 
 TEST(Concurrent_Bit_Set, InsertContains) {
 
-    const uint cap = 1e5;
-    Concurrent_Bit_Set set(cap);
+    const uint cap = 1e6;
+    Concurrent_Bit_Set set(0, cap);
     EXPECT_GE(set.capacity(), cap);
 
     tbb::concurrent_unordered_set<uint> cmp;
@@ -661,7 +661,8 @@ TEST(Concurrent_Bit_Set, InsertContains) {
 
     tbb::parallel_for(tbb::blocked_range<uint>(1, cap / 10), [&](__attribute__((unused)) const auto &r) {
         uint n = dice();
-        EXPECT_EQ(set.insert(n), cmp.insert(n).second);
+        set.insert(n);
+        cmp.insert(n);
     });
 
     EXPECT_EQ(set.size(), cmp.size());
@@ -678,42 +679,4 @@ TEST(Concurrent_Bit_Set, InsertContains) {
         uint n = dice();
         EXPECT_EQ(set.contains(n), cmp.count(n));
     });
-}
-
-TEST(Concurrent_Bit_Set, Merge) {
-
-
-    const uint capA = 1e5;
-    Concurrent_Bit_Set a(capA);
-    EXPECT_GE(a.capacity(), capA);
-
-    const uint capB = 1e6;
-    Concurrent_Bit_Set b(capB);
-    EXPECT_GE(b.capacity(), capB);
-
-    std::unordered_set<uint> cmp;
-    auto distribution = std::uniform_int_distribution<uint>(1, std::min(capA, capB));
-    auto dice = std::bind(distribution, startGen);
-
-    for (uint i = 0; i < 60; ++i) {
-        uint n;
-        while (n = dice(), !cmp.insert(n).second);
-        EXPECT_TRUE(a.insert(n));
-        while (n = dice(), !cmp.insert(n).second);
-        EXPECT_TRUE(b.insert(n));
-    }
-
-    EXPECT_EQ(a.size(), 60);
-    EXPECT_EQ(b.size(), 60);
-
-    for (uint i : cmp) {
-        EXPECT_TRUE(a.contains(i) | b.contains(i));
-    }
-
-    a.unsafe_merge(std::move(b));
-    EXPECT_GE(b.capacity(), std::max(capA, capB));
-
-    for (uint i : cmp) {
-        EXPECT_TRUE(a.contains(i));
-    }
 }
