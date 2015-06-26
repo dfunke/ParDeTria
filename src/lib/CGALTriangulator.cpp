@@ -298,6 +298,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     PLOG("Collecting simplices" << std::endl);
     INDENT
 
+    VTUNE_TASK(CollectCgal);
     //auto triaSize = helper.size(t);
     auto lastId = t.tds().maxId();
     t.tds().disableId();
@@ -314,7 +315,6 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     std::set<tIdType> idCheck;
 #endif
 
-    VTUNE_TASK(CollectCgal);
     dSimplex<D, Precision> a;
     for (auto it = helper.begin(t); it != helper.end(t); ++it) {
         a.id = startId + it->m_id;
