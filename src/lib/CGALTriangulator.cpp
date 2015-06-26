@@ -315,8 +315,8 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     std::set<tIdType> idCheck;
 #endif
 
-    dSimplex<D, Precision> a;
     for (auto it = helper.begin(t); it != helper.end(t); ++it) {
+        dSimplex<D, Precision> a;
         a.id = startId + it->m_id;
 
         ASSERT(idCheck.insert(a.id).second);
@@ -340,8 +340,8 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
 
         PLOG(a << std::endl);
 
-        DT[a.id] = a;
         pt.simplices.insert(a.id);
+        DT[a.id] = std::move(a);
     }
     DEDENT
 
