@@ -315,33 +315,31 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
     std::set<tIdType> idCheck;
 #endif
 
-    dSimplex<D, Precision> a;
+    tIdType id;
     for (auto it = helper.begin(t); it != helper.end(t); ++it) {
-        a.id = startId + it->m_id;
+        id = startId + it->m_id;
+        ASSERT(idCheck.insert(id).second);
+        ASSERT((id != dSimplex<D, Precision>::cINF));
 
-        ASSERT(idCheck.insert(a.id).second);
+        DT[id].id = id;
+        pt.simplices.insert(id);
 
         for (uint d = 0; d < D + 1; ++d) {
-            a.vertices[d] = it->vertex(d)->info();
-            a.neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<D, Precision>::cINF
+            DT[id].vertices[d] = it->vertex(d)->info();
+            DT[id].neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<D, Precision>::cINF
                                                             : startId + it->neighbor(d)->m_id;
         }
 
         // sort vertices by ascending point id
-        static_insertion_sort(a.vertices);
-        static_insertion_sort(a.neighbors);
-        a.genFingerprint();
+        static_insertion_sort(DT[id].vertices);
+        static_insertion_sort(DT[id].neighbors);
+        DT[id].genFingerprint();
 
         //check whether vertex belongs to the convex hull
-        if (!a.isFinite())
-            pt.convexHull.insert(a.id);
+        if (!DT[id].isFinite())
+            pt.convexHull.insert(id);
 
-        ASSERT((a.id != dSimplex<D, Precision>::cINF));
-
-        PLOG(a << std::endl);
-
-        DT[a.id] = a;
-        pt.simplices.insert(a.id);
+        PLOG(DT[id] << std::endl);
     }
     DEDENT
 
