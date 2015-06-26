@@ -5,6 +5,133 @@
 #include "utils/Misc.h"
 #include "utils/ASSERT.h"
 
+namespace _detail {
+
+    template<class Container, typename Value>
+    struct bitset_iterator : public std::iterator<std::bidirectional_iterator_tag, Value> {
+
+    private:
+        static const uint cENTRIES = (CHAR_BIT * sizeof(typename Container::tKeyType));
+
+    public:
+        bitset_iterator(const Container &container, std::size_t idx, bool findNext)
+                : m_container(container),
+                  m_idx(m_container._idx(idx)),
+                  m_lowerBound(container.lowerBound()),
+                  m_end(m_container.upperBound() - m_container.lowerBound()) {
+
+            if (findNext)
+                _advance(true);
+
+        }
+
+        bitset_iterator(const bitset_iterator &o)
+                : m_container(o.m_container),
+                  m_idx(o.m_idx),
+                  m_lowerBound(o.m_lowerBound),
+                  m_end(o.m_end) { }
+
+        bitset_iterator &operator++() {
+            _advance(false);
+            return *this;
+        }
+
+        bitset_iterator operator++(int) {
+            auto tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+        bitset_iterator &operator--() {
+            _dec(false);
+            return *this;
+        }
+
+        bitset_iterator operator--(int) {
+            auto tmp = *this;
+            --(*this);
+            return tmp;
+        }
+
+        std::size_t operator-(const bitset_iterator &other) const {
+            return m_idx - other.m_idx;
+        }
+
+        std::size_t operator+(const bitset_iterator &other) const {
+            return m_idx + other.m_idx;
+        }
+
+        bitset_iterator operator=(const bitset_iterator &other) {
+            m_idx = other.m_idx;
+            return *this;
+        }
+
+        void setIdx(const std::size_t &idx, bool findNext) {
+            m_idx = idx;
+            if (findNext)
+                _advance(true);
+        }
+
+        bool operator==(const bitset_iterator &j) const {
+            return m_idx == j.m_idx;
+        }
+
+        bool operator!=(const bitset_iterator &j) const { return !(*this == j); }
+
+        bool operator<(const bitset_iterator &other) const {
+            return m_idx < other.m_idx;
+        }
+
+        bool operator<=(const bitset_iterator &other) const {
+            return m_idx <= other.m_idx;
+        }
+
+        bool operator>(const bitset_iterator &other) const {
+            return m_idx > other.m_idx;
+        }
+
+        bool operator>=(const bitset_iterator &other) const {
+            return m_idx >= other.m_idx;
+        }
+
+        auto operator*() const { return m_lowerBound + m_idx; }
+
+        //const auto *operator->() const { return &m_container.at(m_idx); }
+
+    private:
+        void _advance(const bool testFirst) {
+            if (testFirst) {
+                while ((m_idx < m_end && !m_container._isSet(m_idx)))
+                    m_idx += m_idx % cENTRIES != 0 ?
+                             1 // we are in the middle of a byte
+                                                   : m_container.m_array[m_idx / cENTRIES] ? 1
+                                                                                           : cENTRIES; // maybe we can skip a byte
+            } else {
+                while (m_idx += m_idx % cENTRIES != 0 ?
+                                1 // we are in the middle of a byte
+                                                      : m_container.m_array[m_idx / cENTRIES] ? 1
+                                                                                              : cENTRIES, // maybe we can skip a byte
+                        (m_idx < m_end && !m_container._isSet(m_idx))) { }
+            }
+        }
+
+        void _dec(const bool testFirst) {
+            if (testFirst) {
+                while ((m_idx >= 0 && !m_container._isSet(m_idx)))
+                    --m_idx;
+            } else {
+                while (--m_idx, (m_idx >= 0 && !m_container._isSet(m_idx))) { }
+            }
+        }
+
+    protected:
+        const Container &m_container;
+        std::size_t m_idx;
+        const std::size_t m_lowerBound;
+        const std::size_t m_end;
+    };
+}
+
 class Concurrent_Bit_Set;
 
 class Bit_Set {
@@ -129,6 +256,7 @@ public:
 
     //std::size_t capacity() const { return m_upperBound - m_lowerBound; }
     std::size_t lowerBound() const { return m_lowerBound; }
+
     std::size_t upperBound() const { return m_upperBound; }
 
     std::size_t zeros() const { return m_upperBound - m_lowerBound - m_ones; }
@@ -285,6 +413,7 @@ public:
     tKeyType at(const std::size_t idx) const { return idx * isSet(idx); }
 
     std::size_t size() const { return ones(); }
+
     std::size_t capacity() const { return upperBound(); }
 
 private:
@@ -296,8 +425,15 @@ private:
         return _idx(idx) / cENTRIES;
     }
 
+    bool _isSet(const tKeyType &idx) const {
+        return m_array[idx / cENTRIES] && (m_array[idx / cENTRIES] & (1 << (idx % cENTRIES)));
+    }
+
 public:
-    typedef _detail::iterator<Bit_Set, tKeyType> iterator;
+    typedef _detail::bitset_iterator<Bit_Set, tKeyType> iterator;
+
+    friend iterator;
+
     typedef _detail::range_type<Bit_Set, iterator> range_type;
 
     iterator begin() const {
@@ -428,6 +564,7 @@ public:
 
     //std::size_t capacity() const { return m_upperBound - m_lowerBound; }
     std::size_t lowerBound() const { return m_lowerBound; }
+
     std::size_t upperBound() const { return m_upperBound; }
 
     std::size_t zeros() const { return m_upperBound - m_lowerBound - m_ones.load(); }
@@ -448,6 +585,7 @@ public:
     tKeyType at(const std::size_t idx) const { return idx * isSet(idx); }
 
     std::size_t size() const { return ones(); }
+
     std::size_t capacity() const { return upperBound(); }
 
 private:
@@ -459,8 +597,16 @@ private:
         return _idx(idx) / cENTRIES;
     }
 
+    bool _isSet(const tKeyType &idx) const {
+        tKeyType val = m_array[idx / cENTRIES].load();
+        return val && (val & (1 << (idx % cENTRIES)));
+    }
+
 public:
-    typedef _detail::iterator<Concurrent_Bit_Set, tKeyType> iterator;
+    typedef _detail::bitset_iterator<Concurrent_Bit_Set, tKeyType> iterator;
+
+    friend iterator;
+
     typedef _detail::range_type<Concurrent_Bit_Set, iterator> range_type;
 
     iterator begin() const {
