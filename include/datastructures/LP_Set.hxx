@@ -69,8 +69,7 @@ namespace _detail {
                   m_idx(idx) {
 
             if (findNext)
-                while ((m_idx < m_container.capacity() && m_container.empty(m_idx)))
-                    ++m_idx;
+               _advance(true);
 
         }
 
@@ -79,7 +78,7 @@ namespace _detail {
                   m_idx(o.m_idx) { }
 
         iterator &operator++() {
-            while (++m_idx, (m_idx < m_container.capacity() && m_container.empty(m_idx))) { }
+            _advance(false);
             return *this;
         }
 
@@ -90,7 +89,7 @@ namespace _detail {
         }
 
         iterator &operator--() {
-            while (--m_idx, (m_idx >= 0 && m_container.empty(m_idx))) { }
+            _dec(false);
             return *this;
         }
 
@@ -116,8 +115,7 @@ namespace _detail {
         void setIdx(const std::size_t &idx, bool findNext) {
             m_idx = idx;
             if (findNext)
-                while ((m_idx < m_container.capacity() && m_container.empty(m_idx)))
-                    ++m_idx;
+                _advance(true);
         }
 
         bool operator==(const iterator &j) const {
@@ -145,6 +143,25 @@ namespace _detail {
         auto operator*() const { return m_container.at(m_idx); }
 
         //const auto *operator->() const { return &m_container.at(m_idx); }
+
+    private:
+        void _advance(const bool testFirst){
+            if(testFirst){
+                while ((m_idx < m_container.capacity() && m_container.empty(m_idx)))
+                    ++m_idx;
+            } else {
+                while (++m_idx, (m_idx < m_container.capacity() && m_container.empty(m_idx))) { }
+            }
+        }
+
+        void _dec(const bool testFirst){
+            if(testFirst){
+                while ((m_idx >= 0 && m_container.empty(m_idx)))
+                    --m_idx;
+            } else {
+                while (--m_idx, (m_idx >= 0 && m_container.empty(m_idx))) { }
+            }
+        }
 
     protected:
         const Container &m_container;
