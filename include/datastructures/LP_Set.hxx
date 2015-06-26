@@ -157,6 +157,7 @@ namespace _detail {
         IT m_begin;
         IT m_end;
         mutable IT m_midpoint;
+        std::size_t m_grainsize;
 
     public:
 
@@ -173,7 +174,8 @@ namespace _detail {
                 m_container(r.m_container),
                 m_begin(r.m_begin),
                 m_end(r.m_midpoint),
-                m_midpoint(m_begin) {
+                m_midpoint(m_begin),
+                m_grainsize(r.m_grainsize){
 
             r.m_begin = r.m_midpoint;
 
@@ -182,11 +184,12 @@ namespace _detail {
         }
 
         //! Init range with container and grainsize specified
-        range_type(const Container &cont) :
+        range_type(const Container &cont, const std::size_t & grainsize = 1e3) :
                 m_container(cont),
                 m_begin(cont.begin()),
                 m_end(cont.end()),
-                m_midpoint(cont.begin()) {
+                m_midpoint(cont.begin()),
+                m_grainsize(grainsize){
             set_midpoint();
         }
 
@@ -195,7 +198,7 @@ namespace _detail {
         const IT &end() const { return m_end; }
 
         //! The grain size for this range.
-        std::size_t grainsize() const { return 1; }
+        std::size_t grainsize() const { return m_grainsize; }
 
         //! Set my_midpoint_node to point approximately half way between my_begin_node and my_end_node.
         void set_midpoint() const {
