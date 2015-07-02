@@ -922,6 +922,25 @@ dSimplices<D, Precision>::verify(const PartialTriangulation &pt, const dPoints<D
     return result;
 }
 
+template <uint D, typename Precision>
+typename dSimplices<D, Precision>::tHash dSimplices<D, Precision>::genFingerprint(const PartialTriangulation &pt) const {
+
+    tHash hash;
+    std::fill(hash.begin(), hash.end(), 0); //init with zero
+
+    for(tIdType id : pt.simplices){
+        dSimplex<D, Precision> s = this->at(id);
+        auto h = s.fingerprint();
+        uint i = h & 0xFF; // get last byte
+
+        ASSERT(0 <= i && i <= 256);
+        hash[i] ^= h; //xor into hash array
+    }
+
+    return hash;
+
+}
+
 // specialiations
 
 // float

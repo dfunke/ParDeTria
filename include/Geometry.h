@@ -826,6 +826,9 @@ template<uint D, typename Precision>
 class dSimplices : public Concurrent_BlockedArray<dSimplex<D, Precision>> {
 
 public:
+    typedef std::array<uint, 256> tHash;
+
+public:
     dSimplices() : Concurrent_BlockedArray<dSimplex<D, Precision>>(),
                    tetrahedronID(1) { }
 
@@ -840,6 +843,8 @@ public:
             crossCheck(const PartialTriangulation &pt,
                        const dSimplices<D, Precision> &realSimplices,
                        const PartialTriangulation &realPT) const;
+
+    tHash genFingerprint(const PartialTriangulation &pt) const;
 
 public:
     std::atomic<uint> tetrahedronID;
