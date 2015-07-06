@@ -53,4 +53,5 @@ target_link_libraries(DCTriangulator
 if(VTUNE)
   target_link_libraries(DCTriangulator VTune)
   target_link_libraries(CGALTriangulator VTune)
+  target_link_libraries(SpatialSort VTune)
 endif()
