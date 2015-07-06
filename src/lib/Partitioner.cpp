@@ -1,7 +1,7 @@
 #include "Partitioner.h"
 
 template<uint D, typename Precision>
-Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
+Partitioning<D, Precision> dWayPartitioner<D, Precision>::partition(
         const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
     // do mid-point based partitioning for now
@@ -55,7 +55,7 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
 }
 
 template<uint D, typename Precision>
-Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
+Partitioning<D, Precision> OneDimPartitioner<D, Precision>::partition(
         const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
     // do mid-point based partitioning for now
@@ -165,37 +165,37 @@ CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
 
 // specializations
 template
-class dPartitioner<2, float>;
+class dWayPartitioner<2, float>;
 
 template
-class kPartitioner<2, float>;
+class OneDimPartitioner<2, float>;
 
 template
 class CyclePartitioner<2, float>;
 
 template
-class dPartitioner<3, float>;
+class dWayPartitioner<3, float>;
 
 template
-class kPartitioner<3, float>;
+class OneDimPartitioner<3, float>;
 
 template
 class CyclePartitioner<3, float>;
 
 template
-class dPartitioner<2, double>;
+class dWayPartitioner<2, double>;
 
 template
-class kPartitioner<2, double>;
+class OneDimPartitioner<2, double>;
 
 template
 class CyclePartitioner<2, double>;
 
 template
-class dPartitioner<3, double>;
+class dWayPartitioner<3, double>;
 
 template
-class kPartitioner<3, double>;
+class OneDimPartitioner<3, double>;
 
 template
 class CyclePartitioner<3, double>;

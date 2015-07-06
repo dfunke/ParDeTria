@@ -52,13 +52,14 @@ DCTriangulator<D, Precision>::DCTriangulator(
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
         const uint _recursionDepth,
-        const unsigned char splitter,
+        const unsigned char _splitter,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
         const bool _parallelEdgeTria)
         : Triangulator<D, Precision>(_bounds, _points),
           recursionDepth(_recursionDepth),
-          parallelEdgeTria(_parallelEdgeTria) {
+          parallelEdgeTria(_parallelEdgeTria),
+          splitter(_splitter)  {
 
 
     // add infinite points to data set
@@ -84,10 +85,6 @@ DCTriangulator<D, Precision>::DCTriangulator(
     else
         baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, false>>(this->baseBounds, this->points,
                                                                                    gridOccupancy);
-
-    if (splitter != 0)
-        partitioner = Partitioner<D, Precision>::make(splitter);
-
 }
 
 template<uint D, typename Precision>
@@ -454,7 +451,8 @@ template<uint D, typename Precision>
 PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Precision> &DT,
                                                                 const Point_Ids &partitionPoints,
                                                                 const dBox<D, Precision> &bounds,
-                                                                const std::string provenance) {
+                                                                const std::string provenance,
+                                                                const unsigned char _splitter) {
 
     LOGGER.setIndent(provenance.length());
 
@@ -474,6 +472,7 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
         INDENT
 
         VTUNE_TASK(Partitioning);
+        auto partitioner = Partitioner<D, Precision>::make(_splitter != 0 ? _splitter : splitter);
         const auto partioning =
                 partitioner->partition(partitionPoints, this->points, provenance);
         VTUNE_END_TASK(Partitioning);
@@ -543,11 +542,19 @@ PartialTriangulation DCTriangulator<D, Precision>::_triangulate(dSimplices<D, Pr
 
         VTUNE_TASK(TriangulateEdge);
         //TODO how to identify the edge triangulation
+
+        // only split along axis perpendicular to current split axis
+        // cycle is lenght of provenance - 1 modulo D
+        unsigned char __splitter;
+        if(splitter == 'c')
+            __splitter = ((unsigned char) (provenance.size()) % D) + '0';
+        else
+            __splitter = _splitter != 0 ? _splitter : splitter;
+
         PartialTriangulation edgeDT = parallelEdgeTria ?
-                                      _triangulate(DT, Point_Ids(std::move(edgePointIds.data())), bounds, provenance + "e")
+                                      _triangulate(DT, Point_Ids(std::move(edgePointIds.data())), bounds, provenance + "e", __splitter)
                                                        :
-                                      _triangulateBase(DT, Point_Ids(std::move(edgePointIds.data())), bounds,
-                                                       provenance + "e");
+                                      _triangulateBase(DT, Point_Ids(std::move(edgePointIds.data())), bounds, provenance + "e");
         VTUNE_END_TASK(TriangulateEdge);
 
         PROFILER_MEAS("edgeDT", edgeDT.simplices.size());

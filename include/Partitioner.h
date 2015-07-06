@@ -129,7 +129,7 @@ public:
 };
 
 template<uint D, typename Precision>
-class dPartitioner : public Partitioner<D, Precision> {
+class dWayPartitioner : public Partitioner<D, Precision> {
 
 public:
     Partitioning<D, Precision> partition(const Point_Ids &ids,
@@ -138,10 +138,10 @@ public:
 };
 
 template<uint D, typename Precision>
-class kPartitioner : public Partitioner<D, Precision> {
+class OneDimPartitioner : public Partitioner<D, Precision> {
 
 public:
-    kPartitioner(uint _k) : k(_k) { }
+    OneDimPartitioner(uint _k) : k(_k) { }
 
     Partitioning<D, Precision> partition(const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
@@ -167,7 +167,7 @@ std::unique_ptr<Partitioner<D, Precision>> Partitioner<D, Precision>::make(const
     std::unique_ptr<Partitioner<D, Precision>> partitioner_ptr;
     switch (type) {
         case 'd':
-            partitioner_ptr = std::make_unique<dPartitioner<D, Precision>>();
+            partitioner_ptr = std::make_unique<dWayPartitioner<D, Precision>>();
             break;
         case 'c':
             partitioner_ptr = std::make_unique<CyclePartitioner<D, Precision>>();
@@ -176,7 +176,7 @@ std::unique_ptr<Partitioner<D, Precision>> Partitioner<D, Precision>::make(const
             // p must be a dimension - subtract '0' to get integer value
             int d = type - '0';
             ASSERT(0 <= d && (uint) d < D);
-            partitioner_ptr = std::make_unique<kPartitioner<D, Precision>>(d);
+            partitioner_ptr = std::make_unique<OneDimPartitioner<D, Precision>>(d);
             break;
     }
 

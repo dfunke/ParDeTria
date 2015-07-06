@@ -47,8 +47,16 @@ protected:
     PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
                                       const Point_Ids &partitionPoints,
                                       const dBox<D, Precision> &bounds,
-                                      const std::string provenance
+                                      const std::string provenance,
+                                      const unsigned char _splitter
     );
+
+    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
+                                      const Point_Ids &partitionPoints,
+                                      const dBox<D, Precision> &bounds,
+                                      const std::string provenance) {
+        return _triangulate(DT, partitionPoints, bounds, provenance, (unsigned char) 0);
+    }
 
     void getEdge(const PartialTriangulation &pt,
                  const dSimplices<D, Precision> &simplices,
@@ -77,8 +85,8 @@ protected:
 protected:
     const uint recursionDepth;
     const bool parallelEdgeTria;
+    const unsigned char splitter;
 
-    std::unique_ptr<Partitioner<D, Precision>> partitioner;
     std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
 
 public:
