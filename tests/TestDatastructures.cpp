@@ -677,6 +677,8 @@ TEST(Concurrent_Bit_Set, InsertContains) {
 
     tbb::parallel_for(tbb::blocked_range<uint>(1, cap / 10), [&](__attribute__((unused)) const auto &r) {
         uint n = dice();
-        EXPECT_EQ(set.contains(n), cmp.count(n));
+	bool contained = cmp.count(n);
+
+	EXPECT_EQ(contained, set.contains(n));
     });
 }
