@@ -190,16 +190,16 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
                     }
                     // now loop over its neighbors, adding the ones not belonging to the edge
                     // TODO maybe we can avoid this
-                    for (const auto &secondLayer : DT[firstLayer].neighbors) {
-                        if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
-                            && wqa.insert(secondLayer)) {
-
-                            for (uint i = 0; i < D + 1; ++i) {
-                                auto facetteHash = DT[secondLayer].faceFingerprint(i);
-                                wuFacesHandle.insert(facetteHash, secondLayer);
-                            }
-                        }
-                    }
+//                    for (const auto &secondLayer : DT[firstLayer].neighbors) {
+//                        if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
+//                            && wqa.insert(secondLayer)) {
+//
+//                            for (uint i = 0; i < D + 1; ++i) {
+//                                auto facetteHash = DT[secondLayer].faceFingerprint(i);
+//                                wuFacesHandle.insert(facetteHash, secondLayer);
+//                            }
+//                        }
+//                    }
                 }
             }
         }
@@ -220,10 +220,6 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     const uint saveIndent = LOGGER.getIndent();
 
     Concurrent_Simplex_Ids wqa(pt.simplices.lowerBound(), pt.simplices.upperBound());
-
-    tbb::enumerable_thread_specific<std::set<tIdType>,
-            tbb::cache_aligned_allocator<std::set<tIdType>>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsNeighborSet;
 
     auto wuFacesHandle = wuFaces.handle();
 
@@ -249,72 +245,56 @@ void DCTriangulator<D, Precision>::updateNeighbors(
         ++checked;
 #endif
 
-        bool requiresUpdate = false;
-        for (const auto &n : simplex.neighbors) {
-            if (dSimplex<D, Precision>::isFinite(n) &&
-                (!pt.simplices.count(n) || !simplex.isNeighbor(simplices[n]))) {
-                requiresUpdate = true;
-                break;
-            }
-        }
+        INDENT
+        for (uint d = 0; d < D + 1; ++d) {
 
-        if (!requiresUpdate) {
-            INDENT
-            PLOG("No update necessary" << std::endl);
-            DEDENT
+            /* We need to update the the neighbor if
+             *  a) it is finite, but doesn't exist in the triangulation anymore or is not a neighbor anymore
+             *  b) it is infinite
+             */
 
-            return;
-        }
+            if (!dSimplex<D, Precision>::isFinite(simplex.neighbors[d]) // is infinite
+                ||
+                // not in triangulation anymore or not a neighbor anymore
+                (!pt.simplices.count(simplex.neighbors[d]) || !simplex.isNeighbor(simplices[simplex.neighbors[d]]))
+                    ) {
 
-        PLOG("Updating neighbors of " << simplex << std::endl);
+                // update needed
+                simplex.neighbors[d] = dSimplex<D, Precision>::cINF; // reset to infinite
 #ifndef NDEBUG
-        ++updated;
+                bool set = false;
 #endif
 
-        INDENT
-        uint neighborIdx = 0;
-        auto neighborSet = tsNeighborSet.local();
-        neighborSet.clear();
-        for (uint i = 0; i < D + 1; ++i) {
+                auto facetteHash = simplex.faceFingerprint(d);
+                auto range = wuFacesHandle.get(facetteHash);
+                PLOG("Key: " << facetteHash << " #Results: " << std::distance(range.first, range.second) << std::endl;);
+                for (auto it = range.first; it != range.second; ++it) {
+                    auto cand = (*it).second;
+                    if (cand != simplex.id //its not me
+                        && dSimplex<D, Precision>::isFinite(cand) // its finite
+                        && pt.simplices.count(cand) // its in the triangulation
+                        && simplex.isNeighbor(simplices[cand]) // it is a neighbor
+                        && !simplices[cand].contains(simplex.vertices[d]) // its neighboring at the correct edge
+                            ) {
+                        PLOG("Neighbor with " << simplices[cand] << std::endl);
+                        ASSERT(!set || cand == simplex.neighbors[d]); //second term is to guard against double entries
 
-            auto facetteHash = simplex.faceFingerprint(i);
-            auto range = wuFacesHandle.get(facetteHash);
-            PLOG("Key: " << facetteHash << " #Results: " << std::distance(range.first, range.second) << std::endl;);
-            for (auto it = range.first; it != range.second; ++it) {
-                auto i = *it;
-                if (i.second != simplex.id && dSimplex<D, Precision>::isFinite(i.second)
-                    && pt.simplices.count(i.second) && simplex.isNeighbor(simplices[i.second])) {
-                    PLOG("Neighbor with " << simplices[i.second] << std::endl);
-
-                    if (neighborSet.insert(i.second).second) {
-                        simplex.neighbors[neighborIdx++] = i.second;
-                        feeder.add(i.second);
+                        simplex.neighbors[d] = cand;
+                        feeder.add(cand);
+#ifndef NDEBUG
+                        ++updated;
+                        set = true;
+#endif
                     }
                 }
             }
         }
         DEDENT
-
-        ASSERT(0 < neighborIdx && neighborIdx <= D + 1);
-
-#ifndef NDEBUG
-        if (!(neighborIdx > 0 && neighborIdx <= D + 1)) {
-            LOG("Error: wrong number of neighbors for simplex " << simplex << std::endl);
-        }
-#endif
-
-        // ASSERT(simplex.neighbors.size() > 0 && simplex.neighbors.size() <=
-        // D+1);
-
-        while (neighborIdx < D + 1) { // if it is a simplex at the border,
-            // it might have one infinite
-            // simplex as neighbor
-            simplex.neighbors[neighborIdx++] = uint(dSimplex<D, Precision>::cINF);
-        }
     });
 
 #ifndef NDEBUG
-    LOG("Updating neighbors - checked: " << checked << " updated: " << updated << std::endl);
+    VLOG("Updating neighbors - inspected " << checked << " simplices, updated " << updated << " neighbors - " <<
+         ((double) updated) / ((double) checked) << " neighbors/simplex" << std::endl);
 #endif
 
     DEDENT

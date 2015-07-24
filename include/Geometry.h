@@ -27,6 +27,7 @@
 #include "utils/ASSERT.h"
 #include "utils/Timings.h"
 #include "utils/Misc.h"
+#include "utils/StaticSort.h"
 
 typedef uint tHashType;
 typedef uint tIdType;
@@ -474,7 +475,8 @@ public:
     bool contains(uint p) const {
         PROFILER_INC("dSimplex_containsId");
 
-        for (uint d = 0; d < D + 1; ++d) {
+        // vertices are sorted by point id
+        for (uint d = 0; d < D + 1 && vertices[d] <= p; ++d) {
             if (p == vertices[d])
                 return true;
         }
@@ -545,6 +547,10 @@ public:
         ASSERT(sharedVertices <= D || id == other.id);
 
         return sharedVertices == D;
+    }
+
+    void sortVertices() {
+        static_insertion_sort_with_data(vertices, neighbors);
     }
 
     tHashType genFingerprint() {

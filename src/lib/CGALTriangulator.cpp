@@ -10,7 +10,6 @@
 #include <type_traits>
 
 #include "utils/ASSERT.h"
-#include "utils/StaticSort.h"
 #include "utils/VTuneAdapter.h"
 
 // define a static counter for the tetrahedronID
@@ -328,8 +327,7 @@ PartialTriangulation _delaunayCgal(dSimplices<D, Precision> &DT,
         }
 
         // sort vertices by ascending point id
-        static_insertion_sort(a.vertices);
-        static_insertion_sort(a.neighbors);
+        a.sortVertices();
         a.genFingerprint();
 
         //check whether vertex belongs to the convex hull
