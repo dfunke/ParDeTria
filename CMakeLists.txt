@@ -27,7 +27,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
 find_package(CGAL REQUIRED)
 find_package(TBB REQUIRED)
+
+set(Boost_REALPATH ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
+
 find_package(Threads REQUIRED)
 find_package(EJDB REQUIRED)
 find_package(VTune)
