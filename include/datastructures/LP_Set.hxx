@@ -19,6 +19,9 @@
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/array.hpp>
+
 template<typename T>
 struct Hasher {
 
@@ -240,7 +243,7 @@ public:
 
 public:
 
-    LP_Set(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    LP_Set(std::size_t size = 1, Hasher<tKeyType> hasher = Hasher<tKeyType>())
             : m_items(0),
               m_array(nullptr),
               m_hasher(hasher) {
@@ -272,10 +275,22 @@ public:
         return *this;
     }
 
+    //Copy function
+    LP_Set copy() const {
+        LP_Set c(m_arraySize, m_hasher);
+        c.m_items = m_items;
+
+        for(uint i = 0; i < m_arraySize; ++i){
+            c.m_array[i] = m_array[i];
+        }
+
+        return c;
+    }
+
     bool insert(const tKeyType &key) {
         ASSERT(key != 0);
 
-        if (!m_rehashing && m_items / m_arraySize > 0.5)
+        if (!m_rehashing && (double) m_items / (double) m_arraySize > 0.5)
             rehash(m_arraySize << 1);
 
         for (tKeyType idx = m_hasher(key); ; idx++) {
@@ -429,6 +444,52 @@ private:
     Hasher<tKeyType> m_hasher;
 
     bool m_rehashing = false;
+
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void save(Archive & ar, __attribute__((unused)) const unsigned int version) const
+    {
+        // invoke serialization of the base class
+        ar << m_arraySize;
+        ar << m_items;
+        ar << boost::serialization::make_array<tKeyType>(m_array.get(), m_arraySize);
+        ar << m_hasher.a;
+    }
+
+    template<class Archive>
+    void load(Archive & ar, __attribute__((unused)) const unsigned int version)
+    {
+        // invoke serialization of the base class
+        ar >> m_arraySize;
+        ar >> m_items;
+
+        try {
+            m_array.reset(new tKeyType[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
+        ar >> boost::serialization::make_array<tKeyType>(m_array.get(), m_arraySize);
+        ar >> m_hasher.a;
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
+
+public:
+    template <class Set>
+    bool operator==(const Set & set) const {
+        if(size() != set.size())
+            return false;
+
+        for(const auto & i : set){
+            if(!contains(i))
+                return false;
+        }
+
+        return true;
+    }
 
 };
 
