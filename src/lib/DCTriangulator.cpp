@@ -55,28 +55,31 @@ DCTriangulator<D, Precision>::DCTriangulator(
         const unsigned char _splitter,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
-        const bool _parallelEdgeTria)
+        const bool _parallelEdgeTria,
+        const bool addInfiniteVertices)
         : Triangulator<D, Precision>(_bounds, _points),
           recursionDepth(_recursionDepth),
           parallelEdgeTria(_parallelEdgeTria),
           splitter(_splitter)  {
 
 
-    // add infinite points to data set
-    auto stats = getPointStats(std::size_t(0), this->points.size(), this->points);
-    for (uint i = 0; i < pow(2, D); ++i) {
-        VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
-             << stats.max << std::endl);
+    if(addInfiniteVertices) {
+        // add infinite points to data set
+        auto stats = getPointStats(std::size_t(0), this->points.size(), this->points);
+        for (uint i = 0; i < pow(2, D); ++i) {
+            VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
+                                                                       << stats.max << std::endl);
 
-        dPoint<D, Precision> p;
-        //p.id = dPoint<D, Precision>::cINF | i;
-        p.coords = stats.mid;
+            dPoint<D, Precision> p;
+            //p.id = dPoint<D, Precision>::cINF | i;
+            p.coords = stats.mid;
 
-        for (uint d = 0; d < D; ++d)
-            p.coords[d] +=
-                    (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
+            for (uint d = 0; d < D; ++d)
+                p.coords[d] +=
+                        (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
 
-        this->points.emplace_back(p);
+            this->points.emplace_back(p);
+        }
     }
 
     if (parallelBaseSolver)
@@ -99,8 +102,8 @@ void DCTriangulator<D, Precision>::getEdge(const PartialTriangulation &pt,
         edgePointsHandle.insert(k);
     }
 
-    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_Set>,
-            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_Set>>,
+    tbb::enumerable_thread_specific<hConcurrent_Point_Ids,
+            tbb::cache_aligned_allocator<hConcurrent_Point_Ids>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsEdgePointsHandle(std::ref(edgePoints));
 
 
@@ -169,8 +172,8 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
 
     VTUNE_TASK(BuildWU);
     cWuFaces wuFaces((D + 1) * (D + 1) * (D + 1) * edgeSimplices.size());
-    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_MultiMap>,
-            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_MultiMap>>,
+    tbb::enumerable_thread_specific<hcWuFaces,
+            tbb::cache_aligned_allocator<hcWuFaces>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
@@ -342,13 +345,9 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
 
     VTUNE_TASK(AddBorderSimplices);
 
-    tbb::enumerable_thread_specific<GrowingHashTableHandle<Concurrent_LP_MultiMap>,
-            tbb::cache_aligned_allocator<GrowingHashTableHandle<Concurrent_LP_MultiMap>>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tswuFacesHandle(std::ref(wuFaces));
+    auto wuFacesHandle = wuFaces.handle();
 
     tbb::parallel_for(edgeDT.simplices.range(), [&](const auto &r) {
-
-        auto wuFacesHandle = tswuFacesHandle.local();
 
         for (const auto &i : r) {
 
@@ -376,7 +375,6 @@ PartialTriangulation DCTriangulator<D, Precision>::mergeTriangulation(std::vecto
         }
     });
 
-    auto wuFacesHandle = wuFaces.handle();
     Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices));
 
     pt.simplices.resize(edgeDT.simplices.lowerBound(), edgeDT.simplices.upperBound());

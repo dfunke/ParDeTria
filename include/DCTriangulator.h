@@ -36,7 +36,8 @@ public:
                    const unsigned char splitter,
                    const uint gridOccupancy = 1,
                    const bool parallelBaseSolver = false,
-                   const bool parallelEdgeTria = true);
+                   const bool parallelEdgeTria = true,
+                   const bool addInfinitePoints = true);
 
 protected:
     PartialTriangulation _triangulateBase(dSimplices<D, Precision> &DT,
