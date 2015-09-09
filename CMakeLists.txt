@@ -18,18 +18,21 @@ if (NOT CCACHE_PROG MATCHES NOTFOUND)
   set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif ()
 
-enable_testing()
 find_package(GTest)
+if(GTest_FOUND)
+	enable_testing()
+endif()
 
 # adds the project-specific cmake module directory cmake/Modules to the cmake
 # search path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
-find_package(CGAL REQUIRED)
-find_package(TBB REQUIRED)
-
+set(Boost_NO_BOOST_CMAKE ON)
 set(Boost_REALPATH ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem serialization program_options)
+
+find_package(CGAL REQUIRED)
+find_package(TBB REQUIRED)
 
 find_package(Threads REQUIRED)
 find_package(EJDB REQUIRED)
@@ -91,5 +94,7 @@ endif()
 # add src subdirectory
 add_subdirectory(src)
 
-# add testing subdirectory
-add_subdirectory(tests)
+if(GTest_FOUND)
+	# add testing subdirectory
+	add_subdirectory(tests)
+endif()
