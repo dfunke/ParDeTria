@@ -268,30 +268,32 @@ namespace _detail {
         }
 
         const T &operator[](const IDX idx) const {
-            return m_data[idx - m_min];
+            return at(idx);
         }
 
         T &operator[](const IDX idx) {
-            return m_data[idx - m_min];
+            return at(idx);
         }
 
         const T &at(const IDX idx) const {
+#ifndef NDEBUG
             if (!(m_min <= idx && idx < m_max)) {
-                RAISE(false);
                 throw std::out_of_range(
                         "index: " + std::to_string(idx) + " size: " + std::to_string(m_min) + " to " +
                         std::to_string(m_max));
             }
+#endif
             return m_data[idx - m_min];
         }
 
         T &at(const IDX idx) {
+#ifndef NDEBUG
             if (!(m_min <= idx && idx < m_max)) {
-                RAISE(false);
                 throw std::out_of_range(
                         "index: " + std::to_string(idx) + " size: " + std::to_string(m_min) + " to " +
                         std::to_string(m_max));
             }
+#endif
             return m_data[idx - m_min];
         }
 
