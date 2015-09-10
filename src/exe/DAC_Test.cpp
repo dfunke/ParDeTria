@@ -80,8 +80,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
         auto realDT = cgal.triangulate();
         DEDENT;
 
-        auto vr = dt.first.verify(dt.second, points);
-        auto ccr = dt.first.crossCheck(dt.second, realDT.first, realDT.second);
+        auto vr = dt.verify(points);
+        auto ccr = dt.crossCheck(realDT);
 
         ret.valid = vr.valid && ccr.valid;
     } else {

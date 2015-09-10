@@ -40,27 +40,23 @@ public:
                    const bool addInfinitePoints = true);
 
 protected:
-    PartialTriangulation _triangulateBase(dSimplices<D, Precision> &DT,
-                                          const Point_Ids &partitionPoints,
-                                          const dBox<D, Precision> &bounds,
-                                          const std::string provenance);
+    dSimplices<D, Precision> _triangulateBase(const Point_Ids &partitionPoints,
+                                              const dBox<D, Precision> &bounds,
+                                              const std::string provenance);
 
-    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Point_Ids &partitionPoints,
-                                      const dBox<D, Precision> &bounds,
-                                      const std::string provenance,
-                                      const unsigned char _splitter
+    dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
+                                          const dBox<D, Precision> &bounds,
+                                          const std::string provenance,
+                                          const unsigned char _splitter
     );
 
-    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Point_Ids &partitionPoints,
-                                      const dBox<D, Precision> &bounds,
-                                      const std::string provenance) {
-        return _triangulate(DT, partitionPoints, bounds, provenance, (unsigned char) 0);
+    dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
+                                          const dBox<D, Precision> &bounds,
+                                          const std::string provenance) {
+        return _triangulate(partitionPoints, bounds, provenance, (unsigned char) 0);
     }
 
-    void getEdge(const PartialTriangulation &pt,
-                 const dSimplices<D, Precision> &simplices,
+    void getEdge(const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,
                  Concurrent_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices);
@@ -69,17 +65,15 @@ protected:
                             const Simplex_Ids &edgeSimplices);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices,
-                         const PartialTriangulation &pt,
                          const Simplex_Ids &toCheck,
                          const cWuFaces &wuFaces,
                          const std::string &provenance);
 
-    PartialTriangulation mergeTriangulation(std::vector<PartialTriangulation> &partialDTs,
-                                            dSimplices<D, Precision> &DT,
-                                            const Simplex_Ids &edgeSimplices,
-                                            const PartialTriangulation &edgeDT,
-                                            const Partitioning<D, Precision> &partitioning,
-                                            const std::string &provenance
+    dSimplices<D, Precision> mergeTriangulation(std::vector<dSimplices<D, Precision>> &partialDTs,
+                                                const Simplex_Ids &edgeSimplices,
+                                                const dSimplices<D, Precision> &edgeDT,
+                                                const Partitioning<D, Precision> &partitioning,
+                                                const std::string &provenance
     );
 
 

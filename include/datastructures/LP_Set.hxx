@@ -72,7 +72,7 @@ namespace _detail {
                   m_idx(idx) {
 
             if (findNext)
-               _advance(true);
+                _advance(true);
 
         }
 
@@ -148,8 +148,8 @@ namespace _detail {
         //const auto *operator->() const { return &m_container.at(m_idx); }
 
     private:
-        void _advance(const bool testFirst){
-            if(testFirst){
+        void _advance(const bool testFirst) {
+            if (testFirst) {
                 while ((m_idx < m_container.capacity() && m_container.empty(m_idx)))
                     ++m_idx;
             } else {
@@ -157,8 +157,8 @@ namespace _detail {
             }
         }
 
-        void _dec(const bool testFirst){
-            if(testFirst){
+        void _dec(const bool testFirst) {
+            if (testFirst) {
                 while ((m_idx >= 0 && m_container.empty(m_idx)))
                     --m_idx;
             } else {
@@ -195,7 +195,7 @@ namespace _detail {
                 m_begin(r.m_begin),
                 m_end(r.m_midpoint),
                 m_midpoint(m_begin),
-                m_grainsize(r.m_grainsize){
+                m_grainsize(r.m_grainsize) {
 
             r.m_begin = r.m_midpoint;
 
@@ -204,12 +204,12 @@ namespace _detail {
         }
 
         //! Init range with container and grainsize specified
-        range_type(const Container &cont, const std::size_t & grainsize = 1e3) :
+        range_type(const Container &cont, const std::size_t &grainsize = 1e3) :
                 m_container(cont),
                 m_begin(cont.begin()),
                 m_end(cont.end()),
                 m_midpoint(cont.begin()),
-                m_grainsize(grainsize){
+                m_grainsize(grainsize) {
             set_midpoint();
         }
 
@@ -280,7 +280,7 @@ public:
         LP_Set c(m_arraySize, m_hasher);
         c.m_items = m_items;
 
-        for(uint i = 0; i < m_arraySize; ++i){
+        for (uint i = 0; i < m_arraySize; ++i) {
             c.m_array[i] = m_array[i];
         }
 
@@ -449,8 +449,7 @@ private:
     friend class boost::serialization::access;
 
     template<class Archive>
-    void save(Archive & ar, __attribute__((unused)) const unsigned int version) const
-    {
+    void save(Archive &ar, __attribute__((unused)) const unsigned int version) const {
         // invoke serialization of the base class
         ar << m_arraySize;
         ar << m_items;
@@ -459,8 +458,7 @@ private:
     }
 
     template<class Archive>
-    void load(Archive & ar, __attribute__((unused)) const unsigned int version)
-    {
+    void load(Archive &ar, __attribute__((unused)) const unsigned int version) {
         // invoke serialization of the base class
         ar >> m_arraySize;
         ar >> m_items;
@@ -478,13 +476,13 @@ private:
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 public:
-    template <class Set>
-    bool operator==(const Set & set) const {
-        if(size() != set.size())
+    template<class Set>
+    bool operator==(const Set &set) const {
+        if (size() != set.size())
             return false;
 
-        for(const auto & i : set){
-            if(!contains(i))
+        for (const auto &i : set) {
+            if (!contains(i))
                 return false;
         }
 

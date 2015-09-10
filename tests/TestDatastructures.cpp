@@ -4,6 +4,7 @@
 #include "datastructures/BlockedArray.hxx"
 #include "datastructures/Growing_LP.hxx"
 #include "datastructures/Bit_Set.hxx"
+#include "datastructures/BlockedArray2.hxx"
 
 #include <unordered_set>
 #include <unordered_map>
@@ -491,18 +492,18 @@ TEST(Bit_Set, BatchInsert) {
 
     const uint cap = 320;
 
-    auto setAndTest = [cap](const uint from, const uint to){
+    auto setAndTest = [cap](const uint from, const uint to) {
         Bit_Set set(0, cap);
         EXPECT_GE(set.capacity(), cap);
 
         set.batchSet(from, to);
 
         std::size_t i;
-        for(i = 0; i < from; ++i)
+        for (i = 0; i < from; ++i)
             EXPECT_TRUE(set.zero(i));
-        for(; i < to; ++i)
+        for (; i < to; ++i)
             EXPECT_TRUE(set.one(i));
-        for(; i < set.capacity(); ++i)
+        for (; i < set.capacity(); ++i)
             EXPECT_TRUE(set.zero(i));
     };
 
@@ -610,14 +611,14 @@ TEST(Bit_Set, Filter) {
     EXPECT_EQ(set.ones(), cap);
 
     Bit_Set filter(0, cap);
-    for(uint i = 1; i < cap; i += 2)
+    for (uint i = 1; i < cap; i += 2)
         filter.insert(i);
 
     set.filter(filter);
 
     EXPECT_EQ(set.ones(), cap / 2);
-    for(uint i = 0; i < cap; ++i)
-        EXPECT_EQ(set.one(i), i % 2 == 0);
+    for (uint i = 0; i < cap; ++i)
+            EXPECT_EQ(set.one(i), i % 2 == 0);
 }
 
 TEST(Bit_Set, MergeFilter) {
@@ -638,14 +639,14 @@ TEST(Bit_Set, MergeFilter) {
     EXPECT_EQ(b.ones(), capB);
 
     Bit_Set filter(0, std::max(capA, capB));
-    for(uint i = 1; i < std::max(capA, capB); i += 2)
+    for (uint i = 1; i < std::max(capA, capB); i += 2)
         filter.insert(i);
 
     a.mergeFilter(std::move(b), filter);
     EXPECT_GE(a.capacity(), std::max(capA, capB));
 
     EXPECT_EQ(a.ones(), std::max(capA, capB) / 2);
-    for(uint i = 0; i < std::max(capA, capB); ++i)
+    for (uint i = 0; i < std::max(capA, capB); ++i)
             EXPECT_EQ(a.one(i), i % 2 == 0);
 }
 
@@ -677,8 +678,112 @@ TEST(Concurrent_Bit_Set, InsertContains) {
 
     tbb::parallel_for(tbb::blocked_range<uint>(1, cap / 10), [&](__attribute__((unused)) const auto &r) {
         uint n = dice();
-	bool contained = cmp.count(n);
+        bool contained = cmp.count(n);
 
-	EXPECT_EQ(contained, set.contains(n));
+        EXPECT_EQ(contained, set.contains(n));
     });
+}
+
+TEST(BlockedArray2, InsertMerge) {
+
+    const uint N = 120;
+    BlockedArray2<uint> a(0, N);
+
+    // test iterator and set array to consecutive numbers
+    uint count = 0;
+    for (auto &i : a) {
+        i = count++;
+    }
+    EXPECT_EQ(N, count);
+
+    // test for correct values
+    for (uint i = 0; i < N; ++i) {
+        EXPECT_EQ(i, a[i]);
+    }
+
+    EXPECT_THROW(a[N], std::out_of_range);
+
+    BlockedArray2<uint> b(N, 2 * N);
+
+    // test iterator and set array to consecutive numbers
+    count = 0;
+    for (auto &i : b) {
+        i = count++;
+    }
+    EXPECT_EQ(N, count);
+
+    // test for correct values
+    for (uint i = N; i < 2 * N; ++i) {
+        EXPECT_EQ(i - N, b[i]);
+    }
+
+    EXPECT_THROW(b[2 * N], std::out_of_range);
+    EXPECT_THROW(b[N - 1], std::out_of_range);
+
+    a.merge(std::move(b));
+
+    // test for correct values
+    for (uint i = 0; i < 2 * N; ++i) {
+        EXPECT_EQ(i % N, a[i]);
+    }
+
+    // test iterator
+    for (const auto &i : a) {
+        EXPECT_GE(i, 0);
+        EXPECT_LT(i, N);
+    }
+
+    EXPECT_THROW(a[2 * N], std::out_of_range);
+}
+
+TEST(BlockedArray2, ParallelRange) {
+
+    const uint N = 1e5;
+    BlockedArray2<uint> a(0, N);
+    // test iterator and set array to consecutive numbers
+    uint count = 0;
+    for (auto &i : a) {
+        i = count++;
+    }
+    EXPECT_EQ(N, count);
+
+    tbb::concurrent_unordered_set<uint> seen;
+    tbb::parallel_for(a.range(), [N, &seen](const auto &r) {
+        for (const auto i : r) {
+            EXPECT_GE(i, 0);
+            EXPECT_LT(i, N);
+            seen.insert(i);
+        }
+    });
+    EXPECT_EQ(N, seen.size());
+
+    BlockedArray2<uint> b(2 * N, 3 * N);
+    // test iterator and set array to consecutive numbers
+    count = 2 * N;
+    for (auto &i : b) {
+        i = count++;
+    }
+    EXPECT_EQ(3 * N, count);
+
+    seen.clear();
+    tbb::parallel_for(b.range(), [N, &seen](const auto &r) {
+        for (const auto i : r) {
+            EXPECT_GE(i, 2 * N);
+            EXPECT_LT(i, 3 * N);
+            seen.insert(i);
+        }
+    });
+    EXPECT_EQ(N, seen.size());
+
+    a.merge(std::move(b));
+
+    seen.clear();
+    tbb::parallel_for(a.range(), [N, &seen](const auto &r) {
+        for (const auto i : r) {
+            EXPECT_GE(i, 0);
+            EXPECT_LT(i, 3 * N);
+            seen.insert(i);
+        }
+    });
+    EXPECT_EQ(2 * N, seen.size());
 }

@@ -13,10 +13,9 @@ public:
                      const uint _gridOccupancy = 1);
 
 protected:
-    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Point_Ids &ids,
-                                      const dBox<D, Precision> &bounds,
-                                      const std::string provenance
+    dSimplices<D, Precision> _triangulate(const Point_Ids &ids,
+                                          const dBox<D, Precision> &bounds,
+                                          const std::string provenance
             /*, bool filterInfinite = false */);
 
 protected:
@@ -32,10 +31,9 @@ public:
                          const uint _gridOccupancy = 1);
 
 protected:
-    PartialTriangulation _triangulate(dSimplices<D, Precision> &DT,
-                                      const Point_Ids &ids,
-                                      const dBox<D, Precision> &bounds,
-                                      const std::string provenance
+    dSimplices<D, Precision> _triangulate(const Point_Ids &ids,
+                                          const dBox<D, Precision> &bounds,
+                                          const std::string provenance
             /*, bool filterInfinite = false */);
 
 protected:

@@ -21,6 +21,7 @@
 #include "datastructures/VectorAdapter.hxx"
 #include "datastructures/LP_MultiMap.hxx"
 #include "datastructures/BlockedArray.hxx"
+#include "datastructures/BlockedArray2.hxx"
 #include "datastructures/Bit_Set.hxx"
 
 #include "utils/Logger.h"
@@ -275,7 +276,7 @@ struct dBox {
         return false;
     }
 
-    bool operator==(const dBox<D, Precision> & other) const {
+    bool operator==(const dBox<D, Precision> &other) const {
         return low == other.low && high == other.high;
     }
 };
@@ -357,12 +358,12 @@ public:
         return operator==(other.handle());
     }
 
-    template <class Container>
+    template<class Container>
     bool operator==(const Container &other) const {
         PROFILER_INC("dPoints_compare");
 
         //account for 0 not being used
-        if (this->size()-1 != other.size())
+        if (this->size() - 1 != other.size())
             return false;
 
         for (const auto &p : other) {
@@ -373,7 +374,7 @@ public:
         return true;
     }
 
-    template <class Container>
+    template<class Container>
     bool operator!=(const Container &other) const { return !operator==(other); }
 };
 
@@ -385,34 +386,43 @@ class dSimplex;
 template<uint D, typename Precision>
 class GeometryCore {
 public:
-    static Precision orientation(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2);
-    static Precision orientation(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2, const dPoint<D, Precision> &s3);
+    static Precision orientation(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
+                                 const dPoint<D, Precision> &s2);
+
+    static Precision orientation(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
+                                 const dPoint<D, Precision> &s2, const dPoint<D, Precision> &s3);
 
     static bool inSphere(const dPoint<D, Precision> &p,
-                         const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2);
-    static bool inSphere(const dPoint<D, Precision> &p,
-                         const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2, const dPoint<D, Precision> &s3);
+                         const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
+                         const dPoint<D, Precision> &s2);
 
-   static dSphere<D, Precision>
-            circumsphere(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2);
+    static bool inSphere(const dPoint<D, Precision> &p,
+                         const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2,
+                         const dPoint<D, Precision> &s3);
+
     static dSphere<D, Precision>
-            circumsphere(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2, const dPoint<D, Precision> &s3);
+            circumsphere(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
+                         const dPoint<D, Precision> &s2);
+
+    static dSphere<D, Precision>
+            circumsphere(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2,
+                         const dPoint<D, Precision> &s3);
 };
 
 template<uint D, typename Precision>
 class GeometryHelper {
 public:
 
-    template <class Collection>
+    template<class Collection>
     static Precision orientation(const dSimplex<D, Precision> &simplex,
                                  const Collection &points);
 
-    template <class Collection>
+    template<class Collection>
     static bool inSphere(const dSimplex<D, Precision> &simplex,
                          const dPoint<D, Precision> &p,
                          const Collection &points);
 
-    template <class Collection>
+    template<class Collection>
     static dSphere<D, Precision>
             circumsphere(const dSimplex<D, Precision> &simplex,
                          const Collection &points);
@@ -575,21 +585,21 @@ public:
         return true;
     }
 
-    template <class Collection>
+    template<class Collection>
     Precision orientation(const Collection &points) const {
         PROFILER_INC("dSimplex_orientation");
 
         return GeometryHelper<D, Precision>::orientation(*this, points);
     }
 
-    template <class Collection>
+    template<class Collection>
     bool inSphere(const dPoint<D, Precision> &p, const Collection &points) const {
         PROFILER_INC("dSimplex_inSphere");
 
         return GeometryHelper<D, Precision>::inSphere(*this, p, points);
     }
 
-    template <class Collection>
+    template<class Collection>
     dSphere<D, Precision> circumsphere(
             const Collection &points) const {
         PROFILER_INC("dSimplex_circumsphere");
@@ -884,37 +894,97 @@ typedef GrowingHashTableHandle<Concurrent_LP_MultiMap> hcWuFaces;
 //
 //};
 
-//forward declare
-struct PartialTriangulation;
-
 template<uint D, typename Precision>
-class dSimplices : public Concurrent_BlockedArray<dSimplex<D, Precision>> {
+class dSimplices : public BlockedArray2<dSimplex<D, Precision>, tIdType> {
+
+private:
+    typedef BlockedArray2<dSimplex<D, Precision>, tIdType> base;
 
 public:
     typedef std::array<uint, 256> tHash;
 
 public:
-    dSimplices() : Concurrent_BlockedArray<dSimplex<D, Precision>>(),
-                   tetrahedronID(1) { }
+    dSimplices() : base(0, 1), convexHull(0, 1) { }
 
-    dSimplices(dSimplices &&other) : Concurrent_BlockedArray<dSimplex<D, Precision>>(std::move(other)),
-                                     tetrahedronID(other.tetrahedronID.load()) { }
+    dSimplices(const tIdType min, const tIdType max) : base(min, max),
+                                                       convexHull(min, max) { }
 
-    VerificationReport<D, Precision>
-            verify(const PartialTriangulation &pt,
-                   const dPoints<D, Precision> &points) const;
+    dSimplices(dSimplices &&other) : base(std::move(other)),
+                                     convexHull(std::move(other.convexHull)) { }
 
-    CrossCheckReport<D, Precision>
-            crossCheck(const PartialTriangulation &pt,
-                       const dSimplices<D, Precision> &realSimplices,
-                       const PartialTriangulation &realPT) const;
+    dSimplices &operator=(dSimplices &&other) {
+        base::operator=(std::move(other));
+        convexHull = std::move(other.convexHull);
 
-    tHash genFingerprint(const PartialTriangulation &pt) const;
+        return *this;
+    }
 
-    uint countDuplicates(const Simplex_Ids & simplices) const;
+    VerificationReport<D, Precision> verify(const dPoints<D, Precision> &points) const;
+
+    CrossCheckReport<D, Precision> crossCheck(const dSimplices<D, Precision> &realSimplices) const;
+
+    tHash genFingerprint() const;
+
+    uint countDuplicates(const Simplex_Ids &simplices) const;
 
 public:
-    std::atomic<uint> tetrahedronID;
+    bool contains(const dSimplex<D, Precision> &s) const {
+        return contains(s.id);
+    }
+
+    bool contains(const tIdType id) const {
+        if (base::contains(id))
+            return _valid(this->at(id));
+
+        return false;
+    }
+
+    void merge(dSimplices<D, Precision> && other){
+        base::merge(std::move(other));
+        convexHull.merge(std::move(other.convexHull));
+    }
+
+    template <class Filter>
+    void merge(dSimplices<D, Precision> && other, const Filter & filter){
+        base::merge(std::move(other));
+        convexHull.mergeFilter(std::move(other.convexHull), filter);
+    }
+
+public:
+    typedef _detail::filtered_block_iterator<dSimplices<D, Precision>, dSimplex<D, Precision>> iterator;
+    friend iterator;
+    typedef _detail::range_type<dSimplices<D, Precision>, iterator> range_type;
+
+    iterator begin() const {
+        return iterator(*this, 0, this->m_blocks.front()->min(), true);
+    }
+
+    iterator end() const {
+        return iterator(*this, this->m_blocks.size() - 1, this->m_blocks.back()->max(), false);
+    }
+
+    iterator begin() {
+        return iterator(*this, 0, this->m_blocks.front()->min(), true);
+    }
+
+    iterator end() {
+        return iterator(*this, this->m_blocks.size() - 1, this->m_blocks.back()->max(), false);
+    }
+
+    range_type range() const {
+        return range_type(*this);
+    }
+
+private:
+    bool _valid(const dSimplex<D, Precision> &a) const {
+        return dSimplex<D, Precision>::isFinite(a.id);
+    }
+
+public:
+    Simplex_Ids convexHull;
+
+public:
+    static std::atomic<tIdType> simplexID;
 
 };
 
@@ -939,24 +1009,27 @@ template<typename Precision>
 class GeometryHelper<2, Precision> {
 public:
 
-    template <class Collection>
+    template<class Collection>
     static Precision orientation(const dSimplex<2, Precision> &simplex,
-                                 const Collection &points){
-        return GeometryCore<2, Precision>::orientation(points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]]);
+                                 const Collection &points) {
+        return GeometryCore<2, Precision>::orientation(points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                       points[simplex.vertices[2]]);
     }
 
-    template <class Collection>
+    template<class Collection>
     static bool inSphere(const dSimplex<2, Precision> &simplex,
                          const dPoint<2, Precision> &p,
-                         const Collection &points){
-        return GeometryCore<2, Precision>::inSphere(p, points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]]);
+                         const Collection &points) {
+        return GeometryCore<2, Precision>::inSphere(p, points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                    points[simplex.vertices[2]]);
     }
 
-    template <class Collection>
+    template<class Collection>
     static dSphere<2, Precision>
-            circumsphere(const dSimplex<2, Precision> &simplex,
-                         const Collection &points){
-        return GeometryCore<2, Precision>::circumsphere(points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]]);
+    circumsphere(const dSimplex<2, Precision> &simplex,
+                 const Collection &points) {
+        return GeometryCore<2, Precision>::circumsphere(points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                        points[simplex.vertices[2]]);
     }
 };
 
@@ -964,24 +1037,27 @@ template<typename Precision>
 class GeometryHelper<3, Precision> {
 public:
 
-    template <class Collection>
+    template<class Collection>
     static Precision orientation(const dSimplex<3, Precision> &simplex,
-                                 const Collection &points){
-        return GeometryCore<3, Precision>::orientation(points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]], points[simplex.vertices[3]]);
+                                 const Collection &points) {
+        return GeometryCore<3, Precision>::orientation(points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                       points[simplex.vertices[2]], points[simplex.vertices[3]]);
     }
 
-    template <class Collection>
+    template<class Collection>
     static bool inSphere(const dSimplex<3, Precision> &simplex,
                          const dPoint<3, Precision> &p,
-                         const Collection &points){
+                         const Collection &points) {
 
-        return GeometryCore<3, Precision>::inSphere(p, points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]], points[simplex.vertices[3]]);
+        return GeometryCore<3, Precision>::inSphere(p, points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                    points[simplex.vertices[2]], points[simplex.vertices[3]]);
     }
 
-    template <class Collection>
+    template<class Collection>
     static dSphere<3, Precision>
     circumsphere(const dSimplex<3, Precision> &simplex,
-                 const Collection &points){
-        return GeometryCore<3, Precision>::circumsphere(points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]], points[simplex.vertices[3]]);
+                 const Collection &points) {
+        return GeometryCore<3, Precision>::circumsphere(points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                        points[simplex.vertices[2]], points[simplex.vertices[3]]);
     }
 };
