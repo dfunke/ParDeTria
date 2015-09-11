@@ -329,7 +329,7 @@ dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precisio
 
         PLOG(a << std::endl);
 
-        DT[a.id] = std::move(a);
+        DT.unsafe_at(a.id) = std::move(a);
     }
     DEDENT
 

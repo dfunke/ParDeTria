@@ -6,6 +6,7 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/spin_mutex.h>
+#include <tbb/enumerable_thread_specific.h>
 
 #include "Triangulator.h"
 
@@ -590,19 +591,26 @@ uint dSimplices<D, Precision>::countDuplicates(const Simplex_Ids & simplices) co
     std::atomic<uint> duplicates(0);
     tbb::spin_mutex mtx;
 
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+
     tbb::parallel_for(simplices.range(), [&](const auto &r) {
+
+        auto thisHandle = tsThisHandle.local();
 
         for (const auto &a : r) {
 
+            auto s = thisHandle.at(a);
             auto b = simplices.begin();
             b.setIdx(a - simplices.lowerBound() + 1, true);
             for(; b < simplices.end(); ++b){
-                if(this->at(a).equalVertices(this->at(*b))){
+                if(s.equalVertices(thisHandle.at(*b))){
                     // we found a duplicate
                     ++duplicates;
 
                     tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("found duplicate " << this->at(a) << " and " << this->at(*b) << std::endl);
+                    LOG("found duplicate " << s << " and " << thisHandle.at(*b) << std::endl);
                 }
             }
         }
@@ -636,8 +644,19 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
 
     tbb::spin_mutex mtx;
 
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsRealHandle(std::ref(realSimplices));
+
     // check whether all simplices of real DT are present
     tbb::parallel_for(realSimplices.range(), [&](const auto &r) {
+
+        auto thisHandle = tsThisHandle.local();
+        auto realHandle = tsRealHandle.local();
 
         for(const auto & realSimplex : r) {
             // find corresponding mySimplex for realSimplex
@@ -648,8 +667,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
                                           range.second,
                                           [&](const auto &i) {
                                               return dSimplex<D, Precision>::isFinite(i.second)
-                                                     && this->contains(i.second)
-                                                     && this->at(i.second).equalVertices(realSimplex);
+                                                     && thisHandle.contains(i.second)
+                                                     && thisHandle.at(i.second).equalVertices(realSimplex);
                                           });
 
             if (mySimplex == range.second) {
@@ -666,9 +685,9 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
                     continue;
 
                 bool found = false;
-                for (const auto &nn : this->at(mySimplex->second).neighbors) {
+                for (const auto &nn : thisHandle.at(mySimplex->second).neighbors) {
                     if (dSimplex<D, Precision>::isFinite(nn) &&
-                        this->at(nn).equalVertices(realSimplices[n])) {
+                        thisHandle.at(nn).equalVertices(realHandle[n])) {
                         found = true;
                         break;
                     }
@@ -676,7 +695,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
 
                 if (!found) {
                     tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("did not find neighbor " << realSimplices[n] << " of simplex "
+                    LOG("did not find neighbor " << realHandle[n] << " of simplex "
                                                                  << realSimplex << std::endl);
                     result.valid = false;
                 }
@@ -687,6 +706,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
     // check for own simplices that are not in real DT
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
+        auto realHandle = tsRealHandle.local();
+
         for (const auto &mySimplex : r) {
 
             // again we use the face where-used ds for the lookup
@@ -696,8 +717,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
                                             range.second,
                                             [&](const auto &i) {
                                                 return dSimplex<D, Precision>::isFinite(i.second)
-                                                       && realSimplices.contains(i.second)
-                                                       && realSimplices.at(i.second).equalVertices(mySimplex);
+                                                       && realHandle.contains(i.second)
+                                                       && realHandle.at(i.second).equalVertices(mySimplex);
                                             });
 
             if (realSimplex == range.second /*&& mySimplex.isFinite()*/) {
@@ -734,6 +755,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     result.valid = true;
 
     tbb::spin_mutex mtx;
+
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+
     // verify that every input point is used
     LOG("Checking points" << std::endl);
     std::unordered_set<tIdType> usedPoints;
@@ -783,9 +809,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
     tbb::parallel_for(convexHull.range(), [&](const auto & r) {
 
+        auto thisHandle = tsThisHandle.local();
+
         for (const auto & i : r) {
 
-            const dSimplex<D, Precision> &s = this->at(i);
+            const dSimplex<D, Precision> &s = thisHandle.at(i);
             if (s.isFinite()) {
                 // s is finite but part of convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);
@@ -814,6 +842,8 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     LOG("Checking neighbors" << std::endl);
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
+        auto thisHandle = tsThisHandle.local();
+
         for (const auto &a : r) {
 
             // we already verified that the face where-used data structure is correct
@@ -822,11 +852,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
                 auto faceHash = a.faceFingerprint(i);
                 auto range = faceLookup.equal_range(faceHash);
                 for (auto it = range.first; it != range.second; ++it) {
-                    if (!dSimplex<D, Precision>::isFinite(it->second) || !this->contains(it->second))
+                    if (!dSimplex<D, Precision>::isFinite(it->second) || !thisHandle.contains(it->second))
                         // infinite/deleted simplex or not belonging to this triangulation
                         continue;
 
-                    const auto &b = this->at(it->second);
+                    const auto &b = thisHandle.at(it->second);
                     // a and b are neighbors: the neighbor property is symmetric and the
                     // corresponding simplices must be present in the neighbors arrays
                     // accordingly
@@ -857,6 +887,8 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     LOG("Checking empty circle criterion" << std::endl);
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
+        auto thisHandle = tsThisHandle.local();
+
         for (const auto &s : r) {
 
             // we have established that the neighboorhood is correctly set
@@ -866,7 +898,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
                 if (!dSimplex<D, Precision>::isFinite(n))
                     continue;
 
-                const dSimplex<D, Precision> &nn = this->at(n);
+                const dSimplex<D, Precision> &nn = thisHandle.at(n);
                 for (uint d = 0; d < D + 1; ++d) {
                     if (dPoint<D,Precision>::isFinite(nn.vertices[d]) && !s.contains(nn.vertices[d])) {
                         // we have found the point of nn that is NOT shared with s

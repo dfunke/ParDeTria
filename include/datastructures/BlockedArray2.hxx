@@ -15,7 +15,7 @@ namespace _detail {
     struct block_iterator : public std::iterator<std::bidirectional_iterator_tag, Value> {
 
     public:
-        block_iterator(const Container &container, std::size_t block, std::size_t idx)
+        block_iterator(Container &container, std::size_t block, std::size_t idx)
                 : m_container(container),
                   m_idx(idx),
                   m_block(block) {
@@ -111,7 +111,7 @@ namespace _detail {
         }
 
     protected:
-        const Container &m_container;
+        Container &m_container;
         std::size_t m_idx;
         std::size_t m_block;
     };
@@ -120,7 +120,7 @@ namespace _detail {
     struct filtered_block_iterator : public std::iterator<std::bidirectional_iterator_tag, Value> {
 
     public:
-        filtered_block_iterator(const Container &container, std::size_t block, std::size_t idx, const bool findNext)
+        filtered_block_iterator(Container &container, std::size_t block, std::size_t idx, const bool findNext)
                 : m_container(container),
                   m_idx(idx),
                   m_block(block) {
@@ -245,7 +245,7 @@ namespace _detail {
         }
 
     protected:
-        const Container &m_container;
+        Container &m_container;
         std::size_t m_idx;
         std::size_t m_block;
     };
@@ -336,9 +336,19 @@ public:
 
     BlockedArray2 &operator=(BlockedArray2 &&other) {
         m_blocks = std::move(other.m_blocks);
-        tl_block = other.tl_block;
+        m_hint = other.m_hint;
 
         return *this;
+    }
+
+    block &addBlock(const IDX min, const IDX max) {
+        block_ptr nBlock = std::make_unique<block>(min, max);
+        block &nBlockRef = *nBlock;
+
+        m_blocks.push_back(std::move(nBlock));
+        std::sort(m_blocks.begin(), m_blocks.end(), BlockedArray2<T, IDX>::block_cmp);
+
+        return nBlockRef;
     }
 
     void merge(BlockedArray2 &&other) {
@@ -347,37 +357,49 @@ public:
         std::sort(m_blocks.begin(), m_blocks.end(), BlockedArray2<T, IDX>::block_cmp);
     }
 
-    const T &operator[](const IDX idx) const {
-        return at(idx);
+//    const T &operator[](const IDX idx) const {
+//        return at(idx, m_hint);
+//    }
+//
+//    T &operator[](const IDX idx) {
+//        return at(idx, m_hint);
+//    }
+
+    const T &unsafe_at(const IDX idx) const {
+        return at(idx, m_hint);
     }
 
-    T &operator[](const IDX idx) {
-        return at(idx);
+    T &unsafe_at(const IDX idx) {
+        return at(idx, m_hint);
     }
 
-    const T &at(const IDX idx) const {
-        if (__builtin_expect(!_testBlock(idx, tl_block), false)) {
-            tl_block = _findBlock(idx);
+    const T &at(const IDX idx, uint &hint) const {
+        if (__builtin_expect(!_testBlock(idx, hint), false)) {
+            hint = _findBlock(idx);
         }
 
-        return m_blocks[tl_block]->at(idx);
+        return m_blocks[hint]->at(idx);
     }
 
-    T &at(const IDX idx) {
-        if (__builtin_expect(!_testBlock(idx, tl_block), false)) {
-            tl_block = _findBlock(idx);
+    T &at(const IDX idx, uint &hint) {
+        if (__builtin_expect(!_testBlock(idx, hint), false)) {
+            hint = _findBlock(idx);
         }
 
-        return m_blocks[tl_block]->at(idx);
+        return m_blocks[hint]->at(idx);
     }
 
-    bool contains(const IDX idx) const {
-        if (__builtin_expect(m_blocks[tl_block]->contains(idx), true))
+    bool unsafe_contains(const IDX idx) const {
+        return contains(idx, m_hint);
+    }
+
+    bool contains(const IDX idx, uint &hint) const {
+        if (__builtin_expect(m_blocks[hint]->contains(idx), true))
             return true;
 
         uint block = _findBlock(idx, false);
         if (block != m_blocks.size() && m_blocks[block]->contains(idx)) {
-            tl_block = block;
+            hint = block;
             return true;
         }
 
@@ -395,14 +417,18 @@ public:
 public:
     typedef _detail::block_iterator<BlockedArray2, T> iterator;
     friend iterator;
-    typedef _detail::range_type<BlockedArray2, iterator> range_type;
 
-    iterator begin() const {
-        return iterator(*this, 0, m_blocks.front()->min());
+    typedef _detail::block_iterator<const BlockedArray2, T> const_iterator;
+    friend const_iterator;
+
+    typedef _detail::range_type<BlockedArray2, const_iterator> range_type;
+
+    const_iterator begin() const {
+        return const_iterator(*this, 0, m_blocks.front()->min());
     }
 
-    iterator end() const {
-        return iterator(*this, m_blocks.size() - 1, m_blocks.back()->max());
+    const_iterator end() const {
+        return const_iterator(*this, m_blocks.size() - 1, m_blocks.back()->max());
     }
 
     iterator begin() {
@@ -443,7 +469,6 @@ protected:
         }
 
         if (start == end && doThrow) {
-            RAISE(false);
             throw std::out_of_range(
                     "index: " + std::to_string(idx) + " no block found");
         }
@@ -457,6 +482,37 @@ protected:
 
 protected:
     std::vector<block_ptr> m_blocks;
-    mutable uint tl_block = 0;
+    mutable uint m_hint = 0;
 
+};
+
+template<class BA, typename IDX = std::size_t>
+class BlockedArray2Handle {
+
+public:
+    BlockedArray2Handle(BA &container) : m_container(container) { }
+
+    auto &operator[](const IDX idx) const {
+        return m_container.at(idx, m_hint);
+    }
+
+    auto &operator[](const IDX idx) {
+        return m_container.at(idx, m_hint);
+    }
+
+    const auto &at(const IDX idx) const {
+        return m_container.at(idx, m_hint);
+    }
+
+    auto &at(const IDX idx) {
+        return m_container.at(idx, m_hint);
+    }
+
+    bool contains(const IDX idx) const {
+        return m_container.contains(idx, m_hint);
+    }
+
+private:
+    BA &m_container;
+    mutable uint m_hint = 0;
 };

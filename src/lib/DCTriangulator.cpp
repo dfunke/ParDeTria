@@ -105,6 +105,10 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
             tbb::cache_aligned_allocator<hConcurrent_Point_Ids>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsEdgePointsHandle(std::ref(edgePoints));
 
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
+
 
     Simplex_Ids sWqa(0, 1);
     sWqa.copy(simplices.convexHull); // set of already checked simplices
@@ -127,8 +131,9 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
             return;
 
         auto edgePointsHandle = tsEdgePointsHandle.local();
+        auto simplicesHandle = tsSimplicesHandle.local();
 
-        const auto &simplex = simplices[id];
+        const auto &simplex = simplicesHandle[id];
         const auto cs = simplex.circumsphere(this->points);
         bool intersectsBounds = false;
         for (uint i = 0; i < partitioning.size(); ++i) {
@@ -176,18 +181,23 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
             tbb::cache_aligned_allocator<hcWuFaces>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
+
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
 
         auto wuFacesHandle = tsWuFacesHandle.local();
+        auto simplicesHandle = tsSimplicesHandle.local();
 
         for (const auto &edgeSimplexID : range) {
-            const auto &edgeSimplex = DT[edgeSimplexID];
+            const auto &edgeSimplex = simplicesHandle[edgeSimplexID];
             for (const auto &firstLayer : edgeSimplex.neighbors) {
                 if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
                     // we have an "inward" neighbor, add it to the wuFaces DS
                     if (wqa.insert(firstLayer)) {
                         for (uint i = 0; i < D + 1; ++i) {
-                            auto facetteHash = DT[firstLayer].faceFingerprint(i);
+                            auto facetteHash = simplicesHandle[firstLayer].faceFingerprint(i);
                             wuFacesHandle.insert(facetteHash, firstLayer);
                         }
                     }
@@ -223,6 +233,10 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 
     Concurrent_Simplex_Ids wqa(simplices.lowerBound(), simplices.upperBound());
 
+    tbb::enumerable_thread_specific<dSimplicesHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
+
     auto wuFacesHandle = wuFaces.handle();
 
 #ifndef NDEBUG
@@ -240,7 +254,9 @@ void DCTriangulator<D, Precision>::updateNeighbors(
             return;
         }
 
-        dSimplex<D, Precision> &simplex = simplices[id];
+        auto simplicesHandle = tsSimplicesHandle.local();
+
+        dSimplex<D, Precision> &simplex = simplicesHandle[id];
 
         PLOG("Checking neighbors of " << simplex << std::endl);
 #ifndef NDEBUG
@@ -258,7 +274,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
             if (!dSimplex<D, Precision>::isFinite(simplex.neighbors[d]) // is infinite
                 ||
                 // not in triangulation anymore or not a neighbor anymore
-                (!simplices.contains(simplex.neighbors[d]) || !simplex.isNeighbor(simplices[simplex.neighbors[d]]))
+                (!simplicesHandle.contains(simplex.neighbors[d]) || !simplex.isNeighbor(simplicesHandle[simplex.neighbors[d]]))
                     ) {
 
                 // update needed
@@ -274,11 +290,11 @@ void DCTriangulator<D, Precision>::updateNeighbors(
                     auto cand = (*it).second;
                     if (cand != simplex.id //its not me
                         && dSimplex<D, Precision>::isFinite(cand) // its finite
-                        && simplices.contains(cand) // its in the triangulation
-                        && simplex.isNeighbor(simplices[cand]) // it is a neighbor
-                        && !simplices[cand].contains(simplex.vertices[d]) // its neighboring at the correct edge
+                        && simplicesHandle.contains(cand) // its in the triangulation
+                        && simplex.isNeighbor(simplicesHandle[cand]) // it is a neighbor
+                        && !simplicesHandle[cand].contains(simplex.vertices[d]) // its neighboring at the correct edge
                             ) {
-                        PLOG("Neighbor with " << simplices[cand] << std::endl);
+                        PLOG("Neighbor with " << simplicesHandle[cand] << std::endl);
                         ASSERT(!set || cand == simplex.neighbors[d]); //second term is to guard against double entries
 
                         simplex.neighbors[d] = cand;
@@ -321,21 +337,32 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
         mergedDT.merge(std::move(partialDTs[i]), edgeSimplices);
     }
 
+    tbb::enumerable_thread_specific<dSimplicesHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsMergedDTHandle(std::ref(mergedDT));
+
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsEdgeDTHandle(std::ref(edgeDT));
+
     //TODO parallize
-    for (const auto id : edgeSimplices) {
-        mergedDT[id].id = dSimplex<D, Precision>::cINF;
-    }
+    tbb::parallel_for (edgeSimplices.range(), [&] (const auto & r){
+        auto mergedHandle = tsMergedDTHandle.local();
+
+        for(const auto id : r)
+            mergedHandle[id].id = dSimplex<D, Precision>::cINF;
+    });
     VTUNE_END_TASK(CombineTriangulations);
 
     //build the where used datastructure for the faces
     cWuFaces wuFaces = buildWhereUsed(mergedDT, edgeSimplices);
 
     auto cmpFingerprint =
-            [&mergedDT, &edgeDT](const tIdType &a, const tIdType &b) {
+            [&tsMergedDTHandle, &tsEdgeDTHandle, min = mergedDT.lowerBound(), max = mergedDT.upperBound()](const tIdType &a, const tIdType &b) {
                 // contains() doesn't work because we deleted the simplices in mergedDT
-                return (mergedDT.lowerBound() <= a && a < mergedDT.upperBound() ? mergedDT[a].fingerprint() : edgeDT[a].fingerprint())
+                return (min <= a && a < max ? tsMergedDTHandle.local()[a].fingerprint() : tsEdgeDTHandle.local()[a].fingerprint())
                        <
-                       (mergedDT.lowerBound() <= b && b < mergedDT.upperBound() ? mergedDT[b].fingerprint() : edgeDT[b].fingerprint());
+                       (min <= b && b < max ? tsMergedDTHandle.local()[b].fingerprint() : tsEdgeDTHandle.local()[b].fingerprint());
             };
 
     VTUNE_TASK(SortDeletedVertices);
@@ -351,19 +378,25 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     VTUNE_TASK(AddBorderSimplices);
 
-    auto wuFacesHandle = wuFaces.handle();
+    tbb::enumerable_thread_specific<hcWuFaces,
+            tbb::cache_aligned_allocator<hcWuFaces>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
+
+    auto &edgeBlock = mergedDT.addBlock(edgeDT.lowerBound(), edgeDT.upperBound());
+    Concurrent_Simplex_Ids cConvexHull(std::move(mergedDT.convexHull));
 
     tbb::parallel_for(edgeDT.range(), [&](const auto &r) {
+
+        auto mergedDTHandle = tsMergedDTHandle.local();
+        auto wuFacesHandle = tsWuFacesHandle.local();
 
         for (const auto &edgeSimplex : r) {
 
             // check whether edgeSimplex is completely contained in one partition
             uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
-            bool inOnePartition = partitioning[p0].contains(edgeSimplex);
+            bool insert = !partitioning[p0].contains(edgeSimplex);
 
-            if (!inOnePartition) {
-                insertedSimplices.insert(edgeSimplex.id);
-            } else {
+            if (!insert) {
                 // the simplex is completely in one partition -> it must have been found
                 // before
                 auto range =
@@ -371,29 +404,30 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
                                          edgeSimplex.id, cmpFingerprint);
 
                 for (auto it = range.first; it != range.second; ++it) {
-                    if (edgeSimplex.equalVertices(mergedDT[*it])) {
-                        insertedSimplices.insert(edgeSimplex.id);
+                    if (edgeSimplex.equalVertices(mergedDTHandle[*it])) {
+                        insert = true;
                     }
+                }
+            }
+
+            if(insert){
+                insertedSimplices.insert(edgeSimplex.id);
+                edgeBlock[edgeSimplex.id] = edgeSimplex;
+
+                //convex hull treatment
+                if (!edgeSimplex.isFinite())
+                    cConvexHull.insert(edgeSimplex.id);
+
+                for (uint d = 0; d < D + 1; ++d) {
+                    wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
                 }
             }
         }
     });
 
+    mergedDT.convexHull = std::move(cConvexHull);
     Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices));
 
-    dSimplices<D, Precision> newEdge(edgeDT.lowerBound(), edgeDT.upperBound());
-    for (const auto &id : insertedSimplicesSeq) {
-        newEdge[id] = std::move(edgeDT[id]);
-
-        //convex hull treatment
-        if (!newEdge[id].isFinite())
-            newEdge.convexHull.insert(newEdge[id].id);
-
-        for (uint d = 0; d < D + 1; ++d) {
-            wuFacesHandle.insert((newEdge[id].faceFingerprint(d)), newEdge[id].id);
-        }
-    }
-    mergedDT.merge(std::move(newEdge));
     VTUNE_END_TASK(AddBorderSimplices);
 
     //ASSERT(DT.countDuplicates() == 0);

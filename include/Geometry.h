@@ -928,13 +928,30 @@ public:
     uint countDuplicates(const Simplex_Ids &simplices) const;
 
 public:
-    bool contains(const dSimplex<D, Precision> &s) const {
-        return contains(s.id);
+
+    auto &addBlock(const tIdType min, const tIdType max) {
+        convexHull.resize(min, max);
+        return base::addBlock(min, max);
     }
 
-    bool contains(const tIdType id) const {
-        if (base::contains(id))
-            return _valid(this->at(id));
+    bool unsafe_contains(const dSimplex<D, Precision> &s) const {
+        return unsafe_contains(s.id);
+    }
+
+    bool unsafe_contains(const tIdType id) const {
+        if (base::unsafe_contains(id))
+            return _valid(this->unsafe_at(id));
+
+        return false;
+    }
+
+    bool contains(const dSimplex<D, Precision> &s, uint & hint) const {
+        return contains(s.id, hint);
+    }
+
+    bool contains(const tIdType id, uint & hint) const {
+        if (base::contains(id, hint))
+            return _valid(this->at(id, hint));
 
         return false;
     }
@@ -953,14 +970,18 @@ public:
 public:
     typedef _detail::filtered_block_iterator<dSimplices<D, Precision>, dSimplex<D, Precision>> iterator;
     friend iterator;
-    typedef _detail::range_type<dSimplices<D, Precision>, iterator> range_type;
 
-    iterator begin() const {
-        return iterator(*this, 0, this->m_blocks.front()->min(), true);
+    typedef _detail::filtered_block_iterator<const dSimplices<D, Precision>, dSimplex<D, Precision>> const_iterator;
+    friend const_iterator;
+
+    typedef _detail::range_type<dSimplices<D, Precision>, const_iterator> range_type;
+
+    const_iterator begin() const {
+        return const_iterator(*this, 0, this->m_blocks.front()->min(), true);
     }
 
-    iterator end() const {
-        return iterator(*this, this->m_blocks.size() - 1, this->m_blocks.back()->max(), false);
+    const_iterator end() const {
+        return const_iterator(*this, this->m_blocks.size() - 1, this->m_blocks.back()->max(), false);
     }
 
     iterator begin() {
@@ -987,6 +1008,12 @@ public:
     static std::atomic<tIdType> simplexID;
 
 };
+
+template<uint D, typename Precision>
+using dSimplicesHandle = BlockedArray2Handle<dSimplices<D, Precision>, tIdType>;
+
+template<uint D, typename Precision>
+using dSimplicesConstHandle = BlockedArray2Handle<const dSimplices<D, Precision>, tIdType>;
 
 template<uint D, typename Precision>
 struct CrossCheckReport {
