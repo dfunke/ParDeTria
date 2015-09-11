@@ -159,7 +159,7 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
 }
 
 template<uint D, typename Precision>
-cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision> &DT,
+cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision> &simplices,
                                                       const Simplex_Ids &edgeSimplices) {
 
 

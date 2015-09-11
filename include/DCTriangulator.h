@@ -61,7 +61,7 @@ protected:
                  const uint &partition,
                  Concurrent_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices);
 
-    cWuFaces buildWhereUsed(const dSimplices<D, Precision> &DT,
+    cWuFaces buildWhereUsed(const dSimplices<D, Precision> &simplices,
                             const Simplex_Ids &edgeSimplices);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices,
