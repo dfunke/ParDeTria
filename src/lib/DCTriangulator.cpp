@@ -382,14 +382,17 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             tbb::cache_aligned_allocator<hcWuFaces>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
-    //Concurrent_Simplex_Ids cConvexHull(std::move(edgeDT.convexHull));
+    Concurrent_Simplex_Ids cConvexHull(std::move(edgeDT.convexHull));
 
     tbb::parallel_for(edgeDT.range(), [&](auto &r) {
 
         auto mergedDTHandle = tsMergedDTHandle.local();
         auto wuFacesHandle = tsWuFacesHandle.local();
 
-        for (auto &edgeSimplex : r) {
+        // we need an explicit iterator loop here for the it < r.end() comparision
+        // range-based for loop uses it != r.end() which doesn't work
+        for (auto it = r.begin(); it < r.end(); ++it) {
+            auto &edgeSimplex = *it;
 
             // check whether edgeSimplex is completely contained in one partition
             uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
@@ -415,23 +418,23 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
                 for (uint d = 0; d < D + 1; ++d) {
                     wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
                 }
-            } /*else {
+            } else {
                 cConvexHull.erase(edgeSimplex.id);
                 edgeSimplex.id = dSimplex<D, Precision>::cINF;
-            }*/
+            }
         }
     });
 
     Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices));
 
-    for(auto & s : edgeDT){
-        if(!insertedSimplicesSeq.contains(s.id)){
-            edgeDT.convexHull.erase(s.id);
-            s.id = dSimplex<D, Precision>::cINF;
-        }
-    }
+//    for(auto & s : edgeDT){
+//        if(!insertedSimplicesSeq.contains(s.id)){
+//            edgeDT.convexHull.erase(s.id);
+//            s.id = dSimplex<D, Precision>::cINF;
+//        }
+//    }
 
-   //edgeDT.convexHull = std::move(cConvexHull);
+   edgeDT.convexHull = std::move(cConvexHull);
     mergedDT.merge(std::move(edgeDT));
 
     VTUNE_END_TASK(AddBorderSimplices);
