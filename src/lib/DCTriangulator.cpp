@@ -382,15 +382,14 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             tbb::cache_aligned_allocator<hcWuFaces>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
-    auto &edgeBlock = mergedDT.addBlock(edgeDT.lowerBound(), edgeDT.upperBound());
-    Concurrent_Simplex_Ids cConvexHull(std::move(mergedDT.convexHull));
+    //Concurrent_Simplex_Ids cConvexHull(std::move(edgeDT.convexHull));
 
-    tbb::parallel_for(edgeDT.range(), [&](const auto &r) {
+    tbb::parallel_for(edgeDT.range(), [&](auto &r) {
 
         auto mergedDTHandle = tsMergedDTHandle.local();
         auto wuFacesHandle = tsWuFacesHandle.local();
 
-        for (const auto &edgeSimplex : r) {
+        for (auto &edgeSimplex : r) {
 
             // check whether edgeSimplex is completely contained in one partition
             uint p0 = partitioning.partition(edgeSimplex.vertices[0]);
@@ -412,21 +411,28 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
             if(insert){
                 insertedSimplices.insert(edgeSimplex.id);
-                edgeBlock[edgeSimplex.id] = edgeSimplex;
-
-                //convex hull treatment
-                if (!edgeSimplex.isFinite())
-                    cConvexHull.insert(edgeSimplex.id);
 
                 for (uint d = 0; d < D + 1; ++d) {
                     wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
                 }
-            }
+            } /*else {
+                cConvexHull.erase(edgeSimplex.id);
+                edgeSimplex.id = dSimplex<D, Precision>::cINF;
+            }*/
         }
     });
 
-    mergedDT.convexHull = std::move(cConvexHull);
     Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices));
+
+    for(auto & s : edgeDT){
+        if(!insertedSimplicesSeq.contains(s.id)){
+            edgeDT.convexHull.erase(s.id);
+            s.id = dSimplex<D, Precision>::cINF;
+        }
+    }
+
+   //edgeDT.convexHull = std::move(cConvexHull);
+    mergedDT.merge(std::move(edgeDT));
 
     VTUNE_END_TASK(AddBorderSimplices);
 
