@@ -155,6 +155,8 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
     if(runNumber == -1)
         runNumber = db.getMaximum<uint>("run-number") + 1;
 
+    bool optimalRecDepth = (minRecDepth == 0 && maxRecDepth == std::numeric_limits<uint>::max());
+
     //loop over distributions
     for (const unsigned char dist : distributions) {
 
@@ -200,6 +202,10 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
                                 //loop over splitters
                                 for (const unsigned char splitter : splitters) {
+
+                                    if(optimalRecDepth){
+                                        minRecDepth = maxRecDepth = log2(threads);
+                                    }
 
                                     //loop over recursion depth
                                     for (uint recursionDepth = minRecDepth;
