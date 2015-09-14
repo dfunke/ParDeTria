@@ -69,9 +69,9 @@ protected:
                          const cWuFaces &wuFaces,
                          const std::string &provenance);
 
-    dSimplices<D, Precision> mergeTriangulation(std::vector<dSimplices<D, Precision>> &partialDTs,
+    dSimplices<D, Precision> mergeTriangulation(std::vector<dSimplices<D, Precision>> &&partialDTs,
                                                 const Simplex_Ids &edgeSimplices,
-                                                const dSimplices<D, Precision> &edgeDT,
+                                                dSimplices<D, Precision> &&edgeDT,
                                                 const Partitioning<D, Precision> &partitioning,
                                                 const std::string &provenance
     );

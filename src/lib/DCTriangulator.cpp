@@ -320,9 +320,9 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 
 template<uint D, typename Precision>
 dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
-        std::vector<dSimplices<D, Precision>> &partialDTs,
+        std::vector<dSimplices<D, Precision>> &&partialDTs,
         const Simplex_Ids &edgeSimplices,
-        const dSimplices<D, Precision> &edgeDT,
+        dSimplices<D, Precision> &&edgeDT,
         const Partitioning<D, Precision> &partitioning,
         const std::string &provenance) {
 
@@ -580,8 +580,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_
 
         DEDENT
 
-        //TODO this is all wrong
-        return mergeTriangulation(partialDTs, Simplex_Ids(std::move(edgeSimplexIds)), edgeDT, partioning,
+        return mergeTriangulation(std::move(partialDTs), Simplex_Ids(std::move(edgeSimplexIds)), std::move(edgeDT), partioning,
                                   provenance);
 
     } else { // base case
