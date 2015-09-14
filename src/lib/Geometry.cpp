@@ -585,39 +585,39 @@ public:
     }
 };
 
-template<uint D, typename Precision>
-uint dSimplices<D, Precision>::countDuplicates(const Simplex_Ids & simplices) const {
-
-    std::atomic<uint> duplicates(0);
-    tbb::spin_mutex mtx;
-
-    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
-            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
-
-    tbb::parallel_for(simplices.range(), [&](const auto &r) {
-
-        auto thisHandle = tsThisHandle.local();
-
-        for (const auto &a : r) {
-
-            auto s = thisHandle.at(a);
-            auto b = simplices.begin();
-            b.setIdx(a - simplices.lowerBound() + 1, true);
-            for(; b < simplices.end(); ++b){
-                if(s.equalVertices(thisHandle.at(*b))){
-                    // we found a duplicate
-                    ++duplicates;
-
-                    tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("found duplicate " << s << " and " << thisHandle.at(*b) << std::endl);
-                }
-            }
-        }
-    });
-
-    return duplicates;
-}
+//template<uint D, typename Precision>
+//uint dSimplices<D, Precision>::countDuplicates(const Simplex_Ids & simplices) const {
+//
+//    std::atomic<uint> duplicates(0);
+//    tbb::spin_mutex mtx;
+//
+//    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+//            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+//            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+//
+//    tbb::parallel_for(simplices.range(), [&](const auto &r) {
+//
+//        auto thisHandle = tsThisHandle.local();
+//
+//        for (const auto &a : r) {
+//
+//            auto s = thisHandle.at(a);
+//            auto b = simplices.begin();
+//            b.setIdx(a - simplices.lowerBound() + 1, true);
+//            for(; b < simplices.end(); ++b){
+//                if(s.equalVertices(thisHandle.at(*b))){
+//                    // we found a duplicate
+//                    ++duplicates;
+//
+//                    tbb::spin_mutex::scoped_lock lock(mtx);
+//                    LOG("found duplicate " << s << " and " << thisHandle.at(*b) << std::endl);
+//                }
+//            }
+//        }
+//    });
+//
+//    return duplicates;
+//}
 
 template<uint D, typename Precision>
 CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimplices<D, Precision> &realSimplices) const {

@@ -925,7 +925,7 @@ public:
 
     tHash genFingerprint() const;
 
-    uint countDuplicates(const Simplex_Ids &simplices) const;
+//    uint countDuplicates(const Simplex_Ids &simplices) const;
 
 public:
 
