@@ -9,7 +9,7 @@ namespace _detail {
             : public std::iterator<std::forward_iterator_tag, std::pair<const KeyType, ValueType>> {
 
     public:
-        filtered_iterator(const Container &container, std::size_t idx, std::size_t bound, const KeyType &filter)
+        filtered_iterator(Container &container, std::size_t idx, std::size_t bound, const KeyType &filter)
                 : m_container(container),
                   m_idx(idx),
                   m_bound(bound),
@@ -68,8 +68,12 @@ namespace _detail {
 
         //const auto *operator->() const { return &m_container.at(m_idx); }
 
+        void half(filtered_iterator &begin, filtered_iterator & end){
+            _setIdx((end + begin) / 2, true);
+        }
+
     protected:
-        const Container &m_container;
+        Container &m_container;
         std::size_t m_idx;
         std::size_t m_bound;
         const KeyType m_filter;
@@ -83,9 +87,9 @@ public:
     typedef uint tValueType;
 
 public:
-    typedef _detail::iterator<LP_MultiMap, std::pair<const tKeyType, tValueType>> iterator;
-    typedef _detail::filtered_iterator<LP_MultiMap, tKeyType, tValueType> filtered_iterator;
-    typedef _detail::range_type<LP_MultiMap, iterator> range_type;
+    typedef _detail::iterator<const LP_MultiMap, std::pair<const tKeyType, tValueType>> const_iterator;
+    typedef _detail::filtered_iterator<const LP_MultiMap, tKeyType, tValueType> const_filtered_iterator;
+    typedef _detail::range_type<const LP_MultiMap, const_iterator> const_range_type;
 
 public:
 
@@ -149,7 +153,7 @@ public:
         return insert(pair.first, pair.second);
     }
 
-    std::pair<filtered_iterator, filtered_iterator> get(const tKeyType &key) const {
+    std::pair<const_filtered_iterator, const_filtered_iterator> get(const tKeyType &key) const {
         ASSERT(key != 0);
 
         std::size_t firstIdx = m_hasher(key) & (m_arraySize - 1);
@@ -161,8 +165,8 @@ public:
 
             if (probedKey == 0 && idx == firstIdx)
                 // the key can not be in the table, return to end() iterators
-                return std::make_pair(filtered_iterator(*this, m_arraySize, m_arraySize, key),
-                                      filtered_iterator(*this, m_arraySize, m_arraySize, key));
+                return std::make_pair(const_filtered_iterator(*this, m_arraySize, m_arraySize, key),
+                                      const_filtered_iterator(*this, m_arraySize, m_arraySize, key));
             else {
                 if (probedKey != key && idx == firstIdx) {
                     //there are entries with the hash corresponding to our key, but they don't equal the key
@@ -176,8 +180,8 @@ public:
 
                 if (probedKey == 0 /* implicitly && idx != firstIdx */)
                     // we have found the end of the chain of equal hashes
-                    return std::make_pair(filtered_iterator(*this, firstIdx, lastIdx, key),
-                                          filtered_iterator(*this, lastIdx, lastIdx, key));
+                    return std::make_pair(const_filtered_iterator(*this, firstIdx, lastIdx, key),
+                                          const_filtered_iterator(*this, lastIdx, lastIdx, key));
             }
         }
 
@@ -288,16 +292,16 @@ public:
         }
     }
 
-    iterator begin() const {
-        return iterator(*this, 0, true);
+    const_iterator begin() const {
+        return const_iterator(*this, 0, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_arraySize, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_arraySize, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 
@@ -324,9 +328,9 @@ public:
     typedef uint tValueType;
 
 public:
-    typedef _detail::iterator<Concurrent_LP_MultiMap, std::pair<const tKeyType, tValueType>> iterator;
-    typedef _detail::filtered_iterator<Concurrent_LP_MultiMap, tKeyType, tValueType> filtered_iterator;
-    typedef _detail::range_type<Concurrent_LP_MultiMap, iterator> range_type;
+    typedef _detail::iterator<const Concurrent_LP_MultiMap, std::pair<const tKeyType, tValueType>> const_iterator;
+    typedef _detail::filtered_iterator<const Concurrent_LP_MultiMap, tKeyType, tValueType> const_filtered_iterator;
+    typedef _detail::range_type<const Concurrent_LP_MultiMap, const_iterator> const_range_type;
 
 public:
 
@@ -414,7 +418,7 @@ public:
         return insert(pair.first, pair.second);
     }
 
-    std::pair<filtered_iterator, filtered_iterator> get(const tKeyType &key) const {
+    std::pair<const_filtered_iterator, const_filtered_iterator> get(const tKeyType &key) const {
         ASSERT(key != 0);
 
         std::size_t firstIdx = m_hasher(key) & (m_arraySize - 1);
@@ -426,8 +430,8 @@ public:
 
             if (probedKey == 0 && idx == firstIdx)
                 // the key can not be in the table, return to end() iterators
-                return std::make_pair(filtered_iterator(*this, m_arraySize, m_arraySize, key),
-                                      filtered_iterator(*this, m_arraySize, m_arraySize, key));
+                return std::make_pair(const_filtered_iterator(*this, m_arraySize, m_arraySize, key),
+                                      const_filtered_iterator(*this, m_arraySize, m_arraySize, key));
             else {
                 if (probedKey != key && idx == firstIdx) {
                     //there are entries with the hash corresponding to our key, but they don't equal the key
@@ -441,8 +445,8 @@ public:
 
                 if (probedKey == 0 /* implicitly && idx != firstIdx */)
                     // we have found the end of the chain of equal hashes
-                    return std::make_pair(filtered_iterator(*this, firstIdx, lastIdx, key),
-                                          filtered_iterator(*this, lastIdx, lastIdx, key));
+                    return std::make_pair(const_filtered_iterator(*this, firstIdx, lastIdx, key),
+                                          const_filtered_iterator(*this, lastIdx, lastIdx, key));
             }
         }
 
@@ -562,16 +566,16 @@ public:
                           });
     }
 
-    iterator begin() const {
-        return iterator(*this, 0, true);
+    const_iterator begin() const {
+        return const_iterator(*this, 0, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_arraySize, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_arraySize, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 private:

@@ -115,12 +115,6 @@ namespace _detail {
             return *this;
         }
 
-        void setIdx(const std::size_t &idx, bool findNext) {
-            m_idx = idx;
-            if (findNext)
-                _advance(true);
-        }
-
         bool operator==(const iterator &j) const {
             return m_idx == j.m_idx;
         }
@@ -145,9 +139,20 @@ namespace _detail {
 
         auto operator*() const { return m_container.at(m_idx); }
 
+        void half(iterator &begin, iterator & end){
+            _setIdx((end + begin) / 2, true);
+        }
+
         //const auto *operator->() const { return &m_container.at(m_idx); }
 
     private:
+
+        void _setIdx(const std::size_t &idx, bool findNext) {
+            m_idx = idx;
+            if (findNext)
+                _advance(true);
+        }
+
         void _advance(const bool testFirst) {
             if (testFirst) {
                 while ((m_idx < m_container.capacity() && m_container.empty(m_idx)))
@@ -173,10 +178,10 @@ namespace _detail {
 
     template<class Container, class IT>
     class range_type {
-        const Container &m_container;
+        Container &m_container;
         IT m_begin;
         IT m_end;
-        mutable IT m_midpoint;
+        IT m_midpoint;
         std::size_t m_grainsize;
 
     public:
@@ -204,7 +209,7 @@ namespace _detail {
         }
 
         //! Init range with container and grainsize specified
-        range_type(const Container &cont, const std::size_t &grainsize = 1e3) :
+        range_type(Container &cont, const std::size_t &grainsize = 1e3) :
                 m_container(cont),
                 m_begin(cont.begin()),
                 m_end(cont.end()),
@@ -217,15 +222,19 @@ namespace _detail {
 
         const IT &end() const { return m_end; }
 
+        IT &begin() { return m_begin; }
+
+        IT &end() { return m_end; }
+
         //! The grain size for this range.
         std::size_t grainsize() const { return m_grainsize; }
 
         //! Set my_midpoint_node to point approximately half way between my_begin_node and my_end_node.
-        void set_midpoint() const {
+        void set_midpoint() {
             if (m_begin == m_end) // not divisible
                 m_midpoint = m_end;
             else {
-                m_midpoint.setIdx((m_end + m_begin) / 2, true);
+                m_midpoint.half(m_begin, m_end);
             }
         }
     };
@@ -421,19 +430,19 @@ public:
 
 
 public:
-    typedef _detail::iterator<LP_Set, tKeyType> iterator;
-    typedef _detail::range_type<LP_Set, iterator> range_type;
+    typedef _detail::iterator<const LP_Set, tKeyType> const_iterator;
+    typedef _detail::range_type<const LP_Set, const_iterator> const_range_type;
 
-    iterator begin() const {
-        return iterator(*this, 0, true);
+    const_iterator begin() const {
+        return const_iterator(*this, 0, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_arraySize, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_arraySize, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 
@@ -741,19 +750,19 @@ private:
     }
 
 public:
-    typedef _detail::iterator<Concurrent_LP_Set, tKeyType> iterator;
-    typedef _detail::range_type<Concurrent_LP_Set, iterator> range_type;
+    typedef _detail::iterator<const Concurrent_LP_Set, tKeyType> const_iterator;
+    typedef _detail::range_type<const Concurrent_LP_Set, const_iterator> const_range_type;
 
-    iterator begin() const {
-        return iterator(*this, 0, true);
+    const_iterator begin() const {
+        return const_iterator(*this, 0, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_arraySize, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_arraySize, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 

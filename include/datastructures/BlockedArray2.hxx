@@ -62,11 +62,6 @@ namespace _detail {
             return *this;
         }
 
-        void setIdx(const std::size_t &idx, __attribute__((unused)) bool findNext) {
-            m_block = m_container._findBlock(idx);
-            m_idx = std::max(idx, m_container.m_blocks[m_block]->min());
-        }
-
         bool operator==(const block_iterator &j) const {
             return m_block == j.m_block && m_idx == j.m_idx;
         }
@@ -93,7 +88,17 @@ namespace _detail {
 
         auto *operator->() const { return &m_container.m_blocks[m_block]->at(m_idx); }
 
+        void half(block_iterator &begin, block_iterator & end){
+            _setIdx((end + begin) / 2, true);
+        }
+
     private:
+
+        void _setIdx(const std::size_t &idx, __attribute__((unused)) bool findNext) {
+            m_block = m_container._findBlock(idx);
+            m_idx = std::max(idx, m_container.m_blocks[m_block]->min());
+        }
+
         void _advance() {
             ++m_idx;
             if (m_container.m_blocks[m_block]->max() == m_idx && m_block < m_container.m_blocks.size() - 1) {
@@ -170,13 +175,6 @@ namespace _detail {
             return *this;
         }
 
-        void setIdx(const std::size_t &idx, bool findNext) {
-            m_block = m_container._findBlock(idx);
-            m_idx = std::max(idx, std::size_t(m_container.m_blocks[m_block]->min()));
-            if (findNext)
-                _advance(true);
-        }
-
         bool operator==(const filtered_block_iterator &j) const {
             return m_block == j.m_block && m_idx == j.m_idx;
         }
@@ -203,7 +201,19 @@ namespace _detail {
 
         auto *operator->() const { return &m_container.m_blocks[m_block]->at(m_idx); }
 
+        void half(filtered_block_iterator &begin, filtered_block_iterator & end){
+            _setIdx((end + begin) / 2, true);
+        }
+
     private:
+
+        void _setIdx(const std::size_t &idx, bool findNext) {
+            m_block = m_container._findBlock(idx);
+            m_idx = std::max(idx, std::size_t(m_container.m_blocks[m_block]->min()));
+            if (findNext)
+                _advance(true);
+        }
+
         inline void _advance(const bool testFirst) {
             if (!testFirst) { //advance if we don't want to test first
                 _incIdx();
@@ -278,6 +288,7 @@ namespace _detail {
         const T &at(const IDX idx) const {
 #ifndef NDEBUG
             if (!(m_min <= idx && idx < m_max)) {
+                RAISE(false);
                 throw std::out_of_range(
                         "index: " + std::to_string(idx) + " size: " + std::to_string(m_min) + " to " +
                         std::to_string(m_max));
@@ -289,6 +300,7 @@ namespace _detail {
         T &at(const IDX idx) {
 #ifndef NDEBUG
             if (!(m_min <= idx && idx < m_max)) {
+                RAISE(false);
                 throw std::out_of_range(
                         "index: " + std::to_string(idx) + " size: " + std::to_string(m_min) + " to " +
                         std::to_string(m_max));
@@ -424,19 +436,19 @@ public:
     typedef _detail::range_type<BlockedArray2, const_iterator> range_type;
 
     const_iterator begin() const {
-        return const_iterator(*this, 0, m_blocks.front()->min());
+        return const_iterator(*this, 0, lowerBound());
     }
 
     const_iterator end() const {
-        return const_iterator(*this, m_blocks.size() - 1, m_blocks.back()->max());
+        return const_iterator(*this, m_blocks.size() - 1, upperBound());
     }
 
     iterator begin() {
-        return iterator(*this, 0, m_blocks.front()->min());
+        return iterator(*this, 0, lowerBound());
     }
 
     iterator end() {
-        return iterator(*this, m_blocks.size() - 1, m_blocks.back()->max());
+        return iterator(*this, m_blocks.size() - 1, upperBound());
     }
 
     range_type range() const {
@@ -469,6 +481,7 @@ protected:
         }
 
         if (start == end && doThrow) {
+            RAISE(false);
             throw std::out_of_range(
                     "index: " + std::to_string(idx) + " no block found");
         }

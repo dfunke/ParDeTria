@@ -974,25 +974,30 @@ public:
     typedef _detail::filtered_block_iterator<const dSimplices<D, Precision>, dSimplex<D, Precision>> const_iterator;
     friend const_iterator;
 
-    typedef _detail::range_type<dSimplices<D, Precision>, const_iterator> range_type;
+    typedef _detail::range_type<dSimplices<D, Precision>, iterator> range_type;
+    typedef _detail::range_type<const dSimplices<D, Precision>, const_iterator> const_range_type;
 
     const_iterator begin() const {
-        return const_iterator(*this, 0, this->m_blocks.front()->min(), true);
+        return const_iterator(*this, 0, this->lowerBound(), true);
     }
 
     const_iterator end() const {
-        return const_iterator(*this, this->m_blocks.size() - 1, this->m_blocks.back()->max(), false);
+        return const_iterator(*this, this->m_blocks.size() - 1, this->upperBound(), false);
     }
 
     iterator begin() {
-        return iterator(*this, 0, this->m_blocks.front()->min(), true);
+        return iterator(*this, 0, this->lowerBound(), true);
     }
 
     iterator end() {
-        return iterator(*this, this->m_blocks.size() - 1, this->m_blocks.back()->max(), false);
+        return iterator(*this, this->m_blocks.size() - 1, this->upperBound(), false);
     }
 
-    range_type range() const {
+    const_range_type range() const {
+        return const_range_type(*this);
+    }
+
+    range_type range() {
         return range_type(*this);
     }
 

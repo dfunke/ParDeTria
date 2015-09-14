@@ -187,19 +187,19 @@ public:
 
 
 public:
-    typedef _detail::iterator<LP_Map, std::pair<const tKeyType, tValueType>> iterator;
-    typedef _detail::range_type<LP_Map, iterator> range_type;
+    typedef _detail::iterator<const LP_Map, std::pair<const tKeyType, tValueType>> const_iterator;
+    typedef _detail::range_type<const LP_Map, const_iterator> const_range_type;
 
-    iterator begin() const {
-        return iterator(*this, 0, true);
+    const_iterator begin() const {
+        return const_iterator(*this, 0, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_arraySize, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_arraySize, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 
@@ -391,19 +391,19 @@ public:
     }
 
 public:
-    typedef _detail::iterator<Concurrent_LP_Map, std::pair<const tKeyType, tValueType>> iterator;
-    typedef _detail::range_type<Concurrent_LP_Map, iterator> range_type;
+    typedef _detail::iterator<const Concurrent_LP_Map, std::pair<const tKeyType, tValueType>> const_iterator;
+    typedef _detail::range_type<const Concurrent_LP_Map, const_iterator> const_range_type;
 
-    iterator begin() const {
-        return iterator(*this, 0, true);
+    const_iterator begin() const {
+        return const_iterator(*this, 0, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_arraySize, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_arraySize, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 

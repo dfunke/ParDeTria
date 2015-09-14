@@ -14,7 +14,7 @@ namespace _detail {
         static const uint cENTRIES = (CHAR_BIT * sizeof(typename Container::tKeyType));
 
     public:
-        bitset_iterator(const Container &container, std::size_t idx, bool findNext)
+        bitset_iterator(Container &container, std::size_t idx, bool findNext)
                 : m_container(container),
                   m_idx(m_container._idx(idx)),
                   m_lowerBound(container.lowerBound()),
@@ -66,12 +66,6 @@ namespace _detail {
             return *this;
         }
 
-        void setIdx(const std::size_t &idx, bool findNext) {
-            m_idx = idx;
-            if (findNext)
-                _advance(true);
-        }
-
         bool operator==(const bitset_iterator &j) const {
             return m_idx == j.m_idx;
         }
@@ -98,7 +92,18 @@ namespace _detail {
 
         //const auto *operator->() const { return &m_container.at(m_idx); }
 
+        void half(bitset_iterator &begin, bitset_iterator & end){
+            _setIdx((end + begin) / 2, true);
+        }
+
     private:
+
+        void _setIdx(const std::size_t &idx, bool findNext) {
+            m_idx = idx;
+            if (findNext)
+                _advance(true);
+        }
+
         void _advance(const bool testFirst) {
             if (testFirst) {
                 while ((m_idx < m_end && !m_container._isSet(m_idx)))
@@ -125,7 +130,7 @@ namespace _detail {
         }
 
     protected:
-        const Container &m_container;
+        Container &m_container;
         std::size_t m_idx;
         const std::size_t m_lowerBound;
         const std::size_t m_end;
@@ -190,6 +195,17 @@ public:
         bool test = isSet(idx);
         m_array[_block(idx)] |= 1 << (idx % cENTRIES);
         m_ones += !test;
+
+        return test;
+    }
+
+    bool testAndUnset(const tKeyType &idx) {
+        RAISE(m_lowerBound <= idx && idx < m_upperBound);
+        RAISE(_block(idx) < m_arraySize);
+
+        bool test = isSet(idx);
+        m_array[_block(idx)] &= ~(1 << (idx % cENTRIES));
+        m_ones -= test;
 
         return test;
     }
@@ -399,8 +415,12 @@ public:
         }
     }
 
+
+
     // compat definitions
     bool insert(const tKeyType &key) { return !testAndSet(key); }
+
+    bool erase(const tKeyType &key) { return testAndUnset(key); }
 
     bool contains(const tKeyType &key) const { return isSet(key); }
 
@@ -430,22 +450,22 @@ private:
     }
 
 public:
-    typedef _detail::bitset_iterator<Bit_Set, tKeyType> iterator;
+    typedef _detail::bitset_iterator<const Bit_Set, tKeyType> const_iterator;
 
-    friend iterator;
+    friend const_iterator;
 
-    typedef _detail::range_type<Bit_Set, iterator> range_type;
+    typedef _detail::range_type<const Bit_Set, const_iterator> const_range_type;
 
-    iterator begin() const {
-        return iterator(*this, m_lowerBound, true);
+    const_iterator begin() const {
+        return const_iterator(*this, m_lowerBound, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_upperBound, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_upperBound, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 private:
@@ -538,6 +558,30 @@ public:
         return true;
     }
 
+    bool testAndUnset(const tKeyType &idx) {
+        RAISE(m_lowerBound <= idx && idx < m_upperBound);
+        RAISE(_block(idx) < m_arraySize);
+
+        std::size_t i = _block(idx);
+        tKeyType mask = (1 << (idx % cENTRIES));
+
+        tKeyType des, val = m_array[i].load();
+
+        while ((val & mask)) {
+            des = val & ~mask;
+
+            bool cas = m_array[i].compare_exchange_strong(val, des);
+
+            if (cas) {
+                --m_ones; // we just unsset the bit, dec m_ones
+                return true; // the bit was set before
+            }
+        }
+
+        // value was already zero
+        return false;
+    }
+
     bool isSet(const tKeyType &idx) const {
 
         if (m_lowerBound <= idx && idx < m_upperBound) {
@@ -574,6 +618,8 @@ public:
     // compat definitions
     bool insert(const tKeyType &key) { return !testAndSet(key); }
 
+    bool erase(const tKeyType &key) { return testAndUnset(key); }
+
     bool contains(const tKeyType &key) const { return isSet(key); }
 
     std::size_t count(const tKeyType &key) const { return contains(key); }
@@ -603,22 +649,22 @@ private:
     }
 
 public:
-    typedef _detail::bitset_iterator<Concurrent_Bit_Set, tKeyType> iterator;
+    typedef _detail::bitset_iterator<const Concurrent_Bit_Set, tKeyType> const_iterator;
 
-    friend iterator;
+    friend const_iterator;
 
-    typedef _detail::range_type<Concurrent_Bit_Set, iterator> range_type;
+    typedef _detail::range_type<const Concurrent_Bit_Set, const_iterator> const_range_type;
 
-    iterator begin() const {
-        return iterator(*this, m_lowerBound, true);
+    const_iterator begin() const {
+        return const_iterator(*this, m_lowerBound, true);
     }
 
-    iterator end() const {
-        return iterator(*this, m_upperBound, false);
+    const_iterator end() const {
+        return const_iterator(*this, m_upperBound, false);
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 private:
