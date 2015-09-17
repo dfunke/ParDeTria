@@ -71,6 +71,12 @@ struct dPointStats {
     dVector<D, Precision> max;
 };
 
+template<uint D, typename Precision>
+std::string to_string(const dPointStats<D, Precision> &p);
+
+template<uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dPointStats<D, Precision> &p);
+
 namespace __detail {
     template<class T,
             typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
