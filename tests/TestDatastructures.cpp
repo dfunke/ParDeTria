@@ -171,7 +171,7 @@ TEST(LP_Set, Merge) {
 
 TEST(Concurrent_LP_Map, InsertContains) {
 
-    Concurrent_LP_Map map(120);
+    Concurrent_LP_Map<uint, uint> map(120);
     EXPECT_EQ(map.capacity(), 128);
 
     std::unordered_map<uint, uint> cmp;
@@ -202,10 +202,10 @@ TEST(Concurrent_LP_Map, InsertContains) {
 
 TEST(Concurrent_LP_Map, Merge) {
 
-    Concurrent_LP_Map a(120);
+    Concurrent_LP_Map<uint, uint> a(120);
     EXPECT_EQ(a.capacity(), 128);
 
-    Concurrent_LP_Map b(120);
+    Concurrent_LP_Map<uint, uint> b(120);
     EXPECT_EQ(b.capacity(), 128);
 
     std::unordered_map<uint, uint> cmp;
@@ -245,7 +245,7 @@ TEST(Concurrent_LP_Map, Merge) {
 
 TEST(Concurrent_LP_MultiMap, InsertContains) {
 
-    Concurrent_LP_MultiMap map(600);
+    Concurrent_LP_MultiMap<uint, uint> map(600);
     EXPECT_EQ(map.capacity(), 1024);
 
     std::unordered_multimap<uint, uint> cmp;
@@ -286,10 +286,10 @@ TEST(Concurrent_LP_MultiMap, InsertContains) {
 
 TEST(Concurrent_LP_MultiMap, Merge) {
 
-    Concurrent_LP_MultiMap a(600);
+    Concurrent_LP_MultiMap<uint, uint> a(600);
     EXPECT_EQ(a.capacity(), 1024);
 
-    Concurrent_LP_MultiMap b(600);
+    Concurrent_LP_MultiMap<uint, uint> b(600);
     EXPECT_EQ(b.capacity(), 1024);
 
     std::unordered_multimap<uint, uint> cmp;

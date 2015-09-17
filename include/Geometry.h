@@ -792,8 +792,8 @@ struct VerificationReport;
 //
 //};
 
-typedef GrowingHashTable<Concurrent_LP_MultiMap> cWuFaces;
-typedef GrowingHashTableHandle<Concurrent_LP_MultiMap> hcWuFaces;
+typedef GrowingHashTable<Concurrent_LP_MultiMap<tIdType, tIdType>> cWuFaces;
+typedef GrowingHashTableHandle<Concurrent_LP_MultiMap<tIdType, tIdType>> hcWuFaces;
 //typedef tbb::concurrent_unordered_multimap<tHashType, tIdType> cWuFaces;
 
 //class cWuFaces : private tbb::concurrent_unordered_multimap<tHashType, tIdType> {

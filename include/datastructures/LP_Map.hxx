@@ -2,36 +2,30 @@
 
 #include "LP_Set.hxx"
 
+template<typename K, typename V>
 class LP_Map {
 
 public:
-    typedef uint tKeyType;
-    typedef uint tValueType;
 
-public:
-
-    LP_Map(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    LP_Map(std::size_t size, Hasher<K> hasher = Hasher<K>())
             : m_items(0),
               m_keys(nullptr),
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
 
-        m_keys = std::make_unique<std::vector<tKeyType>>();
-        m_keys->resize(m_arraySize);
-
-        m_values = std::make_unique<std::vector<tValueType>>();
-        m_values->resize(m_arraySize);
+        m_keys.reset(new K[m_arraySize]()); // zero init
+        m_values.reset(new V[m_arraySize]); // random init
     }
 
-    LP_Map(LP_Map &&other)
+    LP_Map(LP_Map<K, V> &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
               m_hasher(std::move(other.m_hasher)) { }
 
-    LP_Map &operator=(LP_Map &&other) {
+    LP_Map<K, V> &operator=(LP_Map<K, V> &&other) {
         m_arraySize = other.m_arraySize;
         m_items = other.m_items;
         m_keys = std::move(other.m_keys);
@@ -41,21 +35,21 @@ public:
         return *this;
     }
 
-    bool insert(const tKeyType &key, const tValueType &value) {
+    bool insert(const K &key, const V &value) {
         ASSERT(key != 0);
 
         if (!m_rehashing && m_items / m_arraySize > 0.5)
             rehash(m_arraySize << 1);
 
-        for (tKeyType idx = m_hasher(key); ; idx++) {
+        for (K idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
-            tKeyType probedKey = m_keys->at(idx);
+            K probedKey = m_keys[idx];
 
             if (probedKey == key) {
-                m_values->at(idx) = value; // key already exists, update value
+                m_values[idx] = value; // key already exists, update value
                 return false; // we didn't insert a new key
             }
             else {
@@ -63,37 +57,37 @@ public:
                 if (probedKey != 0)
                     continue; // Usually, it contains another key. Keep probing.
                 // The entry was free. take it
-                m_keys->at(idx) = key;
-                m_values->at(idx) = value;
+                m_keys[idx] = key;
+                m_values[idx] = value;
                 ++m_items;
                 return true;
             }
         }
     }
 
-    bool insert(const std::pair<tKeyType, tValueType> & pair) {
+    bool insert(const std::pair<K, V> &pair) {
         return insert(pair.first, pair.second);
     }
 
-    tValueType get(const tKeyType &key) const {
+    V get(const K &key) const {
         ASSERT(key != 0);
 
-        for (tKeyType idx = m_hasher(key); ; idx++) {
+        for (K idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
-            tKeyType probedKey = m_keys->at(idx);
+            K probedKey = m_keys[idx];
             if (probedKey == key)
-                return m_values->at(idx);;
+                return m_values[idx];;
             if (probedKey == 0)
                 return 0;
         }
 
     }
 
-    bool contains(const tKeyType &key) const {
+    bool contains(const K &key) const {
         return get(key) != 0;
     }
 
-    std::size_t count(const tKeyType &key) const {
+    std::size_t count(const K &key) const {
         return contains(key);
     }
 
@@ -101,12 +95,12 @@ public:
     bool empty() const { return m_items == 0; };
 
     bool empty(const std::size_t idx) const {
-        return m_keys->at(idx) == 0;
+        return m_keys[idx] == 0;
     };
 
-    std::pair<tKeyType, tValueType> at(const std::size_t idx) const {
+    std::pair<K, V> at(const std::size_t idx) const {
 
-        return std::make_pair(m_keys->at(idx), m_values->at(idx));
+        return std::make_pair(m_keys[idx], m_values[idx]);
     }
 
     auto capacity() const { return m_arraySize; }
@@ -124,28 +118,25 @@ public:
         auto oldValues = std::move(m_values);
         m_items = 0;
 
-        m_keys = std::make_unique<std::vector<tKeyType>>();
-        m_keys->resize(m_arraySize);
-
-        m_values = std::make_unique<std::vector<tValueType>>();
-        m_values->resize(m_arraySize);
+        m_keys.reset(new K[m_arraySize]()); // zero init
+        m_values.reset(new V[m_arraySize]); // random init
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-            if (oldKeys->at(i) != 0)
-                insert(oldKeys->at(i), oldValues->at(i));
+            if (oldKeys[i] != 0)
+                insert(oldKeys[i], oldValues[i]);
         }
 
         m_rehashing = false;
 
     }
 
-    void merge(LP_Map &&other) {
+    void merge(LP_Map<K, V> &&other) {
 
         rehash((capacity() + other.capacity()) << 1);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
-            if (other.m_keys->at(i) != 0)
-                insert(other.m_keys->at(i), other.m_values->at(i));
+            if (other.m_keys[i] != 0)
+                insert(other.m_keys[i], other.m_values[i]);
         }
     }
 
@@ -161,34 +152,31 @@ public:
         auto oldValues = std::move(m_values);
         m_items = 0;
 
-        m_keys = std::make_unique<std::vector<tKeyType>>();
-        m_keys->resize(m_arraySize);
-
-        m_values = std::make_unique<std::vector<tValueType>>();
-        m_values->resize(m_arraySize);
+        m_keys.reset(new K[m_arraySize]()); // zero init
+        m_values.reset(new V[m_arraySize]); // random init
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-            if (oldKeys->at(i) != 0 && !filter.count(oldKeys->at(i)))
-                insert(oldKeys->at(i), oldValues->at(i));
+            if (oldKeys[i] != 0 && !filter.count(oldKeys[i]))
+                insert(oldKeys[i], oldValues[i]);
         }
 
         m_rehashing = false;
     }
 
     template<class Set>
-    void merge(LP_Map &&other, const Set &filter) {
+    void merge(LP_Map<K, V> &&other, const Set &filter) {
         rehash((capacity() + other.capacity()) << 1, filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
-            if (other.m_keys->at(i) != 0 && !filter.count(other.m_keys->at(i)))
-                insert(other.m_keys->at(i), other.m_values->at(i));
+            if (other.m_keys[i] != 0 && !filter.count(other.m_keys[i]))
+                insert(other.m_keys[i], other.m_values[i]);
         }
     }
 
 
 public:
-    typedef _detail::iterator<const LP_Map, std::pair<const tKeyType, tValueType>> const_iterator;
-    typedef _detail::range_type<const LP_Map, const_iterator> const_range_type;
+    typedef _detail::iterator<const LP_Map<K, V>, std::pair<const K, V>> const_iterator;
+    typedef _detail::range_type<const LP_Map<K, V>, const_iterator> const_range_type;
 
     const_iterator begin() const {
         return const_iterator(*this, 0, true);
@@ -202,44 +190,73 @@ public:
         return const_range_type(*this);
     }
 
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void save(Archive &ar, __attribute__((unused)) const unsigned int version) const {
+        // invoke serialization of the base class
+        ar << m_arraySize;
+        ar << m_items;
+        ar << boost::serialization::make_array<K>(m_keys.get(), m_arraySize);
+        ar << boost::serialization::make_array<V>(m_values.get(), m_arraySize);
+        ar << m_hasher.a;
+    }
+
+    template<class Archive>
+    void load(Archive &ar, __attribute__((unused)) const unsigned int version) {
+        // invoke serialization of the base class
+        ar >> m_arraySize;
+        ar >> m_items;
+
+        try {
+            m_keys.reset(new K[m_arraySize]); //random init
+            m_values.reset(new V[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            raise(SIGINT);
+        }
+        ar >> boost::serialization::make_array<K>(m_keys.get(), m_arraySize);
+        ar >> boost::serialization::make_array<V>(m_values.get(), m_arraySize);
+        ar >> m_hasher.a;
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 private:
     std::size_t m_arraySize;
     std::size_t m_items;
-    std::unique_ptr<std::vector<tKeyType>> m_keys;
-    std::unique_ptr<std::vector<tValueType>> m_values;
-    Hasher<tKeyType> m_hasher;
+    std::unique_ptr<K[]> m_keys;
+    std::unique_ptr<V[]> m_values;
+    Hasher<K> m_hasher;
 
     bool m_rehashing = false;
 
 };
 
+template<typename K, typename V>
 class Concurrent_LP_Map {
 
 public:
-    typedef uint tKeyType;
-    typedef uint tValueType;
 
-public:
-
-    Concurrent_LP_Map(std::size_t size, Hasher<tKeyType> hasher = Hasher<tKeyType>())
+    Concurrent_LP_Map(std::size_t size, Hasher<K> hasher = Hasher<K>())
             : m_items(0),
               m_keys(nullptr),
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-        m_values.reset(new std::atomic<tValueType>[m_arraySize]); // random init
+        m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
+        m_values.reset(new std::atomic<V>[m_arraySize]); // random init
     }
 
-    Concurrent_LP_Map(Concurrent_LP_Map &&other)
+    Concurrent_LP_Map(Concurrent_LP_Map<K, V> &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items.load()),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
               m_hasher(std::move(other.m_hasher)) { }
 
-    Concurrent_LP_Map &operator=(Concurrent_LP_Map &&other) {
+    Concurrent_LP_Map<K, V> &operator=(Concurrent_LP_Map<K, V> &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load());
         m_keys = std::move(other.m_keys);
@@ -250,18 +267,18 @@ public:
     }
 
 
-    bool insert(const tKeyType &key, const tValueType &value) {
+    bool insert(const K &key, const V &value) {
         ASSERT(key != 0);
 
         if (m_items.load() / m_arraySize > 0.75)
             throw std::length_error("Overfull Concurrent Map");
 
-        for (tKeyType idx = m_hasher(key); ; idx++) {
+        for (K idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
             ASSERT(idx < m_arraySize);
 
             // Load the key that was there.
-            tKeyType probedKey = m_keys[idx].load();
+            K probedKey = m_keys[idx].load();
 
             if (probedKey == key) {
                 m_values[idx].store(value, std::memory_order_relaxed); // update value
@@ -272,7 +289,7 @@ public:
                 if (probedKey != 0)
                     continue; // Usually, it contains another key. Keep probing.
                 // The entry was free. Now let's try to take it using a CAS.
-                tKeyType prevKey = 0;
+                K prevKey = 0;
                 bool cas = m_keys[idx].compare_exchange_strong(prevKey, key);
                 if (cas) {
                     m_values[idx].store(value, std::memory_order_relaxed); // insert value
@@ -288,15 +305,15 @@ public:
         }
     }
 
-    bool insert(const std::pair<tKeyType, tValueType> & pair) {
+    bool insert(const std::pair<K, V> &pair) {
         return insert(pair.first, pair.second);
     }
 
-    tValueType get(const tKeyType &key) const {
+    V get(const K &key) const {
         ASSERT(key != 0);
-        for (tKeyType idx = m_hasher(key); ; idx++) {
+        for (K idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
-            tKeyType probedKey = m_keys[idx].load();
+            K probedKey = m_keys[idx].load();
             if (probedKey == key)
                 return m_values[idx].load();;
             if (probedKey == 0)
@@ -305,11 +322,11 @@ public:
 
     }
 
-    bool contains(const tKeyType &key) const {
+    bool contains(const K &key) const {
         return get(key) != 0;
     }
 
-    std::size_t count(const tKeyType &key) const {
+    std::size_t count(const K &key) const {
         return contains(key);
     }
 
@@ -317,7 +334,7 @@ public:
 
     bool empty(const std::size_t idx) const { return m_keys[idx].load(std::memory_order_relaxed) == 0; };
 
-    std::pair<tKeyType, tValueType> at(const std::size_t idx) const {
+    std::pair<K, V> at(const std::size_t idx) const {
         return std::make_pair(m_keys[idx].load(std::memory_order_relaxed),
                               m_values[idx].load(std::memory_order_relaxed));
     }
@@ -334,8 +351,8 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); //zero init
-        m_values.reset(new std::atomic<tValueType>[m_arraySize]); //random init
+        m_keys.reset(new std::atomic<K>[m_arraySize]()); //zero init
+        m_values.reset(new std::atomic<V>[m_arraySize]); //random init
 
         tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const uint i) {
             if (oldKeys[i].load(std::memory_order_relaxed) != 0)
@@ -343,7 +360,7 @@ public:
         });
     }
 
-    void unsafe_merge(Concurrent_LP_Map &&other) {
+    void unsafe_merge(Concurrent_LP_Map<K, V> &&other) {
 
         unsafe_rehash((capacity() + other.capacity()) << 1);
 
@@ -356,7 +373,7 @@ public:
 
 
     template<class Set>
-    void unsafe_merge(Concurrent_LP_Map &&other, const Set &filter) {
+    void unsafe_merge(Concurrent_LP_Map<K, V> &&other, const Set &filter) {
 
         std::size_t oldSize = m_arraySize;
         m_arraySize = nextPow2((capacity() + other.capacity()) << 1);
@@ -365,13 +382,13 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_keys.reset(new std::atomic<tKeyType>[m_arraySize]()); // zero init
-        m_values.reset(new std::atomic<tValueType>[m_arraySize]); // random init
+        m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
+        m_values.reset(new std::atomic<V>[m_arraySize]); // random init
 
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())),
                           [&oldKeys, &oldValues, oldSize, &other, &filter, this](const auto &r) {
 
-                              tKeyType val = 0;
+                              K val = 0;
                               for (auto i = r.begin(); i != r.end(); ++i) {
                                   if (i < oldSize) {
                                       val = oldKeys[i].load(std::memory_order_relaxed);
@@ -391,8 +408,8 @@ public:
     }
 
 public:
-    typedef _detail::iterator<const Concurrent_LP_Map, std::pair<const tKeyType, tValueType>> const_iterator;
-    typedef _detail::range_type<const Concurrent_LP_Map, const_iterator> const_range_type;
+    typedef _detail::iterator<const Concurrent_LP_Map<K, V>, std::pair<const K, V>> const_iterator;
+    typedef _detail::range_type<const Concurrent_LP_Map<K, V>, const_iterator> const_range_type;
 
     const_iterator begin() const {
         return const_iterator(*this, 0, true);
@@ -406,12 +423,11 @@ public:
         return const_range_type(*this);
     }
 
-
 private:
     std::size_t m_arraySize;
     std::atomic<std::size_t> m_items;
-    std::unique_ptr<std::atomic<tKeyType>[]> m_keys;
-    std::unique_ptr<std::atomic<tValueType>[]> m_values;
-    Hasher<tKeyType> m_hasher;
+    std::unique_ptr<std::atomic<K>[]> m_keys;
+    std::unique_ptr<std::atomic<V>[]> m_values;
+    Hasher<K> m_hasher;
 
 };
