@@ -28,6 +28,10 @@ add_library(SpatialSort
   SpatialSort.cpp
 )
 
+target_link_libraries(SpatialSort
+        ${CGAL_LIBRARY}
+)
+
 target_link_libraries(CGALTriangulator
   Logging
   Geometry
