@@ -698,10 +698,10 @@ TEST(BlockedArray2, InsertMerge) {
 
     // test for correct values
     for (uint i = 0; i < N; ++i) {
-        EXPECT_EQ(i, a[i]);
+        EXPECT_EQ(i, a.unsafe_at(i));
     }
 
-    EXPECT_THROW(a[N], std::out_of_range);
+    EXPECT_THROW(a.unsafe_at(N), std::out_of_range);
 
     BlockedArray2<uint> b(N, 2 * N);
 
@@ -714,17 +714,17 @@ TEST(BlockedArray2, InsertMerge) {
 
     // test for correct values
     for (uint i = N; i < 2 * N; ++i) {
-        EXPECT_EQ(i - N, b[i]);
+        EXPECT_EQ(i - N, b.unsafe_at(i));
     }
 
-    EXPECT_THROW(b[2 * N], std::out_of_range);
-    EXPECT_THROW(b[N - 1], std::out_of_range);
+    EXPECT_THROW(b.unsafe_at(2 * N), std::out_of_range);
+    EXPECT_THROW(b.unsafe_at(N - 1), std::out_of_range);
 
     a.merge(std::move(b));
 
     // test for correct values
     for (uint i = 0; i < 2 * N; ++i) {
-        EXPECT_EQ(i % N, a[i]);
+        EXPECT_EQ(i % N, a.unsafe_at(i));
     }
 
     // test iterator
@@ -733,7 +733,7 @@ TEST(BlockedArray2, InsertMerge) {
         EXPECT_LT(i, N);
     }
 
-    EXPECT_THROW(a[2 * N], std::out_of_range);
+    EXPECT_THROW(a.unsafe_at(2 * N), std::out_of_range);
 }
 
 TEST(BlockedArray2, ParallelRange) {
