@@ -39,8 +39,9 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint recursionDepth,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
-                              const unsigned char alg = 'd',
-                              const bool verify = true) {
+                              const unsigned char alg,
+                              const bool parallelBase,
+                              const bool verify) {
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
     if (alg == 'c') {
@@ -53,7 +54,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
         } else {
             triangulator_ptr =
                     std::make_unique<DCTriangulator<D, Precision>>(bounds, points, recursionDepth, splitter, 100,
-                                                                   false);
+                                                                   parallelBase);
         }
     }
 
@@ -118,6 +119,7 @@ int main(int argc, char *argv[]) {
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
+    bool parallelBase = false;
 
     bool verify = true;
 
@@ -142,6 +144,8 @@ int main(int argc, char *argv[]) {
                                "specify number of threads");
     cCommandLine.add_options()("alg", po::value<unsigned char>(&alg),
                                "specify algorithm to use");
+    cCommandLine.add_options()("par-base", po::value<bool>(&parallelBase),
+                               "use parallel base solver");
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -218,10 +222,10 @@ int main(int argc, char *argv[]) {
                 std::cout << std::endl;
 
             points = genPoints(N, bounds, dice);
-            triangulate(bounds, recursionDepth, points, p, alg, verify);
+            triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
         }
     } else
-        ret = triangulate(bounds, recursionDepth, points, p, alg, verify);
+        ret = triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
 
     LOG("Triangulating "
         << points.size() << " points took "
