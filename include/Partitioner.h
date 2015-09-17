@@ -13,8 +13,9 @@ class Partition {
 
 public:
     Partition(const std::size_t &nPoints) : points(nPoints) { }
+    Partition(Point_Ids &&_points) : points(std::move(_points)) { }
 
-    Partition(Partition && other)
+    Partition(Partition &&other)
             : id(other.id),
               points(std::move(other.points)),
               bounds(other.bounds) { }
@@ -66,6 +67,16 @@ public:
 
 template<uint D, typename Precision>
 struct dPointStats {
+
+    dPointStats() {
+
+        for (uint dim = 0; dim < D; ++dim) {
+            min[dim] = std::numeric_limits<Precision>::max();
+            mid[dim] = 0;
+            max[dim] = std::numeric_limits<Precision>::min();
+        }
+    }
+
     dVector<D, Precision> min;
     dVector<D, Precision> mid;
     dVector<D, Precision> max;
