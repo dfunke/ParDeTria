@@ -241,13 +241,14 @@ namespace _detail {
 }
 
 //forward declare concurrent version
-template <typename K>
+template <typename K, bool Growing>
 class Concurrent_LP_Set;
 
-template <typename K>
+template <typename K, bool Growing = false>
 class LP_Set {
 
-    friend class Concurrent_LP_Set<K>;
+    template <typename K2, bool Growing2>
+    friend class Concurrent_LP_Set;
 
 public:
 
@@ -265,16 +266,19 @@ public:
         }
     }
 
-    LP_Set(LP_Set<K> &&other)
+    template <bool Growing2>
+    LP_Set(LP_Set<K, Growing2> &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items),
               m_array(std::move(other.m_array)),
               m_hasher(std::move(other.m_hasher)) { }
 
     //Conversion
-    LP_Set(Concurrent_LP_Set<K> &&other);
+    template <bool Growing2>
+    LP_Set(Concurrent_LP_Set<K, Growing2> &&other);
 
-    LP_Set &operator=(LP_Set<K> &&other) {
+    template <bool Growing2>
+    LP_Set &operator=(LP_Set<K, Growing2> &&other) {
         m_arraySize = other.m_arraySize;
         m_items = other.m_items;
         m_array = std::move(other.m_array);
@@ -284,8 +288,8 @@ public:
     }
 
     //Copy function
-    LP_Set<K> copy() const {
-        LP_Set<K> c(m_arraySize, m_hasher);
+    LP_Set<K, Growing> copy() const {
+        LP_Set<K, Growing> c(m_arraySize, m_hasher);
         c.m_items = m_items;
 
         for(uint i = 0; i < m_arraySize; ++i){
@@ -298,7 +302,7 @@ public:
     bool insert(const K &key) {
         ASSERT(key != 0);
 
-        if (!m_rehashing && (double) m_items / (double) m_arraySize > 0.5)
+        if (Growing && !m_rehashing && (double) m_items / (double) m_arraySize > 0.5)
             rehash(m_arraySize << 1);
 
         for (K idx = m_hasher(key); ; idx++) {
@@ -381,7 +385,8 @@ public:
 
     }
 
-    void merge(LP_Set<K> &&other) {
+    template <bool Growing2>
+    void merge(LP_Set<K, Growing2> &&other) {
 
         rehash((capacity() + other.capacity()));
 
@@ -417,8 +422,8 @@ public:
         m_rehashing = false;
     }
 
-    template<class Set>
-    void merge(LP_Set<K> &&other, const Set &filter) {
+    template<class Set, bool Growing2>
+    void merge(LP_Set<K, Growing2> &&other, const Set &filter) {
         rehash((capacity() + other.capacity()), filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
@@ -429,8 +434,8 @@ public:
 
 
 public:
-    typedef _detail::iterator<const LP_Set<K>, K> const_iterator;
-    typedef _detail::range_type<const LP_Set<K>, const_iterator> const_range_type;
+    typedef _detail::iterator<const LP_Set<K, Growing>, K> const_iterator;
+    typedef _detail::range_type<const LP_Set<K, Growing>, const_iterator> const_range_type;
 
     const_iterator begin() const {
         return const_iterator(*this, 0, true);
@@ -511,16 +516,17 @@ class ConstGrowingHashTableHandle;
 template<class HT>
 class GrowingHashTable;
 
-template <typename K>
+template <typename K, bool Growing = false>
 class Concurrent_LP_Set {
 
-    friend class LP_Set<K>;
+    template <typename K2, bool Growing2>
+    friend class LP_Set;
 
-    friend class GrowingHashTable<Concurrent_LP_Set<K>>;
+    friend class GrowingHashTable<Concurrent_LP_Set<K, true>>;
 
-    friend class GrowingHashTableHandle<Concurrent_LP_Set<K>>;
+    friend class GrowingHashTableHandle<Concurrent_LP_Set<K, true>>;
 
-    friend class ConstGrowingHashTableHandle<Concurrent_LP_Set<K>>;
+    friend class ConstGrowingHashTableHandle<Concurrent_LP_Set<K, true>>;
 
 public:
 
@@ -541,7 +547,8 @@ public:
         }
     }
 
-    Concurrent_LP_Set(Concurrent_LP_Set<K> &&other)
+    template <bool Growing2>
+    Concurrent_LP_Set(Concurrent_LP_Set<K, Growing2> &&other)
             : m_arraySize(other.m_arraySize),
               m_items(other.m_items.load()),
               m_array(std::move(other.m_array)),
@@ -550,9 +557,11 @@ public:
               m_currentCopyBlock(0) { }
 
     //conversion
-    Concurrent_LP_Set(LP_Set<K> &&other);
+    template <bool Growing2>
+    Concurrent_LP_Set(LP_Set<K, Growing2> &&other);
 
-    Concurrent_LP_Set &operator=(Concurrent_LP_Set<K> &&other) {
+    template <bool Growing2>
+    Concurrent_LP_Set &operator=(Concurrent_LP_Set<K, Growing2> &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load());
         m_array = std::move(other.m_array);
@@ -567,13 +576,16 @@ public:
     InsertReturn insert(const K &key) {
         ASSERT(key != 0);
 
-        if (m_items.load() > m_arraySize >> 1)
+        if (Growing && m_items.load() > m_arraySize >> 1)
+            return InsertReturn::State::Full;
+
+        if (!Growing && m_items.load() == m_arraySize)
             return InsertReturn::State::Full;
 
         uint cols = 0;
         for (K idx = m_hasher(key); ; idx++) {
 
-            if (cols > c_growThreshold) {
+            if (Growing && cols > c_growThreshold) {
                 return InsertReturn::State::Full;
             }
 
@@ -742,15 +754,16 @@ private:
         }
     }
 
-    void _migrate(const std::size_t idx, Concurrent_LP_Set<K> &target) {
+    template <bool Growing2>
+    void _migrate(const std::size_t idx, Concurrent_LP_Set<K, Growing2> &target) {
         auto val = at(idx);
         if (val != 0)
             target._insert(val);
     }
 
 public:
-    typedef _detail::iterator<const Concurrent_LP_Set<K>, K> const_iterator;
-    typedef _detail::range_type<const Concurrent_LP_Set<K>, const_iterator> const_range_type;
+    typedef _detail::iterator<const Concurrent_LP_Set<K, Growing>, K> const_iterator;
+    typedef _detail::range_type<const Concurrent_LP_Set<K, Growing>, const_iterator> const_range_type;
 
     const_iterator begin() const {
         return const_iterator(*this, 0, true);
@@ -777,3 +790,21 @@ private:
     const static uint c_growThreshold = 10;
 
 };
+
+//conversion constructors
+
+template<typename K, bool Growing> template<bool Growing2>
+LP_Set<K, Growing>::LP_Set(Concurrent_LP_Set<K, Growing2> &&other)
+        : m_arraySize(other.m_arraySize),
+          m_items(other.m_items),
+          m_array(reinterpret_cast<K *>(other.m_array.release())),
+          m_hasher(std::move(other.m_hasher)) { }
+
+template<typename K, bool Growing> template<bool Growing2>
+Concurrent_LP_Set<K, Growing>::Concurrent_LP_Set(LP_Set<K, Growing2> &&other)
+        : m_arraySize(other.m_arraySize),
+          m_items(other.m_items),
+          m_array(reinterpret_cast<std::atomic<K> *>(other.m_array.release())),
+          m_version(0),
+          m_hasher(std::move(other.m_hasher)),
+          m_currentCopyBlock(0) { }

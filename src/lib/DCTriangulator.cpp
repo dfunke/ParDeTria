@@ -93,7 +93,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
 template<uint D, typename Precision>
 void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simplices,
                                            const Partitioning<D, Precision> &partitioning, const uint &partition,
-                                           Concurrent_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices) {
+                                           Concurrent_Growing_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices) {
 
     // infinite points to edge
     auto edgePointsHandle = edgePoints.handle();
@@ -101,8 +101,8 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
         edgePointsHandle.insert(k);
     }
 
-    tbb::enumerable_thread_specific<hConcurrent_Point_Ids,
-            tbb::cache_aligned_allocator<hConcurrent_Point_Ids>,
+    tbb::enumerable_thread_specific<hConcurrent_Growing_Point_Ids,
+            tbb::cache_aligned_allocator<hConcurrent_Growing_Point_Ids>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsEdgePointsHandle(std::ref(edgePoints));
 
     tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
@@ -526,7 +526,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_
             maxId = std::max(maxId, p.upperBound());
         }
 
-        Concurrent_Point_Ids edgePointIds(partitionPoints.size() / 4);
+        Concurrent_Growing_Point_Ids edgePointIds(partitionPoints.size() / 4);
         Concurrent_Simplex_Ids edgeSimplexIds(minId, maxId);
 
         tbb::parallel_for(

@@ -5,24 +5,6 @@
 
 #include "Geometry.h"
 
-//conversion constructors
-
-template<typename K>
-LP_Set<K>::LP_Set(Concurrent_LP_Set<K> &&other)
-        : m_arraySize(other.m_arraySize),
-          m_items(other.m_items),
-          m_array(reinterpret_cast<K *>(other.m_array.release())),
-          m_hasher(std::move(other.m_hasher)) { }
-
-template<typename K>
-Concurrent_LP_Set<K>::Concurrent_LP_Set(LP_Set<K> &&other)
-        : m_arraySize(other.m_arraySize),
-          m_items(other.m_items),
-          m_array(reinterpret_cast<std::atomic<K> *>(other.m_array.release())),
-          m_version(0),
-          m_hasher(std::move(other.m_hasher)),
-          m_currentCopyBlock(0) { }
-
 template<typename K, typename V>
 LP_Map<K, V>::LP_Map(Concurrent_LP_Map<K, V> &&other)
         : m_arraySize(other.m_arraySize),
@@ -74,12 +56,6 @@ Concurrent_Bit_Set::Concurrent_Bit_Set(Bit_Set &&other)
           m_ones(other.m_ones) { }
 
 //specializations
-template
-class LP_Set<tIdType>;
-
-template
-class Concurrent_LP_Set<tIdType>;
-
 template
 class LP_Map<tIdType, tIdType>;
 
