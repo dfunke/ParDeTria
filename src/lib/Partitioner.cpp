@@ -132,39 +132,52 @@ CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
     PLOG("Midpoint is " << stats.mid << std::endl);
     PLOG("Splitting dimension is " << k << std::endl);
 
+    std::vector<Concurrent_Fixed_Point_Ids> cPartPoints;
+    cPartPoints.reserve(2);
+    cPartPoints.emplace_back(ids.size());
+    cPartPoints.emplace_back(ids.size());
+
+
+    VTUNE_TASK(PartitioningDistribute);
+    tbb::parallel_for(ids.range(), [&stats, &points, &cPartPoints, k] (const auto &r) {
+
+        for(auto id : r) {
+            if (!dPoint<D, Precision>::isFinite(id))
+                continue; // skip infinite points, they will be added later
+
+            ASSERT(points.contains(id));
+            const auto &p = points[id];
+
+            uint part = (p.coords[k] > stats.mid[k]);
+
+            //ASSERT(partitioning[part].bounds.contains(p.coords));
+
+            // LOG("Adding " << p << " to " << part << std::endl);
+#ifndef NDEBUG
+            auto inserted =
+#endif
+                    cPartPoints[part].insert(id);
+            ASSERT(inserted);
+        }
+    });
+    VTUNE_END_TASK(PartitioningDistribute);
+
     Partitioning<D, Precision> partitioning;
     partitioning.reserve(2);
 
-    partitioning.emplace_back(ids.size() / 2);
+    partitioning.emplace_back(std::move(cPartPoints[0]));
     partitioning[0].id = 0;
     for (uint d = 0; d < D; ++d) {
         partitioning[0].bounds.low[d] = stats.min[d];
         partitioning[0].bounds.high[d] = d == k ? stats.mid[d] : stats.max[d];
     }
 
-    partitioning.emplace_back(ids.size() / 2);
+    partitioning.emplace_back(std::move(cPartPoints[1]));
     partitioning[1].id = 1;
     for (uint d = 0; d < D; ++d) {
         partitioning[1].bounds.low[d] = d == k ? stats.mid[d] : stats.min[d];
         partitioning[1].bounds.high[d] = stats.max[d];
     }
-
-    VTUNE_TASK(PartitioningDistribute);
-    for (auto id : ids) {
-        if (!dPoint<D, Precision>::isFinite(id))
-            continue; // skip infinite points, they will be added later
-
-        ASSERT(points.contains(id));
-        const auto &p = points[id];
-
-        uint part = (p.coords[k] > stats.mid[k]);
-
-        ASSERT(partitioning[part].bounds.contains(p.coords));
-
-        // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(id);
-    }
-    VTUNE_END_TASK(PartitioningDistribute);
 
     // add infinite points
     for (uint i = 0; i < partitioning.size(); ++i) {
