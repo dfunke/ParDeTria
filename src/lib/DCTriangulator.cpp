@@ -130,8 +130,8 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
         if (!dSimplex<D, Precision>::isFinite(id))
             return;
 
-        auto edgePointsHandle = tsEdgePointsHandle.local();
-        auto simplicesHandle = tsSimplicesHandle.local();
+        auto &edgePointsHandle = tsEdgePointsHandle.local();
+        auto &simplicesHandle = tsSimplicesHandle.local();
 
         const auto &simplex = simplicesHandle[id];
         const auto cs = simplex.circumsphere(this->points);
@@ -187,8 +187,8 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
 
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
 
-        auto wuFacesHandle = tsWuFacesHandle.local();
-        auto simplicesHandle = tsSimplicesHandle.local();
+        auto &wuFacesHandle = tsWuFacesHandle.local();
+        auto &simplicesHandle = tsSimplicesHandle.local();
 
         for (const auto &edgeSimplexID : range) {
             const auto &edgeSimplex = simplicesHandle[edgeSimplexID];
@@ -254,7 +254,7 @@ void DCTriangulator<D, Precision>::updateNeighbors(
             return;
         }
 
-        auto simplicesHandle = tsSimplicesHandle.local();
+        auto &simplicesHandle = tsSimplicesHandle.local();
 
         dSimplex<D, Precision> &simplex = simplicesHandle[id];
 
@@ -347,7 +347,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     //TODO parallize
     tbb::parallel_for (edgeSimplices.range(), [&] (const auto & r){
-        auto mergedHandle = tsMergedDTHandle.local();
+        auto &mergedHandle = tsMergedDTHandle.local();
 
         for(const auto id : r)
             mergedHandle[id].id = dSimplex<D, Precision>::cINF;
@@ -386,8 +386,8 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     tbb::parallel_for(edgeDT.range(), [&](auto &r) {
 
-        auto mergedDTHandle = tsMergedDTHandle.local();
-        auto wuFacesHandle = tsWuFacesHandle.local();
+        auto &mergedDTHandle = tsMergedDTHandle.local();
+        auto &wuFacesHandle = tsWuFacesHandle.local();
 
         // we need an explicit iterator loop here for the it < r.end() comparision
         // range-based for loop uses it != r.end() which doesn't work

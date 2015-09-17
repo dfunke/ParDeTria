@@ -655,8 +655,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
     // check whether all simplices of real DT are present
     tbb::parallel_for(realSimplices.range(), [&](const auto &r) {
 
-        auto thisHandle = tsThisHandle.local();
-        auto realHandle = tsRealHandle.local();
+        auto &thisHandle = tsThisHandle.local();
+        auto &realHandle = tsRealHandle.local();
 
         for(const auto & realSimplex : r) {
             // find corresponding mySimplex for realSimplex
@@ -706,7 +706,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
     // check for own simplices that are not in real DT
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        auto realHandle = tsRealHandle.local();
+        auto &realHandle = tsRealHandle.local();
 
         for (const auto &mySimplex : r) {
 
@@ -809,7 +809,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
     tbb::parallel_for(convexHull.range(), [&](const auto & r) {
 
-        auto thisHandle = tsThisHandle.local();
+        auto &thisHandle = tsThisHandle.local();
 
         for (const auto & i : r) {
 
@@ -842,7 +842,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     LOG("Checking neighbors" << std::endl);
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        auto thisHandle = tsThisHandle.local();
+        auto &thisHandle = tsThisHandle.local();
 
         for (const auto &a : r) {
 
@@ -887,7 +887,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     LOG("Checking empty circle criterion" << std::endl);
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        auto thisHandle = tsThisHandle.local();
+        auto &thisHandle = tsThisHandle.local();
 
         for (const auto &s : r) {
 

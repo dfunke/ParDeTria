@@ -88,6 +88,9 @@ public:
         getTable();
     }
 
+    ConstGrowingHashTableHandle(const ConstGrowingHashTableHandle &other) = delete;
+    ConstGrowingHashTableHandle(ConstGrowingHashTableHandle &&other) = default;
+
     template<typename... Args>
     bool contains(Args... args) const {
         uint t_epoch = parent.g_epoch_r.load();
@@ -206,6 +209,9 @@ public:
     GrowingHashTableHandle(GrowingHashTable<HT> &parent_) : parent(parent_) {
         getTable();
     }
+
+    GrowingHashTableHandle(const GrowingHashTableHandle &other) = delete;
+    GrowingHashTableHandle(GrowingHashTableHandle &&other) = default;
 
     template<typename... Args>
     InsertReturn insert(Args... args) {
