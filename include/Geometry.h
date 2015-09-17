@@ -36,9 +36,9 @@ typedef uint tIdType;
 typedef Bit_Set Simplex_Ids;
 typedef Concurrent_Bit_Set Concurrent_Simplex_Ids;
 
-typedef LP_Set Point_Ids;
-typedef GrowingHashTable<Concurrent_LP_Set> Concurrent_Point_Ids;
-typedef GrowingHashTableHandle<Concurrent_LP_Set> hConcurrent_Point_Ids;
+typedef LP_Set<tIdType> Point_Ids;
+typedef GrowingHashTable<Concurrent_LP_Set<tIdType>> Concurrent_Point_Ids;
+typedef GrowingHashTableHandle<Concurrent_LP_Set<tIdType>> hConcurrent_Point_Ids;
 
 /*class Ids : private tbb::concurrent_unordered_set<tIdType> {
 

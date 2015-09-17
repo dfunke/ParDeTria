@@ -1,15 +1,19 @@
 #include "datastructures/LP_Set.hxx"
 #include "datastructures/Bit_Set.hxx"
 
+#include "Geometry.h"
+
 //conversion constructors
 
-LP_Set::LP_Set(Concurrent_LP_Set &&other)
+template <typename K>
+LP_Set<K>::LP_Set(Concurrent_LP_Set<K> &&other)
         : m_arraySize(other.m_arraySize),
           m_items(other.m_items),
           m_array(reinterpret_cast<uint *>(other.m_array.release())),
           m_hasher(std::move(other.m_hasher)) { }
 
-Concurrent_LP_Set::Concurrent_LP_Set(LP_Set &&other)
+template <typename K>
+Concurrent_LP_Set<K>::Concurrent_LP_Set(LP_Set<K> &&other)
         : m_arraySize(other.m_arraySize),
           m_items(other.m_items),
           m_array(reinterpret_cast<std::atomic<uint> *>(other.m_array.release())),
@@ -30,3 +34,7 @@ Concurrent_Bit_Set::Concurrent_Bit_Set(Bit_Set &&other)
           m_upperBound(other.m_upperBound),
           m_array(reinterpret_cast<std::atomic<uint> *>(other.m_array.release())),
           m_ones(other.m_ones) { }
+
+//specializations
+template class LP_Set<tIdType>;
+template class Concurrent_LP_Set<tIdType>;

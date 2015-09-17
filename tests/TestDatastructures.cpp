@@ -14,7 +14,7 @@
 
 TEST(Concurrent_LP_Set, InsertContains) {
 
-    Concurrent_LP_Set set(120);
+    Concurrent_LP_Set<uint> set(120);
     EXPECT_EQ(set.capacity(), 128);
 
     std::unordered_set<uint> cmp;
@@ -44,10 +44,10 @@ TEST(Concurrent_LP_Set, InsertContains) {
 
 TEST(Concurrent_LP_Set, Merge) {
 
-    Concurrent_LP_Set a(120);
+    Concurrent_LP_Set<uint> a(120);
     EXPECT_EQ(a.capacity(), 128);
 
-    Concurrent_LP_Set b(120);
+    Concurrent_LP_Set<uint> b(120);
     EXPECT_EQ(b.capacity(), 128);
 
     std::unordered_set<uint> cmp;
@@ -80,8 +80,8 @@ TEST(Concurrent_LP_Set, Merge) {
 
 TEST(Concurrent_LP_Set, ConcurrentGrow) {
 
-    GrowingHashTable<Concurrent_LP_Set> set(120);
-    GrowingHashTableHandle<Concurrent_LP_Set> handle(set);
+    GrowingHashTable<Concurrent_LP_Set<uint>> set(120);
+    GrowingHashTableHandle<Concurrent_LP_Set<uint>> handle(set);
     EXPECT_EQ(handle.capacity(), 128);
 
     tbb::concurrent_unordered_set<uint> cmp;
@@ -90,7 +90,7 @@ TEST(Concurrent_LP_Set, ConcurrentGrow) {
     //auto dice = std::bind(distribution, startGen);
 
     tbb::parallel_for(tbb::blocked_range<uint>(1, 1e6), [&](const auto &r) {
-        GrowingHashTableHandle<Concurrent_LP_Set> handle(set);
+        GrowingHashTableHandle<Concurrent_LP_Set<uint>> handle(set);
         for (auto i = r.begin(); i != r.end(); ++i) {
             handle.insert(i);
             cmp.insert(i);
@@ -106,7 +106,7 @@ TEST(Concurrent_LP_Set, ConcurrentGrow) {
 
 TEST(LP_Set, InsertContains) {
 
-    LP_Set set(120);
+    LP_Set<uint> set(120);
     EXPECT_EQ(set.capacity(), 128);
 
     std::unordered_set<uint> cmp;
@@ -137,10 +137,10 @@ TEST(LP_Set, InsertContains) {
 TEST(LP_Set, Merge) {
 
 
-    LP_Set a(120);
+    LP_Set<uint> a(120);
     EXPECT_EQ(a.capacity(), 128);
 
-    LP_Set b(120);
+    LP_Set<uint> b(120);
     EXPECT_EQ(b.capacity(), 128);
 
     std::unordered_set<uint> cmp;

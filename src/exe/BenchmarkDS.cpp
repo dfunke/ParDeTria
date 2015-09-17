@@ -77,7 +77,7 @@ int main() {
         tDuration tOwn(0);
         for(uint r = 0; r < R; ++r){
             tTBB += timeOps<tbb::concurrent_unordered_set<uint>>(vals);
-            tOwn += timeOps<Concurrent_LP_Set>(vals);
+            tOwn += timeOps<Concurrent_LP_Set<uint>>(vals);
             std::cout << "." << std::flush;
         }
         tTBB /= R; tOwn /= R;
