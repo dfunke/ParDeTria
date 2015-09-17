@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
 
     int verbosity = -1;
 
-    unsigned char p;
+    unsigned char p = 'c';
     uint N;
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
@@ -158,14 +158,8 @@ int main(int argc, char *argv[]) {
 
     // plausability checks
     bool valid = true;
-    if ((!vm.count("recDepth"))) {
-        std::cout << "Please specify the maximum depth of recursion" << std::endl;
-        valid = false;
-    }
-
-    if (!vm.count("splitter")) {
-        std::cout << "Please specify splitter" << std::endl;
-        valid = false;
+    if (!vm.count("recDepth")) {
+        recursionDepth = log2(threads);
     }
 
     if (!(vm.count("n") || vm.count("points"))) {
