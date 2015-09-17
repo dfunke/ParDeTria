@@ -4,9 +4,11 @@ template<uint D, typename Precision>
 Partitioning<D, Precision> dWayPartitioner<D, Precision>::partition(
         const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
-    // do mid-point based partitioning for now
 
-    auto stats = getPointStats(ids.begin(), ids.end(), points);
+    VTUNE_TASK(PartitioningGetStats);
+    // do mid-point based partitioning for now
+    auto stats = getPointStats(ids, points);
+    VTUNE_END_TASK(PartitioningGetStats);
 
     PLOG("Midpoint is " << stats.mid << std::endl);
 
@@ -25,6 +27,7 @@ Partitioning<D, Precision> dWayPartitioner<D, Precision>::partition(
         }
     }
 
+    VTUNE_TASK(PartitioningDistribute);
     for (auto id : ids) {
 
         if (!dPoint<D, Precision>::isFinite(id))
@@ -43,6 +46,7 @@ Partitioning<D, Precision> dWayPartitioner<D, Precision>::partition(
         // LOG("Adding " << p << " to " << part << std::endl);
         partitioning[part].points.insert(id);
     }
+    VTUNE_END_TASK(PartitioningDistribute);
 
     // add infinite points
     for (uint i = 0; i < partitioning.size(); ++i) {
@@ -58,9 +62,11 @@ template<uint D, typename Precision>
 Partitioning<D, Precision> OneDimPartitioner<D, Precision>::partition(
         const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
-    // do mid-point based partitioning for now
 
-    auto stats = getPointStats(ids.begin(), ids.end(), points);
+    VTUNE_TASK(PartitioningGetStats);
+    // do mid-point based partitioning for now
+    auto stats = getPointStats(ids, points);
+    VTUNE_END_TASK(PartitioningGetStats);
 
     PLOG("Midpoint is " << stats.mid << std::endl);
 
@@ -81,6 +87,7 @@ Partitioning<D, Precision> OneDimPartitioner<D, Precision>::partition(
         partitioning[1].bounds.high[d] = stats.max[d];
     }
 
+    VTUNE_TASK(PartitioningDistribute);
     for (auto id : ids) {
 
         if (!dPoint<D, Precision>::isFinite(id))
@@ -96,6 +103,7 @@ Partitioning<D, Precision> OneDimPartitioner<D, Precision>::partition(
         // LOG("Adding " << p << " to " << part << std::endl);
         partitioning[part].points.insert(id);
     }
+    VTUNE_END_TASK(PartitioningDistribute);
 
     // add infinite points
     for (uint i = 0; i < partitioning.size(); ++i) {
@@ -112,8 +120,11 @@ Partitioning<D, Precision>
 CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
                                           const dPoints<D, Precision> &points,
                                           const std::string &provenance) const {
+
+    VTUNE_TASK(PartitioningGetStats);
     // do mid-point based partitioning for now
-    auto stats = getPointStats(ids.begin(), ids.end(), points);
+    auto stats = getPointStats(ids, points);
+    VTUNE_END_TASK(PartitioningGetStats);
 
     // cycle is lenght of provenance - 1 modulo D
     uint k = (provenance.size() - 1) % D;
@@ -138,6 +149,7 @@ CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
         partitioning[1].bounds.high[d] = stats.max[d];
     }
 
+    VTUNE_TASK(PartitioningDistribute);
     for (auto id : ids) {
         if (!dPoint<D, Precision>::isFinite(id))
             continue; // skip infinite points, they will be added later
@@ -152,6 +164,7 @@ CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
         // LOG("Adding " << p << " to " << part << std::endl);
         partitioning[part].points.insert(id);
     }
+    VTUNE_END_TASK(PartitioningDistribute);
 
     // add infinite points
     for (uint i = 0; i < partitioning.size(); ++i) {

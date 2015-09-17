@@ -6,6 +6,10 @@
 
 #include <type_traits>
 
+#include <tbb/enumerable_thread_specific.h>
+#include <tbb/parallel_for.h>
+
+
 #include "utils/ASSERT.h"
 
 template<uint D, typename Precision>
@@ -103,10 +107,10 @@ namespace __detail {
 }
 
 template<uint D, typename Precision, typename InputIt>
-dPointStats<D, Precision> getPointStats(const InputIt &first,
-                                        const InputIt &last,
-                                        const dPoints<D, Precision> &points,
-                                        const bool ignoreInfinite = true) {
+dPointStats<D, Precision> getPointStatsSeq(const InputIt &first,
+                                           const InputIt &last,
+                                           const dPoints<D, Precision> &points,
+                                           const bool ignoreInfinite = true) {
 
     dPointStats<D, Precision> stats;
 
@@ -125,6 +129,54 @@ dPointStats<D, Precision> getPointStats(const InputIt &first,
             }
         }
 
+        stats.mid[dim] = (stats.max[dim] + stats.min[dim]) / 2;
+    }
+
+    return stats;
+}
+
+template<uint D, typename Precision, typename Container>
+dPointStats<D, Precision> getPointStats(const Container &ids,
+                                        const dPoints<D, Precision> &points,
+                                        const bool ignoreInfinite = true) {
+
+    tbb::enumerable_thread_specific<dPointStats<D, Precision>,
+            tbb::cache_aligned_allocator<dPointStats<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsPointStats;
+
+    tbb::parallel_for(ids.range(), [&tsPointStats, &points, ignoreInfinite](const auto &r) {
+
+        auto &stats = tsPointStats.local();
+
+        for (auto it = r.begin(); it != r.end(); ++it) {
+
+            const tIdType id = __detail::_id(it);
+
+            if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {
+
+                ASSERT(points.contains(id));
+                const auto &coords = points[id].coords;
+
+                for (uint dim = 0; dim < D; ++dim) {
+                    stats.min[dim] = std::min(stats.min[dim], coords[dim]);
+                    stats.max[dim] = std::max(stats.max[dim], coords[dim]);
+                }
+            }
+        }
+    });
+
+    auto stats = tsPointStats.combine([](const dPointStats<D, Precision> &a, const dPointStats<D, Precision> &b) {
+        dPointStats<D, Precision> s;
+
+        for (uint dim = 0; dim < D; ++dim) {
+            s.min[dim] = std::min(a.min[dim], b.min[dim]);
+            s.max[dim] = std::max(a.max[dim], b.max[dim]);
+        }
+
+        return s;
+    });
+
+    for (uint dim = 0; dim < D; ++dim) {
         stats.mid[dim] = (stats.max[dim] + stats.min[dim]) / 2;
     }
 

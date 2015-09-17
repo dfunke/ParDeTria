@@ -65,7 +65,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
 
     if (addInfiniteVertices) {
         // add infinite points to data set
-        auto stats = getPointStats(std::size_t(0), this->points.size(), this->points);
+        auto stats = getPointStats(this->points, this->points);
         for (uint i = 0; i < pow(2, D); ++i) {
             VLOG("Point stats: " << stats.min << " - " << stats.mid << " - "
                  << stats.max << std::endl);

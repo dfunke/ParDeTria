@@ -5,6 +5,9 @@
 #include <gtest/gtest.h>
 #include <bitset>
 
+#include "utils/Generator.h"
+#include "Partitioner.h"
+
 TEST(Geometry3D, HashingTest) {
 
     dSimplex<3, double> s;
@@ -134,4 +137,25 @@ TEST(Geometry3D, SimpleInSphere) {
     // triangle ACB is clockwise
     // D_u is above -> orientation > 0
     test({{A, C, B, Du}});
+}
+
+TEST(Geometry3D, PointStats) {
+
+    dBox<3, double> bounds(
+            dVector<3, double>( {{ 0, 0, 0 }}),
+            dVector<3, double>({{ 100,100,100}})
+    );
+
+    tGenerator gen(START_SEED);
+    auto dice = RandomFactory<double>::make('u', gen);
+    auto points = genPoints(1e5, bounds, dice);
+
+    dPointStats<3, double> seq = getPointStatsSeq(std::size_t(0), points.size(), points);
+    dPointStats<3, double> par = getPointStats(points, points);
+
+    for(uint d = 0; d < 3; ++d){
+        EXPECT_EQ(seq.min[d], par.min[d]);
+        EXPECT_EQ(seq.mid[d], par.mid[d]);
+        EXPECT_EQ(seq.max[d], par.max[d]);
+    }
 }

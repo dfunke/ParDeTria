@@ -160,7 +160,7 @@ int main() {
     for (uint i = 1; i <= N; ++i)
         allPoints.emplace_back(i);
 
-    auto stats = getPointStats(allPoints.begin(), allPoints.end(), spatialSort);
+    auto stats = getPointStatsSeq(allPoints.begin(), allPoints.end(), spatialSort);
     const uint k = 0;
 
     std::vector<std::vector<tIdType>> spatialPart;
