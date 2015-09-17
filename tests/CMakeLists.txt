@@ -7,5 +7,5 @@ add_executable(runTests
 )
 
 target_link_libraries(runTests
-  Geometry Logging Measurements
-  ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES})
+  Geometry Logging Measurements SpatialSort
+  ${GTEST_LIBRARIES} ${GTEST_MAIN_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
