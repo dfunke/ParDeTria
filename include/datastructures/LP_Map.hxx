@@ -2,8 +2,14 @@
 
 #include "LP_Set.hxx"
 
+//forward declare concurrent version
+template<typename K, typename V>
+class Concurrent_LP_Map;
+
 template<typename K, typename V>
 class LP_Map {
+
+    friend class Concurrent_LP_Map<K, V>;
 
 public:
 
@@ -24,6 +30,9 @@ public:
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
               m_hasher(std::move(other.m_hasher)) { }
+
+    //Conversion
+    LP_Map(Concurrent_LP_Map<K, V> &&other);
 
     LP_Map<K, V> &operator=(LP_Map<K, V> &&other) {
         m_arraySize = other.m_arraySize;
@@ -237,12 +246,23 @@ private:
 template<typename K, typename V>
 class Concurrent_LP_Map {
 
+    friend class LP_Map<K, V>;
+
+    friend class GrowingHashTable<Concurrent_LP_Map<K, V>>;
+
+    friend class GrowingHashTableHandle<Concurrent_LP_Map<K, V>>;
+
+    friend class ConstGrowingHashTableHandle<Concurrent_LP_Map<K, V>>;
+
 public:
 
-    Concurrent_LP_Map(std::size_t size, Hasher<K> hasher = Hasher<K>())
+    Concurrent_LP_Map(std::size_t size, const uint version = 0,
+                      Hasher<K> hasher = Hasher<K>())
             : m_items(0),
               m_keys(nullptr),
-              m_hasher(hasher) {
+              m_version(version),
+              m_hasher(hasher),
+              m_currentCopyBlock(0) {
         // Initialize cells
         m_arraySize = nextPow2(size);
         m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
@@ -254,24 +274,31 @@ public:
               m_items(other.m_items.load()),
               m_keys(std::move(other.m_keys)),
               m_values(std::move(other.m_values)),
-              m_hasher(std::move(other.m_hasher)) { }
+              m_version(other.m_version),
+              m_hasher(std::move(other.m_hasher)),
+              m_currentCopyBlock(0) { }
+
+    //conversion
+    Concurrent_LP_Map(LP_Map<K, V> &&other);
 
     Concurrent_LP_Map<K, V> &operator=(Concurrent_LP_Map<K, V> &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load());
         m_keys = std::move(other.m_keys);
         m_values = std::move(other.m_values);
+        m_version = other.m_version;
         m_hasher = std::move(other.m_hasher);
+        m_currentCopyBlock.store(other.m_currentCopyBlock.load());
 
         return *this;
     }
 
 
-    bool insert(const K &key, const V &value) {
+    InsertReturn insert(const K &key, const V &value) {
         ASSERT(key != 0);
 
-        if (m_items.load() / m_arraySize > 0.75)
-            throw std::length_error("Overfull Concurrent Map");
+        if (m_items.load() > m_arraySize >> 1)
+            return InsertReturn::State::Full;
 
         for (K idx = m_hasher(key); ; idx++) {
             idx &= m_arraySize - 1;
@@ -305,7 +332,7 @@ public:
         }
     }
 
-    bool insert(const std::pair<K, V> &pair) {
+    InsertReturn insert(const std::pair<K, V> &pair) {
         return insert(pair.first, pair.second);
     }
 
@@ -424,10 +451,57 @@ public:
     }
 
 private:
+
+    void _insert(const K &key, const V &value) {
+        ASSERT(key != 0);
+
+        for (K idx = m_hasher(key); ; idx++) {
+            idx &= m_arraySize - 1;
+            ASSERT(idx < m_arraySize);
+
+            // Load the key that was there.
+            K probedKey = m_keys[idx].load();
+
+            if (probedKey == key) {
+                m_values[idx].store(value, std::memory_order_relaxed); // update value
+            }
+            else {
+                // The entry was either free, or contains another key.
+                if (probedKey != 0)
+                    continue; // Usually, it contains another key. Keep probing.
+                // The entry was free. Now let's try to take it using a CAS.
+                K prevKey = 0;
+                bool cas = m_keys[idx].compare_exchange_strong(prevKey, key);
+                if (cas) {
+                    m_values[idx].store(value, std::memory_order_relaxed); // insert value
+                    ++m_items;
+                }
+                else if (prevKey == key) {
+                    m_values[idx].store(value, std::memory_order_relaxed); // update value
+                } else
+                    continue; // another thread inserted a different key in this position
+            }
+        }
+    }
+
+    void _insert(const std::pair<K, V> &pair) {
+        insert(pair.first, pair.second);
+    }
+
+    void _migrate(const std::size_t idx, Concurrent_LP_Map<K, V> &target) {
+        auto pair = at(idx);
+        if (pair.first != 0)
+            target._insert(pair);
+    }
+
+private:
     std::size_t m_arraySize;
     std::atomic<std::size_t> m_items;
     std::unique_ptr<std::atomic<K>[]> m_keys;
     std::unique_ptr<std::atomic<V>[]> m_values;
+    uint m_version;
     Hasher<K> m_hasher;
+
+    std::atomic<std::size_t> m_currentCopyBlock;
 
 };

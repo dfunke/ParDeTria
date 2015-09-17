@@ -72,7 +72,7 @@ namespace _detail {
                   m_idx(idx) {
 
             if (findNext)
-                _advance(true);
+               _advance(true);
 
         }
 
@@ -162,8 +162,8 @@ namespace _detail {
             }
         }
 
-        void _dec(const bool testFirst) {
-            if (testFirst) {
+        void _dec(const bool testFirst){
+            if(testFirst){
                 while ((m_idx >= 0 && m_container.empty(m_idx)))
                     --m_idx;
             } else {
@@ -457,7 +457,8 @@ private:
     friend class boost::serialization::access;
 
     template<class Archive>
-    void save(Archive &ar, __attribute__((unused)) const unsigned int version) const {
+    void save(Archive & ar, __attribute__((unused)) const unsigned int version) const
+    {
         // invoke serialization of the base class
         ar << m_arraySize;
         ar << m_items;
@@ -466,7 +467,8 @@ private:
     }
 
     template<class Archive>
-    void load(Archive &ar, __attribute__((unused)) const unsigned int version) {
+    void load(Archive & ar, __attribute__((unused)) const unsigned int version)
+    {
         // invoke serialization of the base class
         ar >> m_arraySize;
         ar >> m_items;
@@ -484,13 +486,13 @@ private:
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 public:
-    template<class Set>
-    bool operator==(const Set &set) const {
-        if (size() != set.size())
+    template <class Set>
+    bool operator==(const Set & set) const {
+        if(size() != set.size())
             return false;
 
-        for (const auto &i : set) {
-            if (!contains(i))
+        for(const auto & i : set){
+            if(!contains(i))
                 return false;
         }
 
@@ -550,7 +552,7 @@ public:
     //conversion
     Concurrent_LP_Set(LP_Set<K> &&other);
 
-    Concurrent_LP_Set &operator=(Concurrent_LP_Set &&other) {
+    Concurrent_LP_Set &operator=(Concurrent_LP_Set<K> &&other) {
         m_arraySize = other.m_arraySize;
         m_items.store(other.m_items.load());
         m_array = std::move(other.m_array);

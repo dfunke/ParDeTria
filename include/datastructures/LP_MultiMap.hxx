@@ -80,8 +80,13 @@ namespace _detail {
     };
 }
 
-template <typename K, typename V>
+template<typename K, typename V>
+class Concurrent_LP_MultiMap;
+
+template<typename K, typename V>
 class LP_MultiMap {
+
+    friend class Concurrent_LP_MultiMap<K, V>;
 
 public:
     typedef _detail::iterator<const LP_MultiMap<K, V>, std::pair<const K, V>> const_iterator;
@@ -115,6 +120,9 @@ public:
 
         return *this;
     }
+
+    //conversion
+    LP_MultiMap(Concurrent_LP_MultiMap<K, V> &&other);
 
     bool insert(const K &key, const V &value) {
 
@@ -334,12 +342,15 @@ private:
 
 };
 
-template <typename K, typename V>
+template<typename K, typename V>
 class Concurrent_LP_MultiMap {
+
+    friend class LP_MultiMap<K, V>;
 
     friend class GrowingHashTable<Concurrent_LP_MultiMap<K, V>>;
 
     friend class GrowingHashTableHandle<Concurrent_LP_MultiMap<K, V>>;
+
     friend class ConstGrowingHashTableHandle<Concurrent_LP_MultiMap<K, V>>;
 
 public:
@@ -350,12 +361,12 @@ public:
 public:
 
     Concurrent_LP_MultiMap(std::size_t size, const uint version = 0,
-            Hasher<K> hasher = Hasher<K>())
+                           Hasher<K> hasher = Hasher<K>())
             : m_items(0),
               m_keys(nullptr),
               m_version(version),
               m_hasher(hasher),
-              m_currentCopyBlock(0){
+              m_currentCopyBlock(0) {
         // Initialize cells
         m_arraySize = nextPow2(size);
 
@@ -376,7 +387,7 @@ public:
               m_values(std::move(other.m_values)),
               m_version(other.m_version),
               m_hasher(std::move(other.m_hasher)),
-              m_currentCopyBlock(0){ }
+              m_currentCopyBlock(0) { }
 
     Concurrent_LP_MultiMap &operator=(Concurrent_LP_MultiMap<K, V> &&other) {
         m_arraySize = other.m_arraySize;
@@ -390,12 +401,15 @@ public:
         return *this;
     }
 
+    //conversion
+    Concurrent_LP_MultiMap(LP_MultiMap<K, V> &&other);
+
 
     InsertReturn insert(const K &key, const V &value) {
         ASSERT(key != 0);
 
 
-        if(m_items.load() > m_arraySize >> 1)
+        if (m_items.load() > m_arraySize >> 1)
             return InsertReturn::State::Full;
 
         std::size_t cols = 0; //count number of steps
@@ -520,9 +534,9 @@ public:
     }
 
     template<class Source>
-    void unsafe_copy(const Source & other){
+    void unsafe_copy(const Source &other) {
         ASSERT(m_arraySize == other.size());
-        for(std::size_t i = 0; i < m_arraySize; ++i) {
+        for (std::size_t i = 0; i < m_arraySize; ++i) {
             auto pair = other.at(i);
             m_keys[i] = pair.first;
             m_values[i] = pair.second;
@@ -538,7 +552,7 @@ public:
         std::size_t combinedItems = size() + other.size();
         std::size_t newSize = nextPow2(combinedItems);
 
-        while(combinedItems > newSize >> 1)
+        while (combinedItems > newSize >> 1)
             newSize <<= 1;
 
         m_arraySize = newSize;
