@@ -288,7 +288,6 @@ namespace _detail {
         const T &at(const IDX idx) const {
 #ifndef NDEBUG
             if (!(m_min <= idx && idx < m_max)) {
-                RAISE(false);
                 throw std::out_of_range(
                         "index: " + std::to_string(idx) + " size: " + std::to_string(m_min) + " to " +
                         std::to_string(m_max));
@@ -300,7 +299,6 @@ namespace _detail {
         T &at(const IDX idx) {
 #ifndef NDEBUG
             if (!(m_min <= idx && idx < m_max)) {
-                RAISE(false);
                 throw std::out_of_range(
                         "index: " + std::to_string(idx) + " size: " + std::to_string(m_min) + " to " +
                         std::to_string(m_max));
@@ -433,7 +431,7 @@ public:
     typedef _detail::block_iterator<const BlockedArray2, T> const_iterator;
     friend const_iterator;
 
-    typedef _detail::range_type<BlockedArray2, const_iterator> range_type;
+    typedef _detail::range_type<const BlockedArray2, const_iterator> const_range_type;
 
     const_iterator begin() const {
         return const_iterator(*this, 0, lowerBound());
@@ -451,8 +449,8 @@ public:
         return iterator(*this, m_blocks.size() - 1, upperBound());
     }
 
-    range_type range() const {
-        return range_type(*this);
+    const_range_type range() const {
+        return const_range_type(*this);
     }
 
 protected:
@@ -481,7 +479,6 @@ protected:
         }
 
         if (start == end && doThrow) {
-            RAISE(false);
             throw std::out_of_range(
                     "index: " + std::to_string(idx) + " no block found");
         }
