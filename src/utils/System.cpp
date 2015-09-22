@@ -4,6 +4,9 @@
 
 #include <unistd.h>
 #include "System.h"
+#include "Random.h"
+
+tGenerator startGen(START_SEED);
 
 
 std::string getHostname() {

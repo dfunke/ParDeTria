@@ -28,25 +28,29 @@ target_link_libraries(Benchmark
   ${EJDB_LIBRARIES}
 )
 
-
-add_executable(EdgeStudy
-  EdgeStudy.cpp
+add_executable (Studies
+  Studies.cpp
 )
 
-target_link_libraries(EdgeStudy
+target_link_libraries(Studies
   Logging
+  Measurements
   Geometry
   DCTriangulator
+  DBConn
+  ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${EJDB_LIBRARIES}
 )
 
-add_executable(WhereUsedStudy
-  WhereUsedStudy.cpp
+add_executable (BenchmarkDS
+  BenchmarkDS.cpp
 )
 
-target_link_libraries(WhereUsedStudy
+target_link_libraries(BenchmarkDS
   Logging
-  Geometry
-  DCTriangulator
+  Measurements
+  ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
 file(INSTALL runExperiments.sh DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} USE_SOURCE_PERMISSIONS)

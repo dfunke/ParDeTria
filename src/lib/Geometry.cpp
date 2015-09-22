@@ -6,12 +6,18 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/spin_mutex.h>
+#include <tbb/enumerable_thread_specific.h>
+
+#include "Triangulator.h"
 
 // static variables
 template<uint D, typename Precision> constexpr uint dPoint<D, Precision>::cINF;
 
 template<uint D, typename Precision>
 constexpr uint dSimplex<D, Precision>::cINF;
+
+template<uint D, typename Precision>
+std::atomic<tIdType> dSimplices<D, Precision>::simplexID(1);
 //
 
 /* routines for orientation and inSphere/inCircle test based on
@@ -34,25 +40,10 @@ constexpr uint dSimplex<D, Precision>::cINF;
 /*  jrs@cs.cmu.edu                                                           */
 /*****************************************************************************/
 
-template<uint D, typename Precision>
-class GeometryHelper {
-public:
-    static Precision orientation(const dSimplex<D, Precision> &simplex,
-                                 const dPoints<D, Precision> &points);
-
-    static bool inSphere(const dSimplex<D, Precision> &simplex,
-                         const dPoint<D, Precision> &p,
-                         const dPoints<D, Precision> &points);
-
-    static dSphere<D, Precision>
-            circumsphere(const dSimplex<D, Precision> &simplex,
-                         const dPoints<D, Precision> &points);
-};
-
 // specializations
 
 template<typename Precision>
-class GeometryHelper<2, Precision> {
+class GeometryCore<2, Precision> {
 public:
     /*
        * return > 0: abc are counter-clockwise
@@ -66,35 +57,33 @@ public:
        * area of the triangle defined by the three points.
     */
 
-    static Precision orientation(const dSimplex<2, Precision> &simplex,
-                                 const dPoints<2, Precision> &points) {
+    static Precision orientation(const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1, const dPoint<2, Precision> &s2) {
         Precision acx, bcx, acy, bcy;
 
-        acx = points[simplex.vertices[0]].coords[0] -
-              points[simplex.vertices[2]].coords[0];
-        bcx = points[simplex.vertices[1]].coords[0] -
-              points[simplex.vertices[2]].coords[0];
-        acy = points[simplex.vertices[0]].coords[1] -
-              points[simplex.vertices[2]].coords[1];
-        bcy = points[simplex.vertices[1]].coords[1] -
-              points[simplex.vertices[2]].coords[1];
+        acx = s0.coords[0] -
+              s2.coords[0];
+        bcx = s1.coords[0] -
+              s2.coords[0];
+        acy = s0.coords[1] -
+              s2.coords[1];
+        bcy = s1.coords[1] -
+              s2.coords[1];
         return acx * bcy - acy * bcx;
     }
 
-    static bool inSphere(const dSimplex<2, Precision> &simplex,
-                         const dPoint<2, Precision> &p,
-                         const dPoints<2, Precision> &points) {
+    static bool inSphere(const dPoint<2, Precision> &p,
+                         const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1, const dPoint<2, Precision> &s2) {
         Precision adx, ady, bdx, bdy, cdx, cdy;
         Precision abdet, bcdet, cadet;
         Precision alift, blift, clift;
         Precision det;
 
-        adx = points[simplex.vertices[0]].coords[0] - p.coords[0];
-        ady = points[simplex.vertices[0]].coords[1] - p.coords[1];
-        bdx = points[simplex.vertices[1]].coords[0] - p.coords[0];
-        bdy = points[simplex.vertices[1]].coords[1] - p.coords[1];
-        cdx = points[simplex.vertices[2]].coords[0] - p.coords[0];
-        cdy = points[simplex.vertices[2]].coords[1] - p.coords[1];
+        adx = s0.coords[0] - p.coords[0];
+        ady = s0.coords[1] - p.coords[1];
+        bdx = s1.coords[0] - p.coords[0];
+        bdy = s1.coords[1] - p.coords[1];
+        cdx = s2.coords[0] - p.coords[0];
+        cdy = s2.coords[1] - p.coords[1];
 
         abdet = adx * bdy - bdx * ady;
         bcdet = bdx * cdy - cdx * bdy;
@@ -120,63 +109,62 @@ public:
 
         det = alift * bcdet + blift * cadet + clift * abdet;
 
-        return orientation(simplex, points) * det >= 0;
+        return orientation(s0, s1, s2) * det >= 0;
     }
 
     static dSphere<2, Precision>
-    circumsphere(const dSimplex<2, Precision> &simplex,
-                 const dPoints<2, Precision> &points) {
+    circumsphere(const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1, const dPoint<2, Precision> &s2) {
 
         dSphere<2, Precision> sphere;
 
-        Precision den = 2 * (points[simplex.vertices[0]].coords[0] *
-                             (points[simplex.vertices[1]].coords[1] -
-                              points[simplex.vertices[2]].coords[1]) +
-                             points[simplex.vertices[1]].coords[0] *
-                             (points[simplex.vertices[2]].coords[1] -
-                              points[simplex.vertices[0]].coords[1]) +
-                             points[simplex.vertices[2]].coords[0] *
-                             (points[simplex.vertices[0]].coords[1] -
-                              points[simplex.vertices[1]].coords[1]));
+        Precision den = 2 * (s0.coords[0] *
+                             (s1.coords[1] -
+                              s2.coords[1]) +
+                             s1.coords[0] *
+                             (s2.coords[1] -
+                              s0.coords[1]) +
+                             s2.coords[0] *
+                             (s0.coords[1] -
+                              s1.coords[1]));
 
-        sphere.center[0] = ((pow(points[simplex.vertices[0]].coords[0], 2) +
-                             pow(points[simplex.vertices[0]].coords[1], 2)) *
-                            (points[simplex.vertices[1]].coords[1] -
-                             points[simplex.vertices[2]].coords[1]) +
-                            (pow(points[simplex.vertices[1]].coords[0], 2) +
-                             pow(points[simplex.vertices[1]].coords[1], 2)) *
-                            (points[simplex.vertices[2]].coords[1] -
-                             points[simplex.vertices[0]].coords[1]) +
-                            (pow(points[simplex.vertices[2]].coords[0], 2) +
-                             pow(points[simplex.vertices[2]].coords[1], 2)) *
-                            (points[simplex.vertices[0]].coords[1] -
-                             points[simplex.vertices[1]].coords[1])) /
+        sphere.center[0] = ((pow(s0.coords[0], 2) +
+                             pow(s0.coords[1], 2)) *
+                            (s1.coords[1] -
+                             s2.coords[1]) +
+                            (pow(s1.coords[0], 2) +
+                             pow(s1.coords[1], 2)) *
+                            (s2.coords[1] -
+                             s0.coords[1]) +
+                            (pow(s2.coords[0], 2) +
+                             pow(s2.coords[1], 2)) *
+                            (s0.coords[1] -
+                             s1.coords[1])) /
                            den;
 
-        sphere.center[1] = ((pow(points[simplex.vertices[0]].coords[0], 2) +
-                             pow(points[simplex.vertices[0]].coords[1], 2)) *
-                            (points[simplex.vertices[2]].coords[0] -
-                             points[simplex.vertices[1]].coords[0]) +
-                            (pow(points[simplex.vertices[1]].coords[0], 2) +
-                             pow(points[simplex.vertices[1]].coords[1], 2)) *
-                            (points[simplex.vertices[0]].coords[0] -
-                             points[simplex.vertices[2]].coords[0]) +
-                            (pow(points[simplex.vertices[2]].coords[0], 2) +
-                             pow(points[simplex.vertices[2]].coords[1], 2)) *
-                            (points[simplex.vertices[1]].coords[0] -
-                             points[simplex.vertices[0]].coords[0])) /
+        sphere.center[1] = ((pow(s0.coords[0], 2) +
+                             pow(s0.coords[1], 2)) *
+                            (s2.coords[0] -
+                             s1.coords[0]) +
+                            (pow(s1.coords[0], 2) +
+                             pow(s1.coords[1], 2)) *
+                            (s0.coords[0] -
+                             s2.coords[0]) +
+                            (pow(s2.coords[0], 2) +
+                             pow(s2.coords[1], 2)) *
+                            (s1.coords[0] -
+                             s0.coords[0])) /
                            den;
 
         sphere.radius =
-                sqrt(pow(sphere.center[0] - points[simplex.vertices[0]].coords[0], 2) +
-                     pow(sphere.center[1] - points[simplex.vertices[0]].coords[1], 2));
+                sqrt(pow(sphere.center[0] - s0.coords[0], 2) +
+                     pow(sphere.center[1] - s0.coords[1], 2));
 
         return sphere;
     }
 };
 
 template<typename Precision>
-class GeometryHelper<3, Precision> {
+class GeometryCore<3, Precision> {
 public:
     /*
      * return > 0: d below abc - abc counter-clockwise
@@ -195,39 +183,37 @@ public:
      * four points.
      */
 
-    static Precision orientation(const dSimplex<3, Precision> &simplex,
-                                 const dPoints<3, Precision> &points) {
+    static Precision orientation(const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2, const dPoint<3, Precision> &s3) {
 
         Precision adx, bdx, cdx;
         Precision ady, bdy, cdy;
         Precision adz, bdz, cdz;
 
-        adx = points[simplex.vertices[0]].coords[0] -
-              points[simplex.vertices[3]].coords[0];
-        bdx = points[simplex.vertices[1]].coords[0] -
-              points[simplex.vertices[3]].coords[0];
-        cdx = points[simplex.vertices[2]].coords[0] -
-              points[simplex.vertices[3]].coords[0];
-        ady = points[simplex.vertices[0]].coords[1] -
-              points[simplex.vertices[3]].coords[1];
-        bdy = points[simplex.vertices[1]].coords[1] -
-              points[simplex.vertices[3]].coords[1];
-        cdy = points[simplex.vertices[2]].coords[1] -
-              points[simplex.vertices[3]].coords[1];
-        adz = points[simplex.vertices[0]].coords[2] -
-              points[simplex.vertices[3]].coords[2];
-        bdz = points[simplex.vertices[1]].coords[2] -
-              points[simplex.vertices[3]].coords[2];
-        cdz = points[simplex.vertices[2]].coords[2] -
-              points[simplex.vertices[3]].coords[2];
+        adx = s0.coords[0] -
+              s3.coords[0];
+        bdx = s1.coords[0] -
+              s3.coords[0];
+        cdx = s2.coords[0] -
+              s3.coords[0];
+        ady = s0.coords[1] -
+              s3.coords[1];
+        bdy = s1.coords[1] -
+              s3.coords[1];
+        cdy = s2.coords[1] -
+              s3.coords[1];
+        adz = s0.coords[2] -
+              s3.coords[2];
+        bdz = s1.coords[2] -
+              s3.coords[2];
+        cdz = s2.coords[2] -
+              s3.coords[2];
 
         return adx * (bdy * cdz - bdz * cdy) + bdx * (cdy * adz - cdz * ady) +
                cdx * (ady * bdz - adz * bdy);
     }
 
-    static bool inSphere(const dSimplex<3, Precision> &simplex,
-                         const dPoint<3, Precision> &p,
-                         const dPoints<3, Precision> &points) {
+    static bool inSphere(const dPoint<3, Precision> &p,
+                         const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2, const dPoint<3, Precision> &s3) {
 
         Precision aex, bex, cex, dex;
         Precision aey, bey, cey, dey;
@@ -237,18 +223,18 @@ public:
         Precision abc, bcd, cda, dab;
         Precision det;
 
-        aex = points[simplex.vertices[0]].coords[0] - p.coords[0];
-        bex = points[simplex.vertices[1]].coords[0] - p.coords[0];
-        cex = points[simplex.vertices[2]].coords[0] - p.coords[0];
-        dex = points[simplex.vertices[3]].coords[0] - p.coords[0];
-        aey = points[simplex.vertices[0]].coords[1] - p.coords[1];
-        bey = points[simplex.vertices[1]].coords[1] - p.coords[1];
-        cey = points[simplex.vertices[2]].coords[1] - p.coords[1];
-        dey = points[simplex.vertices[3]].coords[1] - p.coords[1];
-        aez = points[simplex.vertices[0]].coords[2] - p.coords[2];
-        bez = points[simplex.vertices[1]].coords[2] - p.coords[2];
-        cez = points[simplex.vertices[2]].coords[2] - p.coords[2];
-        dez = points[simplex.vertices[3]].coords[2] - p.coords[2];
+        aex = s0.coords[0] - p.coords[0];
+        bex = s1.coords[0] - p.coords[0];
+        cex = s2.coords[0] - p.coords[0];
+        dex = s3.coords[0] - p.coords[0];
+        aey = s0.coords[1] - p.coords[1];
+        bey = s1.coords[1] - p.coords[1];
+        cey = s2.coords[1] - p.coords[1];
+        dey = s3.coords[1] - p.coords[1];
+        aez = s0.coords[2] - p.coords[2];
+        bez = s1.coords[2] - p.coords[2];
+        cez = s2.coords[2] - p.coords[2];
+        dez = s3.coords[2] - p.coords[2];
 
         ab = aex * bey - bex * aey;
         bc = bex * cey - cex * bey;
@@ -284,403 +270,395 @@ public:
 
         det = (dlift * abc - clift * dab) + (blift * cda - alift * bcd);
 
-        return orientation(simplex, points) * det >= 0;
+        return orientation(s0, s1, s2, s3) * det >= 0;
     }
 
     static dSphere<3, Precision>
-    circumsphere(const dSimplex<3, Precision> &simplex,
-                 const dPoints<3, Precision> &points) {
+    circumsphere(const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2, const dPoint<3, Precision> &s3) {
 
         dSphere<3, Precision> sphere;
 
-        Precision den = 2 * (points[simplex.vertices[0]].coords[0] *
-                             (points[simplex.vertices[2]].coords[1] *
-                              points[simplex.vertices[3]].coords[2] +
-                              points[simplex.vertices[1]].coords[1] *
-                              (points[simplex.vertices[2]].coords[2] -
-                               points[simplex.vertices[3]].coords[2]) -
-                              points[simplex.vertices[3]].coords[1] *
-                              points[simplex.vertices[2]].coords[2] -
-                              (points[simplex.vertices[2]].coords[1] -
-                               points[simplex.vertices[3]].coords[1]) *
-                              points[simplex.vertices[1]].coords[2]) -
-                             points[simplex.vertices[1]].coords[0] *
-                             (points[simplex.vertices[2]].coords[1] *
-                              points[simplex.vertices[3]].coords[2] -
-                              points[simplex.vertices[3]].coords[1] *
-                              points[simplex.vertices[2]].coords[2]) -
-                             points[simplex.vertices[0]].coords[1] *
-                             (points[simplex.vertices[2]].coords[0] *
-                              points[simplex.vertices[3]].coords[2] +
-                              points[simplex.vertices[1]].coords[0] *
-                              (points[simplex.vertices[2]].coords[2] -
-                               points[simplex.vertices[3]].coords[2]) -
-                              points[simplex.vertices[3]].coords[0] *
-                              points[simplex.vertices[2]].coords[2] -
-                              (points[simplex.vertices[2]].coords[0] -
-                               points[simplex.vertices[3]].coords[0]) *
-                              points[simplex.vertices[1]].coords[2]) +
-                             points[simplex.vertices[1]].coords[1] *
-                             (points[simplex.vertices[2]].coords[0] *
-                              points[simplex.vertices[3]].coords[2] -
-                              points[simplex.vertices[3]].coords[0] *
-                              points[simplex.vertices[2]].coords[2]) +
-                             points[simplex.vertices[0]].coords[2] *
-                             (points[simplex.vertices[2]].coords[0] *
-                              points[simplex.vertices[3]].coords[1] +
-                              points[simplex.vertices[1]].coords[0] *
-                              (points[simplex.vertices[2]].coords[1] -
-                               points[simplex.vertices[3]].coords[1]) -
-                              points[simplex.vertices[3]].coords[0] *
-                              points[simplex.vertices[2]].coords[1] -
-                              (points[simplex.vertices[2]].coords[0] -
-                               points[simplex.vertices[3]].coords[0]) *
-                              points[simplex.vertices[1]].coords[1]) -
-                             points[simplex.vertices[1]].coords[2] *
-                             (points[simplex.vertices[2]].coords[0] *
-                              points[simplex.vertices[3]].coords[1] -
-                              points[simplex.vertices[3]].coords[0] *
-                              points[simplex.vertices[2]].coords[1]));
+        Precision den = 2 * (s0.coords[0] *
+                             (s2.coords[1] *
+                              s3.coords[2] +
+                              s1.coords[1] *
+                              (s2.coords[2] -
+                               s3.coords[2]) -
+                              s3.coords[1] *
+                              s2.coords[2] -
+                              (s2.coords[1] -
+                               s3.coords[1]) *
+                              s1.coords[2]) -
+                             s1.coords[0] *
+                             (s2.coords[1] *
+                              s3.coords[2] -
+                              s3.coords[1] *
+                              s2.coords[2]) -
+                             s0.coords[1] *
+                             (s2.coords[0] *
+                              s3.coords[2] +
+                              s1.coords[0] *
+                              (s2.coords[2] -
+                               s3.coords[2]) -
+                              s3.coords[0] *
+                              s2.coords[2] -
+                              (s2.coords[0] -
+                               s3.coords[0]) *
+                              s1.coords[2]) +
+                             s1.coords[1] *
+                             (s2.coords[0] *
+                              s3.coords[2] -
+                              s3.coords[0] *
+                              s2.coords[2]) +
+                             s0.coords[2] *
+                             (s2.coords[0] *
+                              s3.coords[1] +
+                              s1.coords[0] *
+                              (s2.coords[1] -
+                               s3.coords[1]) -
+                              s3.coords[0] *
+                              s2.coords[1] -
+                              (s2.coords[0] -
+                               s3.coords[0]) *
+                              s1.coords[1]) -
+                             s1.coords[2] *
+                             (s2.coords[0] *
+                              s3.coords[1] -
+                              s3.coords[0] *
+                              s2.coords[1]));
 
         sphere.center[0] =
-                (-points[simplex.vertices[0]].coords[1] *
-                 (-points[simplex.vertices[2]].coords[2] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2)) -
-                  points[simplex.vertices[1]].coords[2] *
-                  (-pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[2], 2) -
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) -
-                   pow(points[simplex.vertices[3]].coords[0], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) *
-                  points[simplex.vertices[3]].coords[2] +
-                  (pow(points[simplex.vertices[1]].coords[2], 2) +
-                   pow(points[simplex.vertices[1]].coords[1], 2) +
-                   pow(points[simplex.vertices[1]].coords[0], 2)) *
-                  (points[simplex.vertices[2]].coords[2] -
-                   points[simplex.vertices[3]].coords[2])) +
-                 points[simplex.vertices[1]].coords[1] *
-                 ((pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) *
-                  points[simplex.vertices[3]].coords[2] -
-                  points[simplex.vertices[2]].coords[2] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2))) +
-                 points[simplex.vertices[0]].coords[2] *
-                 (-points[simplex.vertices[2]].coords[1] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2)) -
-                  points[simplex.vertices[1]].coords[1] *
-                  (-pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[2], 2) -
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) -
-                   pow(points[simplex.vertices[3]].coords[0], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  points[simplex.vertices[3]].coords[1] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  (points[simplex.vertices[2]].coords[1] -
-                   points[simplex.vertices[3]].coords[1]) *
-                  (pow(points[simplex.vertices[1]].coords[2], 2) +
-                   pow(points[simplex.vertices[1]].coords[1], 2) +
-                   pow(points[simplex.vertices[1]].coords[0], 2))) -
-                 points[simplex.vertices[1]].coords[2] *
-                 (points[simplex.vertices[3]].coords[1] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) -
-                  points[simplex.vertices[2]].coords[1] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2))) +
-                 (pow(points[simplex.vertices[0]].coords[2], 2) +
-                  pow(points[simplex.vertices[0]].coords[1], 2) +
-                  pow(points[simplex.vertices[0]].coords[0], 2)) *
-                 (points[simplex.vertices[2]].coords[1] *
-                  points[simplex.vertices[3]].coords[2] +
-                  points[simplex.vertices[1]].coords[1] *
-                  (points[simplex.vertices[2]].coords[2] -
-                   points[simplex.vertices[3]].coords[2]) -
-                  points[simplex.vertices[3]].coords[1] *
-                  points[simplex.vertices[2]].coords[2] -
-                  (points[simplex.vertices[2]].coords[1] -
-                   points[simplex.vertices[3]].coords[1]) *
-                  points[simplex.vertices[1]].coords[2]) -
-                 (pow(points[simplex.vertices[1]].coords[2], 2) +
-                  pow(points[simplex.vertices[1]].coords[1], 2) +
-                  pow(points[simplex.vertices[1]].coords[0], 2)) *
-                 (points[simplex.vertices[2]].coords[1] *
-                  points[simplex.vertices[3]].coords[2] -
-                  points[simplex.vertices[3]].coords[1] *
-                  points[simplex.vertices[2]].coords[2])) /
+                (-s0.coords[1] *
+                 (-s2.coords[2] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2)) -
+                  s1.coords[2] *
+                  (-pow(s3.coords[2], 2) +
+                   pow(s2.coords[2], 2) -
+                   pow(s3.coords[1], 2) +
+                   pow(s2.coords[1], 2) -
+                   pow(s3.coords[0], 2) +
+                   pow(s2.coords[0], 2)) +
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) *
+                  s3.coords[2] +
+                  (pow(s1.coords[2], 2) +
+                   pow(s1.coords[1], 2) +
+                   pow(s1.coords[0], 2)) *
+                  (s2.coords[2] -
+                   s3.coords[2])) +
+                 s1.coords[1] *
+                 ((pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) *
+                  s3.coords[2] -
+                  s2.coords[2] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2))) +
+                 s0.coords[2] *
+                 (-s2.coords[1] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2)) -
+                  s1.coords[1] *
+                  (-pow(s3.coords[2], 2) +
+                   pow(s2.coords[2], 2) -
+                   pow(s3.coords[1], 2) +
+                   pow(s2.coords[1], 2) -
+                   pow(s3.coords[0], 2) +
+                   pow(s2.coords[0], 2)) +
+                  s3.coords[1] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) +
+                  (s2.coords[1] -
+                   s3.coords[1]) *
+                  (pow(s1.coords[2], 2) +
+                   pow(s1.coords[1], 2) +
+                   pow(s1.coords[0], 2))) -
+                 s1.coords[2] *
+                 (s3.coords[1] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) -
+                  s2.coords[1] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2))) +
+                 (pow(s0.coords[2], 2) +
+                  pow(s0.coords[1], 2) +
+                  pow(s0.coords[0], 2)) *
+                 (s2.coords[1] *
+                  s3.coords[2] +
+                  s1.coords[1] *
+                  (s2.coords[2] -
+                   s3.coords[2]) -
+                  s3.coords[1] *
+                  s2.coords[2] -
+                  (s2.coords[1] -
+                   s3.coords[1]) *
+                  s1.coords[2]) -
+                 (pow(s1.coords[2], 2) +
+                  pow(s1.coords[1], 2) +
+                  pow(s1.coords[0], 2)) *
+                 (s2.coords[1] *
+                  s3.coords[2] -
+                  s3.coords[1] *
+                  s2.coords[2])) /
                 den;
 
         sphere.center[1] =
-                (points[simplex.vertices[0]].coords[0] *
-                 (-points[simplex.vertices[2]].coords[2] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2)) -
-                  points[simplex.vertices[1]].coords[2] *
-                  (-pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[2], 2) -
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) -
-                   pow(points[simplex.vertices[3]].coords[0], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) *
-                  points[simplex.vertices[3]].coords[2] +
-                  (pow(points[simplex.vertices[1]].coords[2], 2) +
-                   pow(points[simplex.vertices[1]].coords[1], 2) +
-                   pow(points[simplex.vertices[1]].coords[0], 2)) *
-                  (points[simplex.vertices[2]].coords[2] -
-                   points[simplex.vertices[3]].coords[2])) -
-                 points[simplex.vertices[1]].coords[0] *
-                 ((pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) *
-                  points[simplex.vertices[3]].coords[2] -
-                  points[simplex.vertices[2]].coords[2] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2))) -
-                 points[simplex.vertices[0]].coords[2] *
-                 (-points[simplex.vertices[2]].coords[0] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2)) -
-                  points[simplex.vertices[1]].coords[0] *
-                  (-pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[2], 2) -
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) -
-                   pow(points[simplex.vertices[3]].coords[0], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  points[simplex.vertices[3]].coords[0] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  (points[simplex.vertices[2]].coords[0] -
-                   points[simplex.vertices[3]].coords[0]) *
-                  (pow(points[simplex.vertices[1]].coords[2], 2) +
-                   pow(points[simplex.vertices[1]].coords[1], 2) +
-                   pow(points[simplex.vertices[1]].coords[0], 2))) +
-                 points[simplex.vertices[1]].coords[2] *
-                 (points[simplex.vertices[3]].coords[0] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) -
-                  points[simplex.vertices[2]].coords[0] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2))) -
-                 (pow(points[simplex.vertices[0]].coords[2], 2) +
-                  pow(points[simplex.vertices[0]].coords[1], 2) +
-                  pow(points[simplex.vertices[0]].coords[0], 2)) *
-                 (points[simplex.vertices[2]].coords[0] *
-                  points[simplex.vertices[3]].coords[2] +
-                  points[simplex.vertices[1]].coords[0] *
-                  (points[simplex.vertices[2]].coords[2] -
-                   points[simplex.vertices[3]].coords[2]) -
-                  points[simplex.vertices[3]].coords[0] *
-                  points[simplex.vertices[2]].coords[2] -
-                  (points[simplex.vertices[2]].coords[0] -
-                   points[simplex.vertices[3]].coords[0]) *
-                  points[simplex.vertices[1]].coords[2]) +
-                 (pow(points[simplex.vertices[1]].coords[2], 2) +
-                  pow(points[simplex.vertices[1]].coords[1], 2) +
-                  pow(points[simplex.vertices[1]].coords[0], 2)) *
-                 (points[simplex.vertices[2]].coords[0] *
-                  points[simplex.vertices[3]].coords[2] -
-                  points[simplex.vertices[3]].coords[0] *
-                  points[simplex.vertices[2]].coords[2])) /
+                (s0.coords[0] *
+                 (-s2.coords[2] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2)) -
+                  s1.coords[2] *
+                  (-pow(s3.coords[2], 2) +
+                   pow(s2.coords[2], 2) -
+                   pow(s3.coords[1], 2) +
+                   pow(s2.coords[1], 2) -
+                   pow(s3.coords[0], 2) +
+                   pow(s2.coords[0], 2)) +
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) *
+                  s3.coords[2] +
+                  (pow(s1.coords[2], 2) +
+                   pow(s1.coords[1], 2) +
+                   pow(s1.coords[0], 2)) *
+                  (s2.coords[2] -
+                   s3.coords[2])) -
+                 s1.coords[0] *
+                 ((pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) *
+                  s3.coords[2] -
+                  s2.coords[2] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2))) -
+                 s0.coords[2] *
+                 (-s2.coords[0] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2)) -
+                  s1.coords[0] *
+                  (-pow(s3.coords[2], 2) +
+                   pow(s2.coords[2], 2) -
+                   pow(s3.coords[1], 2) +
+                   pow(s2.coords[1], 2) -
+                   pow(s3.coords[0], 2) +
+                   pow(s2.coords[0], 2)) +
+                  s3.coords[0] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) +
+                  (s2.coords[0] -
+                   s3.coords[0]) *
+                  (pow(s1.coords[2], 2) +
+                   pow(s1.coords[1], 2) +
+                   pow(s1.coords[0], 2))) +
+                 s1.coords[2] *
+                 (s3.coords[0] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) -
+                  s2.coords[0] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2))) -
+                 (pow(s0.coords[2], 2) +
+                  pow(s0.coords[1], 2) +
+                  pow(s0.coords[0], 2)) *
+                 (s2.coords[0] *
+                  s3.coords[2] +
+                  s1.coords[0] *
+                  (s2.coords[2] -
+                   s3.coords[2]) -
+                  s3.coords[0] *
+                  s2.coords[2] -
+                  (s2.coords[0] -
+                   s3.coords[0]) *
+                  s1.coords[2]) +
+                 (pow(s1.coords[2], 2) +
+                  pow(s1.coords[1], 2) +
+                  pow(s1.coords[0], 2)) *
+                 (s2.coords[0] *
+                  s3.coords[2] -
+                  s3.coords[0] *
+                  s2.coords[2])) /
                 den;
 
         sphere.center[2] =
-                (-points[simplex.vertices[0]].coords[0] *
-                 (-points[simplex.vertices[2]].coords[1] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2)) -
-                  points[simplex.vertices[1]].coords[1] *
-                  (-pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[2], 2) -
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) -
-                   pow(points[simplex.vertices[3]].coords[0], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  points[simplex.vertices[3]].coords[1] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  (points[simplex.vertices[2]].coords[1] -
-                   points[simplex.vertices[3]].coords[1]) *
-                  (pow(points[simplex.vertices[1]].coords[2], 2) +
-                   pow(points[simplex.vertices[1]].coords[1], 2) +
-                   pow(points[simplex.vertices[1]].coords[0], 2))) +
-                 points[simplex.vertices[1]].coords[0] *
-                 (points[simplex.vertices[3]].coords[1] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) -
-                  points[simplex.vertices[2]].coords[1] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2))) +
-                 points[simplex.vertices[0]].coords[1] *
-                 (-points[simplex.vertices[2]].coords[0] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2)) -
-                  points[simplex.vertices[1]].coords[0] *
-                  (-pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[2], 2) -
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) -
-                   pow(points[simplex.vertices[3]].coords[0], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  points[simplex.vertices[3]].coords[0] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) +
-                  (points[simplex.vertices[2]].coords[0] -
-                   points[simplex.vertices[3]].coords[0]) *
-                  (pow(points[simplex.vertices[1]].coords[2], 2) +
-                   pow(points[simplex.vertices[1]].coords[1], 2) +
-                   pow(points[simplex.vertices[1]].coords[0], 2))) -
-                 points[simplex.vertices[1]].coords[1] *
-                 (points[simplex.vertices[3]].coords[0] *
-                  (pow(points[simplex.vertices[2]].coords[2], 2) +
-                   pow(points[simplex.vertices[2]].coords[1], 2) +
-                   pow(points[simplex.vertices[2]].coords[0], 2)) -
-                  points[simplex.vertices[2]].coords[0] *
-                  (pow(points[simplex.vertices[3]].coords[2], 2) +
-                   pow(points[simplex.vertices[3]].coords[1], 2) +
-                   pow(points[simplex.vertices[3]].coords[0], 2))) -
-                 (points[simplex.vertices[2]].coords[0] *
-                  points[simplex.vertices[3]].coords[1] -
-                  points[simplex.vertices[3]].coords[0] *
-                  points[simplex.vertices[2]].coords[1]) *
-                 (pow(points[simplex.vertices[1]].coords[2], 2) +
-                  pow(points[simplex.vertices[1]].coords[1], 2) +
-                  pow(points[simplex.vertices[1]].coords[0], 2)) +
-                 (points[simplex.vertices[2]].coords[0] *
-                  points[simplex.vertices[3]].coords[1] +
-                  points[simplex.vertices[1]].coords[0] *
-                  (points[simplex.vertices[2]].coords[1] -
-                   points[simplex.vertices[3]].coords[1]) -
-                  points[simplex.vertices[3]].coords[0] *
-                  points[simplex.vertices[2]].coords[1] -
-                  (points[simplex.vertices[2]].coords[0] -
-                   points[simplex.vertices[3]].coords[0]) *
-                  points[simplex.vertices[1]].coords[1]) *
-                 (pow(points[simplex.vertices[0]].coords[2], 2) +
-                  pow(points[simplex.vertices[0]].coords[1], 2) +
-                  pow(points[simplex.vertices[0]].coords[0], 2))) /
+                (-s0.coords[0] *
+                 (-s2.coords[1] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2)) -
+                  s1.coords[1] *
+                  (-pow(s3.coords[2], 2) +
+                   pow(s2.coords[2], 2) -
+                   pow(s3.coords[1], 2) +
+                   pow(s2.coords[1], 2) -
+                   pow(s3.coords[0], 2) +
+                   pow(s2.coords[0], 2)) +
+                  s3.coords[1] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) +
+                  (s2.coords[1] -
+                   s3.coords[1]) *
+                  (pow(s1.coords[2], 2) +
+                   pow(s1.coords[1], 2) +
+                   pow(s1.coords[0], 2))) +
+                 s1.coords[0] *
+                 (s3.coords[1] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) -
+                  s2.coords[1] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2))) +
+                 s0.coords[1] *
+                 (-s2.coords[0] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2)) -
+                  s1.coords[0] *
+                  (-pow(s3.coords[2], 2) +
+                   pow(s2.coords[2], 2) -
+                   pow(s3.coords[1], 2) +
+                   pow(s2.coords[1], 2) -
+                   pow(s3.coords[0], 2) +
+                   pow(s2.coords[0], 2)) +
+                  s3.coords[0] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) +
+                  (s2.coords[0] -
+                   s3.coords[0]) *
+                  (pow(s1.coords[2], 2) +
+                   pow(s1.coords[1], 2) +
+                   pow(s1.coords[0], 2))) -
+                 s1.coords[1] *
+                 (s3.coords[0] *
+                  (pow(s2.coords[2], 2) +
+                   pow(s2.coords[1], 2) +
+                   pow(s2.coords[0], 2)) -
+                  s2.coords[0] *
+                  (pow(s3.coords[2], 2) +
+                   pow(s3.coords[1], 2) +
+                   pow(s3.coords[0], 2))) -
+                 (s2.coords[0] *
+                  s3.coords[1] -
+                  s3.coords[0] *
+                  s2.coords[1]) *
+                 (pow(s1.coords[2], 2) +
+                  pow(s1.coords[1], 2) +
+                  pow(s1.coords[0], 2)) +
+                 (s2.coords[0] *
+                  s3.coords[1] +
+                  s1.coords[0] *
+                  (s2.coords[1] -
+                   s3.coords[1]) -
+                  s3.coords[0] *
+                  s2.coords[1] -
+                  (s2.coords[0] -
+                   s3.coords[0]) *
+                  s1.coords[1]) *
+                 (pow(s0.coords[2], 2) +
+                  pow(s0.coords[1], 2) +
+                  pow(s0.coords[0], 2))) /
                 den;
 
         sphere.radius =
-                sqrt(pow(sphere.center[0] - points[simplex.vertices[0]].coords[0], 2) +
-                     pow(sphere.center[1] - points[simplex.vertices[0]].coords[1], 2) +
-                     pow(sphere.center[2] - points[simplex.vertices[0]].coords[2], 2));
+                sqrt(pow(sphere.center[0] - s0.coords[0], 2) +
+                     pow(sphere.center[1] - s0.coords[1], 2) +
+                     pow(sphere.center[2] - s0.coords[2], 2));
 
         return sphere;
     }
 };
 
-template<uint D, typename Precision>
-Precision
-dSimplex<D, Precision>::orientation(const dPoints<D, Precision> &points) const {
-    PROFILER_INC("dSimplex_orientation");
-
-    return GeometryHelper<D, Precision>::orientation(*this, points);
-}
-
-template<uint D, typename Precision>
-bool dSimplex<D, Precision>::inSphere(
-        const dPoint<D, Precision> &p, const dPoints<D, Precision> &points) const {
-    PROFILER_INC("dSimplex_inSphere");
-
-    return GeometryHelper<D, Precision>::inSphere(*this, p, points);
-}
-
-template<uint D, typename Precision>
-dSphere<D, Precision> dSimplex<D, Precision>::circumsphere(
-        const dPoints<D, Precision> &points) const {
-    PROFILER_INC("dSimplex_circumsphere");
-
-    return GeometryHelper<D, Precision>::circumsphere(*this, points);
-}
-
-template<uint D, typename Precision>
-uint dSimplices<D, Precision>::countDuplicates() const {
-    PROFILER_INC("dSimplices_countDuplicates");
-
-    std::atomic<uint> duplicates(0);
-
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
-
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
-
-            const dSimplex<D, Precision> &s = *it;
-            auto simplices = findSimplices(s.vertices, true);
-            duplicates += simplices.size() - 1;
-        }
-    });
-
-    PLOG("Found " << duplicates << " duplicates" << std::endl);
-
-    return duplicates;
-}
+//template<uint D, typename Precision>
+//uint dSimplices<D, Precision>::countDuplicates(const Simplex_Ids & simplices) const {
+//
+//    std::atomic<uint> duplicates(0);
+//    tbb::spin_mutex mtx;
+//
+//    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+//            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+//            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+//
+//    tbb::parallel_for(simplices.range(), [&](const auto &r) {
+//
+//        auto thisHandle = tsThisHandle.local();
+//
+//        for (const auto &a : r) {
+//
+//            auto s = thisHandle.at(a);
+//            auto b = simplices.begin();
+//            b.setIdx(a - simplices.lowerBound() + 1, true);
+//            for(; b < simplices.end(); ++b){
+//                if(s.equalVertices(thisHandle.at(*b))){
+//                    // we found a duplicate
+//                    ++duplicates;
+//
+//                    tbb::spin_mutex::scoped_lock lock(mtx);
+//                    LOG("found duplicate " << s << " and " << thisHandle.at(*b) << std::endl);
+//                }
+//            }
+//        }
+//    });
+//
+//    return duplicates;
+//}
 
 template<uint D, typename Precision>
-CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
-        const dSimplices<D, Precision> &realDT) const {
+CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimplices<D, Precision> &realSimplices) const {
     CrossCheckReport<D, Precision> result;
     result.valid = true;
 
     //build hashmap for simplex lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(this->size() + realDT.size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup;
 
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &a : r) {
 
-            const dSimplex<D, Precision> &a = *it;
             simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
         }
     });
 
-    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(realSimplices.range(), [&](const auto & r) {
 
-        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
-
-            const dSimplex<D, Precision> &a = *it;
+        for (const auto &a : r) {
             simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
         }
     });
 
     tbb::spin_mutex mtx;
 
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsRealHandle(std::ref(realSimplices));
+
     // check whether all simplices of real DT are present
-    tbb::parallel_for(std::size_t(0), realDT.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(realSimplices.range(), [&](const auto &r) {
 
-        for (auto it = realDT.begin(i); it != realDT.end(i); ++it) {
+        auto &thisHandle = tsThisHandle.local();
+        auto &realHandle = tsRealHandle.local();
 
-            const dSimplex<D, Precision> &realSimplex = *it;
-
+        for(const auto & realSimplex : r) {
             // find corresponding mySimplex for realSimplex
             // we can limit the search by using the face where-used ds
             auto hash = realSimplex.fingerprint();
@@ -689,16 +667,16 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                                           range.second,
                                           [&](const auto &i) {
                                               return dSimplex<D, Precision>::isFinite(i.second)
-                                                     && this->contains(i.second)
-                                                     && this->at(i.second).equalVertices(realSimplex);
+                                                     && thisHandle.contains(i.second)
+                                                     && thisHandle.at(i.second).equalVertices(realSimplex);
                                           });
 
             if (mySimplex == range.second) {
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("did not find simplex " << realSimplex << std::endl);
                 result.valid = false;
-                result.missing.insert(realSimplex);
-                continue;
+                result.missing.push_back(realSimplex);
+                return;
             }
 
             // check neighbors
@@ -707,9 +685,9 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                     continue;
 
                 bool found = false;
-                for (const auto &nn : this->at(mySimplex->second).neighbors) {
+                for (const auto &nn : thisHandle.at(mySimplex->second).neighbors) {
                     if (dSimplex<D, Precision>::isFinite(nn) &&
-                        this->operator[](nn).equalVertices(realDT[n])) {
+                        thisHandle.at(nn).equalVertices(realHandle[n])) {
                         found = true;
                         break;
                     }
@@ -717,8 +695,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
                 if (!found) {
                     tbb::spin_mutex::scoped_lock lock(mtx);
-                    LOG("did not find neighbor " << realDT[n] << " of simplex "
-                        << realSimplex << std::endl);
+                    LOG("did not find neighbor " << realHandle[n] << " of simplex "
+                                                                 << realSimplex << std::endl);
                     result.valid = false;
                 }
             }
@@ -726,11 +704,11 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     });
 
     // check for own simplices that are not in real DT
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        auto &realHandle = tsRealHandle.local();
 
-            const dSimplex<D, Precision> &mySimplex = *it;
+        for (const auto &mySimplex : r) {
 
             // again we use the face where-used ds for the lookup
             auto hash = mySimplex.fingerprint();
@@ -739,8 +717,8 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                                             range.second,
                                             [&](const auto &i) {
                                                 return dSimplex<D, Precision>::isFinite(i.second)
-                                                       && realDT.contains(i.second)
-                                                       && realDT.at(i.second).equalVertices(mySimplex);
+                                                       && realHandle.contains(i.second)
+                                                       && realHandle.at(i.second).equalVertices(mySimplex);
                                             });
 
             if (realSimplex == range.second /*&& mySimplex.isFinite()*/) {
@@ -749,18 +727,19 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
                 LOG("simplex " << mySimplex << " does not exist in real triangulation"
                     << std::endl);
                 result.valid = false;
-                result.invalid.insert(mySimplex);
+                result.invalid.push_back(mySimplex);
             }
         }
     });
 
     // check whether sizes are equal
-    if (dSimplices<D, Precision>::size() != realDT.size()) {
-        LOG("my size: " + std::to_string(dSimplices<D, Precision>::size()) +
-            " other size: "
-            << std::to_string(realDT.size()) + "\n");
-        result.valid = false;
-    }
+    //TODO no size operator yet - do we need it?
+//    if (pt.simplices.size() != realPT.simplices.size()) {
+//        LOG("my size: " + std::to_string(pt.simplices.size()) +
+//            " real size: "
+//            << std::to_string(realPT.simplices.size()) + "\n");
+//        result.valid = false;
+//    }
 
     LOG("cross check " << (result.valid ? "" : "NOT ") << "successful"
         << std::endl);
@@ -776,18 +755,24 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     result.valid = true;
 
     tbb::spin_mutex mtx;
+
+    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
+            tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
+            tbb::ets_key_usage_type::ets_key_per_instance> tsThisHandle(std::ref(*this));
+
     // verify that every input point is used
     LOG("Checking points" << std::endl);
-    Ids usedPoints;
+    std::unordered_set<tIdType> usedPoints;
     for (const auto &s : *this) {
         usedPoints.insert(s.vertices.begin(), s.vertices.end());
     }
     if (points != usedPoints) {
         // not all points of input used
         std::stringstream sNotUsed;
-        for (const auto &p : points) {
-            if (usedPoints.count(p.id) != 1 && p.isFinite()) {
-                sNotUsed << p << " ";
+        for (std::size_t i = 0; i < points.finite_size(); ++i) {
+            const auto & p = points[i];
+            if (usedPoints.count(i) != 1 && dPoint<D,Precision>::isFinite(i)) {
+                sNotUsed << "[" << i << "] " << p << " ";
                 result.valid = false;
             }
         }
@@ -809,12 +794,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
     // verify convex hull
     LOG("Checking convex-hull" << std::endl);
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        for (const auto &s : r) {
 
-            const dSimplex<D, Precision> &s = *it;
-            if (!s.isFinite() && !this->convexHull.count(s.id)) {
+            if (!s.isFinite() && !convexHull.count(s.id)) {
                 // s is infinite but not part of the convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("Infinite simplex " << s << " NOT in convex hull" << std::endl);
@@ -823,11 +807,13 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
         }
     });
 
-    tbb::parallel_for(std::size_t(0), this->convexHull.bucket_count(), [&](const uint i) {
+    tbb::parallel_for(convexHull.range(), [&](const auto & r) {
 
-        for (auto it = this->convexHull.begin(i); it != this->convexHull.end(i); ++it) {
+        auto &thisHandle = tsThisHandle.local();
 
-            const dSimplex<D, Precision> &s = this->at(*it);
+        for (const auto & i : r) {
+
+            const dSimplex<D, Precision> &s = thisHandle.at(i);
             if (s.isFinite()) {
                 // s is finite but part of convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);
@@ -840,13 +826,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     // verify that all simplices with a shared D-1 simplex are neighbors
 
     //build hashmap for face lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1)*this->size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup;
 
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
-
-            const dSimplex<D, Precision> &a = *it;
+        for (const auto &a : r) {
             for (uint i = 0; i < D + 1; ++i) {
                 auto facetteHash = a.faceFingerprint(i);
 
@@ -856,11 +840,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     });
 
     LOG("Checking neighbors" << std::endl);
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        auto &thisHandle = tsThisHandle.local();
 
-            const dSimplex<D, Precision> &a = *it;
+        for (const auto &a : r) {
 
             // we already verified that the face where-used data structure is correct
             // we can use it to verify the neighbor relation
@@ -868,11 +852,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
                 auto faceHash = a.faceFingerprint(i);
                 auto range = faceLookup.equal_range(faceHash);
                 for (auto it = range.first; it != range.second; ++it) {
-                    if (!dSimplex<D, Precision>::isFinite(it->second) || !this->contains(it->second))
+                    if (!dSimplex<D, Precision>::isFinite(it->second) || !thisHandle.contains(it->second))
                         // infinite/deleted simplex or not belonging to this triangulation
                         continue;
 
-                    const auto &b = this->at(it->second);
+                    const auto &b = thisHandle.at(it->second);
                     // a and b are neighbors: the neighbor property is symmetric and the
                     // corresponding simplices must be present in the neighbors arrays
                     // accordingly
@@ -901,11 +885,11 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
 
     // check in circle criterion
     LOG("Checking empty circle criterion" << std::endl);
-    tbb::parallel_for(std::size_t(0), this->bucket_count(), [&](const uint i) {
+    tbb::parallel_for(this->range(), [&](const auto &r) {
 
-        for (auto it = this->begin(i); it != this->end(i); ++it) {
+        auto &thisHandle = tsThisHandle.local();
 
-            const dSimplex<D, Precision> &s = *it;
+        for (const auto &s : r) {
 
             // we have established that the neighboorhood is correctly set
             // we check for all neighbors whether the NOT shared point is in the circle
@@ -914,19 +898,18 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
                 if (!dSimplex<D, Precision>::isFinite(n))
                     continue;
 
-                const dSimplex<D, Precision> &nn = this->at(n);
+                const dSimplex<D, Precision> &nn = thisHandle.at(n);
                 for (uint d = 0; d < D + 1; ++d) {
-                    const auto &p = points[nn.vertices[d]];
-
-                    if (p.isFinite() && !s.contains(p)) {
+                    if (dPoint<D,Precision>::isFinite(nn.vertices[d]) && !s.contains(nn.vertices[d])) {
                         // we have found the point of nn that is NOT shared with s
+                        const auto &p = points[nn.vertices[d]];
                         if (s.inSphere(p, points)) {
                             LOG("Point " << p << " is in circle of " << s << std::endl);
 
                             tbb::spin_mutex::scoped_lock lock(mtx);
                             result.valid = false;
 
-                            result.inCircle[s].insert(p.id);
+                            result.inCircle[s].insert(nn.vertices[d]);
                         }
                     }
                 }
@@ -939,6 +922,24 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
         << std::endl);
 
     return result;
+}
+
+template <uint D, typename Precision>
+typename dSimplices<D, Precision>::tHash dSimplices<D, Precision>::genFingerprint() const {
+
+    tHash hash;
+    std::fill(hash.begin(), hash.end(), 0); //init with zero
+
+    for(auto  s : *this){
+        auto h = s.fingerprint();
+        uint i = h & 0xFF; // get last byte
+
+        ASSERT(0 <= i && i <= 256);
+        hash[i] ^= h; //xor into hash array
+    }
+
+    return hash;
+
 }
 
 // specialiations
@@ -963,6 +964,12 @@ class dSimplices<2, float>;
 template
 class dSimplices<3, float>;
 
+template
+class GeometryCore<2, float>;
+
+template
+class GeometryCore<3, float>;
+
 // double
 
 template
@@ -982,3 +989,9 @@ class dSimplices<2, double>;
 
 template
 class dSimplices<3, double>;
+
+template
+class GeometryCore<2, double>;
+
+template
+class GeometryCore<3, double>;

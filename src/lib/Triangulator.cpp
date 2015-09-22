@@ -8,15 +8,14 @@ template<uint D, typename Precision>
 constexpr char Triangulator<D, Precision>::TOP;
 
 template<uint D, typename Precision>
-Ids Triangulator<D, Precision>::allPoints() const {
-    Ids allPoints;
-    allPoints.reserve(points.size());
-    for (uint i = 0; i < points.finite_size(); ++i)
+Point_Ids Triangulator<D, Precision>::allPoints() const {
+    Point_Ids allPoints(points.size());
+    for (uint i = 1; i < points.finite_size(); ++i)
         allPoints.insert(i);
-    for (uint infVertex = points.finite_size(); infVertex < points.size();
+    for (uint infVertex = 0; infVertex < dPoint<D,Precision>::nINF;
          ++infVertex)
 
-        allPoints.insert(points[infVertex].id);
+        allPoints.insert(dPoint<D,Precision>::cINF + infVertex);
 
     return allPoints;
 }

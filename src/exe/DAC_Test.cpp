@@ -4,6 +4,7 @@
 #include "Partitioner.h"
 
 #include "utils/Random.h"
+#include "utils/Generator.h"
 #include "utils/Logger.h"
 #include "utils/CSV.h"
 #include "utils/Timings.h"
@@ -34,14 +35,13 @@ struct TriangulateReturn {
     ExperimentRun run;
 };
 
-//**************************
-
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint recursionDepth,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
-                              const unsigned char alg = 'd',
-                              const bool verify = true) {
+                              const unsigned char alg,
+                              const bool parallelBase,
+                              const bool verify) {
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
     if (alg == 'c') {
@@ -54,7 +54,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
         } else {
             triangulator_ptr =
                     std::make_unique<DCTriangulator<D, Precision>>(bounds, points, recursionDepth, splitter, 100,
-                                                                   false);
+                                                                   parallelBase);
         }
     }
 
@@ -73,8 +73,13 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
 
     if (verify) {
+        LOGGER.setIndent(0);
+        LOG("Generate Reference Triangulation" << std::endl);
+
+        INDENT;
         CGALTriangulator<D, Precision, false> cgal(bounds, points);
         auto realDT = cgal.triangulate();
+        DEDENT;
 
         auto vr = dt.verify(points);
         auto ccr = dt.crossCheck(realDT);
@@ -109,11 +114,12 @@ int main(int argc, char *argv[]) {
 
     int verbosity = -1;
 
-    unsigned char p;
+    unsigned char p = 'c';
     uint N;
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
+    bool parallelBase = false;
 
     bool verify = true;
 
@@ -138,6 +144,8 @@ int main(int argc, char *argv[]) {
                                "specify number of threads");
     cCommandLine.add_options()("alg", po::value<unsigned char>(&alg),
                                "specify algorithm to use");
+    cCommandLine.add_options()("par-base", po::value<bool>(&parallelBase),
+                               "use parallel base solver");
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -154,14 +162,8 @@ int main(int argc, char *argv[]) {
 
     // plausability checks
     bool valid = true;
-    if ((!vm.count("recDepth"))) {
-        std::cout << "Please specify the maximum depth of recursion" << std::endl;
-        valid = false;
-    }
-
-    if (!vm.count("splitter")) {
-        std::cout << "Please specify splitter" << std::endl;
-        valid = false;
+    if (!vm.count("recDepth")) {
+        recursionDepth = log2(threads);
     }
 
     if (!(vm.count("n") || vm.count("points"))) {
@@ -220,10 +222,10 @@ int main(int argc, char *argv[]) {
                 std::cout << std::endl;
 
             points = genPoints(N, bounds, dice);
-            triangulate(bounds, recursionDepth, points, p, alg, verify);
+            triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
         }
     } else
-        ret = triangulate(bounds, recursionDepth, points, p, alg, verify);
+        ret = triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
 
     LOG("Triangulating "
         << points.size() << " points took "

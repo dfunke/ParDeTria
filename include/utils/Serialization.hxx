@@ -55,10 +55,10 @@ namespace boost {
             ar & s.radius;
         }
 
-        template<class Archive, typename V, typename K>
-        void serialize(Archive &ar, IndexedVector <V, K> &v,
+        template<class Archive, typename V>
+        void serialize(Archive &ar, IndexedVector <V> &v,
                        __attribute((unused)) const unsigned int version) {
-            ar &boost::serialization::base_object<std::unordered_map<K, V>>(v);
+            ar &boost::serialization::base_object<std::vector<V>>(v);
         }
 
         template<class Archive, typename T>
@@ -72,7 +72,7 @@ namespace boost {
         template<class Archive, uint D, typename Precision>
         void serialize(Archive &ar, dPoint <D, Precision> &p,
                        __attribute((unused)) const unsigned int version) {
-            ar & p.id;
+            //ar & p.id;
             ar & p.coords;
             // ar &p.simplices;
         }

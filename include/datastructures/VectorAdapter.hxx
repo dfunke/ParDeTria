@@ -3,6 +3,8 @@
 #include <vector>
 #include <stdexcept>
 
+#include <tbb/blocked_range.h>
+
 #include "utils/Timings.h"
 
 template<typename T>
@@ -99,6 +101,10 @@ public:
 
     typename vector::const_iterator end() const {
         return vector::end();
+    }
+
+    auto range() const {
+        return tbb::blocked_range<typename vector::size_type>(m_firstIdx, m_firstIdx + finite_size());
     }
 
 private:

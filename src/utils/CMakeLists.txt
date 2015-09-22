@@ -8,7 +8,10 @@ if (VTUNE)
     add_library (VTune
       VTuneAdapter.cpp
     )
-    target_link_libraries(VTune ${VTUNE_LIBRARIES})
+    target_link_libraries(VTune
+        ${VTUNE_LIBRARIES}
+        ${CMAKE_THREAD_LIBS_INIT}
+    )
 endif()
 
 add_library (Logging
@@ -25,6 +28,12 @@ add_library (Measurements
   System.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 )
+
+if (VTUNE)
+    target_link_libraries(Measurements
+        VTune
+    )
+endif()
 
 target_link_libraries(Measurements ${TBB_LIBRARIES})
 

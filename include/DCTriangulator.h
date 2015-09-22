@@ -35,40 +35,53 @@ public:
                    const uint _recursionDepth,
                    const unsigned char splitter,
                    const uint gridOccupancy = 1,
-                   const bool parallelBaseSolver = false);
+                   const bool parallelBaseSolver = false,
+                   const bool parallelEdgeTria = true,
+                   const bool addInfinitePoints = true);
 
 protected:
-    dSimplices<D, Precision> _triangulateBase(const Ids partitionPoints,
+    dSimplices<D, Precision> _triangulateBase(const Point_Ids &partitionPoints,
                                               const dBox<D, Precision> &bounds,
                                               const std::string provenance);
 
-    dSimplices<D, Precision> _triangulate(const Ids &partitionPoints,
+    dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
                                           const dBox<D, Precision> &bounds,
-                                          const std::string provenance);
+                                          const std::string provenance,
+                                          const unsigned char _splitter
+    );
 
-    Ids getEdge(dSimplices<D, Precision> &simplices,
-                const Partitioning<D, Precision> &partitioning,
-                const uint &partition);
+    dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
+                                          const dBox<D, Precision> &bounds,
+                                          const std::string provenance) {
+        return _triangulate(partitionPoints, bounds, provenance, (unsigned char) 0);
+    }
 
-    Ids extractPoints(const Ids &edgeSimplices,
-                      const dSimplices<D, Precision> &simplices,
-                      bool ignoreInfinite = false);
+    void getEdge(const dSimplices<D, Precision> &simplices,
+                 const Partitioning<D, Precision> &partitioning,
+                 const uint &partition,
+                 Concurrent_Growing_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices);
 
-    void updateNeighbors(dSimplices<D, Precision> &simplices, const Ids &toCheck,
+    cWuFaces buildWhereUsed(const dSimplices<D, Precision> &simplices,
+                            const Simplex_Ids &edgeSimplices);
+
+    void updateNeighbors(dSimplices<D, Precision> &simplices,
+                         const Simplex_Ids &toCheck,
+                         const cWuFaces &wuFaces,
                          const std::string &provenance);
 
-    dSimplices<D, Precision>
-            mergeTriangulation(std::vector<dSimplices<D, Precision>> &partialDTs,
-                               const Ids &edgeSimplices,
-                               const dSimplices<D, Precision> &edgeDT,
-                               const Partitioning<D, Precision> &partitioning,
-                               const std::string &provenance);
+    dSimplices<D, Precision> mergeTriangulation(std::vector<dSimplices<D, Precision>> &&partialDTs,
+                                                const Simplex_Ids &edgeSimplices,
+                                                dSimplices<D, Precision> &&edgeDT,
+                                                const Partitioning<D, Precision> &partitioning,
+                                                const std::string &provenance
+    );
 
 
 protected:
     const uint recursionDepth;
+    const bool parallelEdgeTria;
+    const unsigned char splitter;
 
-    std::unique_ptr<Partitioner<D, Precision>> partitioner;
     std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
 
 public:

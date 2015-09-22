@@ -4,7 +4,7 @@ add_library (Geometry
   Geometry.cpp
 )
 
-target_link_libraries(Geometry Logging Measurements)
+target_link_libraries(Geometry Datastructures Logging Measurements)
 
 add_library(Triangulator
   Triangulator.cpp
@@ -24,6 +24,23 @@ target_link_libraries(CGALTriangulator
   ${CMAKE_THREAD_LIBS_INIT}
 )
 
+add_library(SpatialSort
+  SpatialSort.cpp
+)
+
+target_link_libraries(SpatialSort
+        ${CGAL_LIBRARY}
+)
+
+target_link_libraries(CGALTriangulator
+  Logging
+  Geometry
+  ${CGAL_LIBRARY}
+  ${GMP_LIBRARIES}
+  ${TBB_MALLOC_LIBRARIES}
+  ${CMAKE_THREAD_LIBS_INIT}
+)
+
 add_library(DCTriangulator
   DCTriangulator.cpp
   Partitioner.cpp
@@ -32,6 +49,7 @@ add_library(DCTriangulator
 target_link_libraries(DCTriangulator
   Triangulator
   CGALTriangulator
+  SpatialSort
   Logging
   Geometry
 )
@@ -39,4 +57,5 @@ target_link_libraries(DCTriangulator
 if(VTUNE)
   target_link_libraries(DCTriangulator VTune)
   target_link_libraries(CGALTriangulator VTune)
+  target_link_libraries(SpatialSort VTune)
 endif()

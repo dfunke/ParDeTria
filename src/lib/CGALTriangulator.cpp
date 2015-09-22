@@ -10,22 +10,18 @@
 #include <type_traits>
 
 #include "utils/ASSERT.h"
-#include "utils/StaticSort.h"
 #include "utils/VTuneAdapter.h"
-
-// define a static counter for the tetrahedronID
-std::atomic<uint> gAtomicTetrahedronID(0);
-std::atomic<uint> gAtomicCgalID(0);
 
 // CGAL
 #define CGAL_LINKED_WITH_TBB
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+
+#include "mods/Indexed_Triangulation_data_structure_2.h"
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-// #include <CGAL/Delaunay_triangulation_3.h> use modified version
+#include "mods/Indexed_Triangulation_data_structure_3.h"
 #include "mods/Delaunay_triangulation_3.h"
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
@@ -34,34 +30,34 @@ std::atomic<uint> gAtomicCgalID(0);
 
 #include <CGAL/Unique_hash_map.h>
 
-template<typename Info_, typename GT,
-        typename Fb_ = CGAL::Triangulation_face_base_2<GT> >
+template<typename GT,
+        class Ih = _detail::IndexHandler,
+        typename Fb_ = CGAL::Triangulation_face_base_2<GT>>
 class Triangulation_dSimplexAdapter_2
         : public Fb_ {
-    Info_ _info;
 public:
     typedef typename Fb_::Vertex_handle Vertex_handle;
     typedef typename Fb_::Face_handle Face_handle;
-    typedef Info_ Info;
 
     template<typename TDS2>
     struct Rebind_TDS {
         typedef typename Fb_::template Rebind_TDS<TDS2>::Other Fb2;
-        typedef Triangulation_dSimplexAdapter_2<Info, GT, Fb2> Other;
+        typedef Triangulation_dSimplexAdapter_2<GT, Ih, Fb2> Other;
     };
 
-    Triangulation_dSimplexAdapter_2()
-            : Fb_() {
+    Triangulation_dSimplexAdapter_2(const Ih &idHandler)
+            : Fb_(), m_idHandler(idHandler) {
 
-        m_id = gAtomicCgalID++;
+        m_id = m_idHandler.getId();
     }
 
     Triangulation_dSimplexAdapter_2(Vertex_handle v0,
                                     Vertex_handle v1,
-                                    Vertex_handle v2)
-            : Fb_(v0, v1, v2) {
+                                    Vertex_handle v2,
+                                    const Ih &idHandler)
+            : Fb_(v0, v1, v2), m_idHandler(idHandler) {
 
-        m_id = gAtomicCgalID++;
+        m_id = m_idHandler.getId();
     }
 
     Triangulation_dSimplexAdapter_2(Vertex_handle v0,
@@ -69,18 +65,25 @@ public:
                                     Vertex_handle v2,
                                     Face_handle n0,
                                     Face_handle n1,
-                                    Face_handle n2)
-            : Fb_(v0, v1, v2, n0, n1, n2) {
+                                    Face_handle n2,
+                                    const Ih &idHandler)
+            : Fb_(v0, v1, v2, n0, n1, n2), m_idHandler(idHandler) {
 
-        m_id = gAtomicCgalID++;
+        m_id = m_idHandler.getId();
+    }
+
+    ~Triangulation_dSimplexAdapter_2() {
+        m_idHandler.releaseId(m_id);
     }
 
 public:
     uint m_id;
+    const Ih &m_idHandler;
 };
 
-template<typename Precision, typename GT,
-        typename Cb = CGAL::Triangulation_cell_base_3<GT> >
+template<typename GT,
+        class Ih = _detail::IndexHandler,
+        typename Cb = CGAL::Triangulation_cell_base_3<GT>>
 class Triangulation_dSimplexAdapter_3
         : public Cb {
 public:
@@ -90,33 +93,41 @@ public:
     template<typename TDS2>
     struct Rebind_TDS {
         typedef typename Cb::template Rebind_TDS<TDS2>::Other Cb2;
-        typedef Triangulation_dSimplexAdapter_3<Precision, GT, Cb2> Other;
+        typedef Triangulation_dSimplexAdapter_3<GT, Ih, Cb2> Other;
     };
 
-    Triangulation_dSimplexAdapter_3()
-            : Cb() {
+    Triangulation_dSimplexAdapter_3(const Ih &idHandler)
+            : Cb(), m_idHandler(idHandler) {
 
-        m_id = gAtomicCgalID++;
+        m_id = m_idHandler.getId();
     }
 
     Triangulation_dSimplexAdapter_3(Vertex_handle v0, Vertex_handle v1,
-                                    Vertex_handle v2, Vertex_handle v3)
-            : Cb(v0, v1, v2, v3) {
+                                    Vertex_handle v2, Vertex_handle v3,
+                                    const Ih &idHandler)
+            : Cb(v0, v1, v2, v3), m_idHandler(idHandler) {
 
-        m_id = gAtomicCgalID++;
+        m_id = m_idHandler.getId();
     }
 
     Triangulation_dSimplexAdapter_3(Vertex_handle v0, Vertex_handle v1,
                                     Vertex_handle v2, Vertex_handle v3,
                                     Cell_handle n0, Cell_handle n1,
-                                    Cell_handle n2, Cell_handle n3)
-            : Cb(v0, v1, v2, v3, n0, n1, n2, n3) {
+                                    Cell_handle n2, Cell_handle n3,
+                                    const Ih &idHandler)
+            : Cb(v0, v1, v2, v3, n0, n1, n2, n3),
+              m_idHandler(idHandler) {
 
-        m_id = gAtomicCgalID++;
+        m_id = m_idHandler.getId();
+    }
+
+    ~Triangulation_dSimplexAdapter_3() {
+        m_idHandler.releaseId(m_id);
     }
 
 public:
     uint m_id;
+    const Ih &m_idHandler;
 };
 
 template<uint D, typename Precision, class Tria, bool Parallel = false>
@@ -151,6 +162,17 @@ public:
         Tria t;
         return t;
     }
+
+    void insert(Tria &tria, const Point_Ids &ids, dPoints<2, Precision> &points) {
+        // transform points into CGAL points with info
+        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+            const auto &p = points[i];
+            return std::make_pair(make_point(p), i);
+        };
+
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                    boost::make_transform_iterator(ids.end(), transform));
+    }
 };
 
 template<typename Precision, class Tria>
@@ -181,6 +203,22 @@ public:
     Tria make_tria() {
         Tria t;
         return t;
+    }
+
+    /*void insert(Tria & tria, const Point_Ids &ids, dPoints<3, Precision> &points){
+
+        tria.custom_insert_with_info(ids, points);
+    }*/
+
+    void insert(Tria &tria, const Point_Ids &ids, dPoints<3, Precision> &points) {
+        // transform points into CGAL points with info
+        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+            const auto &p = points[i];
+            return std::make_pair(make_point(p), i);
+        };
+
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                    boost::make_transform_iterator(ids.end(), transform));
     }
 };
 
@@ -219,29 +257,32 @@ public:
         return t;
     }
 
+    void insert(Tria &tria, const Point_Ids &ids, dPoints<3, Precision> &points) {
+        // transform points into CGAL points with info
+        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+            const auto &p = points[i];
+            return std::make_pair(make_point(p), i);
+        };
+
+        tria.insert(boost::make_transform_iterator(ids.begin(), transform),
+                    boost::make_transform_iterator(ids.end(), transform));
+    }
+
 private:
     typename Tria::Lock_data_structure lockingDS;
 };
 
 template<uint D, typename Precision, class Tria, bool Parallel>
-dSimplices<D, Precision>
-_delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
-              const dBox<D, Precision> &bounds,
-              const uint gridOccupancy
+dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precision> &points,
+                                       const dBox<D, Precision> &bounds,
+                                       const uint gridOccupancy
         /*, bool filterInfinite */) {
 
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
-    // transform points into CGAL points with info
-    auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
-        const auto &p = points[i];
-        return std::make_pair(helper.make_point(p), p.id);
-    };
-
     VTUNE_TASK(CgalTriangulation);
     Tria t = helper.make_tria();
-    t.insert(boost::make_transform_iterator(ids.begin(), transform),
-             boost::make_transform_iterator(ids.end(), transform));
+    helper.insert(t, ids, points);
     VTUNE_END_TASK(CgalTriangulation);
 
     ASSERT(t.is_valid());
@@ -251,42 +292,48 @@ _delaunayCgal(const Ids &ids, dPoints<D, Precision> &points,
     PLOG("Collecting simplices" << std::endl);
     INDENT
 
-    dSimplices<D, Precision> tria;
-    tria.reserve(helper.size(t));
+    VTUNE_TASK(CollectCgal);
+    //auto triaSize = helper.size(t);
+    auto lastId = t.tds().maxId();
+    t.tds().disableId();
 
-    //uint tetrahedronID = gAtomicTetrahedronID.fetch_add(helper.size(t), std::memory_order::memory_order_relaxed);
+    uint startId = dSimplices<D, Precision>::simplexID.fetch_add(lastId);
+
+    dSimplices<D, Precision> DT(startId, startId + lastId);
+
 #ifndef NDEBUG
-    //uint saveTetrahedronID = tetrahedronID;
+    std::set<tIdType> idCheck;
 #endif
 
-    VTUNE_TASK(CollectCgal);
-    dSimplex<D, Precision> a;
     for (auto it = helper.begin(t); it != helper.end(t); ++it) {
-        a.id = it->m_id;
+        dSimplex<D, Precision> a;
+        a.id = startId + it->m_id;
+
+        ASSERT(idCheck.insert(a.id).second);
 
         for (uint d = 0; d < D + 1; ++d) {
             a.vertices[d] = it->vertex(d)->info();
-            a.neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<3, Precision>::cINF
-                                                            : it->neighbor(d)->m_id;
+            a.neighbors[d] = t.is_infinite(it->neighbor(d)) ? dSimplex<D, Precision>::cINF
+                                                            : startId + it->neighbor(d)->m_id;
         }
 
         // sort vertices by ascending point id
-        static_insertion_sort(a.vertices);
-        static_insertion_sort(a.neighbors);
+        a.sortVertices();
         a.genFingerprint();
 
         //check whether vertex belongs to the convex hull
         if (!a.isFinite())
-            tria.convexHull.insert(a.id);
+            DT.convexHull.insert(a.id);
+
+        ASSERT((a.id != dSimplex<D, Precision>::cINF));
 
         PLOG(a << std::endl);
-        tria.insert(a);
+
+        DT.unsafe_at(a.id) = std::move(a);
     }
     DEDENT
 
-    //ASSERT(tetrahedronID == saveTetrahedronID + helper.size(t));
-
-    return tria;
+    return DT;
 }
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -302,14 +349,14 @@ public:
             : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
 
 protected:
-    dSimplices<2, Precision> _triangulate(const Ids &ids,
+    dSimplices<2, Precision> _triangulate(const Point_Ids &ids,
                                           const dBox<2, Precision> &bounds,
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
-        typedef Triangulation_dSimplexAdapter_2<Precision, K> Cb;
-        typedef CGAL::Triangulation_data_structure_2<Vb, Cb> Tds;
+        typedef Triangulation_dSimplexAdapter_2<K> Cb;
+        typedef CGAL::Indexed_Triangulation_data_structure_2<Vb, Cb> Tds;
         typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
 
         return _delaunayCgal<2, Precision, CT, Parallel>(ids, this->points, bounds,
@@ -330,14 +377,14 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
+    dSimplices<3, Precision> _triangulate(const Point_Ids &ids,
                                           const dBox<3, Precision> &bounds,
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
-        typedef Triangulation_dSimplexAdapter_3<Precision, K> Cb;
-        typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag> Tds;
+        typedef Triangulation_dSimplexAdapter_3<K, _detail::Concurrent_IndexHandler> Cb;
+        typedef CGAL::Indexed_Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag, _detail::Concurrent_IndexHandler> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
         return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds,
@@ -358,14 +405,14 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
+    dSimplices<3, Precision> _triangulate(const Point_Ids &ids,
                                           const dBox<3, Precision> &bounds,
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
         typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
-        typedef Triangulation_dSimplexAdapter_3<Precision, K> Cb;
-        typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
+        typedef Triangulation_dSimplexAdapter_3<K> Cb;
+        typedef CGAL::Indexed_Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
 
         return _delaunayCgal<3, Precision, CT, false>(ids, this->points, bounds,
@@ -404,10 +451,9 @@ class CGALTriangulator<3, double, false>;
 // pure CGAL triangulators for comparision study
 
 template<uint D, typename Precision, class Tria, bool Parallel>
-dSimplices<D, Precision>
-_pureCgal(const Ids &ids, dPoints<D, Precision> &points,
-          const dBox<D, Precision> &bounds,
-          const uint gridOccupancy
+dSimplices<D, Precision> _pureCgal(const Point_Ids &ids, dPoints<D, Precision> &points,
+                                   const dBox<D, Precision> &bounds,
+                                   const uint gridOccupancy
         /*, bool filterInfinite */) {
 
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
@@ -415,14 +461,14 @@ _pureCgal(const Ids &ids, dPoints<D, Precision> &points,
     // transform points into CGAL points with info
     auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
         const auto &p = points[i];
-        return std::make_pair(helper.make_point(p), p.id);
+        return std::make_pair(helper.make_point(p), i);
     };
 
     Tria t = helper.make_tria();
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
 
-    dSimplices<D, Precision> dummy;
+    dSimplices<D, Precision> dummy(0, 1);
     return dummy;
 }
 
@@ -437,7 +483,7 @@ public:
             : Triangulator<2, Precision>(_bounds, _points), gridOccupancy(_gridOccupancy) { };
 
 protected:
-    dSimplices<2, Precision> _triangulate(const Ids &ids,
+    dSimplices<2, Precision> _triangulate(const Point_Ids &ids,
                                           const dBox<2, Precision> &bounds,
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -465,7 +511,7 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
+    dSimplices<3, Precision> _triangulate(const Point_Ids &ids,
                                           const dBox<3, Precision> &bounds,
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
@@ -493,7 +539,7 @@ public:
 
 protected:
 
-    dSimplices<3, Precision> _triangulate(const Ids &ids,
+    dSimplices<3, Precision> _triangulate(const Point_Ids &ids,
                                           const dBox<3, Precision> &bounds,
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {

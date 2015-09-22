@@ -1,18 +1,22 @@
 #include "Partitioner.h"
 
 template<uint D, typename Precision>
-Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
-        const Ids &ids, const dPoints<D, Precision> &points,
+Partitioning<D, Precision> dWayPartitioner<D, Precision>::partition(
+        const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
+
+    VTUNE_TASK(PartitioningGetStats);
     // do mid-point based partitioning for now
-    auto stats = getPointStats(ids.begin(), ids.end(), points);
+    auto stats = getPointStats(ids, points);
+    VTUNE_END_TASK(PartitioningGetStats);
 
     PLOG("Midpoint is " << stats.mid << std::endl);
 
     Partitioning<D, Precision> partitioning;
-    partitioning.resize(pow(2, D));
+    partitioning.reserve(pow(2, D));
 
     for (uint i = 0; i < pow(2, D); ++i) {
+        partitioning.emplace_back(ids.size() / (pow(2, D)));
         partitioning[i].id = i;
 
         for (uint d = 0; d < D; ++d) {
@@ -23,7 +27,8 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
         }
     }
 
-    for (auto &id : ids) {
+    VTUNE_TASK(PartitioningDistribute);
+    for (auto id : ids) {
 
         if (!dPoint<D, Precision>::isFinite(id))
             continue; // skip infinite points, they will be added later
@@ -39,8 +44,9 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
         ASSERT(partitioning[part].bounds.contains(p.coords));
 
         // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(p.id);
+        partitioning[part].points.insert(id);
     }
+    VTUNE_END_TASK(PartitioningDistribute);
 
     // add infinite points
     for (uint i = 0; i < partitioning.size(); ++i) {
@@ -53,30 +59,36 @@ Partitioning<D, Precision> dPartitioner<D, Precision>::partition(
 }
 
 template<uint D, typename Precision>
-Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
-        const Ids &ids, const dPoints<D, Precision> &points,
+Partitioning<D, Precision> OneDimPartitioner<D, Precision>::partition(
+        const Point_Ids &ids, const dPoints<D, Precision> &points,
         __attribute((unused)) const std::string &provenance) const {
+
+    VTUNE_TASK(PartitioningGetStats);
     // do mid-point based partitioning for now
-    auto stats = getPointStats(ids.begin(), ids.end(), points);
+    auto stats = getPointStats(ids, points);
+    VTUNE_END_TASK(PartitioningGetStats);
 
     PLOG("Midpoint is " << stats.mid << std::endl);
 
     Partitioning<D, Precision> partitioning;
-    partitioning.resize(2);
+    partitioning.reserve(2);
 
+    partitioning.emplace_back(ids.size() / 2);
     partitioning[0].id = 0;
     for (uint d = 0; d < D; ++d) {
         partitioning[0].bounds.low[d] = stats.min[d];
         partitioning[0].bounds.high[d] = d == k ? stats.mid[d] : stats.max[d];
     }
 
+    partitioning.emplace_back(ids.size() / 2);
     partitioning[1].id = 1;
     for (uint d = 0; d < D; ++d) {
         partitioning[1].bounds.low[d] = d == k ? stats.mid[d] : stats.min[d];
         partitioning[1].bounds.high[d] = stats.max[d];
     }
 
-    for (auto &id : ids) {
+    VTUNE_TASK(PartitioningDistribute);
+    for (auto id : ids) {
 
         if (!dPoint<D, Precision>::isFinite(id))
             continue; // skip infinite points, they will be added later
@@ -89,8 +101,9 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
         ASSERT(partitioning[part].bounds.contains(p.coords));
 
         // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(p.id);
+        partitioning[part].points.insert(id);
     }
+    VTUNE_END_TASK(PartitioningDistribute);
 
     // add infinite points
     for (uint i = 0; i < partitioning.size(); ++i) {
@@ -104,11 +117,14 @@ Partitioning<D, Precision> kPartitioner<D, Precision>::partition(
 
 template<uint D, typename Precision>
 Partitioning<D, Precision>
-CyclePartitioner<D, Precision>::partition(const Ids &ids,
+CyclePartitioner<D, Precision>::partition(const Point_Ids &ids,
                                           const dPoints<D, Precision> &points,
                                           const std::string &provenance) const {
+
+    VTUNE_TASK(PartitioningGetStats);
     // do mid-point based partitioning for now
-    auto stats = getPointStats(ids.begin(), ids.end(), points);
+    auto stats = getPointStats(ids, points);
+    VTUNE_END_TASK(PartitioningGetStats);
 
     // cycle is lenght of provenance - 1 modulo D
     uint k = (provenance.size() - 1) % D;
@@ -116,34 +132,51 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
     PLOG("Midpoint is " << stats.mid << std::endl);
     PLOG("Splitting dimension is " << k << std::endl);
 
-    Partitioning<D, Precision> partitioning;
-    partitioning.resize(2);
+    std::vector<Concurrent_Fixed_Point_Ids> cPartPoints;
+    cPartPoints.reserve(2);
+    cPartPoints.emplace_back(ids.size());
+    cPartPoints.emplace_back(ids.size());
 
+
+    VTUNE_TASK(PartitioningDistribute);
+    tbb::parallel_for(ids.range(), [&stats, &points, &cPartPoints, k] (const auto &r) {
+
+        for(auto id : r) {
+            if (!dPoint<D, Precision>::isFinite(id))
+                continue; // skip infinite points, they will be added later
+
+            ASSERT(points.contains(id));
+            const auto &p = points[id];
+
+            uint part = (p.coords[k] > stats.mid[k]);
+
+            //ASSERT(partitioning[part].bounds.contains(p.coords));
+
+            // LOG("Adding " << p << " to " << part << std::endl);
+#ifndef NDEBUG
+            auto inserted =
+#endif
+                    cPartPoints[part].insert(id);
+            ASSERT(inserted);
+        }
+    });
+    VTUNE_END_TASK(PartitioningDistribute);
+
+    Partitioning<D, Precision> partitioning;
+    partitioning.reserve(2);
+
+    partitioning.emplace_back(std::move(cPartPoints[0]));
     partitioning[0].id = 0;
     for (uint d = 0; d < D; ++d) {
         partitioning[0].bounds.low[d] = stats.min[d];
         partitioning[0].bounds.high[d] = d == k ? stats.mid[d] : stats.max[d];
     }
 
+    partitioning.emplace_back(std::move(cPartPoints[1]));
     partitioning[1].id = 1;
     for (uint d = 0; d < D; ++d) {
         partitioning[1].bounds.low[d] = d == k ? stats.mid[d] : stats.min[d];
         partitioning[1].bounds.high[d] = stats.max[d];
-    }
-
-    for (auto &id : ids) {
-        if (!dPoint<D, Precision>::isFinite(id))
-            continue; // skip infinite points, they will be added later
-
-        ASSERT(points.contains(id));
-        const auto &p = points[id];
-
-        uint part = (p.coords[k] > stats.mid[k]);
-
-        ASSERT(partitioning[part].bounds.contains(p.coords));
-
-        // LOG("Adding " << p << " to " << part << std::endl);
-        partitioning[part].points.insert(p.id);
     }
 
     // add infinite points
@@ -158,37 +191,37 @@ CyclePartitioner<D, Precision>::partition(const Ids &ids,
 
 // specializations
 template
-class dPartitioner<2, float>;
+class dWayPartitioner<2, float>;
 
 template
-class kPartitioner<2, float>;
+class OneDimPartitioner<2, float>;
 
 template
 class CyclePartitioner<2, float>;
 
 template
-class dPartitioner<3, float>;
+class dWayPartitioner<3, float>;
 
 template
-class kPartitioner<3, float>;
+class OneDimPartitioner<3, float>;
 
 template
 class CyclePartitioner<3, float>;
 
 template
-class dPartitioner<2, double>;
+class dWayPartitioner<2, double>;
 
 template
-class kPartitioner<2, double>;
+class OneDimPartitioner<2, double>;
 
 template
 class CyclePartitioner<2, double>;
 
 template
-class dPartitioner<3, double>;
+class dWayPartitioner<3, double>;
 
 template
-class kPartitioner<3, double>;
+class OneDimPartitioner<3, double>;
 
 template
 class CyclePartitioner<3, double>;

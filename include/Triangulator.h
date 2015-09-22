@@ -4,7 +4,12 @@
 
 #pragma once
 
+#include <datastructures/Bit_Set.hxx>
 #include "Geometry.h"
+
+#include "utils/VTuneAdapter.h"
+#include "datastructures/LP_Set.hxx"
+#include "datastructures/Growing_LP.hxx"
 
 template<uint D, typename Precision>
 class Triangulator {
@@ -13,6 +18,9 @@ class Triangulator {
     friend
     class DCTriangulator;
 
+public:
+    virtual ~Triangulator() = default;
+
 protected:
     Triangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points)
             : baseBounds(_bounds), points(_points) { }
@@ -20,15 +28,16 @@ protected:
 public:
 
     dSimplices<D, Precision> triangulate() {
+
         return this->_triangulate(allPoints(), baseBounds, std::to_string(TOP));
     };
 
 protected:
-    virtual dSimplices<D, Precision> _triangulate(const Ids &partitionPoints,
+    virtual dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
                                                   const dBox<D, Precision> &bounds,
                                                   const std::string provenance) = 0;
 
-    Ids allPoints() const;
+    Point_Ids allPoints() const;
 
 protected:
     const dBox<D, Precision> baseBounds;
