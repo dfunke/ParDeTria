@@ -4,12 +4,9 @@
 
 #pragma once
 
-#include <datastructures/Bit_Set.hxx>
 #include "Geometry.h"
 
 #include "utils/VTuneAdapter.h"
-#include "datastructures/LP_Set.hxx"
-#include "datastructures/Growing_LP.hxx"
 
 template<uint D, typename Precision>
 class Triangulator {

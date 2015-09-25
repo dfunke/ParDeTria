@@ -41,152 +41,6 @@ typedef Concurrent_LP_Set<tIdType> Concurrent_Fixed_Point_Ids;
 typedef GrowingHashTable<Concurrent_LP_Set<tIdType, true>> Concurrent_Growing_Point_Ids;
 typedef GrowingHashTableHandle<Concurrent_LP_Set<tIdType, true>> hConcurrent_Growing_Point_Ids;
 
-/*class Ids : private tbb::concurrent_unordered_set<tIdType> {
-
-private:
-    typedef tbb::concurrent_unordered_set<tIdType> base;
-
-public:
-
-    Ids() : base() { }
-
-    Ids(const Ids &other) : base(other) {
-        PROFILER_INC("Ids_copy");
-    }
-
-    Ids(const Ids &&other) : base(std::move(other)) {
-        PROFILER_INC("Ids_move");
-    }
-
-    Ids(const base &other) : base(other) {
-        PROFILER_INC("Ids_copy");
-    }
-
-    Ids(const base &&other) : base(std::move(other)) {
-        PROFILER_INC("Ids_move");
-    }
-
-    auto operator=(const Ids &other) {
-        PROFILER_INC("Ids_copy");
-
-        return base::operator=(other);
-    }
-
-    auto operator=(const base &other) {
-        PROFILER_INC("Ids_copy");
-
-        return base::operator=(other);
-    }
-
-    auto operator=(const Ids &&other) {
-        PROFILER_INC("Ids_move");
-
-        return base::operator=(std::move(other));
-    }
-
-    auto operator=(const base &&other) {
-        PROFILER_INC("Ids_move");
-
-        return base::operator=(std::move(other));
-    }
-
-    auto insert(const tIdType &id) {
-        PROFILER_INC("Ids_insert");
-
-        return base::insert(id);
-    }
-
-    template<typename IT>
-    void insert(IT first, IT last) {
-        PROFILER_ADD("Ids_insert", std::distance(first, last));
-
-        base::insert(first, last);
-    }
-
-    auto begin() {
-        PROFILER_INC("Ids_begin");
-
-        return base::begin();
-    }
-
-    auto end() {
-        return base::end();
-    }
-
-    auto begin() const {
-        PROFILER_INC("Ids_begin");
-
-        return base::begin();
-    }
-
-    auto end() const {
-        return base::end();
-    }
-
-    auto range() {
-        PROFILER_INC("Ids_begin");
-
-        return base::range();
-    }
-
-    auto range() const {
-        PROFILER_INC("Ids_begin");
-
-        return base::range();
-    }
-
-    auto begin(std::size_t i) {
-        PROFILER_INC("Ids_localBegin");
-
-        return base::unsafe_begin(i);
-    }
-
-    auto end(std::size_t i) {
-
-        return base::unsafe_end(i);
-    }
-
-    auto begin(std::size_t i) const {
-        PROFILER_INC("Ids_localBegin");
-
-        return base::unsafe_begin(i);
-    }
-
-    auto end(std::size_t i) const {
-
-        return base::unsafe_end(i);
-    }
-
-    void reserve(std::size_t s) {
-        PROFILER_INC("Ids_reserve");
-
-        base::rehash(nextPow2(s));
-    }
-
-    auto size() const {
-        return base::size();
-    }
-
-    auto bucket_count() const {
-        return base::unsafe_bucket_count();
-    }
-
-    auto count(tIdType k) const {
-        PROFILER_INC("Ids_count");
-
-        return base::count(k);
-    }
-
-    auto clear() {
-        return base::clear();
-    }
-
-    void erase(tIdType k) {
-        base::unsafe_erase(k);
-    }
-
-};*/
-
 // basic data structure for d-dimensional data
 template<std::size_t D, typename Precision>
 using dVector = std::array<Precision, D>;
@@ -295,36 +149,7 @@ public:
     dPoint(const dVector<D, Precision> &_coords)
             : coords(_coords) { }
 
-    /*dPoint(const dPoint<D, Precision> &a) : id(a.id), coords(a.coords) {}
-
-    dPoint &operator=(const dPoint<D, Precision> &a) {
-      id = a.id;
-      coords = a.coords;
-
-      return *this;
-    }*/
-
-    /*bool operator==(const dPoint<D, Precision> &a) const {
-        PROFILER_INC("dPoint_compare");
-
-        for (uint i = 0; i < D; ++i) {
-            if (coords[i] != a.coords[i]) {
-                return false;
-            }
-        }
-        return true;
-    }*/
-
-    //bool operator==(const tIdType &a) const { return id == a; }
-
-    /*inline bool isFinite() const {
-        PROFILER_INC("dPoint_isFinite");
-
-        return isFinite(id);
-    }*/
-
 public:
-    //tIdType id;
     dVector<D, Precision> coords;
 
 public:
@@ -437,21 +262,8 @@ class dSimplex {
 public:
     dSimplex() : id(dSimplex<D, Precision>::cINF) { }
 
-    dSimplex(const std::array<uint, D + 1> &_vertices)
+    dSimplex(const std::array<tIdType, D + 1> &_vertices)
             : id(dSimplex<D, Precision>::cINF), vertices(_vertices) { }
-
-    /*dSimplex(const dSimplex<D, Precision> &a)
-        : id(a.id), vertices(a.vertices), vertexFingerprint(a.vertexFingerprint),
-          neighbors(a.neighbors) {}
-
-    dSimplex &operator=(const dSimplex<D, Precision> &a) {
-      id = a.id;
-      vertices = a.vertices;
-      vertexFingerprint = a.vertexFingerprint;
-      neighbors = a.neighbors;
-
-      return *this;
-    }*/
 
     bool operator==(const dSimplex<D, Precision> &a) const {
         PROFILER_INC("dSimplex_compare");
