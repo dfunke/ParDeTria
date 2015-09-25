@@ -257,7 +257,7 @@ public:
               m_array(nullptr),
               m_hasher(hasher) {
         // Initialize cells
-        m_arraySize = nextPow2(size);
+        m_arraySize = nextPow2(std::max(std::size_t(1), size));
         try {
             m_array.reset(new K[m_arraySize]()); //value init
         } catch (std::bad_alloc &e) {
@@ -397,7 +397,7 @@ public:
     }
 
     template<class Set>
-    void rehash(std::size_t newSize, const Set &filter) {
+    void rehash(std::size_t newSize, const Set &filter, const bool cmp = false) {
 
         m_rehashing = true;
 
@@ -415,19 +415,25 @@ public:
         }
 
         for (std::size_t i = 0; i < oldSize; ++i) {
-            if (oldArray[i] != 0 && !filter.count(oldArray[i]))
+            if (oldArray[i] != 0 && filter.count(oldArray[i]) == cmp)
                 insert(oldArray[i]);
         }
 
         m_rehashing = false;
     }
 
+    template<class Set>
+    void filter(const Set &filter) {
+
+        rehash(m_arraySize, filter);
+    }
+
     template<class Set, bool Growing2>
-    void merge(LP_Set<K, Growing2> &&other, const Set &filter) {
+    void merge(LP_Set<K, Growing2> &&other, const Set &filter, const bool cmp = false) {
         rehash((capacity() + other.capacity()), filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
-            if (other.m_array[i] != 0 && !filter.count(other.m_array[i]))
+            if (other.m_array[i] != 0 && filter.count(other.m_array[i]) == cmp)
                 insert(other.m_array[i]);
         }
     }
