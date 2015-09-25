@@ -8,7 +8,7 @@ template<uint D, typename Precision>
 dPoints<D, Precision> genPoints(const tIdType n, const dBox<D, Precision> &bounds,
                                 std::function<Precision()> &dice) {
     dPoints<D, Precision> points;
-    points.resize(n+1);
+    points.reserveUpToIdx(n+1);
 
     dVector<D, Precision> dim = bounds.high;
     for (uint d = 0; d < D; ++d) {

@@ -320,6 +320,30 @@ namespace _detail {
         }
 
     private:
+        friend class boost::serialization::access;
+
+        template<class Archive>
+        void save(Archive &ar, __attribute__((unused)) const unsigned int version) const {
+            // invoke serialization of the base class
+            ar << m_min;
+            ar << m_max;
+
+            ar << boost::serialization::make_array<T>(m_data.get(), size());
+        }
+
+        template<class Archive>
+        void load(Archive &ar, __attribute__((unused)) const unsigned int version) {
+            // invoke serialization of the base class
+            ar >> m_min;
+            ar >> m_max;
+
+            ar >> boost::serialization::make_array<T>(m_data.get(), size());
+        }
+
+        BOOST_SERIALIZATION_SPLIT_MEMBER()
+
+
+    private:
         IDX m_min;
         IDX m_max;
 
@@ -489,6 +513,34 @@ protected:
     static bool block_cmp(const block_ptr &a, const block_ptr &b) {
         return a->min() < b->min();
     }
+
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void save(Archive &ar, __attribute__((unused)) const unsigned int version) const {
+        // invoke serialization of the base class
+        std::size_t n = m_blocks.size();
+        ar << n;
+
+        for (const auto & b : m_blocks) {
+            ar << *b;
+        }
+    }
+
+    template<class Archive>
+    void load(Archive &ar, __attribute__((unused)) const unsigned int version) {
+        // invoke serialization of the base class
+        std::size_t n;
+        ar >> n;
+        m_blocks.resize(n);
+
+        for (std::size_t i = 0; i < n; ++i) {
+            ar >> *m_blocks[i];
+        }
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 protected:
     std::vector<block_ptr> m_blocks;

@@ -8,32 +8,32 @@
 #include "utils/Timings.h"
 
 template<typename T>
-class VectorAdapter : public std::vector<T> {
+class VectorAdapter : private std::vector<T> {
 
 public:
     typedef typename std::vector<T> vector;
 
 public:
 
-    VectorAdapter(const typename vector::size_type firstIdx = 0)
-            : vector(), m_firstIdx(firstIdx) { }
+    VectorAdapter(const typename vector::size_type offset = 0)
+            : vector(), m_offset(offset) { }
 
 public:
     bool contains(const typename vector::size_type &i) const {
         PROFILER_INC("VectorAdapter_contains");
 
-        return (T::isFinite(i) ? _finIdx(i) < finite_size() : _infIdx(i)) < vector::size();
+        return (T::isFinite(i) ? (i >= m_offset && _finIdx(i) < finite_size()) : _infIdx(i)) < vector::size();
     }
 
     T &operator[](const typename vector::size_type i) {
         PROFILER_INC("VectorAdapter_access");
 
+#ifndef NDEBUG
+        return at(i);
+#else
         if (__builtin_expect(T::isFinite(i), true))
             return vector::operator[](_finIdx(i));
         else
-#ifndef NDEBUG
-            return vector::at(_infIdx(i));
-#else
       return vector::operator[](_infIdx(i));
 #endif
     }
@@ -41,12 +41,12 @@ public:
     const T &operator[](const typename vector::size_type i) const {
         PROFILER_INC("VectorAdapter_access");
 
+#ifndef NDEBUG
+        return at(i);
+#else
         if (__builtin_expect(T::isFinite(i), true))
             return vector::operator[](_finIdx(i));
         else
-#ifndef NDEBUG
-            return vector::at(_infIdx(i));
-#else
       return vector::operator[](_infIdx(i));
 #endif
     }
@@ -54,19 +54,25 @@ public:
     T &at(const typename vector::size_type i) {
         PROFILER_INC("VectorAdapter_access");
 
-        if (__builtin_expect(T::isFinite(i), true))
+        if (__builtin_expect(T::isFinite(i), true)) {
+            RAISE(_finIdx(i) < vector::size());
             return vector::at(_finIdx(i));
-        else
+        } else {
+            RAISE(_infIdx(i) < vector::size());
             return vector::at(_infIdx(i));
+    }
     }
 
     const T &at(const typename vector::size_type i) const {
         PROFILER_INC("VectorAdapter_access");
 
-        if (__builtin_expect(T::isFinite(i), true))
+        if (__builtin_expect(T::isFinite(i), true)) {
+            RAISE(_finIdx(i) < vector::size());
             return vector::at(_finIdx(i));
-        else
+        } else {
+            RAISE(_infIdx(i) < vector::size());
             return vector::at(_infIdx(i));
+    }
     }
 
     template<class Return, class Container>
@@ -77,6 +83,10 @@ public:
     template<class Return, class InputIt>
     const Return filter(const InputIt &first, const InputIt &last) const {
         return _filter<Return>(first, last, std::distance(first, last));
+    }
+
+    const typename vector::size_type size() const {
+        return vector::size();
     }
 
     const typename vector::size_type finite_size() const {
@@ -103,8 +113,40 @@ public:
         return vector::end();
     }
 
+    template<typename... _Args>
+    void emplace_back(_Args &&... args) {
+        vector::emplace_back(args...);
+    }
+
+    bool reserveUpToIdx(const typename vector::size_type &size) {
+        if(vector::size() == 0 || size - m_offset > finite_size()) {
+            vector::resize(size - m_offset);
+            return true;
+        }
+
+        return false;
+    }
+
+    void reserveEntries(const typename vector::size_type &size) {
+        if (size > vector::size())
+            vector::resize(size);
+    }
+
+    void offset(const typename vector::size_type &offset) {
+        m_offset = offset;
+    }
+
+    std::size_t offset() const {
+        return m_offset;
+    }
+
+    template<class InputIt, class PosIt>
+    void insert(PosIt pos, InputIt begin, InputIt end) {
+        vector::insert(pos, begin, end);
+    }
+
     auto range() const {
-        return tbb::blocked_range<typename vector::size_type>(m_firstIdx, m_firstIdx + finite_size());
+        return tbb::blocked_range<typename vector::size_type>(m_offset, m_offset + finite_size());
     }
 
 private:
@@ -115,7 +157,7 @@ private:
 
     inline typename vector::size_type
     _finIdx(const typename vector::size_type i) const {
-        return i - m_firstIdx;
+        return i - m_offset;
     }
 
     template<class Return, class InputIt>
@@ -131,5 +173,14 @@ private:
     }
 
 private:
-    typename vector::size_type m_firstIdx;
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void serialize(Archive &ar, __attribute((unused)) const unsigned int version) {
+        ar &boost::serialization::base_object<vector>(*this);
+        ar &m_offset;
+    }
+
+private:
+    typename vector::size_type m_offset;
 };

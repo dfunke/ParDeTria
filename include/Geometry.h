@@ -815,6 +815,16 @@ public:
     }
 
 private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void serialize(Archive &ar, __attribute((unused)) const unsigned int version) {
+        ar & boost::serialization::base_object<base>(*this);
+        ar & convexHull;
+    }
+
+
+private:
     bool _valid(const dSimplex<D, Precision> &a) const {
         return dSimplex<D, Precision>::isFinite(a.id);
     }
