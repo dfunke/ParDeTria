@@ -761,7 +761,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
 
 template<uint D, typename Precision>
 VerificationReport<D, Precision>
-dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
+dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Point_Ids *pointIds) const {
     INDENT
     VerificationReport<D, Precision> result;
     result.valid = true;
@@ -781,11 +781,22 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
     if (points != usedPoints) {
         // not all points of input used
         std::stringstream sNotUsed;
-        for (std::size_t i = 0; i < points.finite_size(); ++i) {
-            const auto & p = points[i];
-            if (usedPoints.count(i) != 1 && dPoint<D,Precision>::isFinite(i)) {
-                sNotUsed << "[" << i << "] " << p << " ";
-                result.valid = false;
+
+        if (pointIds) {
+            for (const auto i : *pointIds) {
+                const auto &p = points[i];
+                if (usedPoints.count(i) != 1 && dPoint<D, Precision>::isFinite(i)) {
+                    sNotUsed << i << " - " << p << " ";
+                    result.valid = false;
+                }
+            }
+        } else {
+            for (std::size_t i = 0; i < points.finite_size(); ++i) {
+                const auto &p = points[i];
+                if (usedPoints.count(i) != 1 && dPoint<D, Precision>::isFinite(i)) {
+                    sNotUsed << i << " - " << p << " ";
+                    result.valid = false;
+                }
             }
         }
         if (!result.valid) {
@@ -793,10 +804,19 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points) const {
         }
 
         std::stringstream sInvalidP;
-        for (const auto &p : usedPoints) {
-            if (!points.contains(p) && dPoint<D, Precision>::isFinite(p)) {
-                sInvalidP << p << " ";
-                result.valid = false;
+        if (pointIds) {
+            for (const auto &p : usedPoints) {
+                if (!pointIds->contains(p) && dPoint<D, Precision>::isFinite(p)) {
+                    sInvalidP << p << " ";
+                    result.valid = false;
+                }
+            }
+        } else {
+            for (const auto &p : usedPoints) {
+                if (!points.contains(p) && dPoint<D, Precision>::isFinite(p)) {
+                    sInvalidP << p << " ";
+                    result.valid = false;
+                }
             }
         }
         if (!result.valid) {
