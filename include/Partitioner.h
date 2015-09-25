@@ -84,6 +84,10 @@ struct dPointStats {
     dVector<D, Precision> min;
     dVector<D, Precision> mid;
     dVector<D, Precision> max;
+
+    bool operator==(const dPointStats<D, Precision> & other) const {
+        return min == other.min && mid == other.mid && max == other.max;
+    }
 };
 
 template<uint D, typename Precision>
@@ -190,8 +194,21 @@ public:
     virtual ~Partitioner() = default;
 
     virtual Partitioning<D, Precision>
-            partition(const Point_Ids &ids, const dPoints<D, Precision> &points,
-                      const std::string &provenance) const = 0;
+            partition(const dPointStats<D, Precision> &stats,
+                      const Point_Ids &ids,
+                      const dPoints<D, Precision> &points,
+                      const std::string &provenance,
+                      bool ignoreInfinte = false) const = 0;
+
+    Partitioning<D, Precision>
+    partition(const Point_Ids &ids,
+              const dPoints<D, Precision> &points,
+              const std::string &provenance,
+              bool ignoreInfinte = false) const {
+
+        return partition(getPointStats(ids, points),
+                         ids, points, provenance, ignoreInfinte);
+    }
 
 public:
     static std::unique_ptr<Partitioner<D, Precision>> make(const unsigned char type);
@@ -201,9 +218,11 @@ template<uint D, typename Precision>
 class dWayPartitioner : public Partitioner<D, Precision> {
 
 public:
-    Partitioning<D, Precision> partition(const Point_Ids &ids,
+    Partitioning<D, Precision> partition(const dPointStats<D, Precision> &stats,
+                                         const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
-                                         const std::string &provenance) const;
+                                         const std::string &provenance,
+                                         bool ignoreInfinte = false) const;
 };
 
 template<uint D, typename Precision>
@@ -212,9 +231,11 @@ class OneDimPartitioner : public Partitioner<D, Precision> {
 public:
     OneDimPartitioner(uint _k) : k(_k) { }
 
-    Partitioning<D, Precision> partition(const Point_Ids &ids,
+    Partitioning<D, Precision> partition(const dPointStats<D, Precision> &stats,
+                                         const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
-                                         const std::string &provenance) const;
+                                         const std::string &provenance,
+                                         bool ignoreInfinte = false) const;
 
 private:
     uint k; // dimension to partition
@@ -224,9 +245,11 @@ template<uint D, typename Precision>
 class CyclePartitioner : public Partitioner<D, Precision> {
 
 public:
-    Partitioning<D, Precision> partition(const Point_Ids &ids,
+    Partitioning<D, Precision> partition(const dPointStats<D, Precision> &stats,
+                                         const Point_Ids &ids,
                                          const dPoints<D, Precision> &points,
-                                         const std::string &provenance) const;
+                                         const std::string &provenance,
+                                         bool ignoreInfinte = false) const;
 };
 
 
@@ -252,3 +275,9 @@ std::unique_ptr<Partitioner<D, Precision>> Partitioner<D, Precision>::make(const
     ASSERT(partitioner_ptr);
     return partitioner_ptr;
 }
+
+template<uint D, typename Precision>
+std::string to_string(const dPointStats<D, Precision> &p);
+
+template<uint D, typename Precision>
+std::ostream &operator<<(std::ostream &o, const dPointStats<D, Precision> &p);
