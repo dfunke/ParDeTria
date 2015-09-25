@@ -659,3 +659,23 @@ private:
     const static uint c_growThreshold = 10;
 
 };
+
+// conversion ctors
+
+template<typename K, typename V>
+LP_MultiMap<K, V>::LP_MultiMap(Concurrent_LP_MultiMap<K, V> &&other)
+        : m_arraySize(other.m_arraySize),
+          m_items(other.m_items),
+          m_keys(reinterpret_cast<K *>(other.m_keys.release())),
+          m_values(reinterpret_cast<V *>(other.m_values.release())),
+          m_hasher(std::move(other.m_hasher)) { }
+
+template<typename K, typename V>
+Concurrent_LP_MultiMap<K, V>::Concurrent_LP_MultiMap(LP_MultiMap<K, V> &&other)
+        : m_arraySize(other.m_arraySize),
+          m_items(other.m_items),
+          m_keys(reinterpret_cast<std::atomic<K> *>(other.m_keys.release())),
+          m_values(reinterpret_cast<std::atomic<V> *>(other.m_values.release())),
+          m_version(0),
+          m_hasher(std::move(other.m_hasher)),
+          m_currentCopyBlock(0) { }
