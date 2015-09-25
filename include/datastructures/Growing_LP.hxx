@@ -24,7 +24,7 @@ public:
     template<typename... Args>
     GrowingHashTable(Args... args)
             : g_epoch_r(0), g_epoch_w(0), helperThreads(0) {
-        g_table_r = std::make_shared<HT>(args...);
+        g_table_r = std::make_shared<HT>(std::forward<Args>(args)...);
         g_table_w = g_table_r;
     }
 
