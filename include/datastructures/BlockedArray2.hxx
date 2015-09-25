@@ -319,6 +319,15 @@ namespace _detail {
             return m_max;
         }
 
+        IDX size() const {
+            return max() - min();
+        }
+
+//        void offset(const IDX offset) {
+//            m_min += offset;
+//            m_max += offset;
+//        }
+
     private:
         friend class boost::serialization::access;
 
@@ -448,6 +457,16 @@ public:
         return m_blocks.back()->max();
     }
 
+    IDX size() const {
+        return upperBound() - lowerBound();
+    }
+
+//    void offset(const IDX offset) {
+//        for(auto &b : m_blocks){
+//            b->offset(offset);
+//        }
+//    }
+
 public:
     typedef _detail::block_iterator<BlockedArray2, T> iterator;
     friend iterator;
@@ -553,6 +572,11 @@ class BlockedArray2Handle {
 
 public:
     BlockedArray2Handle(BA &container) : m_container(container) { }
+
+    BlockedArray2Handle(const BlockedArray2Handle &) = delete;
+
+    BlockedArray2Handle(BlockedArray2Handle && other)
+    : m_container(other.m_container), m_hint(other.m_hint) { }
 
     auto &operator[](const IDX idx) const {
         return m_container.at(idx, m_hint);

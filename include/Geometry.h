@@ -775,10 +775,15 @@ public:
     }
 
     template <class Filter>
-    void merge(dSimplices<D, Precision> && other, const Filter & filter){
+    void merge(dSimplices<D, Precision> && other, const Filter & filter, const bool cmp = false){
         base::merge(std::move(other));
-        convexHull.mergeFilter(std::move(other.convexHull), filter);
+        convexHull.merge(std::move(other.convexHull), filter, cmp);
     }
+
+//    void offset(const tIdType offset){
+//        base::offset(offset);
+//        simplexID += offset;
+//    }
 
 public:
     typedef _detail::filtered_block_iterator<dSimplices<D, Precision>, dSimplex<D, Precision>> iterator;
