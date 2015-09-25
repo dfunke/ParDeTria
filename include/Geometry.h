@@ -734,7 +734,7 @@ public:
         return *this;
     }
 
-    VerificationReport<D, Precision> verify(const dPoints<D, Precision> &points, const Point_Ids *pointIds) const;
+    VerificationReport<D, Precision> verify(const dPoints<D, Precision> &points, const Point_Ids *pointIds = nullptr) const;
 
     CrossCheckReport<D, Precision> crossCheck(const dSimplices<D, Precision> &realSimplices) const;
 
