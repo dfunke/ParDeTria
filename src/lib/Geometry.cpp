@@ -620,9 +620,13 @@ public:
 //}
 
 template<uint D, typename Precision>
-CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimplices<D, Precision> &realSimplices) const {
+CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
+        const dSimplices<D, Precision> &realSimplices) const {
     CrossCheckReport<D, Precision> result;
     result.valid = true;
+
+    std::atomic<tIdType> mySize(0);
+    std::atomic<tIdType> realSize(0);
 
     //build hashmap for simplex lookup
     tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup;
@@ -630,7 +634,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
         for (const auto &a : r) {
-
+            ++mySize;
             simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
         }
     });
@@ -638,9 +642,17 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(const dSimpl
     tbb::parallel_for(realSimplices.range(), [&](const auto & r) {
 
         for (const auto &a : r) {
+            ++realSize;
             simplexLookup.insert(std::make_pair(a.fingerprint(), a.id));
         }
     });
+
+    // check whether sizes are equal
+    if (mySize != realSize) {
+        LOG("Wrong number of simplices - my size: " << mySize
+            << " real size: " << realSize << std::endl);
+        result.valid = false;
+    }
 
     tbb::spin_mutex mtx;
 
