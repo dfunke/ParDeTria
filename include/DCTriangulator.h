@@ -59,7 +59,7 @@ protected:
     void getEdge(const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,
                  const uint &partition,
-                 Concurrent_Growing_Point_Ids &edgePoints, Concurrent_Simplex_Ids &edgeSimplices);
+                 Concurrent_Growing_Point_Ids &edgePoints, Concurrent_Growing_Simplex_Ids &edgeSimplices);
 
     cWuFaces buildWhereUsed(const dSimplices<D, Precision> &simplices,
                             const Simplex_Ids &edgeSimplices);

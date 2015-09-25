@@ -17,12 +17,12 @@
 #include <set>
 
 #include <datastructures/Growing_LP.hxx>
-#include "datastructures/IndexedVector.hxx"
+//#include "datastructures/IndexedVector.hxx"
 #include "datastructures/VectorAdapter.hxx"
 #include "datastructures/LP_MultiMap.hxx"
-#include "datastructures/BlockedArray.hxx"
+//#include "datastructures/BlockedArray.hxx"
 #include "datastructures/BlockedArray2.hxx"
-#include "datastructures/Bit_Set.hxx"
+//#include "datastructures/Bit_Set.hxx"
 
 #include "utils/Logger.h"
 #include "utils/ASSERT.h"
@@ -30,14 +30,16 @@
 #include "utils/Misc.h"
 #include "utils/StaticSort.h"
 
-typedef uint tHashType;
-typedef uint tIdType;
+typedef uint64_t tHashType;
+typedef uint64_t tIdType;
 
-typedef Bit_Set Simplex_Ids;
-typedef Concurrent_Bit_Set Concurrent_Simplex_Ids;
+typedef LP_Set<tIdType, true> Simplex_Ids;
+typedef Concurrent_LP_Set<tIdType, false> Concurrent_Fixed_Simplex_Ids;
+typedef GrowingHashTable<Concurrent_LP_Set<tIdType, true>> Concurrent_Growing_Simplex_Ids;
+typedef GrowingHashTableHandle<Concurrent_LP_Set<tIdType, true>> hConcurrent_Growing_Simplex_Ids;
 
-typedef LP_Set<tIdType> Point_Ids;
-typedef Concurrent_LP_Set<tIdType> Concurrent_Fixed_Point_Ids;
+typedef LP_Set<tIdType, true> Point_Ids;
+typedef Concurrent_LP_Set<tIdType, false> Concurrent_Fixed_Point_Ids;
 typedef GrowingHashTable<Concurrent_LP_Set<tIdType, true>> Concurrent_Growing_Point_Ids;
 typedef GrowingHashTableHandle<Concurrent_LP_Set<tIdType, true>> hConcurrent_Growing_Point_Ids;
 
@@ -717,10 +719,10 @@ public:
     typedef std::array<uint, 256> tHash;
 
 public:
-    dSimplices() : base(0, 1), convexHull(0, 1) { }
+    dSimplices() : base(0, 1), convexHull(1) { }
 
     dSimplices(const tIdType min, const tIdType max) : base(min, max),
-                                                       convexHull(min, max) { }
+                                                       convexHull((max-min) / 4) { }
 
     dSimplices(dSimplices &&other) : base(std::move(other)),
                                      convexHull(std::move(other.convexHull)) { }
@@ -743,7 +745,6 @@ public:
 public:
 
     auto &addBlock(const tIdType min, const tIdType max) {
-        convexHull.resize(min, max);
         return base::addBlock(min, max);
     }
 
