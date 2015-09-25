@@ -10,7 +10,7 @@ namespace _detail {
     public:
         IndexHandler() : m_id(0) { }
 
-        IndexHandler(const uint i) : m_id(i) { }
+        IndexHandler(const tIdType i) : m_id(i) { }
 
         tIdType getId() const { //needs to be const because of CGAL::Compact_container
             if(m_freeIds.empty()){
@@ -47,7 +47,7 @@ namespace _detail {
     public:
         Concurrent_IndexHandler() : m_id(0) { }
 
-        Concurrent_IndexHandler(const uint i) : m_id(i) { }
+        Concurrent_IndexHandler(const tIdType i) : m_id(i) { }
 
         tIdType getId() const { //needs to be const because of CGAL::Compact_container
             tIdType id;

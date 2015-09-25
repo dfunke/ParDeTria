@@ -12,7 +12,7 @@ template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type *
 T nextPow2(const T x) {
     T v = x - 1;
 
-    for (uint s = 1; s < sizeof(T) * CHAR_BIT; s <<= 1) {
+    for (T s = 1; s < sizeof(T) * CHAR_BIT; s <<= 1) {
         v |= v >> s;
     }
 

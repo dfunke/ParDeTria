@@ -17,7 +17,7 @@ public:
     typedef typename tbb::concurrent_vector<V> base;
 
 public:
-    V &operator[](uint idx) {
+    V &operator[](typename base::size_type idx) {
         PROFILER_INC("IndexedVector_access");
 
         try {
@@ -30,7 +30,7 @@ public:
         }
     }
 
-    const V &operator[](uint idx) const {
+    const V &operator[](typename base::size_type idx) const {
         PROFILER_INC("IndexedVector_access");
 
         try {
@@ -43,7 +43,7 @@ public:
         }
     }
 
-    V &at(uint idx) {
+    V &at(typename base::size_type idx) {
         PROFILER_INC("IndexedVector_access");
 
         try {
@@ -56,7 +56,7 @@ public:
         }
     }
 
-    const V &at(uint idx) const {
+    const V &at(typename base::size_type idx) const {
         PROFILER_INC("IndexedVector_access");
 
         try {

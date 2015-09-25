@@ -25,7 +25,7 @@ public:
               bounds(other.bounds) { }
 
 public:
-    bool contains(const uint &p) const { return points.count(p) == 1; }
+    bool contains(const tIdType &p) const { return points.count(p) == 1; }
 
     bool contains(const dSimplex<D, Precision> &s, bool partially = false) const {
         for (const auto &p : s.vertices) {
@@ -59,7 +59,7 @@ template<uint D, typename Precision>
 class Partitioning : public std::vector<Partition<D, Precision>> {
 
 public:
-    uint partition(const uint p) const {
+    uint partition(const tIdType p) const {
         for (const auto &part : *this) {
             if (part.points.count(p) > 0)
                 return part.id;
@@ -95,13 +95,13 @@ std::ostream &operator<<(std::ostream &o, const dPointStats<D, Precision> &p);
 namespace __detail {
     template<class T,
             typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
-    uint _id(const T &t) {
+    tIdType _id(const T &t) {
         return t;
     }
 
     template<class T,
             typename std::enable_if<!std::is_integral<T>::value, int>::type = 0>
-    uint _id(const T &t) {
+    tIdType _id(const T &t) {
         return *t;
     }
 }
@@ -120,7 +120,7 @@ dPointStats<D, Precision> getPointStatsSeq(const InputIt &first,
 
         for (auto it = first; it != last; ++it) {
 
-            const uint id = __detail::_id(it);
+            const tIdType id = __detail::_id(it);
             ASSERT(points.contains(id));
 
             if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {

@@ -120,7 +120,7 @@ private:
 
     template<class Return, class InputIt>
     const Return _filter(const InputIt &first, const InputIt &last,
-                         const uint n) const {
+                         const typename vector::size_type n) const {
         Return res;
         res.reserve(n);
 

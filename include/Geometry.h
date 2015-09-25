@@ -338,8 +338,8 @@ public:
         return ~cINF & i;
     }
 
-    static constexpr tIdType cINF = ~(0) ^((1 << D) - 1);
-    static constexpr tIdType nINF = ~(0) - cINF + 1;
+    static constexpr tIdType cINF = ~tIdType(0) ^((1 << D) - 1);
+    static constexpr tIdType nINF = ~tIdType(0) - cINF + 1;
 };
 
 //#############################################################################
@@ -525,9 +525,9 @@ public:
         return neighbors != a.neighbors;
     }
 
-    bool operator==(const uint &a) const { return id == a; }
+    bool operator==(const tIdType a) const { return id == a; }
 
-    bool contains(uint p) const {
+    bool contains(tIdType p) const {
         PROFILER_INC("dSimplex_containsId");
 
         // vertices are sorted by point id
@@ -654,19 +654,19 @@ private:
     }
 
 public:
-    uint id;
+    tIdType id;
     std::array<tIdType, D + 1> vertices;
     tHashType vFingerprint;
     std::array<tIdType, D + 1> neighbors;
 
 public:
-    static bool isFinite(const uint &i) {
+    static bool isFinite(const tIdType &i) {
         PROFILER_INC("dSimplex_staticIsFinite");
 
         return i != cINF;
     }
 
-    static constexpr uint cINF = ~(0);
+    static constexpr tIdType cINF = ~tIdType(0);
 };
 
 template<std::size_t D, typename Precision>

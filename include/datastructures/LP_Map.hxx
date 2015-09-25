@@ -381,7 +381,7 @@ public:
         m_keys.reset(new std::atomic<K>[m_arraySize]()); //zero init
         m_values.reset(new std::atomic<V>[m_arraySize]); //random init
 
-        tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const uint i) {
+        tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const K i) {
             if (oldKeys[i].load(std::memory_order_relaxed) != 0)
                 insert(oldKeys[i].load(std::memory_order_relaxed), oldValues[i].load(std::memory_order_relaxed));
         });
@@ -391,7 +391,7 @@ public:
 
         unsafe_rehash((capacity() + other.capacity()) << 1);
 
-        tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const uint i) {
+        tbb::parallel_for(std::size_t(0), other.capacity(), [&other, this](const K i) {
             if (other.m_keys[i].load(std::memory_order_relaxed) != 0)
                 insert(other.m_keys[i].load(std::memory_order_relaxed),
                        other.m_values[i].load(std::memory_order_relaxed));

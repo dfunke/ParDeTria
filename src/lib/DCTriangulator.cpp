@@ -97,7 +97,7 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
 
     // infinite points to edge
     auto edgePointsHandle = edgePoints.handle();
-    for (uint k = dPoint<D, Precision>::cINF; k != 0; ++k) {
+    for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
         edgePointsHandle.insert(k);
     }
 
@@ -124,8 +124,8 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
     INDENT
 
     VTUNE_TASK(IdentifyEdge);
-    tbb::parallel_do(simplices.convexHull, [&](const uint id,
-                                               tbb::parallel_do_feeder<uint> &feeder) {
+    tbb::parallel_do(simplices.convexHull, [&](const tIdType id,
+                                               tbb::parallel_do_feeder<tIdType> &feeder) {
 
         if (!dSimplex<D, Precision>::isFinite(id))
             return;
@@ -240,13 +240,13 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     auto wuFacesHandle = wuFaces.handle();
 
 #ifndef NDEBUG
-    std::atomic<uint> checked(0);
-    std::atomic<uint> updated(0);
+    std::atomic<tIdType> checked(0);
+    std::atomic<tIdType> updated(0);
 #endif
 
     VTUNE_TASK(UpdateNeighbors);
-    tbb::parallel_do(toCheck.range(), [&](const uint &id,
-                                          tbb::parallel_do_feeder<uint> &feeder) {
+    tbb::parallel_do(toCheck.range(), [&](const tIdType &id,
+                                          tbb::parallel_do_feeder<tIdType> &feeder) {
 
         LOGGER.setIndent(saveIndent);
 

@@ -77,7 +77,7 @@ public:
     }
 
 public:
-    uint m_id;
+    tIdType m_id;
     const Ih &m_idHandler;
 };
 
@@ -126,7 +126,7 @@ public:
     }
 
 public:
-    uint m_id;
+    tIdType m_id;
     const Ih &m_idHandler;
 };
 
@@ -165,7 +165,7 @@ public:
 
     void insert(Tria &tria, const Point_Ids &ids, dPoints<2, Precision> &points) {
         // transform points into CGAL points with info
-        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+        auto transform = [&points, this](const tIdType i) -> std::pair<typename Tria::Point, tIdType> {
             const auto &p = points[i];
             return std::make_pair(make_point(p), i);
         };
@@ -212,7 +212,7 @@ public:
 
     void insert(Tria &tria, const Point_Ids &ids, dPoints<3, Precision> &points) {
         // transform points into CGAL points with info
-        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+        auto transform = [&points, this](const tIdType i) -> std::pair<typename Tria::Point, tIdType> {
             const auto &p = points[i];
             return std::make_pair(make_point(p), i);
         };
@@ -259,7 +259,7 @@ public:
 
     void insert(Tria &tria, const Point_Ids &ids, dPoints<3, Precision> &points) {
         // transform points into CGAL points with info
-        auto transform = [&points, this](const uint i) -> std::pair<typename Tria::Point, uint> {
+        auto transform = [&points, this](const tIdType i) -> std::pair<typename Tria::Point, tIdType> {
             const auto &p = points[i];
             return std::make_pair(make_point(p), i);
         };
@@ -297,7 +297,7 @@ dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precisio
     auto lastId = t.tds().maxId();
     t.tds().disableId();
 
-    uint startId = dSimplices<D, Precision>::simplexID.fetch_add(lastId);
+    tIdType startId = dSimplices<D, Precision>::simplexID.fetch_add(lastId);
 
     dSimplices<D, Precision> DT(startId, startId + lastId);
 
@@ -354,7 +354,7 @@ protected:
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
-        typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
+        typedef CGAL::Triangulation_vertex_base_with_info_2<tIdType, K> Vb;
         typedef Triangulation_dSimplexAdapter_2<K> Cb;
         typedef CGAL::Indexed_Triangulation_data_structure_2<Vb, Cb> Tds;
         typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
@@ -382,7 +382,7 @@ protected:
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
-        typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+        typedef CGAL::Triangulation_vertex_base_with_info_3<tIdType, K> Vb;
         typedef Triangulation_dSimplexAdapter_3<K, _detail::Concurrent_IndexHandler> Cb;
         typedef CGAL::Indexed_Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag, _detail::Concurrent_IndexHandler> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
@@ -410,7 +410,7 @@ protected:
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
-        typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+        typedef CGAL::Triangulation_vertex_base_with_info_3<tIdType, K> Vb;
         typedef Triangulation_dSimplexAdapter_3<K> Cb;
         typedef CGAL::Indexed_Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
@@ -459,7 +459,7 @@ dSimplices<D, Precision> _pureCgal(const Point_Ids &ids, dPoints<D, Precision> &
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
     // transform points into CGAL points with info
-    auto transform = [&points, &helper](const uint i) -> std::pair<typename Tria::Point, uint> {
+    auto transform = [&points, &helper](const tIdType i) -> std::pair<typename Tria::Point, tIdType> {
         const auto &p = points[i];
         return std::make_pair(helper.make_point(p), i);
     };
@@ -488,7 +488,7 @@ protected:
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
-        typedef CGAL::Triangulation_vertex_base_with_info_2<uint, K> Vb;
+        typedef CGAL::Triangulation_vertex_base_with_info_2<tIdType, K> Vb;
         typedef CGAL::Triangulation_face_base_2<K> Cb;
         typedef CGAL::Triangulation_data_structure_2<Vb, Cb> Tds;
         typedef CGAL::Delaunay_triangulation_2<K, Tds> CT;
@@ -516,7 +516,7 @@ protected:
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
-        typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+        typedef CGAL::Triangulation_vertex_base_with_info_3<tIdType, K> Vb;
         typedef CGAL::Triangulation_cell_base_3<K> Cb;
         typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
@@ -544,7 +544,7 @@ protected:
                                           __attribute__((unused)) const std::string provenance
             /*, bool filterInfinite */) {
 
-        typedef CGAL::Triangulation_vertex_base_with_info_3<uint, K> Vb;
+        typedef CGAL::Triangulation_vertex_base_with_info_3<tIdType, K> Vb;
         typedef CGAL::Triangulation_cell_base_3<K> Cb;
         typedef CGAL::Triangulation_data_structure_3<Vb, Cb, CGAL::Sequential_tag> Tds;
         typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;

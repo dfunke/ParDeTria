@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     int verbosity = -1;
 
     unsigned char p = 'c';
-    uint N;
+    tIdType N;
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     bool loadPoints = false;
 
     po::options_description cCommandLine("Command Line Options");
-    cCommandLine.add_options()("n", po::value<uint>(&N), "number of points");
+    cCommandLine.add_options()("n", po::value<tIdType>(&N), "number of points");
     cCommandLine.add_options()("recDepth", po::value<uint>(&recursionDepth),
                                "maximum levels of recursion");
     cCommandLine.add_options()(

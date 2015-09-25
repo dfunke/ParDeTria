@@ -18,10 +18,10 @@ struct TriangulationReportEntry {
     bool edge_triangulation;
     bool valid;
 
-    uint nPoints;
-    uint nSimplices;
-    uint nEdgePoints;
-    uint nEdgeSimplices;
+    tIdType nPoints;
+    tIdType nSimplices;
+    tIdType nEdgePoints;
+    tIdType nEdgeSimplices;
 };
 
 typedef tbb::concurrent_vector<TriangulationReportEntry> TriangulationReport;

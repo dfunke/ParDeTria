@@ -5,7 +5,7 @@
 #include "SpatialSort.h"
 
 template<uint D, typename Precision>
-dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
+dPoints<D, Precision> genPoints(const tIdType n, const dBox<D, Precision> &bounds,
                                 std::function<Precision()> &dice) {
     dPoints<D, Precision> points;
     points.resize(n+1);
@@ -19,7 +19,7 @@ dPoints<D, Precision> genPoints(const uint n, const dBox<D, Precision> &bounds,
         points[0].coords[d] = 0;
     }
 
-    for (uint i = 1; i <= n; ++i) {
+    for (tIdType i = 1; i <= n; ++i) {
         dPoint<D, Precision> p;
         //p.id = i;
         for (uint d = 0; d < D; ++d) {

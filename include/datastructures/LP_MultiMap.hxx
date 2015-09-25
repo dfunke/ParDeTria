@@ -527,7 +527,7 @@ public:
             raise(SIGINT);
         }
 
-        tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const uint i) {
+        tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const K i) {
             if (oldKeys[i].load(std::memory_order_relaxed) != 0)
                 insert(oldKeys[i].load(std::memory_order_relaxed), oldValues[i].load(std::memory_order_relaxed));
         });

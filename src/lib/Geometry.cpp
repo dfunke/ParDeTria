@@ -11,10 +11,10 @@
 #include "Triangulator.h"
 
 // static variables
-template<uint D, typename Precision> constexpr uint dPoint<D, Precision>::cINF;
+template<uint D, typename Precision> constexpr tIdType dPoint<D, Precision>::cINF;
 
 template<uint D, typename Precision>
-constexpr uint dSimplex<D, Precision>::cINF;
+constexpr tIdType dSimplex<D, Precision>::cINF;
 
 template<uint D, typename Precision>
 std::atomic<tIdType> dSimplices<D, Precision>::simplexID(1);
@@ -586,9 +586,9 @@ public:
 };
 
 //template<uint D, typename Precision>
-//uint dSimplices<D, Precision>::countDuplicates(const Simplex_Ids & simplices) const {
+//tIdType dSimplices<D, Precision>::countDuplicates(const Simplex_Ids & simplices) const {
 //
-//    std::atomic<uint> duplicates(0);
+//    std::atomic<tIdType> duplicates(0);
 //    tbb::spin_mutex mtx;
 //
 //    tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,

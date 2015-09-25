@@ -292,7 +292,7 @@ public:
         LP_Set<K, Growing> c(m_arraySize, m_hasher);
         c.m_items = m_items;
 
-        for(uint i = 0; i < m_arraySize; ++i){
+        for(K i = 0; i < m_arraySize; ++i){
             c.m_array[i] = m_array[i];
         }
 
@@ -582,7 +582,7 @@ public:
         if (!Growing && m_items.load() == m_arraySize)
             return InsertReturn::State::Full;
 
-        uint cols = 0;
+        K cols = 0;
         for (K idx = m_hasher(key); ; idx++) {
 
             if (Growing && cols > c_growThreshold) {
