@@ -56,6 +56,10 @@ namespace _detail {
             return m_idx + other.m_idx;
         }
 
+        std::size_t operator+(const std::size_t &a) const {
+            return m_idx + a;
+        }
+
         block_iterator operator=(const block_iterator &other) {
             m_idx = other.m_idx;
             m_block = other.m_block;
@@ -89,7 +93,19 @@ namespace _detail {
         auto *operator->() const { return &m_container.m_blocks[m_block]->at(m_idx); }
 
         void half(block_iterator &begin, block_iterator & end){
-            _setIdx((end + begin) / 2, true);
+            _setIdx(begin + ((end - begin) / 2), true);
+
+            // if our midpoint is identical to the end, try to back it off one step,
+            // since a midpoint between two block is always rounded up to the next one
+            if(*this == end) {
+                _dec(false);
+
+                // now we might be below our beginning iterator
+                // we reset to the beginning then
+                if(*this < begin){
+                    *this = begin;
+                }
+            }
         }
 
     private:
@@ -169,6 +185,10 @@ namespace _detail {
             return m_idx + other.m_idx;
         }
 
+        std::size_t operator+(const std::size_t &a) const {
+            return m_idx + a;
+        }
+
         filtered_block_iterator operator=(const filtered_block_iterator &other) {
             m_idx = other.m_idx;
             m_block = other.m_block;
@@ -202,7 +222,19 @@ namespace _detail {
         auto *operator->() const { return &m_container.m_blocks[m_block]->at(m_idx); }
 
         void half(filtered_block_iterator &begin, filtered_block_iterator & end){
-            _setIdx((end + begin) / 2, true);
+            _setIdx(begin + ((end - begin) / 2), true);
+
+            // if our midpoint is identical to the end, try to back it off one step,
+            // since a midpoint between two block is always rounded up to the next one
+            if(*this == end) {
+                _dec(false);
+
+                // now we might be below our beginning iterator
+                // we reset to the beginning then
+                if(*this < begin){
+                    *this = begin;
+                }
+            }
         }
 
     private:

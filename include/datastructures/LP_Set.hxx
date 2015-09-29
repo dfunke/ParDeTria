@@ -110,6 +110,10 @@ namespace _detail {
             return m_idx + other.m_idx;
         }
 
+        std::size_t operator+(const std::size_t &a) const {
+            return m_idx + a;
+        }
+
         iterator operator=(const iterator &other) {
             m_idx = other.m_idx;
             return *this;
@@ -140,7 +144,7 @@ namespace _detail {
         auto operator*() const { return m_container.at(m_idx); }
 
         void half(iterator &begin, iterator & end){
-            _setIdx((end + begin) / 2, true);
+            _setIdx(begin + ((end - begin) / 2), true);
         }
 
         //const auto *operator->() const { return &m_container.at(m_idx); }
@@ -191,7 +195,7 @@ namespace _detail {
 
         //! True if range can be partitioned into two subranges.
         bool is_divisible() const {
-            return m_end - m_begin >= grainsize();
+            return m_begin < m_midpoint && m_midpoint < m_end && m_end - m_begin >= grainsize();
         }
 
         //! Split range.

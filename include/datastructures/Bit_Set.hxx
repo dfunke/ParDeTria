@@ -61,6 +61,10 @@ namespace _detail {
             return m_idx + other.m_idx;
         }
 
+        std::size_t operator+(const std::size_t &a) const {
+            return m_idx + a;
+        }
+
         bitset_iterator operator=(const bitset_iterator &other) {
             m_idx = other.m_idx;
             return *this;
@@ -93,7 +97,7 @@ namespace _detail {
         //const auto *operator->() const { return &m_container.at(m_idx); }
 
         void half(bitset_iterator &begin, bitset_iterator & end){
-            _setIdx((end + begin) / 2, true);
+            _setIdx(begin + ((end - begin) / 2), true);
         }
 
     private:
