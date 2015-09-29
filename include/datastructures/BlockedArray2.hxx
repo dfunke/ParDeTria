@@ -378,6 +378,13 @@ namespace _detail {
             ar >> m_min;
             ar >> m_max;
 
+            try {
+                m_data.reset(new T[size()]); //random init
+            } catch (std::bad_alloc &e) {
+                std::cerr << e.what() << std::endl;
+                raise(SIGINT);
+            }
+
             ar >> boost::serialization::make_array<T>(m_data.get(), size());
         }
 
@@ -489,8 +496,13 @@ public:
         return m_blocks.back()->max();
     }
 
-    IDX size() const {
-        return upperBound() - lowerBound();
+    IDX exact_size() const {
+        IDX size = 0;
+        for(const auto &b : m_blocks){
+            size += b->max() - b->min();
+        }
+
+        return size;
     }
 
 //    void offset(const IDX offset) {

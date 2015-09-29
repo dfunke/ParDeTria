@@ -629,7 +629,7 @@ CrossCheckReport<D, Precision> dSimplices<D, Precision>::crossCheck(
     std::atomic<tIdType> realSize(0);
 
     //build hashmap for simplex lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(this->size() + realSimplices.size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(this->exact_size() + realSimplices.exact_size());
 
     tbb::parallel_for(this->range(), [&](const auto &r) {
 
@@ -858,7 +858,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
     // verify that all simplices with a shared D-1 simplex are neighbors
 
     //build hashmap for face lookup
-    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1) * this->size());
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1) * this->exact_size());
 
     tbb::parallel_for(this->range(), [&](const auto &r) {
 

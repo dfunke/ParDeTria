@@ -396,7 +396,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     // merge partial DTs and edge DT
     LOG("Merging triangulations" << std::endl);
-    Concurrent_Growing_Simplex_Ids insertedSimplices(edgeDT.size() / 4);
+    Concurrent_Growing_Simplex_Ids insertedSimplices(edgeSimplices.size());
 
     tbb::enumerable_thread_specific<hConcurrent_Growing_Simplex_Ids,
             tbb::cache_aligned_allocator<hConcurrent_Growing_Simplex_Ids>,
