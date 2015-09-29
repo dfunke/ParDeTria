@@ -75,15 +75,15 @@ TEST(Geometry3D, SimpleInSphere) {
     dPoints<3, float> points;
     points.resize(7);
 
-    const uint A = 0;
-    const uint B = 1;
-    const uint C = 2;
+    const tIdType A = 0;
+    const tIdType B = 1;
+    const tIdType C = 2;
 
-    const uint Du = 3;
-    const uint Dd = 4;
+    const tIdType Du = 3;
+    const tIdType Dd = 4;
 
-    const uint I = 5;
-    const uint O = 6;
+    const tIdType I = 5;
+    const tIdType O = 6;
 
     // A (0,0,0)
     //points[A].id = A;
@@ -113,7 +113,7 @@ TEST(Geometry3D, SimpleInSphere) {
     //points[O].id = O;
     points[O].coords = {{5, 5, 5}};
 
-    auto test = [&](const std::array<uint, 4> &v) {
+    auto test = [&](const std::array<tIdType, 4> &v) {
         dSimplex<3, float> s;
         s.vertices = v;
 
