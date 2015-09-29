@@ -499,7 +499,7 @@ public:
     IDX exact_size() const {
         IDX size = 0;
         for(const auto &b : m_blocks){
-            size += b->max() - b->min();
+            size += b->size();
         }
 
         return size;
