@@ -98,7 +98,7 @@ namespace _detail {
             // if our midpoint is identical to the end, try to back it off one step,
             // since a midpoint between two block is always rounded up to the next one
             if(*this == end) {
-                _dec(false);
+                _dec();
 
                 // now we might be below our beginning iterator
                 // we reset to the beginning then
