@@ -770,6 +770,22 @@ public:
         return false;
     }
 
+    bool unsafe_inRange(const dSimplex<D, Precision> &s) const {
+        return unsafe_inRange(s.id);
+    }
+
+    bool unsafe_inRange(const tIdType id) const {
+        return base::unsafe_contains(id);
+    }
+
+    bool inRange(const dSimplex<D, Precision> &s, uint & hint) const {
+        return inRange(s.id, hint);
+    }
+
+    bool inRange(const tIdType id, uint & hint) const {
+        return base::contains(id, hint);
+    }
+
     void merge(dSimplices<D, Precision> && other){
         base::merge(std::move(other));
         convexHull.merge(std::move(other.convexHull));

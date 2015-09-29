@@ -642,6 +642,10 @@ public:
         return m_container.contains(idx, m_hint);
     }
 
+    bool inRange(const IDX idx) const {
+        return m_container.inRange(idx, m_hint);
+    }
+
 private:
     BA &m_container;
     mutable uint m_hint = 0;
