@@ -966,7 +966,7 @@ typename dSimplices<D, Precision>::tHash dSimplices<D, Precision>::genFingerprin
         auto h = s.fingerprint();
         uint i = h & 0xFF; // get last byte
 
-        ASSERT(0 <= i && i <= 256);
+        ASSERT(i <= 256);
         hash[i] ^= h; //xor into hash array
     }
 
