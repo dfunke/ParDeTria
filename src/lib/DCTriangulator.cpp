@@ -78,7 +78,7 @@ DCTriangulator<D, Precision>::DCTriangulator(
                 p.coords[d] +=
                         (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
 
-            this->points.emplace_back(p);
+            this->points[dPoint<D, Precision>::cINF | i] = std::move(p);
         }
     }
 

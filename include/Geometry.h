@@ -18,7 +18,8 @@
 
 #include <datastructures/Growing_LP.hxx>
 //#include "datastructures/IndexedVector.hxx"
-#include "datastructures/VectorAdapter.hxx"
+//#include "datastructures/VectorAdapter.hxx"
+#include "datastructures/VectorAdapter2.hxx"
 #include "datastructures/LP_MultiMap.hxx"
 //#include "datastructures/BlockedArray.hxx"
 #include "datastructures/BlockedArray2.hxx"
@@ -174,13 +175,13 @@ public:
 // IndexedVector of dPoints
 
 template<uint D, typename Precision>
-class dPoints : public VectorAdapter<dPoint<D, Precision>> {
+class dPoints : public VectorAdapter2<dPoint<D, Precision>> {
 
 public:
-    dPoints() : VectorAdapter<dPoint<D, Precision>>() { }
+    dPoints() : VectorAdapter2<dPoint<D, Precision>>() { }
 
-    dPoints(const VectorAdapter<dPoint<D, Precision>> &other)
-            : VectorAdapter<dPoint<D, Precision>>(other) { }
+    dPoints(const VectorAdapter2<dPoint<D, Precision>> &other)
+            : VectorAdapter2<dPoint<D, Precision>>(other) { }
 
     bool operator==(const Concurrent_Growing_Point_Ids &other) const {
         return operator==(other.handle());

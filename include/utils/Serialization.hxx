@@ -82,7 +82,7 @@ namespace boost {
         template<class Archive, uint D, typename Precision>
         void serialize(Archive &ar, dPoints<D, Precision> &ps,
                        __attribute((unused)) const unsigned int version) {
-            ar & boost::serialization::base_object<VectorAdapter<dPoint<D, Precision>>>(
+            ar & boost::serialization::base_object<VectorAdapter2<dPoint<D, Precision>>>(
                     ps);
         }
 
