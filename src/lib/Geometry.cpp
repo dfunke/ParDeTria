@@ -806,14 +806,14 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
         std::stringstream sInvalidP;
         if (pointIds) {
             for (const auto &p : usedPoints) {
-                if (!pointIds->contains(p) && dPoint<D, Precision>::isFinite(p)) {
+                if (dPoint<D, Precision>::isFinite(p) && !pointIds->contains(p)) {
                     sInvalidP << p << " ";
                     result.valid = false;
                 }
             }
         } else {
             for (const auto &p : usedPoints) {
-                if (!points.contains(p) && dPoint<D, Precision>::isFinite(p)) {
+                if (dPoint<D, Precision>::isFinite(p) && !points.contains(p)) {
                     sInvalidP << p << " ";
                     result.valid = false;
                 }
