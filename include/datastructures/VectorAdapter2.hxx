@@ -57,10 +57,10 @@ public:
         PROFILER_INC("VectorAdapter2_access");
 
         if (__builtin_expect(T::isFinite(i), true)) {
-            RAISE(m_offset <= i && _finIdx(i) < finite_size());
+            ASSERT(m_offset <= i && _finIdx(i) < finite_size());
             return vector::at(_finIdx(i));
         } else {
-            RAISE(_infIdx(i) < T::nINF);
+            ASSERT(_infIdx(i) < T::nINF);
             return m_infinites.at(_infIdx(i));
     }
     }
@@ -69,10 +69,10 @@ public:
         PROFILER_INC("VectorAdapter2_access");
 
         if (__builtin_expect(T::isFinite(i), true)) {
-            RAISE(m_offset <= i && _finIdx(i) < finite_size());
+            ASSERT(m_offset <= i && _finIdx(i) < finite_size());
             return vector::at(_finIdx(i));
         } else {
-            RAISE(_infIdx(i) < T::nINF);
+            ASSERT(_infIdx(i) < T::nINF);
             return m_infinites.at(_infIdx(i));
     }
     }

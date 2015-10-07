@@ -168,7 +168,7 @@ public:
                 m_array.reset(new tKeyType[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
-            raise(SIGINT);
+            ASSERT(SIGINT);
         }
     }
 
@@ -193,8 +193,8 @@ public:
     }
 
     bool testAndSet(const tKeyType &idx) {
-        RAISE(m_lowerBound <= idx && idx < m_upperBound);
-        RAISE(_block(idx) < m_arraySize);
+        ASSERT(m_lowerBound <= idx && idx < m_upperBound);
+        ASSERT(_block(idx) < m_arraySize);
 
         bool test = isSet(idx);
         m_array[_block(idx)] |= 1 << (idx % cENTRIES);
@@ -204,8 +204,8 @@ public:
     }
 
     bool testAndUnset(const tKeyType &idx) {
-        RAISE(m_lowerBound <= idx && idx < m_upperBound);
-        RAISE(_block(idx) < m_arraySize);
+        ASSERT(m_lowerBound <= idx && idx < m_upperBound);
+        ASSERT(_block(idx) < m_arraySize);
 
         bool test = isSet(idx);
         m_array[_block(idx)] &= ~(1 << (idx % cENTRIES));
@@ -215,8 +215,8 @@ public:
     }
 
     void batchSet(const tKeyType &from, const tKeyType &to) {
-        RAISE(m_lowerBound <= from && from < m_upperBound);
-        RAISE(m_lowerBound <= to && to <= m_upperBound);
+        ASSERT(m_lowerBound <= from && from < m_upperBound);
+        ASSERT(m_lowerBound <= to && to <= m_upperBound);
 
         /*auto print = [this] (const std::string & msg) {
             std::cout << msg << ": ";
@@ -254,7 +254,7 @@ public:
     bool isSet(const tKeyType &idx) const {
 
         if (m_lowerBound <= idx && idx < m_upperBound) {
-            RAISE(_block(idx) < m_arraySize);
+            ASSERT(_block(idx) < m_arraySize);
 
             return m_array[_block(idx)] && (m_array[_block(idx)] & (1 << (idx % cENTRIES)));
         } else {
@@ -295,7 +295,7 @@ public:
             m_array.reset(new tKeyType[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
-            raise(SIGINT);
+            ASSERT(SIGINT);
         }
 
         for (std::size_t i = 0; i < m_arraySize; ++i) {
@@ -325,7 +325,7 @@ public:
             m_array.reset(new tKeyType[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
-            raise(SIGINT);
+            ASSERT(SIGINT);
         }
 
         std::size_t i;
@@ -356,7 +356,7 @@ public:
             m_array.reset(new tKeyType[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
-            raise(SIGINT);
+            ASSERT(SIGINT);
         }
 
         m_ones = 0;
@@ -400,7 +400,7 @@ public:
             m_array.reset(new tKeyType[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
-            raise(SIGINT);
+            ASSERT(SIGINT);
         }
 
         m_ones = 0;
@@ -487,6 +487,38 @@ private:
 
 private:
     static const uint cENTRIES = (CHAR_BIT * sizeof(tKeyType));
+
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void save(Archive &ar, __attribute__((unused)) const unsigned int version) const {
+        // invoke serialization of the base class
+        ar << m_arraySize;
+        ar << m_lowerBound;
+        ar << m_upperBound;
+        ar << m_ones;
+        ar << boost::serialization::make_array<tKeyType>(m_array.get(), m_arraySize);
+    }
+
+    template<class Archive>
+    void load(Archive &ar, __attribute__((unused)) const unsigned int version) {
+        // invoke serialization of the base class
+        ar >> m_arraySize;
+        ar >> m_lowerBound;
+        ar >> m_upperBound;
+        ar >> m_ones;
+
+        try {
+            m_array.reset(new tKeyType[m_arraySize]); //random init
+        } catch (std::bad_alloc &e) {
+            std::cerr << e.what() << std::endl;
+            ASSERT(SIGINT);
+        }
+        ar >> boost::serialization::make_array<tKeyType>(m_array.get(), m_arraySize);
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 class Concurrent_Bit_Set {
@@ -514,7 +546,7 @@ public:
                 m_array.reset(new std::atomic<tKeyType>[m_arraySize]); //random init
         } catch (std::bad_alloc &e) {
             std::cerr << e.what() << std::endl;
-            raise(SIGINT);
+            ASSERT(SIGINT);
         }
     }
 
@@ -539,8 +571,8 @@ public:
     }
 
     bool testAndSet(const tKeyType &idx) {
-        RAISE(m_lowerBound <= idx && idx < m_upperBound);
-        RAISE(_block(idx) < m_arraySize);
+        ASSERT(m_lowerBound <= idx && idx < m_upperBound);
+        ASSERT(_block(idx) < m_arraySize);
 
         std::size_t i = _block(idx);
         tKeyType mask = 1 << (idx % cENTRIES);
@@ -563,8 +595,8 @@ public:
     }
 
     bool testAndUnset(const tKeyType &idx) {
-        RAISE(m_lowerBound <= idx && idx < m_upperBound);
-        RAISE(_block(idx) < m_arraySize);
+        ASSERT(m_lowerBound <= idx && idx < m_upperBound);
+        ASSERT(_block(idx) < m_arraySize);
 
         std::size_t i = _block(idx);
         tKeyType mask = (1 << (idx % cENTRIES));
@@ -589,7 +621,7 @@ public:
     bool isSet(const tKeyType &idx) const {
 
         if (m_lowerBound <= idx && idx < m_upperBound) {
-            RAISE(_block(idx) < m_arraySize);
+            ASSERT(_block(idx) < m_arraySize);
 
             tKeyType val = m_array[_block(idx)].load();
             return val && (val & (1 << (idx % cENTRIES)));

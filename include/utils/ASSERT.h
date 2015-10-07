@@ -26,14 +26,14 @@ private:
 #ifdef NDEBUG
 
 #define ASSERT(e) ((void)(0))
-#define RAISE(e) ((void)(0))
+#define RASSERT(e) ((void)(0))
 
 #else // NDEBUG
 
 #define ASSERT(e)                                                              \
   ((void)((e) ? 0 : throw AssertionException(#e, __FILE__, __LINE__)))
 
-#define RAISE(e)                                                              \
+#define RASSERT(e)                                                              \
   ((void)((e) ? 0 : raise(SIGINT)))
 
 #endif
