@@ -858,6 +858,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
     // verify that all simplices with a shared D-1 simplex are neighbors
 
     //build hashmap for face lookup
+    LOG("Building look-up map" << std::endl);
     tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1) * this->exact_size());
 
     tbb::parallel_for(this->range(), [&](const auto &r) {
@@ -883,10 +884,10 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
             for (uint i = 0; i < D + 1; ++i) {
                 auto faceHash = a.faceFingerprint(i);
                 auto range = faceLookup.equal_range(faceHash);
+
+                ASSERT(range.first != range.second); // we have at least ourself in the map
+
                 for (auto it = range.first; it != range.second; ++it) {
-                    if (!dSimplex<D, Precision>::isFinite(it->second) || !thisHandle.contains(it->second))
-                        // infinite/deleted simplex or not belonging to this triangulation
-                        continue;
 
                     const auto &b = thisHandle.at(it->second);
                     // a and b are neighbors: the neighbor property is symmetric and the
