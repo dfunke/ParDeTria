@@ -177,6 +177,8 @@ public:
 template<uint D, typename Precision>
 class dPoints : public VectorAdapter2<dPoint<D, Precision>> {
 
+    typedef VectorAdapter2<dPoint<D, Precision>> super;
+
 public:
     dPoints() : VectorAdapter2<dPoint<D, Precision>>() { }
 
@@ -185,6 +187,21 @@ public:
 
     bool operator==(const Concurrent_Growing_Point_Ids &other) const {
         return operator==(other.handle());
+    }
+
+    bool contains(const tIdType &i) const {
+        PROFILER_INC("dPoints_contains");
+
+        //we have to check whether i is GREATER than offset, because zero is reserved
+
+        return (__builtin_expect(dPoint<D, Precision>::isFinite(i), true))
+               ? (i > super::offset() && super::_finIdx(i) < super::finite_size())
+               : (super::_infIdx(i) < dPoint<D, Precision>::nINF);
+    }
+
+    auto range() const {
+        // we have to adapt the range to exclude 0
+        return tbb::blocked_range<std::size_t>(super::offset() + 1, super::offset() + super::finite_size());
     }
 
     template<class Container>

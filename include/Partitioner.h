@@ -158,6 +158,7 @@ dPointStats<D, Precision> getPointStats(const Container &ids,
 
             if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {
 
+                ASSERT(id != 0);
                 ASSERT(points.contains(id));
                 const auto &coords = points[id].coords;
 

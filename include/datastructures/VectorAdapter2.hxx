@@ -146,7 +146,7 @@ public:
         return tbb::blocked_range<typename vector::size_type>(m_offset, m_offset + finite_size());
     }
 
-private:
+protected:
     inline typename vector::size_type
     _infIdx(const typename vector::size_type i) const {
         return T::infIndex(i);
@@ -181,5 +181,6 @@ private:
 
 private:
     typename vector::size_type m_offset;
+protected:
     std::array<T, T::nINF> m_infinites;
 };
