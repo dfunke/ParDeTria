@@ -120,17 +120,12 @@ public:
 //        vector::emplace_back(args...);
 //    }
 
-    bool reserveUpToIdx(const typename vector::size_type &size) {
-        if(vector::size() == 0 || size - m_offset > vector::size()) {
+    void reserveUpToIdx(const typename vector::size_type &size) {
+        if(vector::size() == 0 || size - m_offset > vector::size())
             vector::resize(size - m_offset);
-            return true;
-        }
-
-        return false;
     }
 
-    void reserveEntries(const typename vector::size_type &size) {
-        if (size > vector::size())
+    void resize(const typename vector::size_type &size) {
             vector::resize(size);
     }
 
