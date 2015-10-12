@@ -57,6 +57,12 @@ if (VALGRIND)
   add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK)
 endif ()
 
+option(TIMER "Enable fine grained TaskTimer" OFF)
+if (TIMER)
+    message(STATUS "Timing enabled")
+    add_definitions(-DENABLE_TASK_TIMER)
+endif ()
+
 option(SANITIZE_THREAD "Enable thread sanitizer" OFF)
 if (SANITIZE_THREAD)
   message(WARNING "ThreadSanitizer is enabled")
