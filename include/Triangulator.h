@@ -45,6 +45,5 @@ public:
         return provenance == std::to_string(TOP);
     }
 
-protected:
     static constexpr char TOP = 0;
 };

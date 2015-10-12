@@ -11,7 +11,7 @@ template<uint D, typename Precision>
 Point_Ids Triangulator<D, Precision>::allPoints() const {
     Point_Ids allPoints(points.size());
     for (tIdType i = 1; i < points.finite_size(); ++i)
-        allPoints.insert(i);
+        allPoints.insert(points.offset() + i);
     for (tIdType infVertex = 0; infVertex < dPoint<D,Precision>::nINF;
          ++infVertex)
 
