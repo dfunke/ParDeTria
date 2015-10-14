@@ -115,13 +115,7 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
 
 
-    Concurrent_Growing_Simplex_Ids wqa = simplices.convexHull.copy(); // set of already checked simplices
-
-    tbb::enumerable_thread_specific<hConcurrent_Growing_Simplex_Ids,
-            tbb::cache_aligned_allocator<hConcurrent_Growing_Simplex_Ids>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsWqaHandle(std::ref(wqa));
-
-    //wqa.insert(dSimplex<D, Precision>::cINF); //we don't want to check the infinte vertex
+    tMarkType gMark = ++simplices.mark;
 
     /* Walk along the neighbors,
      * testing for each neighbor whether its circumsphere is within the
@@ -139,7 +133,6 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
 
         auto &edgePointsHandle = tsEdgePointsHandle.local();
         auto &edgeSimplicesHandle = tsEdgeSimplicesHandle.local();
-        auto &wqaHandle = tsWqaHandle.local();
 
         auto &simplicesHandle = tsSimplicesHandle.local();
 
@@ -162,8 +155,9 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
             }
 
             for (const auto &n : simplex.neighbors) {
-                if (dSimplex<D, Precision>::isFinite(n) && wqaHandle.insert(n)) {
+                if (dSimplex<D, Precision>::isFinite(n) && simplicesHandle[n].mark < gMark) {
                     // n was not yet inspected
+                    simplicesHandle[n].mark = gMark;
                     feeder.add(n);
                 }
             }
@@ -178,8 +172,6 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
                                                       const Simplex_Ids &edgeSimplices) {
 
 
-    Concurrent_Growing_Simplex_Ids wqa(edgeSimplices.size()); // set of already checked simplices
-
     /* We need to build the wuFaces DS for the simplices of the first layer "inward" of the edge
      * plus one more layer, to re-find their neighbors
      */
@@ -190,18 +182,15 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
             tbb::cache_aligned_allocator<hcWuFaces>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
-    tbb::enumerable_thread_specific<hConcurrent_Growing_Simplex_Ids,
-            tbb::cache_aligned_allocator<hConcurrent_Growing_Simplex_Ids>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsWqaHandle(std::ref(wqa));
-
     tbb::enumerable_thread_specific<dSimplicesConstHandle<D, Precision>,
             tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
 
+    tMarkType gMark = ++simplices.mark;
+
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
 
         auto &wuFacesHandle = tsWuFacesHandle.local();
-        auto &wqaHandle = tsWqaHandle.local();
 
         auto &simplicesHandle = tsSimplicesHandle.local();
 
@@ -210,7 +199,9 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
             for (const auto &firstLayer : edgeSimplex.neighbors) {
                 if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
                     // we have an "inward" neighbor, add it to the wuFaces DS
-                    if (wqaHandle.insert(firstLayer)) {
+                    if (simplicesHandle[firstLayer].mark < gMark) {
+                        simplicesHandle[firstLayer].mark = gMark;
+
                         for (uint i = 0; i < D + 1; ++i) {
                             auto facetteHash = simplicesHandle[firstLayer].faceFingerprint(i);
                             wuFacesHandle.insert(facetteHash, firstLayer);
@@ -220,7 +211,8 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
                     // TODO maybe we can avoid this
 //                    for (const auto &secondLayer : DT[firstLayer].neighbors) {
 //                        if (dSimplex<D, Precision>::isFinite(secondLayer) && !edgeSimplices.count(secondLayer)
-//                            && wqa.insert(secondLayer)) {
+//                            && simplicesHandle[secondLayer].mark < gMark) {
+//                            simplicesHandle[secondLayer].mark = gMark
 //
 //                            for (uint i = 0; i < D + 1; ++i) {
 //                                auto facetteHash = DT[secondLayer].faceFingerprint(i);
@@ -246,15 +238,11 @@ void DCTriangulator<D, Precision>::updateNeighbors(
     INDENT
     const uint saveIndent = LOGGER.getIndent();
 
-    Concurrent_Growing_Simplex_Ids wqa(toCheck.size());
-
     tbb::enumerable_thread_specific<dSimplicesHandle<D, Precision>,
             tbb::cache_aligned_allocator<dSimplicesHandle<D, Precision>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
 
-    tbb::enumerable_thread_specific<hConcurrent_Growing_Simplex_Ids,
-            tbb::cache_aligned_allocator<hConcurrent_Growing_Simplex_Ids>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsWqaHandle(std::ref(wqa));
+    tMarkType gMark = ++simplices.mark;
 
 
     auto wuFacesHandle = wuFaces.handle();
@@ -270,15 +258,14 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 
         LOGGER.setIndent(saveIndent);
 
-        auto &wqaHandle = tsWqaHandle.local();
-
-        if (!wqaHandle.insert(id)) {
-            return;
-        }
-
         auto &simplicesHandle = tsSimplicesHandle.local();
 
         dSimplex<D, Precision> &simplex = simplicesHandle[id];
+
+        if (simplex.mark == gMark) {
+            return; //already checked
+        }
+        simplex.mark = gMark;
 
         PLOG("Checking neighbors of " << simplex << std::endl);
 #ifndef NDEBUG
@@ -320,7 +307,8 @@ void DCTriangulator<D, Precision>::updateNeighbors(
                         ASSERT(!set || cand == simplex.neighbors[d]); //second term is to guard against double entries
 
                         simplex.neighbors[d] = cand;
-                        feeder.add(cand);
+                        if(simplicesHandle[cand].mark < gMark)
+                            feeder.add(cand);
 #ifndef NDEBUG
                         ++updated;
                         set = true;

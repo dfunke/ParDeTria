@@ -33,6 +33,7 @@
 
 typedef uint32_t tHashType;
 typedef uint64_t tIdType;
+typedef uint8_t tMarkType;
 
 typedef LP_Set<tIdType, true> Simplex_Ids;
 typedef Concurrent_LP_Set<tIdType, false> Concurrent_Fixed_Simplex_Ids;
@@ -309,10 +310,10 @@ template<uint D, typename Precision>
 class dSimplex {
 
 public:
-    dSimplex() : id(dSimplex<D, Precision>::cINF) { }
+    dSimplex() : id(dSimplex<D, Precision>::cINF), mark(0) { }
 
     dSimplex(const std::array<tIdType, D + 1> &_vertices)
-            : id(dSimplex<D, Precision>::cINF), vertices(_vertices) { }
+            : id(dSimplex<D, Precision>::cINF), vertices(_vertices), mark(0) { }
 
     bool operator==(const dSimplex<D, Precision> &a) const {
         PROFILER_INC("dSimplex_compare");
@@ -519,6 +520,7 @@ public:
     std::array<tIdType, D + 1> vertices;
     tHashType vFingerprint;
     std::array<tIdType, D + 1> neighbors;
+    mutable tMarkType mark;
 
 public:
     static bool isFinite(const tIdType &i) {
@@ -766,22 +768,26 @@ public:
     typedef std::array<uint, 256> tHash;
 
 public:
-    dSimplices() : base(0, 1), convexHull(1) { }
+    dSimplices() : base(0, 1), convexHull(1), mark(0) { }
 
     dSimplices(const tIdType min, const tIdType max, const tIdType cvSize) : base(min, max),
-                                                       convexHull(cvSize) { }
+                                                       convexHull(cvSize),
+							mark(0) { }
 
     dSimplices(dSimplices &&other) : base(std::move(other)),
-                                     convexHull(std::move(other.convexHull)) { }
+                                     convexHull(std::move(other.convexHull)),
+                                     mark(other.mark) { }
 
     dSimplices &operator=(dSimplices &&other) {
         base::operator=(std::move(other));
         convexHull = std::move(other.convexHull);
+        mark = other.mark;
 
         return *this;
     }
 
-    VerificationReport<D, Precision> verify(const dPoints<D, Precision> &points, const Point_Ids *pointIds = nullptr) const;
+    VerificationReport<D, Precision> verify(const dPoints<D, Precision> &points,
+                                            const Point_Ids *pointIds = nullptr) const;
 
     CrossCheckReport<D, Precision> crossCheck(const dSimplices<D, Precision> &realSimplices) const;
 
@@ -806,11 +812,11 @@ public:
         return false;
     }
 
-    bool contains(const dSimplex<D, Precision> &s, uint & hint) const {
+    bool contains(const dSimplex<D, Precision> &s, uint &hint) const {
         return contains(s.id, hint);
     }
 
-    bool contains(const tIdType id, uint & hint) const {
+    bool contains(const tIdType id, uint &hint) const {
         if (base::contains(id, hint))
             return _valid(this->at(id, hint));
 
@@ -825,23 +831,25 @@ public:
         return base::unsafe_contains(id);
     }
 
-    bool inRange(const dSimplex<D, Precision> &s, uint & hint) const {
+    bool inRange(const dSimplex<D, Precision> &s, uint &hint) const {
         return inRange(s.id, hint);
     }
 
-    bool inRange(const tIdType id, uint & hint) const {
+    bool inRange(const tIdType id, uint &hint) const {
         return base::contains(id, hint);
     }
 
-    void merge(dSimplices<D, Precision> && other){
+    void merge(dSimplices<D, Precision> &&other) {
         base::merge(std::move(other));
         convexHull.merge(std::move(other.convexHull));
+        mark = std::max(mark, other.mark);
     }
 
-    template <class Filter>
-    void merge(dSimplices<D, Precision> && other, const Filter & filter, const bool cmp = false){
+    template<class Filter>
+    void merge(dSimplices<D, Precision> &&other, const Filter &filter, const bool cmp = false) {
         base::merge(std::move(other));
         convexHull.merge(std::move(other.convexHull), filter, cmp);
+        mark = std::max(mark, other.mark);
     }
 
 //    void offset(const tIdType offset){
@@ -900,6 +908,7 @@ private:
 
 public:
     Simplex_Ids convexHull;
+    mutable tMarkType mark;
 
 public:
     static std::atomic<tIdType> simplexID;
