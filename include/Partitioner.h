@@ -125,6 +125,7 @@ dPointStats<D, Precision> getPointStatsSeq(const InputIt &first,
         for (auto it = first; it != last; ++it) {
 
             const tIdType id = __detail::_id(it);
+            ASSERT(id != 0);
             ASSERT(points.contains(id));
 
             if (dPoint<D, Precision>::isFinite(id) || !ignoreInfinite) {

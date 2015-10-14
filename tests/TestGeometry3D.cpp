@@ -150,7 +150,7 @@ TEST(Geometry3D, PointStats) {
     auto dice = RandomFactory<double>::make('u', gen);
     auto points = genPoints(1e5, bounds, dice);
 
-    dPointStats<3, double> seq = getPointStatsSeq(std::size_t(0), points.size(), points);
+    dPointStats<3, double> seq = getPointStatsSeq(std::size_t(1), points.finite_size(), points);
     dPointStats<3, double> par = getPointStats(points, points);
 
     for(uint d = 0; d < 3; ++d){
