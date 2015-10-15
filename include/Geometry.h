@@ -134,6 +134,35 @@ struct dBox {
         return false;
     }
 
+    dBox<D, Precision> operator-(const dBox<D, Precision> & other) const{
+        dBox<D, Precision> result(low, high);
+
+        // we can only substract a rectangle other that is equal to ours, except in one dimension
+
+#ifndef NDEBUG
+        uint mods = 0;
+#endif
+        for (uint d = 0; d < D; ++d) {
+            if (low[d] != other.low[d]) {
+                result.high[d] = other.low[d];
+#ifndef NDEBUG
+                ++mods;
+#endif
+            }
+
+            if (high[d] != other.high[d]) {
+                result.low[d] = other.high[d];
+#ifndef NDEBUG
+                ++mods;
+#endif
+            }
+        }
+
+        ASSERT(mods == 1);
+
+        return result;
+    };
+
     bool operator==(const dBox<D, Precision> &other) const {
         return low == other.low && high == other.high;
     }

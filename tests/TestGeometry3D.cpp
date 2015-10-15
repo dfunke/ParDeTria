@@ -159,3 +159,50 @@ TEST(Geometry3D, PointStats) {
         EXPECT_EQ(seq.max[d], par.max[d]);
     }
 }
+
+TEST(Geometry3D, BoxSubstract){
+
+    dBox<3, double> bounds(
+            dVector<3, double>( {{ 0, 0, 0 }}),
+            dVector<3, double>({{ 100,100,100}})
+    );
+
+    dBox<3, double> left(
+            dVector<3, double>( {{ 0, 0, 0 }}),
+            dVector<3, double>({{ 50,100,100}})
+    );
+
+    dBox<3, double> right(
+            dVector<3, double>( {{ 50, 0, 0 }}),
+            dVector<3, double>({{ 100,100,100}})
+    );
+
+    EXPECT_EQ(left, bounds - right);
+    EXPECT_EQ(right, bounds - left);
+
+    dBox<3, double> bounds2(
+            dVector<3, double>( {{ 75, -34, 0 }}),
+            dVector<3, double>({{ 90,0,100}})
+    );
+
+    dBox<3, double> left2(
+            dVector<3, double>( {{ 75, -34, 0 }}),
+            dVector<3, double>({{ 80,0,100}})
+    );
+
+    dBox<3, double> right2(
+            dVector<3, double>( {{ 80, -34, 0 }}),
+            dVector<3, double>({{ 90,0,100}})
+    );
+
+    EXPECT_EQ(left2, bounds2 - right2);
+    EXPECT_EQ(right2, bounds2 - left2);
+
+    dBox<3, double> wrong(
+            dVector<3, double>( {{ 80, -23, 4 }}),
+            dVector<3, double>({{ 93,30,10}})
+    );
+
+    EXPECT_THROW(bounds2-wrong, AssertionException);
+
+}
