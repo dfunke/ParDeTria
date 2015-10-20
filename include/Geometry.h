@@ -31,7 +31,7 @@
 #include "utils/Misc.h"
 #include "utils/StaticSort.h"
 
-typedef uint64_t tHashType;
+typedef uint32_t tHashType;
 typedef uint64_t tIdType;
 
 typedef LP_Set<tIdType, true> Simplex_Ids;
@@ -654,8 +654,8 @@ struct VerificationReport;
 //
 //};
 
-typedef GrowingHashTable<Concurrent_LP_MultiMap<tIdType, tIdType>> cWuFaces;
-typedef GrowingHashTableHandle<Concurrent_LP_MultiMap<tIdType, tIdType>> hcWuFaces;
+typedef GrowingHashTable<Concurrent_LP_MultiMap<tHashType, tIdType>> cWuFaces;
+typedef GrowingHashTableHandle<Concurrent_LP_MultiMap<tHashType, tIdType>> hcWuFaces;
 //typedef tbb::concurrent_unordered_multimap<tHashType, tIdType> cWuFaces;
 
 //class cWuFaces : private tbb::concurrent_unordered_multimap<tHashType, tIdType> {
