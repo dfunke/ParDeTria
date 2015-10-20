@@ -137,6 +137,8 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
         auto &simplicesHandle = tsSimplicesHandle.local();
 
         const auto &simplex = simplicesHandle[id];
+        simplex.mark = gMark;
+
         const auto cs = simplex.circumsphere(this->points);
         bool intersectsBounds = false;
         for (uint i = 0; i < partitioning.size(); ++i) {
