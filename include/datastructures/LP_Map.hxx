@@ -47,7 +47,7 @@ public:
     bool insert(const K &key, const V &value) {
         ASSERT(key != 0);
 
-        if (!m_rehashing && m_items / m_arraySize > 0.5)
+        if (!m_rehashing && m_items / m_arraySize >= 0.5)
             rehash(m_arraySize << 1);
 
         for (K idx = m_hasher(key); ; idx++) {
@@ -297,7 +297,7 @@ public:
     InsertReturn insert(const K &key, const V &value) {
         ASSERT(key != 0);
 
-        if (m_items.load() > m_arraySize >> 1)
+        if (m_items.load() >= m_arraySize >> 1)
             return InsertReturn::State::Full;
 
         for (K idx = m_hasher(key); ; idx++) {

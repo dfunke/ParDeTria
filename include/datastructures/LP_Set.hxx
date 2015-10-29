@@ -306,7 +306,7 @@ public:
     bool insert(const K &key) {
         ASSERT(key != 0);
 
-        if (Growing && !m_rehashing && (double) m_items / (double) m_arraySize > 0.5)
+        if (Growing && !m_rehashing && (double) m_items / (double) m_arraySize >= 0.5)
             rehash(m_arraySize << 1);
 
         for (K idx = m_hasher(key); ; idx++) {
@@ -586,7 +586,7 @@ public:
     InsertReturn insert(const K &key) {
         ASSERT(key != 0);
 
-        if (Growing && m_items.load() > m_arraySize >> 1)
+        if (Growing && m_items.load() >= m_arraySize >> 1)
             return InsertReturn::State::Full;
 
         if (!Growing && m_items.load() == m_arraySize)
