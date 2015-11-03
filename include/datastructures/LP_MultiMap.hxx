@@ -104,8 +104,7 @@ public:
         // Initialize cells
         m_arraySize = nextPow2(size);
 
-        m_keys.reset(new K[m_arraySize]()); // zero init
-        m_values.reset(new V[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
     }
 
     LP_MultiMap(LP_MultiMap<K, V> &&other)
@@ -235,8 +234,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items = 0;
 
-        m_keys.reset(new K[m_arraySize]()); // zero init
-        m_values.reset(new V[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
             if (oldKeys[i] != 0)
@@ -269,8 +267,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items = 0;
 
-        m_keys.reset(new K[m_arraySize]()); // zero init
-        m_values.reset(new V[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
             if (oldKeys[i] != 0 && !filter.count(oldKeys[i]))
@@ -302,6 +299,11 @@ public:
         return const_range_type(*this);
     }
 
+    inline void _allocate(const std::size_t size) {
+        m_keys.reset(new K[size]()); // zero init
+        m_values.reset(new V[size]); // random init
+    }
+
 private:
     friend class boost::serialization::access;
 
@@ -321,13 +323,8 @@ private:
         ar >> m_arraySize;
         ar >> m_items;
 
-        try {
-            m_keys.reset(new K[m_arraySize]); //random init
-            m_values.reset(new V[m_arraySize]); //random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
+
         ar >> boost::serialization::make_array<K>(m_keys.get(), m_arraySize);
         ar >> boost::serialization::make_array<V>(m_values.get(), m_arraySize);
         ar >> m_hasher.a;
@@ -374,13 +371,7 @@ public:
         // Initialize cells
         m_arraySize = nextPow2(size);
 
-        try {
-            m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
-            m_values.reset(new std::atomic<V>[m_arraySize]); // random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
 
     }
 
@@ -523,13 +514,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        try {
-            m_keys.reset(new std::atomic<K>[m_arraySize]()); //zero init
-            m_values.reset(new std::atomic<V>[m_arraySize]); //random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
 
         tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const K i) {
             if (oldKeys[i].load(std::memory_order_relaxed) != 0)
@@ -565,13 +550,8 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        try {
-            m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
-            m_values.reset(new std::atomic<V>[m_arraySize]); // random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
+
         VTUNE_END_TASK(MultiMapMergeAllocate);
 
 
@@ -609,6 +589,11 @@ public:
 
     const_range_type range() const {
         return const_range_type(*this);
+    }
+
+    inline void _allocate(const std::size_t size) {
+        m_keys.reset(new std::atomic<K>[size]()); // zero init
+        m_values.reset(new std::atomic<V>[size]); // random init
     }
 
 private:

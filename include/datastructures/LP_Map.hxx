@@ -19,9 +19,7 @@ public:
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-
-        m_keys.reset(new K[m_arraySize]()); // zero init
-        m_values.reset(new V[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
     }
 
     LP_Map(LP_Map<K, V> &&other)
@@ -127,8 +125,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items = 0;
 
-        m_keys.reset(new K[m_arraySize]()); // zero init
-        m_values.reset(new V[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
             if (oldKeys[i] != 0)
@@ -161,8 +158,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items = 0;
 
-        m_keys.reset(new K[m_arraySize]()); // zero init
-        m_values.reset(new V[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
             if (oldKeys[i] != 0 && !filter.count(oldKeys[i]))
@@ -182,6 +178,12 @@ public:
         }
     }
 
+private:
+
+    inline void _allocate(const std::size_t size) {
+        m_keys.reset(new K[size]()); // zero init
+        m_values.reset(new V[size]); // random init
+    }
 
 public:
     typedef _detail::iterator<const LP_Map<K, V>, std::pair<const K, V>> const_iterator;
@@ -218,13 +220,8 @@ private:
         ar >> m_arraySize;
         ar >> m_items;
 
-        try {
-            m_keys.reset(new K[m_arraySize]); //random init
-            m_values.reset(new V[m_arraySize]); //random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
+
         ar >> boost::serialization::make_array<K>(m_keys.get(), m_arraySize);
         ar >> boost::serialization::make_array<V>(m_values.get(), m_arraySize);
         ar >> m_hasher.a;
@@ -265,8 +262,7 @@ public:
               m_currentCopyBlock(0) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
-        m_values.reset(new std::atomic<V>[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
     }
 
     Concurrent_LP_Map(Concurrent_LP_Map<K, V> &&other)
@@ -378,8 +374,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_keys.reset(new std::atomic<K>[m_arraySize]()); //zero init
-        m_values.reset(new std::atomic<V>[m_arraySize]); //random init
+        ALLOCATE(m_arraySize);
 
         tbb::parallel_for(std::size_t(0), oldSize, [&oldKeys, &oldValues, this](const K i) {
             if (oldKeys[i].load(std::memory_order_relaxed) != 0)
@@ -409,8 +404,7 @@ public:
         auto oldValues = std::move(m_values);
         m_items.store(0, std::memory_order_relaxed);
 
-        m_keys.reset(new std::atomic<K>[m_arraySize]()); // zero init
-        m_values.reset(new std::atomic<V>[m_arraySize]); // random init
+        ALLOCATE(m_arraySize);
 
         tbb::parallel_for(tbb::blocked_range<std::size_t>(0, std::max(oldSize, other.capacity())),
                           [&oldKeys, &oldValues, oldSize, &other, &filter, this](const auto &r) {
@@ -432,6 +426,13 @@ public:
                                   }
                               }
                           });
+    }
+
+private:
+
+    inline void _allocate(const std::size_t size) {
+        m_keys.reset(new std::atomic<K>[size]()); // zero init
+        m_values.reset(new std::atomic<V>[size]); // random init
     }
 
 public:

@@ -300,8 +300,11 @@ namespace _detail {
 
     public:
         Block(const IDX min, const IDX max)
-                : m_min(min), m_max(max),
-                  m_data(new T[max - min]()) { }
+                : m_min(min), m_max(max) {
+
+            ALLOCATE(m_max - m_min);
+
+        }
 
         Block(Block &&other) {
             m_min = other.m_min;
@@ -361,6 +364,11 @@ namespace _detail {
 //        }
 
     private:
+        inline void _allocate(const IDX size) {
+            m_data.reset(new T[size]());
+        }
+
+    private:
         friend class boost::serialization::access;
 
         template<class Archive>
@@ -378,12 +386,7 @@ namespace _detail {
             ar >> m_min;
             ar >> m_max;
 
-            try {
-                m_data.reset(new T[size()]); //random init
-            } catch (std::bad_alloc &e) {
-                std::cerr << e.what() << std::endl;
-                raise(SIGINT);
-            }
+            ALLOCATE(size());
 
             ar >> boost::serialization::make_array<T>(m_data.get(), size());
         }

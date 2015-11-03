@@ -14,6 +14,7 @@
 #include "utils/ASSERT.h"
 #include "utils/Random.h"
 #include "utils/VTuneAdapter.h"
+#include "utils/System.h"
 
 #include <tbb/tbb_stddef.h>
 #include <tbb/parallel_for.h>
@@ -262,12 +263,7 @@ public:
               m_hasher(hasher) {
         // Initialize cells
         m_arraySize = nextPow2(std::max(std::size_t(1), size));
-        try {
-            m_array.reset(new K[m_arraySize]()); //value init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
     }
 
     template <bool Growing2>
@@ -373,12 +369,7 @@ public:
         auto oldArray = std::move(m_array);
         m_items = 0;
 
-        try {
-            m_array.reset(new K[m_arraySize]()); //value init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
             if (oldArray[i] != 0)
@@ -411,12 +402,7 @@ public:
         auto oldArray = std::move(m_array);
         m_items = 0;
 
-        try {
-            m_array.reset(new K[m_arraySize]()); //value init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
 
         for (std::size_t i = 0; i < oldSize; ++i) {
             if (oldArray[i] != 0 && filter.count(oldArray[i]) == cmp)
@@ -442,6 +428,12 @@ public:
         }
     }
 
+
+private:
+
+    inline void _allocate(const std::size_t size) {
+        m_array.reset(new K[size]()); //zero init
+    }
 
 public:
     typedef _detail::iterator<const LP_Set<K, Growing>, K> const_iterator;
@@ -488,12 +480,7 @@ private:
         ar >> m_arraySize;
         ar >> m_items;
 
-        try {
-            m_array.reset(new K[m_arraySize]); //random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
         ar >> boost::serialization::make_array<K>(m_array.get(), m_arraySize);
         ar >> m_hasher.a;
     }
@@ -549,12 +536,7 @@ public:
               m_currentCopyBlock(0) {
         // Initialize cells
         m_arraySize = nextPow2(size);
-        try {
-            m_array.reset(new std::atomic<K>[m_arraySize]()); //value init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
     }
 
     template <bool Growing2>
@@ -689,12 +671,7 @@ public:
         auto oldArray = std::move(m_array);
         m_items.store(0, std::memory_order_relaxed);
 
-        try {
-            m_array.reset(new std::atomic<K>[m_arraySize]); //random init
-        } catch (std::bad_alloc &e) {
-            std::cerr << e.what() << std::endl;
-            raise(SIGINT);
-        }
+        ALLOCATE(m_arraySize);
         VTUNE_END_TASK(SetMergeAllocate);
 
         VTUNE_TASK(SetMergeFill);
@@ -729,6 +706,10 @@ public:
     }
 
 private:
+
+    inline void _allocate(const std::size_t size) {
+        m_array.reset(new std::atomic<K>[size]()); //zero init
+    }
 
     void _insert(const K &key) {
 
