@@ -420,7 +420,7 @@ public:
 
     template<class Set, bool Growing2>
     void merge(LP_Set<K, Growing2> &&other, const Set &filter, const bool cmp = false) {
-        rehash((capacity() + other.capacity()), filter);
+        rehash(2*(size() + other.size()), filter);
 
         for (std::size_t i = 0; i < other.capacity(); ++i) {
             if (other.m_array[i] != 0 && filter.count(other.m_array[i]) == cmp)
