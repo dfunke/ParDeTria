@@ -53,4 +53,17 @@ target_link_libraries(BenchmarkDS
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
+add_executable (DS_Study
+        DS_Studies.cpp
+)
+
+target_link_libraries(DS_Study
+        Logging
+        Measurements
+        Geometry
+        DCTriangulator
+        ${Boost_LIBRARIES}
+        ${TBB_MALLOC_PROXY_LIBRARIES}
+)
+
 file(INSTALL runExperiments.sh DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} USE_SOURCE_PERMISSIONS)
