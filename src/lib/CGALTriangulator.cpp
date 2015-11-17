@@ -152,7 +152,18 @@ public:
         return t.finite_faces_end();
     }
 
-    std::size_t size(Tria &t) { return t.number_of_faces(); }
+    std::size_t finite_size(Tria &t) { return t.number_of_faces(); }
+    std::size_t infinite_size(Tria &t) {
+
+        auto size = t.number_of_faces();
+        auto fc = t.incident_faces(t.infinite_vertex()), done(fc);
+        if (fc != 0) {
+            do { ++size;
+            }while(++fc != done);
+        }
+
+        return size;
+    }
 
     typename Tria::Point make_point(const dPoint<2, Precision> &p) {
         return typename Tria::Point(p.coords[0], p.coords[1]);
@@ -194,7 +205,8 @@ public:
         return t.finite_cells_end();
     }
 
-    std::size_t size(Tria &t) { return t.number_of_finite_cells(); }
+    std::size_t finite_size(Tria &t) { return t.number_of_finite_cells(); }
+    std::size_t infinite_size(Tria &t) { return t.number_of_cells(); }
 
     typename Tria::Point make_point(const dPoint<3, Precision> &p) {
         return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
@@ -246,7 +258,8 @@ public:
         return t.finite_cells_end();
     }
 
-    std::size_t size(Tria &t) { return t.number_of_finite_cells(); }
+    std::size_t finite_size(Tria &t) { return t.number_of_finite_cells(); }
+    std::size_t infinite_size(Tria &t) { return t.number_of_cells(); }
 
     typename Tria::Point make_point(const dPoint<3, Precision> &p) {
         return typename Tria::Point(p.coords[0], p.coords[1], p.coords[2]);
@@ -299,7 +312,7 @@ dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precisio
 
     tIdType startId = dSimplices<D, Precision>::simplexID.fetch_add(lastId);
 
-    dSimplices<D, Precision> DT(startId, startId + lastId);
+    dSimplices<D, Precision> DT(startId, startId + lastId, 2*(helper.infinite_size(t) - helper.finite_size(t)));
 
 #ifndef NDEBUG
     std::set<tIdType> idCheck;
@@ -468,7 +481,7 @@ dSimplices<D, Precision> _pureCgal(const Point_Ids &ids, dPoints<D, Precision> &
     t.insert(boost::make_transform_iterator(ids.begin(), transform),
              boost::make_transform_iterator(ids.end(), transform));
 
-    dSimplices<D, Precision> dummy(0, 1);
+    dSimplices<D, Precision> dummy(0, 1, 1);
     return dummy;
 }
 

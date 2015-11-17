@@ -768,8 +768,8 @@ public:
 public:
     dSimplices() : base(0, 1), convexHull(1) { }
 
-    dSimplices(const tIdType min, const tIdType max) : base(min, max),
-                                                       convexHull((max-min) / 4) { }
+    dSimplices(const tIdType min, const tIdType max, const tIdType cvSize) : base(min, max),
+                                                       convexHull(cvSize) { }
 
     dSimplices(dSimplices &&other) : base(std::move(other)),
                                      convexHull(std::move(other.convexHull)) { }
