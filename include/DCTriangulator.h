@@ -46,15 +46,8 @@ protected:
 
     dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
                                           const dBox<D, Precision> &bounds,
-                                          const std::string provenance,
-                                          const unsigned char _splitter
+                                          const std::string provenance
     );
-
-    dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
-                                          const dBox<D, Precision> &bounds,
-                                          const std::string provenance) {
-        return _triangulate(partitionPoints, bounds, provenance, (unsigned char) 0);
-    }
 
     void getEdge(const dSimplices<D, Precision> &simplices,
                  const Partitioning<D, Precision> &partitioning,

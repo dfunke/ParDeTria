@@ -254,6 +254,17 @@ public:
                                          bool ignoreInfinte = false) const;
 };
 
+template<uint D, typename Precision>
+class ExtendPartitioner : public Partitioner<D, Precision> {
+
+public:
+    Partitioning<D, Precision> partition(const dPointStats<D, Precision> &stats,
+                                         const Point_Ids &ids,
+                                         const dPoints<D, Precision> &points,
+                                         const std::string &provenance,
+                                         bool ignoreInfinte = false) const;
+};
+
 
 template<uint D, typename Precision>
 std::unique_ptr<Partitioner<D, Precision>> Partitioner<D, Precision>::make(const unsigned char type) {
@@ -265,6 +276,9 @@ std::unique_ptr<Partitioner<D, Precision>> Partitioner<D, Precision>::make(const
             break;
         case 'c':
             partitioner_ptr = std::make_unique<CyclePartitioner<D, Precision>>();
+            break;
+        case 'e':
+            partitioner_ptr = std::make_unique<ExtendPartitioner<D, Precision>>();
             break;
         default:
             // p must be a dimension - subtract '0' to get integer value
