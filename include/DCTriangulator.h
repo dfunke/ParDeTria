@@ -58,7 +58,7 @@ protected:
                             const Simplex_Ids &edgeSimplices);
 
     void updateNeighbors(dSimplices<D, Precision> &simplices,
-                         const Simplex_Ids &toCheck,
+                         const Concurrent_Id_Vector &toCheck,
                          const cWuFaces &wuFaces,
                          const std::string &provenance);
 

@@ -35,6 +35,9 @@ typedef uint32_t tHashType;
 typedef uint64_t tIdType;
 typedef uint8_t tMarkType;
 
+typedef std::vector<tIdType> Id_Vector;
+typedef tbb::concurrent_vector<tIdType> Concurrent_Id_Vector;
+
 typedef LP_Set<tIdType, true> Simplex_Ids;
 typedef Concurrent_LP_Set<tIdType, false> Concurrent_Fixed_Simplex_Ids;
 typedef GrowingHashTable<Concurrent_LP_Set<tIdType, true>> Concurrent_Growing_Simplex_Ids;
@@ -135,7 +138,7 @@ struct dBox {
         return false;
     }
 
-    dBox<D, Precision> operator-(const dBox<D, Precision> & other) const{
+    dBox<D, Precision> operator-(const dBox<D, Precision> &other) const {
         dBox<D, Precision> result(low, high);
 
         // we can only substract a rectangle other that is equal to ours, except in one dimension
@@ -582,11 +585,14 @@ public:
     typedef std::array<uint, 256> tHash;
 
 public:
-    dSimplices() : base(0, 1), convexHull(1), mark(0) { }
+    dSimplices() : base(0, 1), mark(0) { }
 
     dSimplices(const tIdType min, const tIdType max, const tIdType cvSize) : base(min, max),
-                                                       convexHull(cvSize),
-							mark(0) { }
+                                                                             mark(0) {
+
+        convexHull.reserve(cvSize);
+
+    }
 
     dSimplices(dSimplices &&other) : base(std::move(other)),
                                      convexHull(std::move(other.convexHull)),
@@ -653,17 +659,36 @@ public:
         return base::contains(id, hint);
     }
 
-    void merge(dSimplices<D, Precision> &&other) {
+    void merge(dSimplices<D, Precision> &&other, bool mergeConvexHull = true) {
         base::merge(std::move(other));
-        convexHull.merge(std::move(other.convexHull));
+
+        if(mergeConvexHull) {
+            convexHull.reserve(convexHull.size() + other.convexHull.size());
+            std::move(other.convexHull.begin(), other.convexHull.end(), std::back_inserter(convexHull));
+        }
+
         mark = std::max(mark, other.mark);
     }
 
     template<class Filter>
-    void merge(dSimplices<D, Precision> &&other, const Filter &filter, const bool cmp = false) {
-        base::merge(std::move(other));
-        convexHull.merge(std::move(other.convexHull), filter, cmp);
-        mark = std::max(mark, other.mark);
+    void filter(const Filter &filter) {
+        tbb::parallel_for(filter.range(), [&] (const auto & r){
+
+            uint hint = 0;
+            for(const auto id : r){
+                this->at(id, hint).id = dSimplex<D, Precision>::cINF;
+            }
+
+        });
+
+        Id_Vector newCV;
+        newCV.reserve(convexHull.size());
+        std::copy_if(convexHull.begin(), convexHull.end(), std::back_inserter(newCV), [&](const tIdType id){
+                return !filter.contains(id);
+
+        });
+
+        convexHull = std::move(newCV);
     }
 
 //    void offset(const tIdType offset){
@@ -721,7 +746,7 @@ private:
     }
 
 public:
-    Simplex_Ids convexHull;
+    Id_Vector convexHull;
     mutable tMarkType mark;
 
 public:

@@ -830,7 +830,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
 
         for (const auto &s : r) {
 
-            if (!s.isFinite() && !convexHull.count(s.id)) {
+            if (!s.isFinite() && std::find(convexHull.begin(), convexHull.end(), s.id) == convexHull.end()) {
                 // s is infinite but not part of the convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);
                 LOG("Infinite simplex " << s << " NOT in convex hull" << std::endl);
@@ -839,13 +839,13 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
         }
     });
 
-    tbb::parallel_for(convexHull.range(), [&](const auto & r) {
+    tbb::parallel_for(tbb::blocked_range<std::size_t>(std::size_t(0), convexHull.size(), 1000), [&](const auto & r) {
 
         auto &thisHandle = tsThisHandle.local();
 
-        for (const auto & i : r) {
+        for (auto i = r.begin(); i != r.end(); ++i) {
 
-            const dSimplex<D, Precision> &s = thisHandle.at(i);
+            const dSimplex<D, Precision> &s = thisHandle.at(convexHull[i]);
             if (s.isFinite()) {
                 // s is finite but part of convex hull
                 tbb::spin_mutex::scoped_lock lock(mtx);

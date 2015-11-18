@@ -233,7 +233,7 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
 template<uint D, typename Precision>
 void DCTriangulator<D, Precision>::updateNeighbors(
         dSimplices<D, Precision> &simplices,
-        const Simplex_Ids &toCheck,
+        const Concurrent_Id_Vector &toCheck,
         const cWuFaces &wuFaces,
         __attribute__((unused)) const std::string &provenance) {
 
@@ -346,8 +346,9 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     dSimplices<D, Precision> mergedDT = std::move(partialDTs[0]);
 
     for (uint i = 1; i < partialDTs.size(); ++i) {
-        mergedDT.merge(std::move(partialDTs[i]), edgeSimplices);
+        mergedDT.merge(std::move(partialDTs[i]));
     }
+    mergedDT.filter(edgeSimplices);
 
     tbb::enumerable_thread_specific<dSimplicesHandle<D, Precision>,
             tbb::cache_aligned_allocator<dSimplicesHandle<D, Precision>>,
@@ -357,13 +358,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsEdgeDTHandle(std::ref(edgeDT));
 
-    //TODO parallize
-    tbb::parallel_for (edgeSimplices.range(), [&] (const auto & r){
-        auto &mergedHandle = tsMergedDTHandle.local();
-
-        for(const auto id : r)
-            mergedHandle[id].id = dSimplex<D, Precision>::cINF;
-    });
     VTUNE_END_TASK(CombineTriangulations);
 
     //build the where used datastructure for the faces
@@ -386,11 +380,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     // merge partial DTs and edge DT
     LOG("Merging triangulations" << std::endl);
-    Concurrent_Growing_Simplex_Ids insertedSimplices(edgeSimplices.size());
-
-    tbb::enumerable_thread_specific<hConcurrent_Growing_Simplex_Ids,
-            tbb::cache_aligned_allocator<hConcurrent_Growing_Simplex_Ids>,
-            tbb::ets_key_usage_type::ets_key_per_instance> tsInsertedHandle(std::ref(insertedSimplices));
 
     VTUNE_TASK(AddBorderSimplices);
 
@@ -398,12 +387,14 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             tbb::cache_aligned_allocator<hcWuFaces>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsWuFacesHandle(std::ref(wuFaces));
 
+    Concurrent_Id_Vector cConvexHull;
+    Concurrent_Id_Vector insertedSimplices;
+
 
     tbb::parallel_for(edgeDT.range(), [&](auto &r) {
 
         auto &mergedDTHandle = tsMergedDTHandle.local();
         auto &wuFacesHandle = tsWuFacesHandle.local();
-        auto &insertedHandle = tsInsertedHandle.local();
 
         // we need an explicit iterator loop here for the it < r.end() comparision
         // range-based for loop uses it != r.end() which doesn't work
@@ -429,7 +420,10 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             }
 
             if(insert){
-                insertedHandle.insert(edgeSimplex.id);
+                insertedSimplices.push_back(edgeSimplex.id);
+
+                if(!edgeSimplex.isFinite())
+                    cConvexHull.push_back(edgeSimplex.id);
 
                 for (uint d = 0; d < D + 1; ++d) {
                     wuFacesHandle.insert((edgeSimplex.faceFingerprint(d)), edgeSimplex.id);
@@ -440,16 +434,16 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
         }
     });
 
-    Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices.data()));
-
-    mergedDT.merge(std::move(edgeDT), insertedSimplicesSeq, true);
+    mergedDT.merge(std::move(edgeDT), false);
+    mergedDT.convexHull.reserve(mergedDT.convexHull.size() + cConvexHull.size());
+    std::move(cConvexHull.begin(), cConvexHull.end(), std::back_inserter(mergedDT.convexHull));
 
     VTUNE_END_TASK(AddBorderSimplices);
 
     //ASSERT(DT.countDuplicates() == 0);
 
     LOG("Updating neighbors" << std::endl);
-    updateNeighbors(mergedDT, insertedSimplicesSeq, wuFaces, provenance);
+    updateNeighbors(mergedDT, insertedSimplices, wuFaces, provenance);
 
     return mergedDT;
 }

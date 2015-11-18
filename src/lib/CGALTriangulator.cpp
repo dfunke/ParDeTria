@@ -336,7 +336,7 @@ dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precisio
 
         //check whether vertex belongs to the convex hull
         if (!a.isFinite())
-            DT.convexHull.insert(a.id);
+            DT.convexHull.push_back(a.id);
 
         ASSERT((a.id != dSimplex<D, Precision>::cINF));
 
