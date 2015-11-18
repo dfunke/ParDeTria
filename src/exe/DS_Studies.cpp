@@ -12,6 +12,7 @@
 #include "utils/ASSERT.h"
 #include "utils/Serialization.hxx"
 #include "utils/ProgressDisplay.h"
+#include "utils/version.h"
 
 #include <boost/program_options.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -39,6 +40,10 @@ struct TriangulateReturn {
     std::size_t countDeletedSimplices = 0;
     std::size_t cvSize;
     std::size_t cvCapacity;
+
+    double dtMB;
+    double cvMB;
+    double pointMB;
 };
 
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
@@ -64,13 +69,17 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
     ret.valid = true;
 
-    for(std::size_t i = dt.lowerBound(); i < dt.upperBound(); ++i){
+    for (std::size_t i = dt.lowerBound(); i < dt.upperBound(); ++i) {
         ret.countSimplices += dt.unsafe_at(i).id != dSimplex<D, Precision>::cINF;
         ret.countDeletedSimplices += dt.unsafe_at(i).id == dSimplex<D, Precision>::cINF;
     }
 
     ret.cvSize = dt.convexHull.size();
     ret.cvCapacity = dt.convexHull.capacity();
+
+    ret.dtMB = ((dt.upperBound() - dt.lowerBound()) * sizeof(dSimplex<D, Precision>)) / 1e6;
+    ret.pointMB = ((points.size()) * sizeof(dPoint<D, Precision>)) / 1e6;
+    ret.cvMB = ((dt.convexHull.capacity()) * sizeof(tIdType)) / 1e6;
 
     return ret;
 }
@@ -141,10 +150,10 @@ int main(int argc, char *argv[]) {
         bounds.high[i] = 100;
     }
 
-    std::ofstream f("ds_study.csv");
-    f << "n simplices delSimplices cvSize cvCap" << std::endl;
+    std::ofstream f("ds_study_" + std::string(GIT_COMMIT) + ".csv");
+    f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB rss time" << std::endl;
 
-    for(std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
+    for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
         std::uniform_real_distribution<Precision> distribution(0, 1);
         std::function<Precision()> dice = std::bind(distribution, startGen);
 
@@ -152,12 +161,16 @@ int main(int argc, char *argv[]) {
 
         TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
 
-        f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " " << ret.cvSize << " " << ret.cvCapacity << std::endl;
+        f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
+          << ret.cvSize << " " << ret.cvCapacity << " "
+          << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
+          << ret.rss / 1e6 << " " << ret.time.count()
+          << std::endl;
 
         std::cout << "Triangulating "
-            << points.size() << " points took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
-                    .count() << " ms and " << ret.rss / 1e6 << " MB" << std::endl;
+        << points.size() << " points took "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
+                .count() << " ms and " << ret.rss / 1e6 << " MB" << std::endl;
     }
 
     return 0;
