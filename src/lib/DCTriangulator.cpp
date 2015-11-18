@@ -452,13 +452,6 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
 
     Simplex_Ids insertedSimplicesSeq(std::move(insertedSimplices.data()));
 
-//    for(auto & s : edgeDT){
-//        if(!insertedSimplicesSeq.contains(s.id)){
-//            edgeDT.convexHull.erase(s.id);
-//            s.id = dSimplex<D, Precision>::cINF;
-//        }
-//    }
-
     mergedDT.merge(std::move(edgeDT), insertedSimplicesSeq, true);
 
     VTUNE_END_TASK(AddBorderSimplices);
@@ -495,8 +488,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulateBase(const Po
 template<uint D, typename Precision>
 dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_Ids &partitionPoints,
                                                                     const dBox<D, Precision> &bounds,
-                                                                    const std::string provenance,
-                                                                    const unsigned char _splitter) {
+                                                                    const std::string provenance) {
 
     LOGGER.setIndent(provenance.length());
 
@@ -516,7 +508,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_
         INDENT
 
         VTUNE_TASK(Partitioning);
-        auto partitioner = Partitioner<D, Precision>::make(_splitter != 0 ? _splitter : splitter);
+        auto partitioner = Partitioner<D, Precision>::make(splitter);
         const auto partioning =
                 partitioner->partition(partitionPoints, this->points, provenance);
         VTUNE_END_TASK(Partitioning);
@@ -581,17 +573,9 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_
         VTUNE_TASK(TriangulateEdge);
         //TODO how to identify the edge triangulation
 
-        // only split along axis perpendicular to current split axis
-        // cycle is lenght of provenance - 1 modulo D
-        unsigned char __splitter;
-        if (splitter == 'c')
-            __splitter = ((unsigned char) (provenance.size()) % D) + '0';
-        else
-            __splitter = _splitter != 0 ? _splitter : splitter;
-
         dSimplices<D, Precision> edgeDT = parallelEdgeTria ?
                                           _triangulate(Point_Ids(std::move(edgePointIds.data())), bounds,
-                                                       provenance + "e", __splitter)
+                                                       provenance + "e")
                                                            :
                                           _triangulateBase(Point_Ids(std::move(edgePointIds.data())), bounds,
                                                            provenance + "e");
