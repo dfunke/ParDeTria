@@ -128,8 +128,8 @@ CyclePartitioner<D, Precision>::partition(const dPointStats<D, Precision> &stats
     // cycle is lenght of provenance - 1 modulo D
     uint k = (provenance.size() - 1) % D;
 
-    PLOG("Midpoint is " << stats.mid << std::endl);
-    PLOG("Splitting dimension is " << k << std::endl);
+    VLOG("Stats: " << stats << std::endl);
+    VLOG("Splitting dimension is " << k << std::endl);
 
     std::vector<Concurrent_Fixed_Point_Ids> cPartPoints;
     cPartPoints.reserve(2);
@@ -209,11 +209,11 @@ ExtendPartitioner<D, Precision>::partition(const dPointStats<D, Precision> &stat
         }
     }
 
-    ASSERT(0 <= maxDim && maxDim < D);
+    ASSERT((signed) 0 <= maxDim && maxDim < (signed) D);
     uint k = static_cast<uint>(maxDim);
 
-    PLOG("Midpoint is " << stats.mid << std::endl);
-    PLOG("Splitting dimension is " << k << std::endl);
+    VLOG("Stats: " << stats << std::endl);
+    VLOG("Splitting dimension is " << k << std::endl);
 
     std::vector<Concurrent_Fixed_Point_Ids> cPartPoints;
     cPartPoints.reserve(2);
