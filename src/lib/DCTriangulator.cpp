@@ -363,18 +363,16 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     //build the where used datastructure for the faces
     cWuFaces wuFaces = buildWhereUsed(mergedDT, edgeSimplices);
 
-    auto cmpFingerprint =
-            [&tsMergedDTHandle, &tsEdgeDTHandle, min = mergedDT.lowerBound(), max = mergedDT.upperBound()](const tIdType &a, const tIdType &b) {
+    auto cmpSort =
+            [&tsMergedDTHandle](const tIdType &a, const tIdType &b) {
                 // contains() doesn't work because we deleted the simplices in mergedDT
-                return (min <= a && a < max ? tsMergedDTHandle.local()[a].fingerprint() : tsEdgeDTHandle.local()[a].fingerprint())
-                       <
-                       (min <= b && b < max ? tsMergedDTHandle.local()[b].fingerprint() : tsEdgeDTHandle.local()[b].fingerprint());
+                return tsMergedDTHandle.local()[a].fingerprint() < tsMergedDTHandle.local()[b].fingerprint();
             };
 
     VTUNE_TASK(SortDeletedVertices);
-    std::vector<tIdType> deletedSimplices(edgeSimplices.begin(), edgeSimplices.end());
+    Id_Vector deletedSimplices(edgeSimplices.begin(), edgeSimplices.end());
 
-    tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpFingerprint);
+    tbb::parallel_sort(deletedSimplices.begin(), deletedSimplices.end(), cmpSort);
     VTUNE_END_TASK(SortDeletedVertices);
 
 
@@ -390,6 +388,11 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
     Concurrent_Id_Vector cConvexHull;
     Concurrent_Id_Vector insertedSimplices;
 
+    auto cmpSearch =
+            [&tsMergedDTHandle](const tIdType &a, const tHashType &hash) {
+                // contains() doesn't work because we deleted the simplices in mergedDT
+                return tsMergedDTHandle.local()[a].fingerprint() < hash;
+            };
 
     tbb::parallel_for(edgeDT.range(), [&](auto &r) {
 
@@ -408,12 +411,13 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
             if (!insert) {
                 // the simplex is completely in one partition -> it must have been found
                 // before
-                auto range =
-                        std::equal_range(deletedSimplices.begin(), deletedSimplices.end(),
-                                         edgeSimplex.id, cmpFingerprint);
+                auto lb =
+                        std::lower_bound(deletedSimplices.begin(), deletedSimplices.end(),
+                                         edgeSimplex.fingerprint(), cmpSearch);
+                RASSERT(lb == deletedSimplices.end() || *lb != 0);
 
-                for (auto it = range.first; it != range.second; ++it) {
-                    if (edgeSimplex.equalVertices(mergedDTHandle[*it])) {
+                for (; lb != deletedSimplices.end() && mergedDTHandle[*lb].fingerprint() == edgeSimplex.fingerprint(); ++lb) {
+                    if (edgeSimplex.equalVertices(mergedDTHandle[*lb])) {
                         insert = true;
                     }
                 }
