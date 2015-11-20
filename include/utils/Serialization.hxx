@@ -95,6 +95,7 @@ namespace boost {
             ar & s.vertices;
             ar & s.neighbors;
             ar & s.vFingerprint;
+            ar & s.mark;
         }
 
 //        template<class Archive, uint D, typename Precision>

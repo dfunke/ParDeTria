@@ -521,8 +521,8 @@ private:
 public:
     tIdType id;
     std::array<tIdType, D + 1> vertices;
-    tHashType vFingerprint;
     std::array<tIdType, D + 1> neighbors;
+    tHashType vFingerprint;
     mutable tMarkType mark;
 
 public:
