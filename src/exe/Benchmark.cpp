@@ -96,6 +96,7 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
             auto t2 = Clock::now();
 
             run.addMeasurement("memory", getCurrentRSS());
+            run.addMeasurement("peakMem", getPeakRSS());
             run.addMeasurement("times", std::chrono::duration_cast<tDuration>(t2 - t1).count());
             
         }

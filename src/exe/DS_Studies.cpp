@@ -32,7 +32,8 @@ struct TriangulateReturn {
     bool exception;
     bool valid;
     tDuration time;
-    std::size_t rss;
+    std::size_t currRSS;
+    std::size_t peakRSS;
     ExperimentRun run;
 
     //
@@ -63,7 +64,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     auto dt = triangulator.triangulate();
     auto t2 = Clock::now();
 
-    ret.rss = getCurrentRSS();
+    ret.currRSS = getCurrentRSS();
+    ret.peakRSS = getPeakRSS();
 
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
@@ -151,7 +153,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::ofstream f("ds_study_" + std::string(GIT_COMMIT) + ".csv");
-    f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB rss time" << std::endl;
+    f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
 
     for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
         auto pg = GeneratorFactory<D, Precision>::make('u');
@@ -162,13 +164,13 @@ int main(int argc, char *argv[]) {
         f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
           << ret.cvSize << " " << ret.cvCapacity << " "
           << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
-          << ret.rss / 1e6 << " " << ret.time.count()
+          << ret.currRSS / 1e6 << " " << ret.peakRSS / 1e6 << " " << ret.time.count()
           << std::endl;
 
         std::cout << "Triangulating "
         << points.size() << " points took "
         << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
-                .count() << " ms and " << ret.rss / 1e6 << " MB" << std::endl;
+                .count() << " ms and " << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB" << std::endl;
     }
 
     return 0;
