@@ -37,8 +37,8 @@ struct TriangulateReturn {
     ExperimentRun run;
 
     //
-    std::size_t countSimplices = 0;
-    std::size_t countDeletedSimplices = 0;
+    std::size_t countSimplices;
+    std::size_t countDeletedSimplices;
     std::size_t cvSize;
     std::size_t cvCapacity;
 
@@ -71,10 +71,24 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
     ret.valid = true;
 
-    for (std::size_t i = dt.lowerBound(); i < dt.upperBound(); ++i) {
-        ret.countSimplices += dt.unsafe_at(i).id != dSimplex<D, Precision>::cINF;
-        ret.countDeletedSimplices += dt.unsafe_at(i).id == dSimplex<D, Precision>::cINF;
-    }
+    std::atomic<std::size_t> aInf(0);
+    std::atomic<std::size_t> aFin(0);
+
+    tbb::parallel_for(tbb::blocked_range<std::size_t>(dt.lowerBound(), dt.upperBound(), 1e3), [&](const auto &range) {
+
+        uint hint = 0;
+
+        for (auto it = range.begin(); it != range.end(); ++it) {
+            bool inf = dt.at(it, hint).id == dSimplex<D, Precision>::cINF;
+
+            aInf += inf;
+            aFin += !inf;
+        }
+
+    });
+
+    ret.countSimplices = aFin.load();
+    ret.countDeletedSimplices = aInf.load();
 
     ret.cvSize = dt.convexHull.size();
     ret.cvCapacity = dt.convexHull.capacity();
@@ -97,13 +111,21 @@ int main(int argc, char *argv[]) {
     unsigned char p = 'c';
     tIdType minN;
     tIdType maxN;
+
+    uint minThreads = 1;
+    uint maxThreads = tbb::task_scheduler_init::default_num_threads();
+
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
+    tIdType N;
     bool parallelBase = false;
 
     po::options_description cCommandLine("Command Line Options");
+    cCommandLine.add_options()("N", po::value<tIdType>(&N), "number of points");
     cCommandLine.add_options()("minN", po::value<tIdType>(&minN), "minimum number of points");
     cCommandLine.add_options()("maxN", po::value<tIdType>(&maxN), "maximum number of points");
+    cCommandLine.add_options()("minThreads", po::value<uint>(&minThreads), "minimum number of threads = 1");
+    cCommandLine.add_options()("maxThreads", po::value<uint>(&maxThreads), "maximum number of threads = #cores");
     cCommandLine.add_options()("recDepth", po::value<uint>(&recursionDepth),
                                "maximum levels of recursion");
     cCommandLine.add_options()(
@@ -133,11 +155,6 @@ int main(int argc, char *argv[]) {
         recursionDepth = log2(threads);
     }
 
-    if (!vm.count("minN") || !vm.count("maxN")) {
-        std::cout << "Please specify number of points or point file" << std::endl;
-        valid = false;
-    }
-
     if (!valid)
         return EXIT_FAILURE;
 
@@ -152,26 +169,68 @@ int main(int argc, char *argv[]) {
         bounds.high[i] = 100;
     }
 
-    std::ofstream f("ds_study_" + std::string(GIT_COMMIT) + ".csv");
-    f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
+    if (vm.count("minN") && vm.count("maxN")) {
+        std::cout << "Point study from " << minN << " to " << maxN << " points" << std::endl;
 
-    for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
-        auto pg = GeneratorFactory<D, Precision>::make('u');
-        auto points = pg->generate(n, bounds, startGen);
+        std::ofstream f("ds_study_points" + std::string(GIT_COMMIT) + ".csv");
+        f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
 
-        TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
+        for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
+            auto pg = GeneratorFactory<D, Precision>::make('u');
+            auto points = pg->generate(n, bounds, startGen);
 
-        f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
-          << ret.cvSize << " " << ret.cvCapacity << " "
-          << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
-          << ret.currRSS / 1e6 << " " << ret.peakRSS / 1e6 << " " << ret.time.count()
-          << std::endl;
+            TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
 
-        std::cout << "Triangulating "
-        << points.size() << " points took "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
-                .count() << " ms and " << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB" << std::endl;
+            f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
+            << ret.cvSize << " " << ret.cvCapacity << " "
+            << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
+            << ret.currRSS / 1e6 << " " << ret.peakRSS / 1e6 << " " << ret.time.count()
+            << std::endl;
+
+            std::cout << "\tTriangulating "
+            << points.size() << " points took "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
+            << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
+            << "with " << threads << " threads" << std::endl;
+        }
     }
 
-    return 0;
+    if (vm.count("minThreads") && vm.count("maxThreads")) {
+        std::cout << "Thread study from " << minThreads << " to " << maxThreads << " threads" << std::endl;
+
+        std::ofstream f("ds_study_threads" + std::string(GIT_COMMIT) + ".csv");
+        f << "threads simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
+
+        if (vm.count("maxN")) {
+            N = maxN / 2;
+        } else {
+            if (!vm.count("N")) {
+                std::cout << "no number of points specified" << std::endl;
+                return EXIT_FAILURE;
+            }
+        }
+
+        for (uint t = minThreads; t <= maxThreads; t <<= 1) {
+            auto pg = GeneratorFactory<D, Precision>::make('u');
+            auto points = pg->generate(N, bounds, startGen);
+
+            tbb::task_scheduler_init init(t);
+
+            TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
+
+            f << t << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
+            << ret.cvSize << " " << ret.cvCapacity << " "
+            << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
+            << ret.currRSS / 1e6 << " " << ret.peakRSS / 1e6 << " " << ret.time.count()
+            << std::endl;
+
+            std::cout << "\tTriangulating "
+            << points.size() << " points took "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
+            << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
+            << "with " << t << " threads" << std::endl;
+        }
+    }
+
+    return EXIT_SUCCESS;
 }
