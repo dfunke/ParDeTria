@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
     int verbosity = -1;
 
     unsigned char p = 'c';
+    unsigned char dist = 'u';
     tIdType N;
     uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
@@ -133,6 +134,9 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
+    cCommandLine.add_options()(
+            "dist", po::value<unsigned char>(&dist),
+            "distribution: _u_niform, _e_llipsoid, _l_ines");
     cCommandLine.add_options()("no-verify", "don't verify triangulation");
     cCommandLine.add_options()("no-output", "don't write images");
     cCommandLine.add_options()("seq-fault", "run triangulation until seq fault occurs");
@@ -191,9 +195,6 @@ int main(int argc, char *argv[]) {
         bounds.high[i] = 100;
     }
 
-    std::uniform_real_distribution<Precision> distribution(0, 1);
-    std::function<Precision()> dice = std::bind(distribution, startGen);
-
     /*
      * File format for triangulation report
      * input_n splitter provenance base_case edge_triangulation nPoints
@@ -207,7 +208,8 @@ int main(int argc, char *argv[]) {
     if (loadPoints) {
         points = loadObject<dPoints<D, Precision>>(pointFile);
     } else {
-        points = genPoints(N, bounds, dice);
+        auto pg = GeneratorFactory<D, Precision>::make(dist);
+        points = pg->generate(N, bounds, startGen);
     }
 
     TriangulateReturn ret;
@@ -215,13 +217,13 @@ int main(int argc, char *argv[]) {
         ulong i = 0;
         std::random_device rd;
         tGenerator gen(rd());
-        std::function<Precision()> dice = std::bind(distribution, gen);
+        auto pg = GeneratorFactory<D, Precision>::make(dist);
         for (; ;) {
             std::cout << "." << std::flush;
             if (++i % 80 == 0)
                 std::cout << std::endl;
 
-            points = genPoints(N, bounds, dice);
+            points = pg->generate(N, bounds, gen);
             triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
         }
     } else
