@@ -21,23 +21,3 @@ extern tGenerator startGen;
  * std::uniform_int_distribution<uint> distribution(0,100);
  * auto dice = std::bind ( distribution, generator );
  */
-
-template<typename Precision>
-class RandomFactory {
-
-public:
-    static std::function<Precision()> make(const unsigned char type, tGenerator &gen) {
-
-        switch (type) {
-            case 'u':
-            default:
-                std::uniform_real_distribution<Precision> distribution(0, 1);
-                return std::bind(distribution, gen);
-        }
-    }
-
-    static std::function<Precision()> make(const unsigned char type) {
-        return make(type, startGen);
-    }
-
-};

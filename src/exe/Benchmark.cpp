@@ -51,8 +51,8 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
     //use same start seed for all experiment runs
     tGenerator gen(START_SEED);
-    auto dice = RandomFactory<Precision>::make(dist, gen);
-    auto points = genPoints(nPoints, bounds, dice);
+    auto pg = GeneratorFactory<D, Precision>::make(dist);
+    auto points = pg->generate(nPoints, bounds, gen);
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
     unsigned char alg = run.getTrait<unsigned char>("alg");

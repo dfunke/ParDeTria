@@ -154,10 +154,8 @@ int main(int argc, char *argv[]) {
     f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB rss time" << std::endl;
 
     for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
-        std::uniform_real_distribution<Precision> distribution(0, 1);
-        std::function<Precision()> dice = std::bind(distribution, startGen);
-
-        dPoints<D, Precision> points = genPoints(n, bounds, dice);
+        auto pg = GeneratorFactory<D, Precision>::make('u');
+        auto points = pg->generate(n, bounds, startGen);
 
         TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
 

@@ -97,8 +97,8 @@ int main() {
 
     //use same start seed for all experiment runs
     tGenerator gen(START_SEED);
-    auto dice = RandomFactory<Precision>::make('u', gen);
-    dPoints<D, Precision> original = genPoints(N, bounds, dice);
+    auto pg = GeneratorFactory<D, Precision>::make('u');
+    auto original = pg->generate(N, bounds, startGen);
 
     SpatialSortingTraits<D, Precision> sst;
 
