@@ -147,8 +147,8 @@ TEST(Geometry3D, PointStats) {
     );
 
     tGenerator gen(START_SEED);
-    auto dice = RandomFactory<double>::make('u', gen);
-    auto points = genPoints(1e5, bounds, dice);
+    auto pg = GeneratorFactory<3, double>::make('u');
+    auto points = pg->generate(1e5, bounds, gen);
 
     dPointStats<3, double> seq = getPointStatsSeq(std::size_t(1), points.finite_size(), points);
     dPointStats<3, double> par = getPointStats(points, points);
