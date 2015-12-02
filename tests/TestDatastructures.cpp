@@ -80,8 +80,8 @@ TEST(Concurrent_LP_Set, Merge) {
 
 TEST(Concurrent_LP_Set, ConcurrentGrow) {
 
-    GrowingHashTable<Concurrent_LP_Set<uint>> set(120);
-    GrowingHashTableHandle<Concurrent_LP_Set<uint>> handle(set);
+    GrowingHashTable<Concurrent_LP_Set<uint,true>> set(120);
+    GrowingHashTableHandle<Concurrent_LP_Set<uint,true>> handle(set);
     EXPECT_EQ(handle.capacity(), 128);
 
     tbb::concurrent_unordered_set<uint> cmp;
@@ -90,7 +90,7 @@ TEST(Concurrent_LP_Set, ConcurrentGrow) {
     //auto dice = std::bind(distribution, startGen);
 
     tbb::parallel_for(tbb::blocked_range<uint>(1, 1e6), [&](const auto &r) {
-        GrowingHashTableHandle<Concurrent_LP_Set<uint>> handle(set);
+        GrowingHashTableHandle<Concurrent_LP_Set<uint,true>> handle(set);
         for (auto i = r.begin(); i != r.end(); ++i) {
             handle.insert(i);
             cmp.insert(i);
