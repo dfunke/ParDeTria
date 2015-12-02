@@ -4,7 +4,7 @@ add_library (Geometry
   Geometry.cpp
 )
 
-target_link_libraries(Geometry Logging Measurements)
+target_link_libraries(Geometry Predicates Logging Measurements)
 
 add_library(Triangulator
   Triangulator.cpp

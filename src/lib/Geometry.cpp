@@ -9,6 +9,7 @@
 #include <tbb/enumerable_thread_specific.h>
 
 #include "Triangulator.h"
+#include "utils/Predicates.h"
 
 // static variables
 template<uint D, typename Precision> constexpr tIdType dPoint<D, Precision>::cINF;
@@ -58,58 +59,60 @@ public:
     */
 
     static Precision orientation(const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1, const dPoint<2, Precision> &s2) {
-        Precision acx, bcx, acy, bcy;
+//        Precision acx, bcx, acy, bcy;
+//
+//        acx = s0.coords[0] -
+//              s2.coords[0];
+//        bcx = s1.coords[0] -
+//              s2.coords[0];
+//        acy = s0.coords[1] -
+//              s2.coords[1];
+//        bcy = s1.coords[1] -
+//              s2.coords[1];
+//        return acx * bcy - acy * bcx;
 
-        acx = s0.coords[0] -
-              s2.coords[0];
-        bcx = s1.coords[0] -
-              s2.coords[0];
-        acy = s0.coords[1] -
-              s2.coords[1];
-        bcy = s1.coords[1] -
-              s2.coords[1];
-        return acx * bcy - acy * bcx;
+        return Predicates<2, Precision>::orient(s0.coords.data(), s1.coords.data(), s2.coords.data());
     }
 
     static bool inSphere(const dPoint<2, Precision> &p,
                          const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1, const dPoint<2, Precision> &s2) {
-        Precision adx, ady, bdx, bdy, cdx, cdy;
-        Precision abdet, bcdet, cadet;
-        Precision alift, blift, clift;
-        Precision det;
+//        Precision adx, ady, bdx, bdy, cdx, cdy;
+//        Precision abdet, bcdet, cadet;
+//        Precision alift, blift, clift;
+//        Precision det;
+//
+//        adx = s0.coords[0] - p.coords[0];
+//        ady = s0.coords[1] - p.coords[1];
+//        bdx = s1.coords[0] - p.coords[0];
+//        bdy = s1.coords[1] - p.coords[1];
+//        cdx = s2.coords[0] - p.coords[0];
+//        cdy = s2.coords[1] - p.coords[1];
+//
+//        abdet = adx * bdy - bdx * ady;
+//        bcdet = bdx * cdy - cdx * bdy;
+//        cadet = cdx * ady - adx * cdy;
+//        alift = adx * adx + ady * ady;
+//        blift = bdx * bdx + bdy * bdy;
+//        clift = cdx * cdx + cdy * cdy;
+//
+//        /*
+//         * Return a positive value if the point pd lies inside the
+//         * circle passing through pa, pb, and pc; a negative value if
+//         * it lies outside; and zero if the four points are cocircular.
+//         * The points pa, pb, and pc must be in counterclockwise
+//         * order, or the sign of the result will be reversed.
+//         */
+//
+//        /*
+//         * det > 0: d inside  abc (abc counter-clockwise)
+//         *          d outside abc (abc clockwise)
+//         * det < 0: d outside abc (abc counter-clockwise)
+//         *          d inside  abc (abc clockwise)
+//         */
+//
+//        det = alift * bcdet + blift * cadet + clift * abdet;
 
-        adx = s0.coords[0] - p.coords[0];
-        ady = s0.coords[1] - p.coords[1];
-        bdx = s1.coords[0] - p.coords[0];
-        bdy = s1.coords[1] - p.coords[1];
-        cdx = s2.coords[0] - p.coords[0];
-        cdy = s2.coords[1] - p.coords[1];
-
-        abdet = adx * bdy - bdx * ady;
-        bcdet = bdx * cdy - cdx * bdy;
-        cadet = cdx * ady - adx * cdy;
-        alift = adx * adx + ady * ady;
-        blift = bdx * bdx + bdy * bdy;
-        clift = cdx * cdx + cdy * cdy;
-
-        /*
-         * Return a positive value if the point pd lies inside the
-         * circle passing through pa, pb, and pc; a negative value if
-         * it lies outside; and zero if the four points are cocircular.
-         * The points pa, pb, and pc must be in counterclockwise
-         * order, or the sign of the result will be reversed.
-         */
-
-        /*
-         * det > 0: d inside  abc (abc counter-clockwise)
-         *          d outside abc (abc clockwise)
-         * det < 0: d outside abc (abc counter-clockwise)
-         *          d inside  abc (abc clockwise)
-         */
-
-        det = alift * bcdet + blift * cadet + clift * abdet;
-
-        return orientation(s0, s1, s2) * det >= 0;
+        return orientation(s0, s1, s2) * Predicates<2, Precision>::insphere(s0.coords.data(), s1.coords.data(), s2.coords.data(), p.coords.data()) >= 0;
     }
 
     static dSphere<2, Precision>
@@ -185,92 +188,94 @@ public:
 
     static Precision orientation(const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2, const dPoint<3, Precision> &s3) {
 
-        Precision adx, bdx, cdx;
-        Precision ady, bdy, cdy;
-        Precision adz, bdz, cdz;
+//        Precision adx, bdx, cdx;
+//        Precision ady, bdy, cdy;
+//        Precision adz, bdz, cdz;
+//
+//        adx = s0.coords[0] -
+//              s3.coords[0];
+//        bdx = s1.coords[0] -
+//              s3.coords[0];
+//        cdx = s2.coords[0] -
+//              s3.coords[0];
+//        ady = s0.coords[1] -
+//              s3.coords[1];
+//        bdy = s1.coords[1] -
+//              s3.coords[1];
+//        cdy = s2.coords[1] -
+//              s3.coords[1];
+//        adz = s0.coords[2] -
+//              s3.coords[2];
+//        bdz = s1.coords[2] -
+//              s3.coords[2];
+//        cdz = s2.coords[2] -
+//              s3.coords[2];
+//
+//        return adx * (bdy * cdz - bdz * cdy) + bdx * (cdy * adz - cdz * ady) +
+//               cdx * (ady * bdz - adz * bdy);
 
-        adx = s0.coords[0] -
-              s3.coords[0];
-        bdx = s1.coords[0] -
-              s3.coords[0];
-        cdx = s2.coords[0] -
-              s3.coords[0];
-        ady = s0.coords[1] -
-              s3.coords[1];
-        bdy = s1.coords[1] -
-              s3.coords[1];
-        cdy = s2.coords[1] -
-              s3.coords[1];
-        adz = s0.coords[2] -
-              s3.coords[2];
-        bdz = s1.coords[2] -
-              s3.coords[2];
-        cdz = s2.coords[2] -
-              s3.coords[2];
-
-        return adx * (bdy * cdz - bdz * cdy) + bdx * (cdy * adz - cdz * ady) +
-               cdx * (ady * bdz - adz * bdy);
+        return Predicates<3, Precision>::orient(s0.coords.data(), s1.coords.data(), s2.coords.data(), s3.coords.data());
     }
 
     static bool inSphere(const dPoint<3, Precision> &p,
                          const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2, const dPoint<3, Precision> &s3) {
 
-        Precision aex, bex, cex, dex;
-        Precision aey, bey, cey, dey;
-        Precision aez, bez, cez, dez;
-        Precision alift, blift, clift, dlift;
-        Precision ab, bc, cd, da, ac, bd;
-        Precision abc, bcd, cda, dab;
-        Precision det;
+//        Precision aex, bex, cex, dex;
+//        Precision aey, bey, cey, dey;
+//        Precision aez, bez, cez, dez;
+//        Precision alift, blift, clift, dlift;
+//        Precision ab, bc, cd, da, ac, bd;
+//        Precision abc, bcd, cda, dab;
+//        Precision det;
+//
+//        aex = s0.coords[0] - p.coords[0];
+//        bex = s1.coords[0] - p.coords[0];
+//        cex = s2.coords[0] - p.coords[0];
+//        dex = s3.coords[0] - p.coords[0];
+//        aey = s0.coords[1] - p.coords[1];
+//        bey = s1.coords[1] - p.coords[1];
+//        cey = s2.coords[1] - p.coords[1];
+//        dey = s3.coords[1] - p.coords[1];
+//        aez = s0.coords[2] - p.coords[2];
+//        bez = s1.coords[2] - p.coords[2];
+//        cez = s2.coords[2] - p.coords[2];
+//        dez = s3.coords[2] - p.coords[2];
+//
+//        ab = aex * bey - bex * aey;
+//        bc = bex * cey - cex * bey;
+//        cd = cex * dey - dex * cey;
+//        da = dex * aey - aex * dey;
+//
+//        ac = aex * cey - cex * aey;
+//        bd = bex * dey - dex * bey;
+//
+//        abc = aez * bc - bez * ac + cez * ab;
+//        bcd = bez * cd - cez * bd + dez * bc;
+//        cda = cez * da + dez * ac + aez * cd;
+//        dab = dez * ab + aez * bd + bez * da;
+//
+//        alift = aex * aex + aey * aey + aez * aez;
+//        blift = bex * bex + bey * bey + bez * bez;
+//        clift = cex * cex + cey * cey + cez * cez;
+//        dlift = dex * dex + dey * dey + dez * dez;
+//
+//        /*
+//         * det > 0: e inside  abcd (abcd positive orientation)
+//         *          e outside abcd (abcd negative orientation)
+//         * det < 0: e outside abcd (abcd positive orientation)
+//         *          e inside  abcd (abcd negative orientation)
+//         *
+//         * Return a positive value if the point pe lies inside the
+//         * sphere passing through pa, pb, pc, and pd; a negative value
+//         * if it lies outside; and zero if the five points are
+//         * cospherical.  The points pa, pb, pc, and pd must be ordered
+//         * so that they have a positive orientation (as defined by
+//         * orient3d()), or the sign of the result will be reversed.
+//         */
+//
+//        det = (dlift * abc - clift * dab) + (blift * cda - alift * bcd);
 
-        aex = s0.coords[0] - p.coords[0];
-        bex = s1.coords[0] - p.coords[0];
-        cex = s2.coords[0] - p.coords[0];
-        dex = s3.coords[0] - p.coords[0];
-        aey = s0.coords[1] - p.coords[1];
-        bey = s1.coords[1] - p.coords[1];
-        cey = s2.coords[1] - p.coords[1];
-        dey = s3.coords[1] - p.coords[1];
-        aez = s0.coords[2] - p.coords[2];
-        bez = s1.coords[2] - p.coords[2];
-        cez = s2.coords[2] - p.coords[2];
-        dez = s3.coords[2] - p.coords[2];
-
-        ab = aex * bey - bex * aey;
-        bc = bex * cey - cex * bey;
-        cd = cex * dey - dex * cey;
-        da = dex * aey - aex * dey;
-
-        ac = aex * cey - cex * aey;
-        bd = bex * dey - dex * bey;
-
-        abc = aez * bc - bez * ac + cez * ab;
-        bcd = bez * cd - cez * bd + dez * bc;
-        cda = cez * da + dez * ac + aez * cd;
-        dab = dez * ab + aez * bd + bez * da;
-
-        alift = aex * aex + aey * aey + aez * aez;
-        blift = bex * bex + bey * bey + bez * bez;
-        clift = cex * cex + cey * cey + cez * cez;
-        dlift = dex * dex + dey * dey + dez * dez;
-
-        /*
-         * det > 0: e inside  abcd (abcd positive orientation)
-         *          e outside abcd (abcd negative orientation)
-         * det < 0: e outside abcd (abcd positive orientation)
-         *          e inside  abcd (abcd negative orientation)
-         *
-         * Return a positive value if the point pe lies inside the
-         * sphere passing through pa, pb, pc, and pd; a negative value
-         * if it lies outside; and zero if the five points are
-         * cospherical.  The points pa, pb, pc, and pd must be ordered
-         * so that they have a positive orientation (as defined by
-         * orient3d()), or the sign of the result will be reversed.
-         */
-
-        det = (dlift * abc - clift * dab) + (blift * cda - alift * bcd);
-
-        return orientation(s0, s1, s2, s3) * det >= 0;
+        return orientation(s0, s1, s2, s3) * Predicates<3, Precision>::insphere(s0.coords.data(), s1.coords.data(), s2.coords.data(), s3.coords.data(), p.coords.data()) >= 0;
     }
 
     static dSphere<3, Precision>
