@@ -209,7 +209,7 @@ ExtendPartitioner<D, Precision>::partition(const dPointStats<D, Precision> &stat
         }
     }
 
-    ASSERT(0 <= maxDim && maxDim < D);
+    ASSERT(0 <= maxDim && maxDim < (signed) D);
     uint k = static_cast<uint>(maxDim);
 
     PLOG("Midpoint is " << stats.mid << std::endl);
