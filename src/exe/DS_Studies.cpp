@@ -51,7 +51,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint recursionDepth,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
-                              const bool parallelBase) {
+                              const bool parallelBase,
+                              const bool verify) {
 
     DCTriangulator<D, Precision> triangulator(bounds, points, recursionDepth, splitter, 100, parallelBase, true, true);
 
@@ -69,7 +70,23 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
-    ret.valid = true;
+
+    if (verify) {
+        LOGGER.setIndent(0);
+        LOG("Generate Reference Triangulation" << std::endl);
+
+        INDENT;
+        CGALTriangulator<D, Precision, false> cgal(bounds, points);
+        auto realDT = cgal.triangulate();
+        DEDENT;
+
+        auto vr = dt.verify(points);
+        auto ccr = dt.crossCheck(realDT);
+
+        ret.valid = vr.valid && ccr.valid;
+    } else {
+        ret.valid = true;
+    }
 
     std::atomic<std::size_t> aInf(0);
     std::atomic<std::size_t> aFin(0);
@@ -119,6 +136,7 @@ int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
     tIdType N;
     bool parallelBase = false;
+    bool verify = false;
 
     po::options_description cCommandLine("Command Line Options");
     cCommandLine.add_options()("N", po::value<tIdType>(&N), "number of points");
@@ -135,6 +153,8 @@ int main(int argc, char *argv[]) {
                                "specify number of threads");
     cCommandLine.add_options()("par-base", po::value<bool>(&parallelBase),
                                "use parallel base solver");
+    cCommandLine.add_options()("verify", po::value<bool>(&verify),
+                               "verify triangulation");
     cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
@@ -158,8 +178,6 @@ int main(int argc, char *argv[]) {
     if (!valid)
         return EXIT_FAILURE;
 
-    // load scheduler with specified number of threads
-    tbb::task_scheduler_init init(threads);
 
     //***************************************************************************
 
@@ -172,14 +190,17 @@ int main(int argc, char *argv[]) {
     if (vm.count("minN") && vm.count("maxN")) {
         std::cout << "Point study from " << minN << " to " << maxN << " points" << std::endl;
 
-        std::ofstream f("ds_study_points" + std::string(GIT_COMMIT) + ".csv");
+        // load scheduler with specified number of threads
+        tbb::task_scheduler_init init(threads);
+        
+        std::ofstream f("ds_study_points_" + std::string(GIT_COMMIT) + ".csv");
         f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
 
         for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
             auto pg = GeneratorFactory<D, Precision>::make('u');
             auto points = pg->generate(n, bounds, startGen);
 
-            TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
+            TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase, verify);
 
             f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
             << ret.cvSize << " " << ret.cvCapacity << " "
@@ -191,14 +212,14 @@ int main(int argc, char *argv[]) {
             << points.size() << " points took "
             << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
             << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
-            << "with " << threads << " threads" << std::endl;
+            << "with " << threads << " threads  valid: " << ret.valid << std::endl;
         }
     }
 
     if (vm.count("minThreads") && vm.count("maxThreads")) {
         std::cout << "Thread study from " << minThreads << " to " << maxThreads << " threads" << std::endl;
 
-        std::ofstream f("ds_study_threads" + std::string(GIT_COMMIT) + ".csv");
+        std::ofstream f("ds_study_threads_" + std::string(GIT_COMMIT) + ".csv");
         f << "threads simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
 
         if (vm.count("maxN")) {
@@ -215,8 +236,9 @@ int main(int argc, char *argv[]) {
             auto points = pg->generate(N, bounds, startGen);
 
             tbb::task_scheduler_init init(t);
+            uint recD = log2(t);
 
-            TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase);
+            TriangulateReturn ret = triangulate(bounds, recD, points, p, parallelBase, verify);
 
             f << t << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
             << ret.cvSize << " " << ret.cvCapacity << " "
@@ -228,7 +250,7 @@ int main(int argc, char *argv[]) {
             << points.size() << " points took "
             << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
             << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
-            << "with " << t << " threads" << std::endl;
+            << "with " << t << " threads  valid: " << ret.valid << std::endl;
         }
     }
 
