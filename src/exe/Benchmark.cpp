@@ -23,7 +23,7 @@
 
 std::vector<unsigned char> splitters = {'c'};
 std::vector<unsigned char> triangulators = {'c', 'm', 'd'};
-std::vector<unsigned char> distributions = {'u'};
+std::vector<unsigned char> distributions = {'u', 'e', 'l'};
 std::vector<uint> occupancies = {10, 50, 100, 1000};
 
 enum class TriState : char { INDEF = -1, FALSE = 0, TRUE = 1};
@@ -289,6 +289,7 @@ int main(int argc, char *argv[]) {
     uint maxRecDepth = std::numeric_limits<uint>::max();
     uint occupancy = 1;
     unsigned char alg;
+    unsigned char dist;
     bool parallelBase;
     TriState parallelEdge = TriState::TRUE;
 
@@ -320,6 +321,10 @@ int main(int argc, char *argv[]) {
     // algorithm options
     cCommandLine.add_options()("algorithm", po::value<unsigned char>(&alg),
                                "algorithm to use");
+
+    // distribution options
+    cCommandLine.add_options()("dist", po::value<unsigned char>(&dist),
+                               "point distribution");
 
     // occupancy options
     cCommandLine.add_options()("occupancy", po::value<uint>(&occupancy),
@@ -389,6 +394,10 @@ int main(int argc, char *argv[]) {
 
         if (vm.count("algorithm")) {
             triangulators = {alg};
+        }
+
+        if (vm.count("dist")) {
+            distributions = {dist};
         }
 
         parallelBase = !vm.count("no-parallel-base");
