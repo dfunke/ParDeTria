@@ -26,9 +26,9 @@ protected:
         dPoints<D, Precision> points;
         points.reserveUpToIdx(n + 1);
 
-        for (uint d = 0; d < D; ++d) {
-            points[0].coords[d] = 0;
-        }
+//        for (uint d = 0; d < D; ++d) {
+//            points[0].coords[d] = 0;
+//        }
 
         return points;
     }

@@ -209,7 +209,16 @@ class dPoints : public VectorAdapter2<dPoint<D, Precision>> {
     typedef VectorAdapter2<dPoint<D, Precision>> super;
 
 public:
-    dPoints() : VectorAdapter2<dPoint<D, Precision>>() { }
+    dPoints() : VectorAdapter2<dPoint<D, Precision>>() {
+
+        // initialize zero entry
+
+        super::resize(1);
+        for (uint d = 0; d < D; ++d) {
+            super::at(0).coords[d] = 0;
+        }
+
+    }
 
     dPoints(const VectorAdapter2<dPoint<D, Precision>> &other)
             : VectorAdapter2<dPoint<D, Precision>>(other) { }
