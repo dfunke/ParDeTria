@@ -4,7 +4,9 @@
 #include <string>
 
 #ifndef NDEBUG
+
 #include <csignal>
+
 #endif
 
 class AssertionException : public std::exception {
@@ -37,3 +39,6 @@ private:
   ((void)((e) ? 0 : raise(SIGINT)))
 
 #endif
+
+#define FASSERT(e)                                                              \
+  ((void)((e) ? 0 : throw AssertionException(#e, __FILE__, __LINE__)))
