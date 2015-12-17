@@ -115,7 +115,9 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
 
 
-    tMarkType gMark = ++simplices.mark;
+    tMarkType queuedMark = ++simplices.mark;
+    tMarkType doneMark = ++simplices.mark;
+    ASSERT(queuedMark < doneMark);
 
     /* Walk along the neighbors,
      * testing for each neighbor whether its circumsphere is within the
@@ -137,7 +139,12 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
         auto &simplicesHandle = tsSimplicesHandle.local();
 
         const auto &simplex = simplicesHandle[id];
-        simplex.mark = gMark;
+
+
+        if (simplex.mark == doneMark) {
+            return; //already checked
+        }
+        simplex.mark = doneMark;
 
         const auto cs = simplex.circumsphere(this->points);
         bool intersectsBounds = false;
@@ -157,9 +164,9 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
             }
 
             for (const auto &n : simplex.neighbors) {
-                if (dSimplex<D, Precision>::isFinite(n) && simplicesHandle[n].mark < gMark) {
+                if (dSimplex<D, Precision>::isFinite(n) && simplicesHandle[n].mark < queuedMark) {
                     // n was not yet inspected
-                    simplicesHandle[n].mark = gMark;
+                    simplicesHandle[n].mark = queuedMark;
                     feeder.add(n);
                 }
             }
@@ -188,7 +195,9 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
             tbb::cache_aligned_allocator<dSimplicesConstHandle<D, Precision>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
 
-    tMarkType gMark = ++simplices.mark;
+    tMarkType queuedMark = ++simplices.mark;
+    tMarkType doneMark = ++simplices.mark;
+    ASSERT(queuedMark < doneMark);
 
     tbb::parallel_for(edgeSimplices.range(), [&](const auto &range) {
 
@@ -198,11 +207,17 @@ cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precis
 
         for (const auto &edgeSimplexID : range) {
             const auto &edgeSimplex = simplicesHandle[edgeSimplexID];
+
+            if (edgeSimplex.mark == doneMark) {
+                continue; //already checked
+            }
+            edgeSimplex.mark = doneMark;
+
             for (const auto &firstLayer : edgeSimplex.neighbors) {
                 if (dSimplex<D, Precision>::isFinite(firstLayer) && !edgeSimplices.count(firstLayer)) {
                     // we have an "inward" neighbor, add it to the wuFaces DS
-                    if (simplicesHandle[firstLayer].mark < gMark) {
-                        simplicesHandle[firstLayer].mark = gMark;
+                    if (simplicesHandle[firstLayer].mark < queuedMark) {
+                        simplicesHandle[firstLayer].mark = queuedMark;
 
                         for (uint i = 0; i < D + 1; ++i) {
                             auto facetteHash = simplicesHandle[firstLayer].faceFingerprint(i);
@@ -244,7 +259,9 @@ void DCTriangulator<D, Precision>::updateNeighbors(
             tbb::cache_aligned_allocator<dSimplicesHandle<D, Precision>>,
             tbb::ets_key_usage_type::ets_key_per_instance> tsSimplicesHandle(std::ref(simplices));
 
-    tMarkType gMark = ++simplices.mark;
+    tMarkType queuedMark = ++simplices.mark;
+    tMarkType doneMark = ++simplices.mark;
+    ASSERT(queuedMark < doneMark);
 
 
     auto wuFacesHandle = wuFaces.handle();
@@ -264,10 +281,10 @@ void DCTriangulator<D, Precision>::updateNeighbors(
 
         dSimplex<D, Precision> &simplex = simplicesHandle[id];
 
-        if (simplex.mark == gMark) {
+        if (simplex.mark == doneMark) {
             return; //already checked
         }
-        simplex.mark = gMark;
+        simplex.mark = doneMark;
 
         PLOG("Checking neighbors of " << simplex << std::endl);
 #ifndef NDEBUG
@@ -309,8 +326,10 @@ void DCTriangulator<D, Precision>::updateNeighbors(
                         ASSERT(!set || cand == simplex.neighbors[d]); //second term is to guard against double entries
 
                         simplex.neighbors[d] = cand;
-                        if(simplicesHandle[cand].mark < gMark)
+                        if(simplicesHandle[cand].mark < queuedMark) {
+                            simplicesHandle[cand].mark = queuedMark;
                             feeder.add(cand);
+                        }
 #ifndef NDEBUG
                         ++updated;
                         set = true;
