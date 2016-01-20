@@ -57,14 +57,15 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
     unsigned char alg = run.getTrait<unsigned char>("alg");
 
-    uint threads = 1;
+    uint threads = run.hasTrait("threads") ? run.getTrait<uint>("threads") : 1;
+    // load scheduler with specified number of threads
+    tbb::task_scheduler_init init(threads);
 
     if (alg == 'c') {
         triangulator_ptr =
                 std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
     } else {
         uint gridOccupancy = run.getTrait<uint>("occupancy");
-        threads = run.getTrait<uint>("threads");
 
         if (alg == 'm') {
             triangulator_ptr =
@@ -80,9 +81,6 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
                                                                    parBase, parEdge);
         }
     }
-
-    // load scheduler with specified number of threads
-    tbb::task_scheduler_init init(threads);
 
     run.addTrait("start-time", getDatetime());
 

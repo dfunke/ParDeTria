@@ -44,6 +44,10 @@ public:
         addTrait(name, ss.str());
     }
 
+    bool hasTrait(const std::string &name) const{
+        return m_traits.count(name);
+    }
+
     std::string getTrait(const std::string &name) const {
         return m_traits.at(name);
     }
