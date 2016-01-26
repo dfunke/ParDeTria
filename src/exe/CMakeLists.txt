@@ -66,4 +66,14 @@ target_link_libraries(DS_Study
         ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
+add_executable (getRun
+        GetRun.cpp
+        )
+
+target_link_libraries(getRun
+        DBConn
+        Measurements
+        ${EJDB_LIBRARIES}
+        )
+
 file(INSTALL runExperiments.sh DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} USE_SOURCE_PERMISSIONS)
