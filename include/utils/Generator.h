@@ -79,6 +79,103 @@ protected:
 };
 
 template<uint D, typename Precision>
+class NormalPointGenerator : public PointGenerator<D, Precision> {
+
+protected:
+
+    void _gen(dPoints<D, Precision> &points,
+              const tIdType n,
+              const dBox<D, Precision> &bounds,
+              tGenerator &gen) const {
+
+        std::normal_distribution<Precision> distribution(0, 1);
+        auto dice = std::bind(distribution, gen);
+
+        dVector<D, Precision> midpoint = bounds.low;
+        dVector<D, Precision> span = bounds.high;
+
+        for (uint d = 0; d < D; ++d) {
+            midpoint[d] += (bounds.high[d] - bounds.low[d]) / 2;
+            span[d] -= bounds.low[d];
+        }
+
+        for (tIdType i = 1; i <= n; ++i) {
+            dPoint<D, Precision> p;
+            p.coords = midpoint;
+
+            for (uint d = 0; d < D; ++d) {
+                p.coords[d] += span[d] * dice();
+            }
+
+
+            points[i] = std::move(p);
+        }
+
+        // TODO checks for colliding points, straight lines, etc.
+    }
+};
+
+template<uint D, typename Precision>
+class BubblePointGenerator : public PointGenerator<D, Precision> {
+
+protected:
+
+    void _gen(dPoints<D, Precision> &points,
+              const tIdType n,
+              const dBox<D, Precision> &bounds,
+              tGenerator &gen) const {
+
+        std::normal_distribution<Precision> distribution(0, 1);
+        auto dice = std::bind(distribution, gen);
+
+        dVector<D, Precision> gMidpoint = bounds.low;
+
+        for (uint d = 0; d < D; ++d) {
+            gMidpoint[d] += (bounds.high[d] - bounds.low[d]) / 2;
+        }
+
+        std::vector<dBox<D, Precision>> bubbles;
+        bubbles.resize(pow(2, D));
+
+        for (uint i = 0; i < pow(2, D); ++i) {
+            for (uint d = 0; d < D; ++d) {
+                bubbles[i].low[d] =
+                        i & (1 << d) ? gMidpoint[d] : bounds.low[d];
+                bubbles[i].high[d] =
+                        i & (1 << d) ? bounds.high[d] : gMidpoint[d];
+            }
+        }
+
+        tIdType ppB = n / bubbles.size(); // points per bubble
+        for(uint b = 0; b < bubbles.size(); ++b) {
+            const auto & bubble = bubbles[b];
+
+            dVector<D, Precision> midpoint = bubble.low;
+            dVector<D, Precision> span = bubble.high;
+
+            for (uint d = 0; d < D; ++d) {
+                midpoint[d] += (bubble.high[d] - bubble.low[d]) / 2;
+                span[d] -= bubble.low[d];
+            }
+
+            for (tIdType i = b*ppB + 1; i <= (b+1)*ppB; ++i) {
+                dPoint<D, Precision> p;
+                p.coords = midpoint;
+
+                for (uint d = 0; d < D; ++d) {
+                    p.coords[d] += span[d] * dice();
+                }
+
+
+                points[i] = std::move(p);
+            }
+        }
+
+        // TODO checks for colliding points, straight lines, etc.
+    }
+};
+
+template<uint D, typename Precision>
 class EllipsoidPointGenerator : public PointGenerator<D, Precision> {
 
 protected:
@@ -201,6 +298,10 @@ public:
                 return std::make_unique<EllipsoidPointGenerator<D, Precision>>();
             case 'l':
                 return std::make_unique<SkewLinePointGenerator<D, Precision>>();
+            case 'n':
+                return std::make_unique<NormalPointGenerator<D, Precision>>();
+            case 'b':
+                return std::make_unique<BubblePointGenerator<D, Precision>>();
             case 'u':
             default:
                 return std::make_unique<UniformPointGenerator<D, Precision>>();
