@@ -88,7 +88,7 @@ protected:
               const dBox<D, Precision> &bounds,
               tGenerator &gen) const {
 
-        std::normal_distribution<Precision> distribution(0, 1);
+        std::normal_distribution<Precision> distribution(0, 0.5);
         auto dice = std::bind(distribution, gen);
 
         dVector<D, Precision> midpoint = bounds.low;
@@ -101,11 +101,14 @@ protected:
 
         for (tIdType i = 1; i <= n; ++i) {
             dPoint<D, Precision> p;
-            p.coords = midpoint;
 
-            for (uint d = 0; d < D; ++d) {
-                p.coords[d] += span[d] * dice();
-            }
+            do {
+                p.coords = midpoint;
+
+                for (uint d = 0; d < D; ++d) {
+                    p.coords[d] += span[d] * dice();
+                }
+            } while(!bounds.contains(p.coords));
 
 
             points[i] = std::move(p);
@@ -125,7 +128,7 @@ protected:
               const dBox<D, Precision> &bounds,
               tGenerator &gen) const {
 
-        std::normal_distribution<Precision> distribution(0, 1);
+        std::normal_distribution<Precision> distribution(0, 0.5);
         auto dice = std::bind(distribution, gen);
 
         dVector<D, Precision> gMidpoint = bounds.low;
@@ -160,11 +163,14 @@ protected:
 
             for (tIdType i = b*ppB + 1; i <= (b+1)*ppB; ++i) {
                 dPoint<D, Precision> p;
-                p.coords = midpoint;
 
-                for (uint d = 0; d < D; ++d) {
-                    p.coords[d] += span[d] * dice();
-                }
+                do {
+                    p.coords = midpoint;
+
+                    for (uint d = 0; d < D; ++d) {
+                        p.coords[d] += span[d] * dice();
+                    }
+                } while(!bounds.contains(p.coords));
 
 
                 points[i] = std::move(p);
