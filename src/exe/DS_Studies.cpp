@@ -187,6 +187,7 @@ int main(int argc, char *argv[]) {
         bounds.high[i] = 100;
     }
 
+    std::vector<unsigned char> dists = {'n', 'b'};
     if (vm.count("minN") && vm.count("maxN")) {
         std::cout << "Point study from " << minN << " to " << maxN << " points" << std::endl;
 
@@ -194,25 +195,27 @@ int main(int argc, char *argv[]) {
         tbb::task_scheduler_init init(threads);
         
         std::ofstream f("ds_study_points_" + std::string(GIT_COMMIT) + ".csv");
-        f << "n simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
+        f << "dist n simplices delSimplices cvSize cvCap pointMB dtMB cvMB currRSS peakRSS time" << std::endl;
 
-        for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
-            auto pg = GeneratorFactory<D, Precision>::make('u');
-            auto points = pg->generate(n, bounds, startGen);
+        for (auto dist : dists) {
+            for (std::size_t n = minN; n <= maxN; n += pow(10, floor(log10(n)))) {
+                auto pg = GeneratorFactory<D, Precision>::make(dist);
+                auto points = pg->generate(n, bounds, startGen);
 
-            TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase, verify);
+                TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase, verify);
 
-            f << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
-            << ret.cvSize << " " << ret.cvCapacity << " "
-            << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
-            << ret.currRSS / 1e6 << " " << ret.peakRSS / 1e6 << " " << ret.time.count()
-            << std::endl;
+                f << dist << " " << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
+                << ret.cvSize << " " << ret.cvCapacity << " "
+                << ret.pointMB << " " << ret.dtMB << " " << ret.cvMB << " "
+                << ret.currRSS / 1e6 << " " << ret.peakRSS / 1e6 << " " << ret.time.count()
+                << std::endl;
 
-            std::cout << "\tTriangulating "
-            << points.size() << " points took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
-            << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
-            << "with " << threads << " threads  valid: " << ret.valid << std::endl;
+                std::cout << "\tTriangulating "
+                << points.size() << " points took "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
+                << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
+                << "with " << threads << " threads  valid: " << ret.valid << std::endl;
+            }
         }
     }
 
