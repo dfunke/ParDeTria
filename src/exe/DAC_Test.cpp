@@ -32,6 +32,7 @@ struct TriangulateReturn {
     bool valid;
     tDuration time;
     std::size_t rss;
+    std::size_t nSimplices;
     ExperimentRun run;
 };
 
@@ -68,6 +69,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
     auto t2 = Clock::now();
 
     ret.rss = getCurrentRSS();
+    ret.nSimplices = dt.exact_size();
 
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
@@ -230,7 +232,7 @@ int main(int argc, char *argv[]) {
         ret = triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
 
     LOG("Triangulating "
-        << points.size() << " points took "
+        << points.size() << " points to " << ret.nSimplices  << " simplices took "
         << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
                 .count() << " ms and " << ret.rss / 1e6 << " MB" << std::endl);
 
