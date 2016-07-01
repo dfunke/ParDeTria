@@ -33,6 +33,7 @@ struct TriangulateReturn {
     tDuration time;
     std::size_t currRSS;
     std::size_t peakRSS;
+    std::size_t nSimplices;
     ExperimentRun run;
 };
 
@@ -70,6 +71,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
 
     ret.currRSS = getCurrentRSS();
     ret.peakRSS = getPeakRSS();
+    ret.nSimplices = dt.exact_size();
 
     ret.exception = false;
     ret.time = std::chrono::duration_cast<tDuration>(t2 - t1);
@@ -232,7 +234,7 @@ int main(int argc, char *argv[]) {
         ret = triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
 
     LOG("Triangulating "
-        << points.size() << " points took "
+        << points.size() << " points to " << ret.nSimplices  << " simplices took "
         << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
                 .count() << " ms and " << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB" << std::endl);
 

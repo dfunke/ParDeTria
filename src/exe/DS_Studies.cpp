@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
             << std::endl;
 
             std::cout << "\tTriangulating "
-            << points.size() << " points took "
+            << points.size() << " points to " << ret.countSimplices << " simplices took "
             << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time).count() << " ms and "
             << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB "
             << "with " << t << " threads  valid: " << ret.valid << std::endl;
