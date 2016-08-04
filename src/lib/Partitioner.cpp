@@ -12,9 +12,9 @@ Partitioning<D, Precision> dWayPartitioner<D, Precision>::partition(
     PLOG("Midpoint is " << stats.mid << std::endl);
 
     Partitioning<D, Precision> partitioning;
-    partitioning.reserve(pow(2, D));
+    partitioning.reserve(pow2D);
 
-    for (uint i = 0; i < pow(2, D); ++i) {
+    for (uint i = 0; i < pow2D; ++i) {
         partitioning.emplace_back(ids.size() / (pow(2, D)));
         partitioning[i].id = i;
 

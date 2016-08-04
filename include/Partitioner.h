@@ -212,6 +212,9 @@ public:
                          ids, points, provenance, ignoreInfinte);
     }
 
+    virtual uint getRecursionDepth(const uint & threads) const = 0;
+    virtual std::string to_string() const;
+
 public:
     static std::unique_ptr<Partitioner<D, Precision>> make(const unsigned char type);
 };
@@ -225,6 +228,20 @@ public:
                                          const dPoints<D, Precision> &points,
                                          const std::string &provenance,
                                          bool ignoreInfinte = false) const;
+
+    uint getRecursionDepth(const uint & threads) const {
+        //check for power of 2^D
+        ASSERT(isPowN(threads, pow2D));
+
+        return logN(threads, pow2D);
+    }
+
+    std::string to_string() const {
+        return "d-Way Splitter";
+    }
+
+private:
+    uint pow2D = pow(2, D);
 };
 
 template<uint D, typename Precision>
@@ -239,6 +256,17 @@ public:
                                          const std::string &provenance,
                                          bool ignoreInfinte = false) const;
 
+    uint getRecursionDepth(const uint & threads) const {
+        //check for power of two
+        ASSERT(isPow2(threads));
+
+        return log2(threads);
+    }
+
+    std::string to_string() const {
+        return "Dim " + std::to_string(k) + " Splitter";
+    }
+
 private:
     uint k; // dimension to partition
 };
@@ -252,6 +280,17 @@ public:
                                          const dPoints<D, Precision> &points,
                                          const std::string &provenance,
                                          bool ignoreInfinte = false) const;
+
+    uint getRecursionDepth(const uint & threads) const {
+        //check for power of two
+        ASSERT(isPow2(threads));
+
+        return log2(threads);
+    }
+
+    std::string to_string() const {
+        return "Cycle Splitter";
+    }
 };
 
 template<uint D, typename Precision>
@@ -263,6 +302,17 @@ public:
                                          const dPoints<D, Precision> &points,
                                          const std::string &provenance,
                                          bool ignoreInfinte = false) const;
+
+    uint getRecursionDepth(const uint & threads) const {
+        //check for power of two
+        ASSERT(isPow2(threads));
+
+        return log2(threads);
+    }
+
+    std::string to_string() const {
+        return "Extend Splitter";
+    }
 };
 
 
