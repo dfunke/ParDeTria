@@ -8,7 +8,16 @@
 #include <limits.h>
 
 template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
+T isPow2(const T x) {
+    return x != 0 && !(x & (x - 1));
+}
 
+template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
+T isPowN(const T x, const T n) {
+    return x != 0 && x % n == 0;
+}
+
+template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
 T nextPow2(const T x) {
     T v = x - 1;
 
@@ -20,7 +29,6 @@ T nextPow2(const T x) {
 }
 
 template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
-
 T log2(const T _x) {
     T x = _x;
     T y = 0;
@@ -30,7 +38,15 @@ T log2(const T _x) {
 }
 
 template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
+T logN(const T _x, const T _n) {
+    T x = _x;
+    T y = 0;
+    while (x >>= log2(_n)) ++y;
+    //asm ( "\tbsr %1, %0\n" : "=r"(y) : "r" (x));
+    return y;
+}
 
+template<typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
 T popcount(const T _x) {
     T v = _x;
     v = v - ((v >> 1) & (T)
