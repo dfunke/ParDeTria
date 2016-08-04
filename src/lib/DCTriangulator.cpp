@@ -51,17 +51,20 @@ template<uint D, typename Precision>
 DCTriangulator<D, Precision>::DCTriangulator(
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
-        const uint _recursionDepth,
-        const unsigned char _splitter,
+        const uint _threads,
+        std::unique_ptr<Partitioner<D, Precision>> && _splitter,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
         const bool _parallelEdgeTria,
         const bool addInfiniteVertices)
         : Triangulator<D, Precision>(_bounds, _points),
-          recursionDepth(_recursionDepth),
+          recursionDepth(_splitter->getRecursionDepth(_threads)),
           parallelEdgeTria(_parallelEdgeTria),
-          splitter(_splitter) {
+          splitter(std::move(_splitter))
+{
 
+
+    LOG("Initializing DCTriangulator with " << _threads << " threads, recursion depth " << recursionDepth << ", splitter " << splitter->to_string() << std::endl);
 
     if (addInfiniteVertices) {
         // add infinite points to data set
@@ -148,7 +151,7 @@ void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simpl
 
         const auto cs = simplex.circumsphere(this->points);
         bool intersectsBounds = false;
-        for (uint i = 0; i < partitioning.size(); ++i) {
+        for (uint i = 0; i < partitioning.size() && !intersectsBounds; ++i) {
             if (i != partition && partitioning[i].bounds.intersects(cs))
                 intersectsBounds = true;
         }
@@ -515,9 +518,7 @@ dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_
         INDENT
 
         VTUNE_TASK(Partitioning);
-        auto partitioner = Partitioner<D, Precision>::make(splitter);
-        const auto partioning =
-                partitioner->partition(partitionPoints, this->points, provenance);
+        const auto partioning = splitter->partition(partitionPoints, this->points, provenance);
         VTUNE_END_TASK(Partitioning);
 
         DEDENT

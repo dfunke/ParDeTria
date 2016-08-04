@@ -32,8 +32,8 @@ public:
 
 
     DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
-                   const uint _recursionDepth,
-                   const unsigned char splitter,
+                   const uint threads,
+                   std::unique_ptr<Partitioner<D, Precision>> && splitter,
                    const uint gridOccupancy = 1,
                    const bool parallelBaseSolver = false,
                    const bool parallelEdgeTria = true,
@@ -73,8 +73,8 @@ protected:
 protected:
     const uint recursionDepth;
     const bool parallelEdgeTria;
-    const unsigned char splitter;
 
+    std::unique_ptr<Partitioner<D, Precision>> splitter;
     std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
 
 public:

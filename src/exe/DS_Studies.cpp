@@ -48,13 +48,14 @@ struct TriangulateReturn {
 };
 
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
-                              const uint recursionDepth,
+                              const uint threads,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
                               const bool parallelBase,
                               const bool verify) {
 
-    DCTriangulator<D, Precision> triangulator(bounds, points, recursionDepth, splitter, 100, parallelBase, true, true);
+    auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
+    DCTriangulator<D, Precision> triangulator(bounds, points, threads, std::move(splitter_ptr), 100, parallelBase, true, true);
 
     TriangulateReturn ret;
     PROFILER.setRun(&ret.run);
@@ -132,7 +133,6 @@ int main(int argc, char *argv[]) {
     uint minThreads = 1;
     uint maxThreads = tbb::task_scheduler_init::default_num_threads();
 
-    uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
     tIdType N;
     bool parallelBase = false;
@@ -144,8 +144,6 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()("maxN", po::value<tIdType>(&maxN), "maximum number of points");
     cCommandLine.add_options()("minThreads", po::value<uint>(&minThreads), "minimum number of threads = 1");
     cCommandLine.add_options()("maxThreads", po::value<uint>(&maxThreads), "maximum number of threads = #cores");
-    cCommandLine.add_options()("recDepth", po::value<uint>(&recursionDepth),
-                               "maximum levels of recursion");
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
@@ -171,9 +169,6 @@ int main(int argc, char *argv[]) {
 
     // plausability checks
     bool valid = true;
-    if (!vm.count("recDepth")) {
-        recursionDepth = log2(threads);
-    }
 
     if (!valid)
         return EXIT_FAILURE;
@@ -202,7 +197,7 @@ int main(int argc, char *argv[]) {
                 auto pg = GeneratorFactory<D, Precision>::make(dist);
                 auto points = pg->generate(n, bounds, startGen);
 
-                TriangulateReturn ret = triangulate(bounds, recursionDepth, points, p, parallelBase, verify);
+                TriangulateReturn ret = triangulate(bounds, threads, points, p, parallelBase, verify);
 
                 f << dist << " " << n << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
                 << ret.cvSize << " " << ret.cvCapacity << " "
@@ -239,9 +234,8 @@ int main(int argc, char *argv[]) {
             auto points = pg->generate(N, bounds, startGen);
 
             tbb::task_scheduler_init init(t);
-            uint recD = log2(t);
 
-            TriangulateReturn ret = triangulate(bounds, recD, points, p, parallelBase, verify);
+            TriangulateReturn ret = triangulate(bounds, t, points, p, parallelBase, verify);
 
             f << t << " " << ret.countSimplices << " " << ret.countDeletedSimplices << " "
             << ret.cvSize << " " << ret.cvCapacity << " "

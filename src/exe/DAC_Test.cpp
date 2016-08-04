@@ -38,7 +38,7 @@ struct TriangulateReturn {
 };
 
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
-                              const uint recursionDepth,
+                              const uint threads,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
                               const unsigned char alg,
@@ -54,8 +54,9 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
             triangulator_ptr =
                     std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
         } else {
+            auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
             triangulator_ptr =
-                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, recursionDepth, splitter, 100,
+                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads, std::move(splitter_ptr), 100,
                                                                    parallelBase);
         }
     }
@@ -121,7 +122,6 @@ int main(int argc, char *argv[]) {
     unsigned char p = 'c';
     unsigned char dist = 'u';
     tIdType N;
-    uint recursionDepth;
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
     bool parallelBase = false;
@@ -133,8 +133,6 @@ int main(int argc, char *argv[]) {
 
     po::options_description cCommandLine("Command Line Options");
     cCommandLine.add_options()("n", po::value<tIdType>(&N), "number of points");
-    cCommandLine.add_options()("recDepth", po::value<uint>(&recursionDepth),
-                               "maximum levels of recursion");
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
@@ -170,9 +168,6 @@ int main(int argc, char *argv[]) {
 
     // plausability checks
     bool valid = true;
-    if (!vm.count("recDepth")) {
-        recursionDepth = log2(threads);
-    }
 
     if (!(vm.count("n") || vm.count("points"))) {
         std::cout << "Please specify number of points or point file" << std::endl;
@@ -228,10 +223,10 @@ int main(int argc, char *argv[]) {
                 std::cout << std::endl;
 
             points = pg->generate(N, bounds, gen);
-            triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
+            triangulate(bounds, threads, points, p, alg, parallelBase, verify);
         }
     } else
-        ret = triangulate(bounds, recursionDepth, points, p, alg, parallelBase, verify);
+        ret = triangulate(bounds, threads, points, p, alg, parallelBase, verify);
 
     LOG("Triangulating "
         << points.size() << " points to " << ret.nSimplices  << " simplices took "
