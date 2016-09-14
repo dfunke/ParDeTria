@@ -620,6 +620,7 @@ namespace CGAL {
         std::swap(_dimension, tds._dimension);
         faces().swap(tds.faces());
         vertices().swap(tds.vertices());
+        std::swap(_indexHandler, tds._indexHandler);
         return;
     }
 
@@ -1840,6 +1841,7 @@ namespace CGAL {
         clear();
         size_type n = tds_src.number_of_vertices();
         set_dimension(tds_src.dimension());
+        _indexHandler = tds_src._indexHandler;
 
         // Number of pointers to cell/vertex to copy per cell.
         int dim = (std::max)(1, dimension() + 1);
