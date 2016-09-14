@@ -787,6 +787,8 @@ struct VerificationReport {
     std::map<dSimplex<D, Precision>, std::set<tIdType>> inCircle;
     std::vector<std::pair<dSimplex<D, Precision>, dSimplex<D, Precision>>>
             wrongNeighbors;
+    std::vector<std::pair<dSimplex<D, Precision>, dSimplex<D, Precision>>>
+            duplicates;
 };
 
 //#############################################################################

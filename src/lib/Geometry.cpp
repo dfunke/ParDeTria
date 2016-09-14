@@ -860,10 +860,53 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
         }
     });
 
+    //check for duplicates
+    //build hashmap for simplex lookup
+    LOG("Building simplex look-up map" << std::endl);
+    tbb::concurrent_unordered_multimap<tHashType, tIdType> simplexLookup(this->exact_size());
+
+    tbb::parallel_for(this->range(), [&](const auto &r) {
+
+        for (const auto &a : r) {
+            auto fp = a.fingerprint();
+            simplexLookup.insert(std::make_pair(fp, a.id));
+        }
+    });
+
+    LOG("Check for duplicates" << std::endl);
+    tbb::parallel_for(this->range(), [&](const auto &r) {
+
+        auto &thisHandle = tsThisHandle.local();
+
+        for (const auto &a : r) {
+
+            //check for any duplicates in the triangulation
+            auto simplexHash = a.fingerprint();
+            auto range = simplexLookup.equal_range(simplexHash);
+
+            ASSERT(range.first != range.second); // we have at least ourself in the map
+
+            for (auto it = range.first; it != range.second; ++it) {
+
+                const auto &b = thisHandle.at(it->second);
+                // a and b must have identical vertices and same id or different id and different vertices
+                if (!(a.equalVertices(b) == (a.id == b.id))) {
+
+                    tbb::spin_mutex::scoped_lock lock(mtx);
+                    LOG("Found duplicates " << a << " and " << b
+                        << std::endl);
+                    result.duplicates.emplace_back(a, b);
+                    result.valid = false;
+                }
+            }
+        }
+    });
+
+
     // verify that all simplices with a shared D-1 simplex are neighbors
 
     //build hashmap for face lookup
-    LOG("Building look-up map" << std::endl);
+    LOG("Building facette look-up map" << std::endl);
     tbb::concurrent_unordered_multimap<tHashType, tIdType> faceLookup((D+1) * this->exact_size());
 
     tbb::parallel_for(this->range(), [&](const auto &r) {
