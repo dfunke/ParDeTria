@@ -213,7 +213,7 @@ public:
     }
 
     virtual uint getRecursionDepth(const uint & threads) const = 0;
-    virtual std::string to_string() const;
+    virtual std::string to_string() const = 0;
 
 public:
     static std::unique_ptr<Partitioner<D, Precision>> make(const unsigned char type);
