@@ -115,10 +115,10 @@ public:
         return vector::end();
     }
 
-//    template<typename... _Args>
-//    void emplace_back(_Args &&... args) {
-//        vector::emplace_back(args...);
-//    }
+    template<typename... _Args>
+    void emplace_back(_Args &&... args) {
+        vector::emplace_back(args...);
+    }
 
     void reserveUpToIdx(const typename vector::size_type &size) {
         if(vector::size() == 0 || size - m_offset > vector::size())
