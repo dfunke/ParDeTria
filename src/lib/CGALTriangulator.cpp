@@ -51,6 +51,12 @@ public:
         m_id = m_idHandler.getId();
     }
 
+    Triangulation_dSimplexAdapter_2(const Triangulation_dSimplexAdapter_2 &o) // do not copy the ID, just the faces and neighbors
+            : Fb_(o), m_idHandler(o.m_idHandler) {
+
+        m_id = m_idHandler.getId();
+    }
+
     Triangulation_dSimplexAdapter_2(Vertex_handle v0,
                                     Vertex_handle v1,
                                     Vertex_handle v2,
@@ -98,6 +104,12 @@ public:
 
     Triangulation_dSimplexAdapter_3(const Ih &idHandler)
             : Cb(), m_idHandler(idHandler) {
+
+        m_id = m_idHandler.getId();
+    }
+
+    Triangulation_dSimplexAdapter_3(const Triangulation_dSimplexAdapter_3 &o) // do not copy the ID, just the faces and neighbors
+            : Cb(o), m_idHandler(o.m_idHandler) {
 
         m_id = m_idHandler.getId();
     }
@@ -290,6 +302,8 @@ dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precisio
                                        const dBox<D, Precision> &bounds,
                                        const uint gridOccupancy
         /*, bool filterInfinite */) {
+
+    PLOG("delaunayCGAL called with " << ids.size() << " points and bounds " << bounds << std::endl);
 
     CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
 
