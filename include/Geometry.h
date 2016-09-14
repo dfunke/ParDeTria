@@ -327,6 +327,11 @@ public:
     dSimplex(const std::array<tIdType, D + 1> &_vertices)
             : id(dSimplex<D, Precision>::cINF), vertices(_vertices), mark(0) { }
 
+    dSimplex(const tIdType &_id,
+             const std::array<tIdType, D + 1> &_vertices,
+             const std::array<tIdType, D + 1> &_neighbors)
+            : id(_id), vertices(_vertices), neighbors(_neighbors), mark(0) { }
+
     bool operator==(const dSimplex<D, Precision> &a) const {
         PROFILER_INC("dSimplex_compare");
 
