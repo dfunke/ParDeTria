@@ -1717,6 +1717,7 @@ public:
         int cxtaalen, cxtbblen, cytaalen, cytbblen;
         Precision axtbc[8], aytbc[8], bxtca[8], bytca[8], cxtab[8], cytab[8];
         int axtbclen, aytbclen, bxtcalen, bytcalen, cxtablen, cytablen;
+        axtbclen = aytbclen = bxtcalen = bytcalen = cxtablen = cytablen = 0;
         Precision axtbct[16], aytbct[16], bxtcat[16], bytcat[16], cxtabt[16], cytabt[16];
         int axtbctlen, aytbctlen, bxtcatlen, bytcatlen, cxtabtlen, cytabtlen;
         Precision axtbctt[8], aytbctt[8], bxtcatt[8];
