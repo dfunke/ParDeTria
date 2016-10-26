@@ -141,6 +141,7 @@ int main(int argc, char *argv[]) {
             "distribution: _u_niform, _e_llipsoid, _l_ines");
     cCommandLine.add_options()("no-verify", "don't verify triangulation");
     cCommandLine.add_options()("no-output", "don't write images");
+    cCommandLine.add_options()("stats", "write run statistics even with silent");
     cCommandLine.add_options()("seq-fault", "run triangulation until seq fault occurs");
     cCommandLine.add_options()("verbosity", po::value<int>(&verbosity),
                                "verbosity");
@@ -232,6 +233,13 @@ int main(int argc, char *argv[]) {
         << points.size() << " points to " << ret.nSimplices  << " simplices took "
         << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
                 .count() << " ms and " << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB" << std::endl);
+
+    if(IS_SILENT && vm.count("stats")){
+      std::cout << "Triangulating "
+        << points.size() << " points to " << ret.nSimplices  << " simplices took "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(ret.time)
+                .count() << " ms and " << ret.currRSS / 1e6 << "/" << ret.peakRSS / 1e6 << " MB" << std::endl;
+    }
 
     returnCode = ret.valid ? EXIT_SUCCESS : EXIT_FAILURE;
 
