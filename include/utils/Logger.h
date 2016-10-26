@@ -13,6 +13,8 @@
 
 class Logger : private boost::noncopyable {
 
+#define IS_SILENT                                                              \
+  Logger::abs(Logger::getInstance().getLogLevel()) == Logger::Verbosity::SILENT
 #define IS_NORMAL                                                              \
   Logger::abs(Logger::getInstance().getLogLevel()) >= Logger::Verbosity::NORMAL
 #define IS_VERBOSE                                                             \
