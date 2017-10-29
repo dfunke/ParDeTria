@@ -1,5 +1,18 @@
 # CMake script for src directory
 
+add_executable (LoadBalancing
+  LoadBalancing.cpp
+)
+
+target_link_libraries(LoadBalancing
+  Logging
+  Measurements
+  Geometry
+  LoadBalancedDCTriangulator
+  ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
+)
+
 add_executable (DACTest
   DAC_Test.cpp
 )

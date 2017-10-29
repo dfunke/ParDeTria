@@ -10,6 +10,19 @@ add_library(Triangulator
   Triangulator.cpp
 )
 
+add_library(LoadBalancedDCTriangulator
+  LoadBalancedDCTriangulator.cpp
+  Partitioner.cpp
+)
+
+target_link_libraries(LoadBalancedDCTriangulator
+  Triangulator
+  CGALTriangulator
+  SpatialSort
+  Logging
+  Geometry
+)
+
 add_library(CGALTriangulator
   CGALTriangulator.cpp
 )

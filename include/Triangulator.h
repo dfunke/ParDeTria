@@ -7,6 +7,11 @@
 #include "Geometry.h"
 
 #include "utils/VTuneAdapter.h"
+namespace LoadBalancing
+{
+    template<uint D, typename Precision>
+    class DCTriangulator;
+}
 
 template<uint D, typename Precision>
 class Triangulator {
@@ -14,6 +19,11 @@ class Triangulator {
     template<uint D2, typename Precision2>
     friend
     class DCTriangulator;
+    
+    template<uint D2, typename Precision2>
+    friend
+    class LoadBalancing::DCTriangulator;
+
 
 public:
     virtual ~Triangulator() = default;
@@ -27,7 +37,7 @@ public:
     dSimplices<D, Precision> triangulate() {
 
         return this->_triangulate(allPoints(), baseBounds, std::to_string(TOP));
-    };
+    }
 
 protected:
     virtual dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
