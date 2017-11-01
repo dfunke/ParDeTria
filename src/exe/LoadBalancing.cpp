@@ -24,6 +24,6 @@ int main()
 
     auto oldPartitioner = std::make_unique<dWayPartitioner<d, double>>();
     auto partitioner = std::make_unique<lb::OldPartitionerPartitioner<d, double>>(std::move(oldPartitioner), 10, 10);
-    lb::DCTriangulator<2, double> triangulator(boundingBox, pointCloud, std::move(partitioner));
+    lb::DCTriangulator<2, double> triangulator(boundingBox, pointCloud, std::move(partitioner), 1, false, false, true);
     auto simplices = triangulator.triangulate();
 }
