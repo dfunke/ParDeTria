@@ -524,6 +524,7 @@ namespace LoadBalancing
 
             VTUNE_TASK(Partitioning);
             auto& partioning = std::get<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment);
+            ASSERT(partioning.size() > 0);
             VTUNE_END_TASK(Partitioning);
 
             DEDENT

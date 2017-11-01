@@ -3,6 +3,7 @@
 #include "Partitioner.h"
 #include "LoadBalancedDCTriangulator.h"
 #include "load_balancing/Partitioner.h"
+#include "load_balancing/SimplePartitioner.h"
 #include "load_balancing/OldPartitionerPartitioner.h"
 
 int main()
@@ -24,6 +25,7 @@ int main()
 
     auto oldPartitioner = std::make_unique<dWayPartitioner<d, double>>();
     auto partitioner = std::make_unique<lb::OldPartitionerPartitioner<d, double>>(std::move(oldPartitioner), 10, 10);
+    //auto partitioner = std::make_unique<lb::SimplePartitioner<d, double>>();
     lb::DCTriangulator<2, double> triangulator(boundingBox, pointCloud, std::move(partitioner), 1, false, false, true);
     auto simplices = triangulator.triangulate();
 }
