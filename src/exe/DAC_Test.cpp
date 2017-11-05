@@ -13,6 +13,10 @@
 #include "utils/Serialization.hxx"
 #include "utils/ProgressDisplay.h"
 
+#include "LoadBalancedDCTriangulator.h"
+#include "load_balancing/OldPartitionerPartitioner.h"
+#include "load_balancing/SimplePartitioner.h"
+
 #include <boost/program_options.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
@@ -37,6 +41,26 @@ struct TriangulateReturn {
     ExperimentRun run;
 };
 
+std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigned char type, size_t threads) {
+    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> result;
+    switch (type) {
+        case 'D':
+            result = std::make_unique<LoadBalancing::SimplePartitioner<D, Precision>>();
+            break;
+        case 'd':
+        case 'c':
+        case 'e':
+        default:
+            auto oldPartitioner = Partitioner<D, Precision>::make(type);
+            auto maxRecursions = oldPartitioner->getRecursionDepth(threads);
+            auto baseCutoff = DCTriangulator<D, Precision>::BASE_CUTOFF;
+            result = std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision>>(
+                std::move(oldPartitioner), maxRecursions, baseCutoff);
+            break;
+    }
+    return result;
+}
+
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint threads,
                               dPoints<D, Precision> &points,
@@ -46,19 +70,40 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const bool verify) {
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
-    if (alg == 'c') {
-        triangulator_ptr =
-                std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
-    } else {
-        if (alg == 'm') {
+    switch(alg) {
+        case 'c':
+            triangulator_ptr = 
+            std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
+            break;
+            
+        case 'm':
             triangulator_ptr =
-                    std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
-        } else {
+            std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
+            break;
+            
+        case 'l': {
+            auto partitioner = getPartitioner(splitter, threads);
+            triangulator_ptr =
+            std::make_unique<LoadBalancing::DCTriangulator<D, Precision>>(bounds, points, std::move(partitioner),
+                                                            100, parallelBase, false);
+            break;
+        }
+            
+        case 'd': { // with same parameters as 'l'
             auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
             triangulator_ptr =
-                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads, std::move(splitter_ptr), 100,
-                                                                   parallelBase);
+            std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads,
+                                                           std::move(splitter_ptr), 100, parallelBase,
+                                                           false);
+            break;
         }
+            
+        default:
+            auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
+            triangulator_ptr =
+            std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads,
+                                                           std::move(splitter_ptr), 100, parallelBase);
+            break;
     }
 
     TriangulateReturn ret;

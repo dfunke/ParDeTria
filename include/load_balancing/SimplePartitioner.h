@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <memory>
-#include "../Partitioner.h"
 #include "load_balancing/Partitioner.h"
 
 namespace LoadBalancing

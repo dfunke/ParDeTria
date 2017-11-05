@@ -22,6 +22,7 @@ target_link_libraries(DACTest
   Measurements
   Geometry
   DCTriangulator
+  LoadBalancedDCTriangulator
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
