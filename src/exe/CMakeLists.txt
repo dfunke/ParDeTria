@@ -23,6 +23,7 @@ target_link_libraries(DACTest
   Geometry
   DCTriangulator
   LoadBalancedDCTriangulator
+  kahip
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
