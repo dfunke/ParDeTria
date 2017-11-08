@@ -2,7 +2,8 @@
 
 #include <cassert>
 #include <memory>
-#include "load_balancing/Partitioner.h"
+#include "Partitioner.h"
+#include "BoxUtils.h"
 
 namespace LoadBalancing
 {
@@ -13,21 +14,20 @@ namespace LoadBalancing
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) const override
         {
-            auto x = (bounds.low[0] + bounds.high[0])/2;
-            auto leftHigh = bounds.high;
-            leftHigh[0] = x;
-            auto rightLow = bounds.low;
-            rightLow[0] = x;
-            
-            dBox<D, Precision> leftBounds(bounds.low, leftHigh);
-            dBox<D, Precision> rightBounds(rightLow, bounds.high);
+            auto x = (bounds.low[0] + bounds.high[0])/2;            
+            auto boxPair = splitBox(bounds, 0, x);
+            dBox<D, Precision> leftBounds = std::move(std::get<0>(boxPair));
+            dBox<D, Precision> rightBounds = std::move(std::get<1>(boxPair));
             
             Point_Ids leftIds, rightIds;
             for(auto id : pointIds) {
-                assert(points.contains(id));
                 const auto& point = points[id];
                 
                 if(leftBounds.contains(point.coords))
+                    leftIds.insert(id);
+                else if(rightBounds.contains(point.coords))
+                    rightIds.insert(id);
+                else if(point.coords[0] < x)
                     leftIds.insert(id);
                 else
                     rightIds.insert(id);
