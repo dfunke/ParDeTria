@@ -23,14 +23,17 @@ namespace LoadBalancing
             for(auto id : pointIds) {
                 const auto& point = points[id];
                 
-                if(leftBounds.contains(point.coords))
-                    leftIds.insert(id);
-                else if(rightBounds.contains(point.coords))
-                    rightIds.insert(id);
-                else if(point.coords[0] < x)
-                    leftIds.insert(id);
-                else
-                    rightIds.insert(id);
+                if(dPoint<D, Precision>::isFinite(id)) {
+                    if(leftBounds.contains(point.coords))
+                        leftIds.insert(id);
+                    else
+                        rightIds.insert(id);
+                }
+            }
+        
+            for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
+                leftIds.insert(k);
+                rightIds.insert(k);
             }
             
             PartitionTree<D, Precision> leftSubtree;
