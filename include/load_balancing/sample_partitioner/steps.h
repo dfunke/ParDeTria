@@ -176,12 +176,20 @@ namespace LoadBalancing
                                                                                   const dBox<D, Precision>& boundingBox) {
         std::tuple<Point_Ids, Point_Ids> result;
         for(auto id : ids) {
-            if(boundingBox.contains(points[id].coords)) {
-                std::get<0>(result).insert(id);
-            } else {
-                std::get<1>(result).insert(id);
+            if(dPoint<D, Precision>::isFinite(id)) {
+                if(boundingBox.contains(points[id].coords)) {
+                    std::get<0>(result).insert(id);
+                } else {
+                    std::get<1>(result).insert(id);
+                }
             }
         }
+        
+        for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
+            std::get<0>(result).insert(k);
+            std::get<1>(result).insert(k);
+        }
+        
         return result;
     }
 
