@@ -14,7 +14,7 @@ namespace LoadBalancing
         
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) const override
+                                        const Point_Ids& pointIds) override
         {
             return buildTree(bounds, points, pointIds, maxRecursions);
         }

@@ -10,7 +10,7 @@ namespace LoadBalancing
     {
         virtual PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) const = 0;
+                                        const Point_Ids& pointIds) = 0;
         
         virtual std::string info() const = 0;
     };

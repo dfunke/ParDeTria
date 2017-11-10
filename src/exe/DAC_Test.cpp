@@ -50,7 +50,7 @@ std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigne
             break;
         case 's': {
             std::random_device rand;
-            result = std::make_unique<LoadBalancing::SampleBoxPartitioner<D, Precision>>(100, rand());
+            result = std::make_unique<LoadBalancing::SampleBoxPartitioner<D, Precision>>(100, rand(), 2500);
             break;
         }
         case 'd':
