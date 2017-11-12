@@ -16,7 +16,7 @@
 #include "LoadBalancedDCTriangulator.h"
 #include "load_balancing/OldPartitionerPartitioner.h"
 #include "load_balancing/SimplePartitioner.h"
-#include "load_balancing/sample_partitioner/SampleBoxPartitioner.h"
+#include "load_balancing/sample_partitioner/BinaryBoxEstimatingSamplePartitioner.h"
 
 #include <boost/program_options.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -50,7 +50,7 @@ std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigne
             break;
         case 's': {
             std::random_device rand;
-            result = std::make_unique<LoadBalancing::SampleBoxPartitioner<D, Precision>>(100, rand(), 2500);
+            result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(100, rand(), 2500);
             break;
         }
         case 'd':
