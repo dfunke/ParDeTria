@@ -17,6 +17,7 @@
 #include "load_balancing/OldPartitionerPartitioner.h"
 #include "load_balancing/SimplePartitioner.h"
 #include "load_balancing/sample_partitioner/BinaryBoxEstimatingSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/PointAssigningSamplePartitioner.h"
 
 #include <boost/program_options.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -44,15 +45,17 @@ struct TriangulateReturn {
 
 std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigned char type, size_t threads) {
     std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> result;
+            std::random_device rand;
     switch (type) {
         case 'D':
             result = std::make_unique<LoadBalancing::SimplePartitioner<D, Precision>>();
             break;
-        case 's': {
-            std::random_device rand;
+        case 'b':
             result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(100, rand(), 2500);
             break;
-        }
+        case 's':
+            result = std::make_unique<LoadBalancing::PointAssigningSamplePartitioner<D, Precision>>(100, rand(), 4);
+            break;
         case 'd':
         case 'c':
         case 'e':
