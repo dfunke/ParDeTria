@@ -92,13 +92,15 @@ namespace LoadBalancing
     }
 
     template <typename Generator_t>
-    std::vector<bool> partitionGraph(Graph& graph, Generator_t& rand) {
+    std::vector<int> partitionGraph(Graph& graph, size_t numPartitions, Generator_t& rand) {
+        assert(numPartitions <= std::numeric_limits<int>::max());
         assert(graph.nodeRecords.size() - 1 <= std::numeric_limits<int>::max());
+        
         std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
         int n = graph.nodeRecords.size() - 1;
         int edgecut;
         std::vector<int> part(n);
-        int nparts = 2;
+        int nparts = numPartitions;
         double imbalance = 0.05;
         kaffpa(&n,
                 nullptr,
@@ -113,11 +115,7 @@ namespace LoadBalancing
                 &edgecut,
                 part.data());
         
-        std::vector<bool> result(part.size());
-        std::transform(part.begin(), part.end(), result.begin(), [](int x) -> bool {
-            return x > 0;
-        });
-        return result;
+        return part;
     }
 
     template <uint D, typename Precision>

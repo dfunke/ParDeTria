@@ -11,14 +11,14 @@
 
 namespace LoadBalancing
 {
-    std::vector<std::tuple<size_t, size_t>> findPartitionCenterEdges(const Graph& graph, const std::vector<bool>& partition) {
+    std::vector<std::tuple<size_t, size_t>> findPartitionCenterEdges(const Graph& graph, const std::vector<int>& partition) {
         std::vector<std::tuple<size_t, size_t>> result;
         for(size_t n = 0; n+1 < graph.nodeRecords.size(); ++n) {
             auto begin = graph.nodeRecords[n];
             auto end = graph.nodeRecords[n+1];
             for(int i = begin; i < end; ++i) {
                 auto adj = graph.adjacency[i];
-                if(!partition[n] && partition[adj]) {
+                if(0 == partition[n] && 0 != partition[adj]) {
                     result.push_back(std::make_tuple(n, adj));
                 }
             }
@@ -105,7 +105,7 @@ namespace LoadBalancing
                 }
                 auto simplices = triangulateSample(bounds, samplePoints);
                 auto graph = makeGraph(simplices);
-                auto partitioning = partitionGraph(graph, mRand);
+                auto partitioning = partitionGraph(graph, 2, mRand);
                 auto centerEdges = findPartitionCenterEdges(graph, partitioning);
                 auto centerPoints = makePartitionCenterPoints(centerEdges, samplePoints);
                 auto boundingBoxes = estimateBoundingBoxes(centerPoints, bounds);
