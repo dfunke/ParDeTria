@@ -13,6 +13,20 @@ target_link_libraries(LoadBalancing
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
+add_executable (SamplePartitionerTest
+  SamplePartitionerTest.cpp
+)
+
+target_link_libraries(SamplePartitionerTest
+  Logging
+  Measurements
+  Geometry
+  LoadBalancedDCTriangulator
+  kahip
+  ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
+)
+
 add_executable (DACTest
   DAC_Test.cpp
 )
