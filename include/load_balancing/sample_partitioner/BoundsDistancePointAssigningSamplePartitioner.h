@@ -10,47 +10,55 @@
 #include <set>
 #include "../Partitioner.h"
 #include "steps.h"
+#include "load_balancing/BoxUtils.h"
 
 namespace LoadBalancing
 {
     template <uint D, typename Precision>
-    std::vector<dVector<D, Precision>> findPartitionCenters(const std::vector<int>& partitioning,
-                                                            size_t partitions,
-                                                            const dPoints<D, Precision>& samplePoints) {
-        std::vector<size_t> numPoints(partitions);
-        std::vector<dVector<D, Precision>> result(partitions);        
+    std::vector<dBox<D, Precision>> makeBoundingBoxes(const std::vector<int>& partitioning,
+                                                      size_t partitions,
+                                                      const dPoints<D, Precision>& samplePoints) {
+        
+        std::vector<std::vector<dVector<D, Precision>>> samplePartitions(partitions);
         for(size_t i = 0; i < partitioning.size(); ++i) {
             int partition = partitioning[i];
-            ++numPoints[partition];
-            result[partition] = result[partition] * ((Precision)numPoints[partition]/(1 + numPoints[partition]))
-                              + samplePoints[i].coords * ((Precision)1/(1 + numPoints[partition]));
+            samplePartitions[partition].push_back(samplePoints[i].coords);
         }
         
-        std::transform(result.begin(), result.end(), numPoints.begin(), result.begin(), [](const dVector<D, Precision>& v, size_t points) {
-            return v * (1.0/points);
-        });
+        std::vector<dBox<D, Precision>> result(partitions);
+        for(size_t i = 0; i < partitions; ++i) {
+            result[i] = makeBoundingBox(samplePartitions[i].begin(), samplePartitions[i].end());            
+        }
         return result;
     }
     
     template <uint D, typename Precision>
-    auto makePartitioning(const std::vector<dVector<D, Precision>>& partitionPoints,
+    auto makePartitioningFromBoxes(const std::vector<dBox<D, Precision>>& boxes,
                                             const dPoints<D, Precision>& points, const Point_Ids& pointIds) {
         struct ResultType {
             Point_Ids pointIds;
             dBox<D, Precision> bounds;
         };
         
-        std::vector<ResultType> result(partitionPoints.size());
+        std::vector<ResultType> result(boxes.size());
         std::vector<bool> initialized(result.size(), false);
         for(auto id : pointIds) {
             if(dPoint<D, Precision>::isFinite(id)) {
                 const auto& coords = points[id].coords;
-                auto it = std::min_element(partitionPoints.begin(), partitionPoints.end(),
-                                        [&coords](const dVector<D, Precision>& left, const dVector<D, Precision>& right) {
-                                            return lenSquared(left - coords) < lenSquared(right - coords);
-                                        });
+                /*auto it = std::min_element(boxes.begin(), boxes.end(),
+                                        [&coords](const dBox<D, Precision>& left, const dBox<D, Precision>& right) {
+                                            return lenSquared(vecToBox<D, Precision>(coords, left))
+                                            < lenSquared(vecToBox<D, Precision>(coords, right));
+                                        });*/
+                std::vector<Precision> boxDistances(boxes.size());
+                std::transform(boxes.begin(), boxes.end(), boxDistances.begin(),
+                               [&coords](const dBox<D, Precision>& box) {
+                                   return lenSquared(vecToBox<D, Precision>(coords, box));
+                                   
+                            });
+                auto it = std::min_element(begin(boxDistances), end(boxDistances));
                                             
-                auto partition = std::distance(partitionPoints.begin(), it);
+                auto partition = std::distance(boxDistances.begin(), it);
                 result[partition].pointIds.insert(id);
                 if(initialized[partition]) {
                     enlargeBoxAroundVector<D, Precision>(result[partition].bounds, coords);
@@ -60,11 +68,11 @@ namespace LoadBalancing
                     initialized[partition] = true;
                 }
             }
+        }
         
-            for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
-                for(auto& e : result) {
-                    e.pointIds.insert(k);
-                }
+        for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
+            for(auto& e : result) {
+                e.pointIds.insert(k);
             }
         }
         
@@ -72,9 +80,9 @@ namespace LoadBalancing
     }    
     
     template <uint D, typename Precision>
-    struct PointAssigningSamplePartitioner : public Partitioner<D, Precision>
+    struct BoundsDistancePointAssigningSamplePartitioner : public Partitioner<D, Precision>
     {
-        PointAssigningSamplePartitioner(size_t sampleSize, size_t sampleSeed, size_t partitionSize)
+        BoundsDistancePointAssigningSamplePartitioner(size_t sampleSize, size_t sampleSeed, size_t partitionSize)
             : mSampleSize(sampleSize), mRand(sampleSeed), mPartitionSize(partitionSize)
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
@@ -90,8 +98,8 @@ namespace LoadBalancing
             auto simplices = triangulateSample(bounds, samplePoints);
             auto graph = makeGraph(simplices);
             auto graphPartitioning = partitionGraph(graph, mPartitionSize, mRand);
-            auto centers = findPartitionCenters(graphPartitioning, mPartitionSize, samplePoints);
-            auto partitioning = makePartitioning<D, Precision>(centers, points, pointIds);
+            auto boxes = makeBoundingBoxes(graphPartitioning, mPartitionSize, samplePoints);
+            auto partitioning = makePartitioningFromBoxes<D, Precision>(boxes, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto partition) {
@@ -109,7 +117,7 @@ namespace LoadBalancing
         
         std::string info() const override
         {
-            return "point-assigning sample partitioner";
+            return "bounds-distance-point-assigning sample partitioner";
         }
         
     private:

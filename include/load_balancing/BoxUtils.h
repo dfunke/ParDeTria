@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include "Geometry.h"
+#include "load_balancing/VectorOperations.h"
 
 namespace LoadBalancing
 {
@@ -42,5 +43,43 @@ namespace LoadBalancing
             box.low = underlap(box.low, v);
             box.high = overlap(box.high, v);
         }
+    }
+    
+    template <typename It>
+    dBox<std::tuple_size<typename It::value_type>::value, typename It::value_type::value_type> makeBoundingBox(It vbegin, It vend) {
+        constexpr uint D = std::tuple_size<typename It::value_type>::value;
+        using Precision = typename It::value_type::value_type;
+        
+        dBox<D, Precision> result;
+        if(vbegin != vend){
+            result.low = *vbegin++;
+            result.high = result.low;
+            while(vbegin != vend){
+                enlargeBoxAroundVector<D, Precision>(result, *vbegin++);
+            }
+        }
+        return result;
+    }
+    
+    template <uint D, typename Precision>
+    dVector<D, Precision> vecToLowerQuadrant(dVector<D, Precision> v) {        
+        std::transform(begin(v), end(v), begin(v), [](Precision x) {
+            return std::max(x, 0.0);
+        });
+        return v;
+    }
+    
+    template <uint D, typename Precision>
+    dVector<D, Precision> vecToCenteredBox(dVector<D, Precision> v, const dVector<D, Precision>& highCorner) {
+        std::transform(begin(v), end(v), begin(v), [](Precision p) {
+            return std::abs(p);
+        });
+        return vecToLowerQuadrant<D, Precision>(v - highCorner);
+    }
+    
+    template <uint D, typename Precision>
+    dVector<D, Precision> vecToBox(const dVector<D, Precision>& v, const dBox<D, Precision>& box) {
+        auto center = (box.high + box.low) * Precision(0.5);
+        return vecToCenteredBox<D, Precision>(v - center, box.high - center);
     }
 }

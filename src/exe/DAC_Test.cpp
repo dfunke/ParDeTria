@@ -17,7 +17,8 @@
 #include "load_balancing/OldPartitionerPartitioner.h"
 #include "load_balancing/SimplePartitioner.h"
 #include "load_balancing/sample_partitioner/BinaryBoxEstimatingSamplePartitioner.h"
-#include "load_balancing/sample_partitioner/PointAssigningSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
 
 #include <boost/program_options.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -50,11 +51,14 @@ std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigne
         case 'D':
             result = std::make_unique<LoadBalancing::SimplePartitioner<D, Precision>>();
             break;
-        case 'b':
+        case 'x':
             result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(100, rand(), 2500);
             break;
-        case 's':
-            result = std::make_unique<LoadBalancing::PointAssigningSamplePartitioner<D, Precision>>(100, rand(), 4);
+        case 'y':
+            result = std::make_unique<LoadBalancing::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(100, rand(), 8);
+            break;
+        case 'z':
+            result = std::make_unique<LoadBalancing::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(100, rand(), 8);
             break;
         case 'd':
         case 'c':
