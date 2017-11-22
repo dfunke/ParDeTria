@@ -1,4 +1,17 @@
 # CMake script for src directory
+add_executable (LBExperiments
+  LB_Experiments.cpp
+)
+
+target_link_libraries(LBExperiments
+  Logging
+  Measurements
+  Geometry
+  LoadBalancedDCTriangulator
+  kahip
+  ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
+)
 
 add_executable (LoadBalancing
   LoadBalancing.cpp

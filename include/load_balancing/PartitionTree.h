@@ -4,7 +4,7 @@
 #include <memory>
 #include <algorithm>
 #include "Geometry.h"
-#include "Partitioner.h"
+#include "../Partitioner.h"
 
 namespace LoadBalancing
 {    
