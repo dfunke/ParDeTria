@@ -41,24 +41,30 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     std::tuple<dBox<D, Precision>, dBox<D, Precision>> estimateBoundingBoxes(std::vector<dPoint<D, Precision>> borderPoints,
                                                                              const dBox<D, Precision>& boundingBox) {
-        size_t midIndex = borderPoints.size() / 2;
-        std::array<Precision, D> median;
-        std::array<Precision, D> borderLength;
-        borderLength.fill(0);
-        for(size_t d = 0; d < D; ++d) {
-            std::sort(borderPoints.begin(), borderPoints.end(),
-                             [d](const dPoint<D, Precision>& left, const dPoint<D, Precision>& right) -> bool {
-                                 return left.coords[d] < right.coords[d];
-                             });
-            median[d] = borderPoints[midIndex].coords[d];
-            for(size_t i = 0; i+1 < borderPoints.size(); ++i) {
-                borderLength[d] = lenSquared(borderPoints[i].coords - borderPoints[i+1].coords);
+        std::tuple<dBox<D, Precision>, dBox<D, Precision>> result;
+        if(borderPoints.size() > 0) {
+            size_t midIndex = borderPoints.size() / 2;
+            std::array<Precision, D> median;
+            std::array<Precision, D> borderLength;
+            borderLength.fill(0);
+            for(size_t d = 0; d < D; ++d) {
+                std::sort(borderPoints.begin(), borderPoints.end(),
+                                [d](const dPoint<D, Precision>& left, const dPoint<D, Precision>& right) -> bool {
+                                    return left.coords[d] < right.coords[d];
+                                });
+                median[d] = borderPoints[midIndex].coords[d];
+                for(size_t i = 0; i+1 < borderPoints.size(); ++i) {
+                    borderLength[d] = lenSquared(borderPoints[i].coords - borderPoints[i+1].coords);
+                }
+                // todo: consider: borderLength[d] /= lenSquared(borderPoints.first() - borderPoints.last());
             }
-            // todo: consider: borderLength[d] /= lenSquared(borderPoints.first() - borderPoints.last());
+            
+            size_t splitDimension = std::distance(borderLength.begin(), std::min_element(borderLength.begin(), borderLength.end()));
+            result = splitBox(boundingBox, splitDimension, median[splitDimension]);
+        } else {
+            result = splitBox(boundingBox, 0, (boundingBox.low[0] + boundingBox.high[0])/2);
         }
-        
-        size_t splitDimension = std::distance(borderLength.begin(), std::min_element(borderLength.begin(), borderLength.end()));
-        return splitBox(boundingBox, splitDimension, median[splitDimension]);
+        return result;
     }
     
     template <uint D, typename Precision>
@@ -94,9 +100,26 @@ namespace LoadBalancing
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
+            return buildTreeRecursively(bounds, points, pointIds, 10);
+        }
+        
+        std::string info() const override
+        {
+            return "binary box-estimating sample partitioner";
+        }
+        
+    private:
+        size_t mSampleSize;
+        std::mt19937 mRand;
+        size_t mPointsCutoff;
+        
+        PartitionTree<D, Precision> buildTreeRecursively(const dBox<D, Precision>& bounds,
+                                        const dPoints<D, Precision>& points,
+                                        const Point_Ids& pointIds,
+                                        size_t remainingRecursions) {
             PartitionTree<D, Precision> tree;
                 
-            if(pointIds.size() >= std::max(mPointsCutoff, mSampleSize)) {
+            if(remainingRecursions > 0 && pointIds.size() >= std::max(mPointsCutoff, mSampleSize)) {
                 auto sample = generateSample<D, Precision>(mSampleSize, pointIds, mRand);
                 dPoints<D, Precision> samplePoints;
                 for(auto id : sample) {
@@ -111,8 +134,8 @@ namespace LoadBalancing
                 auto boundingBoxes = estimateBoundingBoxes(centerPoints, bounds);
                 auto pointIdsPair = seperatePointIds(points, pointIds, std::get<0>(boundingBoxes));
                 
-                PartitionTree<D, Precision> leftSubtree = partition(std::get<0>(boundingBoxes), points, std::get<0>(pointIdsPair));
-                PartitionTree<D, Precision> rightSubtree = partition(std::get<1>(boundingBoxes), points, std::get<1>(pointIdsPair));
+                auto leftSubtree = buildTreeRecursively(std::get<0>(boundingBoxes), points, std::get<0>(pointIdsPair), remainingRecursions - 1);
+                auto rightSubtree = buildTreeRecursively(std::get<1>(boundingBoxes), points, std::get<1>(pointIdsPair), remainingRecursions - 1);
             
                 tree.bounds = bounds;
                 typename PartitionTree<D, Precision>::ChildContainer children{std::move(leftSubtree), std::move(rightSubtree)};
@@ -122,17 +145,7 @@ namespace LoadBalancing
                 tree.attachment = pointIds;
             }
             
-            return tree;
+            return tree;                                    
         }
-        
-        std::string info() const override
-        {
-            return "binary box-estimating sample partitioner";
-        }
-        
-    private:
-        size_t mSampleSize;
-        std::mt19937 mRand;
-        size_t mPointsCutoff;
     };
 }
