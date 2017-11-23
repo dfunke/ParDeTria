@@ -19,6 +19,7 @@
 #include "load_balancing/sample_partitioner/BinaryBoxEstimatingSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
+#include "load_balancing/Experiment.h"
 #include <boost/program_options.hpp>
 
 constexpr auto D = 3;
@@ -92,10 +93,8 @@ int main(int argc, char *argv[]) {
     tbb::task_scheduler_init init(threads);
 
     dBox<D, Precision> bounds;
-    for (uint i = 0; i < D; ++i) {
-        bounds.low[i] = 0;
-        bounds.high[i] = 100;
-    }
+    bounds.low.fill(0);
+    bounds.high.fill(100);
 
     dPoints<D, Precision> points;
     /*if (vm.count("points")) {
@@ -138,28 +137,17 @@ int main(int argc, char *argv[]) {
     }
     assert(partitioner);
     
-    lb::DCTriangulator<D, Precision> triangulator(bounds, points, nullptr,
-                                                          100, false, false);
+    lb::DCTriangulator<D, Precision> triangulator(bounds, points, nullptr, 100, false, false);
     
-    auto pointIds = makePointIds(points);
-    auto t0 = std::chrono::high_resolution_clock::now();
-    auto partitioning = partitioner->partition(bounds, points, pointIds);
-    auto t1 = std::chrono::high_resolution_clock::now();
-    auto dt = triangulator.triangulateTree(partitioning);
-    auto t2 = std::chrono::high_resolution_clock::now();
-    
-    namespace chrono = std::chrono;
-    using ms = chrono::milliseconds;
-    
-    std::cout << "{\n"
-    << "    'results' = [\n"
-    << "        {\n"
-    << "            'partitiontime' = " << chrono::duration_cast<ms>(t1 - t0).count() << ",\n"
-    << "            'triangulationtime' = " << chrono::duration_cast<ms>(t2 - t1).count() << "\n"
-    << "        }\n"
-    << "    ]\n"
-    << "}\n";
-    
+    lb::Experiment<D, Precision>::Setup setup {
+        &triangulator,
+        std::move(partitioner),
+        bounds,
+        points
+    };
+        
+    lb::Experiment<D, Precision> exp(std::move(setup), std::cout);
+    exp.runOnce();
 
     return EXIT_SUCCESS;
 }
