@@ -16,6 +16,7 @@ namespace LoadBalancing
             std::unique_ptr<Partitioner<D, Precision>> partitioner;
             dBox<D, Precision> bounds;
             dPoints<D, Precision> points;
+            bool verify;
         };
         
         Experiment(Setup setup, std::ostream& out);
@@ -27,6 +28,7 @@ namespace LoadBalancing
         std::ostream& out;
         
         void finish();
+        bool verify(const dSimplices<D, Precision>& dt);
     };
     
     template<uint D, typename Precision>
@@ -50,13 +52,18 @@ namespace LoadBalancing
         auto dt = setup.triangulator->triangulateTree(partitioning);
         auto t2 = std::chrono::high_resolution_clock::now();
         
+        
         namespace chrono = std::chrono;
         using ms = chrono::milliseconds;
     
         out
         << "        {\n"
         << "            'partitiontime' = " << chrono::duration_cast<ms>(t1 - t0).count() << ",\n"
-        << "            'triangulationtime' = " << chrono::duration_cast<ms>(t2 - t1).count() << "\n"
+        << "            'triangulationtime' = " << chrono::duration_cast<ms>(t2 - t1).count() << ",\n";
+        if(setup.verify) {
+            out
+            << "            'valid' = " << (verify(dt) ? "true" : "false") << "\n";
+        }out
         << "        },\n";
     }
     
@@ -65,6 +72,17 @@ namespace LoadBalancing
         out
         << "    ]\n"
         << "}\n";
+    }
+    
+    template<uint D, typename Precision>
+    bool Experiment<D, Precision>::verify(const dSimplices<D, Precision>& dt) {
+        CGALTriangulator<D, Precision, false> cgal(setup.bounds, setup.points);
+        auto realDT = cgal.triangulate();
+
+        auto vr = dt.verify(setup.points);
+        auto ccr = dt.crossCheck(realDT);
+
+        return vr.valid && ccr.valid;
     }
     
 }

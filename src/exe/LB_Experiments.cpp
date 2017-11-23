@@ -143,7 +143,8 @@ int main(int argc, char *argv[]) {
         &triangulator,
         std::move(partitioner),
         bounds,
-        points
+        points,
+        true
     };
         
     lb::Experiment<D, Precision> exp(std::move(setup), std::cout);
