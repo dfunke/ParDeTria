@@ -49,8 +49,8 @@ include_directories(
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++17 -pedantic -Wall -Wextra -Werror -fopenmp")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++17 -pedantic -Wall -Wextra -Werror -fopenmp -ltbbmalloc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror -fopenmp -ltbbmalloc")
 
 option(VALGRIND "Enable Valgrind compatibility options" OFF)
 if (VALGRIND)
