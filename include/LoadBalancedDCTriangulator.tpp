@@ -64,7 +64,11 @@ namespace LoadBalancing
             mPartitioner(std::move(partitioner)),
             mMonitor(std::move(monitor))
     {
-        LOG("Initializing DCTriangulator with partitioner: " << mPartitioner->info() << std::endl);
+	if(mPartitioner) {
+            LOG("Initializing LB-DCTriangulator with partitioner: " << mPartitioner->info() << std::endl);
+        } else {
+            LOG("Initializing LB-DCTriangulator without partitioner");
+        }
 
         if (addInfinitePoints) {
             // add infinite points to data set
