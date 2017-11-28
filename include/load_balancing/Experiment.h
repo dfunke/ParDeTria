@@ -13,7 +13,6 @@ namespace LoadBalancing
         struct Setup
         {
             DCTriangulator<D, Precision>* triangulator;
-            std::unique_ptr<Partitioner<D, Precision>> partitioner;
             dBox<D, Precision> bounds;
             dPoints<D, Precision> points;
             bool verify;
@@ -45,11 +44,8 @@ namespace LoadBalancing
     
     template<uint D, typename Precision>
     void Experiment<D, Precision>::runOnce() {
-        auto pointIds = makePointIds(setup.points);
-        auto t0 = std::chrono::high_resolution_clock::now();
-        auto partitioning = setup.partitioner->partition(setup.bounds, setup.points, pointIds);
         auto t1 = std::chrono::high_resolution_clock::now();
-        auto dt = setup.triangulator->triangulateTree(partitioning);
+        auto dt = setup.triangulator->triangulate();
         auto t2 = std::chrono::high_resolution_clock::now();
         
         
@@ -58,8 +54,9 @@ namespace LoadBalancing
     
         out
         << "        {\n"
-        << "            'partitiontime' = " << chrono::duration_cast<ms>(t1 - t0).count() << ",\n"
-        << "            'triangulationtime' = " << chrono::duration_cast<ms>(t2 - t1).count() << ",\n";
+        //<< "            'partitiontime' = " << chrono::duration_cast<ms>(t1 - t0).count() << ",\n"
+        //<< "            'triangulationtime' = " << chrono::duration_cast<ms>(t2 - t1).count() << ",\n";
+        << "            'time' = " << chrono::duration_cast<ms>(t2 - t1).count() << ",\n";
         if(setup.verify) {
             out
             << "            'valid' = " << (verify(dt) ? "true" : "false") << "\n";

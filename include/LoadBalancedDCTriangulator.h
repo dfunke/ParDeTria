@@ -35,15 +35,11 @@ namespace LoadBalancing
 
 
         DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
-                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner = nullptr,
+                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
                     const uint gridOccupancy = 1,
                     const bool parallelBaseSolver = false,
                     const bool parallelEdgeTria = true,
                     const bool addInfinitePoints = true);
-        
-        dSimplices<D, Precision> triangulateTree(PartitionTree<D, Precision>& tree) {
-            return recursiveTriangulate(tree, std::to_string(Triangulator<D, Precision>::TOP));
-        }
 
     protected:
         dSimplices<D, Precision> _triangulateBase(const Point_Ids &partitionPoints,

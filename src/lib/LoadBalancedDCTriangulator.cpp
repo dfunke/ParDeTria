@@ -497,7 +497,6 @@ namespace LoadBalancing
     dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_Ids &partitionPoints,
                                                                         const dBox<D, Precision> &bounds,
                                                                         const std::string provenance) {        
-        assert(mPartitioner);
         PartitionTree<D, Precision> tree = mPartitioner->partition(bounds, Triangulator<D, Precision>::points, partitionPoints);
         return recursiveTriangulate(tree, provenance);
     }
