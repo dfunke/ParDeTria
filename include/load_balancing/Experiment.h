@@ -4,7 +4,7 @@
 #include "Partitioner.h"
 #include "../LoadBalancedDCTriangulator.h"
 #include "../utils/MakeIds.h"
-#include "monitors/UnpluggedMonitor.h"
+#include "monitors/TimingMonitor.h"
 
 namespace LoadBalancing
 {
@@ -25,7 +25,8 @@ namespace LoadBalancing
     private:
         Setup setup;
         std::ostream& out;
-        DCTriangulator<D, Precision, UnpluggedMonitor> triangulator;
+        DCTriangulator<D, Precision, TimingMonitor> triangulator;
+        TimingMonitor::Accumulator timings;
         
         void finish();
         bool verify(const dSimplices<D, Precision>& dt);
@@ -35,7 +36,7 @@ namespace LoadBalancing
     Experiment<D, Precision>::Experiment(std::unique_ptr<Partitioner<D, Precision>> partitioner, Setup setup, std::ostream& out)
         : setup(std::move(setup)),
           out(out),
-          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, false, true, UnpluggedMonitor()) {
+          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, false, true, TimingMonitor(timings)) {
         out << "{\n"
         << "    'results' = [\n";
     }
@@ -47,19 +48,12 @@ namespace LoadBalancing
     
     template<uint D, typename Precision>
     void Experiment<D, Precision>::runOnce() {
-        auto t1 = std::chrono::high_resolution_clock::now();
         auto dt = triangulator.triangulate();
-        auto t2 = std::chrono::high_resolution_clock::now();
-        
-        
-        namespace chrono = std::chrono;
-        using ms = chrono::milliseconds;
-    
+            
         out
         << "        {\n"
-        //<< "            'partitiontime' = " << chrono::duration_cast<ms>(t1 - t0).count() << ",\n"
-        //<< "            'triangulationtime' = " << chrono::duration_cast<ms>(t2 - t1).count() << ",\n";
-        << "            'time' = " << chrono::duration_cast<ms>(t2 - t1).count() << ",\n";
+        << "            'partitiontime' = " << timings.partitionTime.count() << ",\n"
+        << "            'triangulationtime' = " << timings.triangulationTime.count() << ",\n";
         if(setup.verify) {
             out
             << "            'valid' = " << (verify(dt) ? "true" : "false") << "\n";
