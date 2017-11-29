@@ -10,19 +10,6 @@ add_library(Triangulator
   Triangulator.cpp
 )
 
-add_library(LoadBalancedDCTriangulator
-  LoadBalancedDCTriangulator.cpp
-  Partitioner.cpp
-)
-
-target_link_libraries(LoadBalancedDCTriangulator
-  Triangulator
-  CGALTriangulator
-  SpatialSort
-  Logging
-  Geometry
-)
-
 add_library(CGALTriangulator
   CGALTriangulator.cpp
 )
@@ -56,7 +43,6 @@ target_link_libraries(CGALTriangulator
 
 add_library(DCTriangulator
   DCTriangulator.cpp
-  Partitioner.cpp
 )
 
 target_link_libraries(DCTriangulator
@@ -65,6 +51,11 @@ target_link_libraries(DCTriangulator
   SpatialSort
   Logging
   Geometry
+  Partitioner
+)
+
+add_library(Partitioner
+  Partitioner.cpp
 )
 
 if(VTUNE)

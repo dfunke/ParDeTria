@@ -13,6 +13,8 @@
 #include "CGALTriangulator.h"
 #include "utils/TBB_Containers.h"
 
+#include "load_balancing/monitors/UnpluggedMonitor.h"
+
 namespace LoadBalancing
 {
     struct TriangulationReportEntry {
@@ -29,10 +31,9 @@ namespace LoadBalancing
 
     typedef tbb::concurrent_vector<TriangulationReportEntry> TriangulationReport;
 
-    template<uint D, typename Precision>
+    template<uint D, typename Precision, typename MonitorT = UnpluggedMonitor>
     class DCTriangulator : public Triangulator<D, Precision> {
     public:
-
 
         DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
                     std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
@@ -40,6 +41,14 @@ namespace LoadBalancing
                     const bool parallelBaseSolver = false,
                     const bool parallelEdgeTria = true,
                     const bool addInfinitePoints = true);
+
+        DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
+                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
+                    const uint gridOccupancy,
+                    const bool parallelBaseSolver,
+                    const bool parallelEdgeTria,
+                    const bool addInfinitePoints,
+                    MonitorT monitor);
 
     protected:
         dSimplices<D, Precision> _triangulateBase(const Point_Ids &partitionPoints,
@@ -78,9 +87,13 @@ namespace LoadBalancing
 
         std::unique_ptr<Partitioner<D, Precision>> mPartitioner;
         std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
+        
+        MonitorT mMonitor;
 
     public:
         static constexpr Precision SAFETY = 100;
         static constexpr uint BASE_CUTOFF = 500;
     };
 }
+
+#include "LoadBalancedDCTriangulator.tpp"

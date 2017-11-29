@@ -4,6 +4,7 @@
 #include "Partitioner.h"
 #include "../LoadBalancedDCTriangulator.h"
 #include "../utils/MakeIds.h"
+#include "monitors/UnpluggedMonitor.h"
 
 namespace LoadBalancing
 {
@@ -12,27 +13,29 @@ namespace LoadBalancing
     {
         struct Setup
         {
-            DCTriangulator<D, Precision>* triangulator;
             dBox<D, Precision> bounds;
             dPoints<D, Precision> points;
             bool verify;
         };
         
-        Experiment(Setup setup, std::ostream& out);
+        Experiment(std::unique_ptr<Partitioner<D, Precision>> partitioner, Setup setup, std::ostream& out);
         ~Experiment();
         void runOnce();
         
     private:
         Setup setup;
         std::ostream& out;
+        DCTriangulator<D, Precision, UnpluggedMonitor> triangulator;
         
         void finish();
         bool verify(const dSimplices<D, Precision>& dt);
     };
     
     template<uint D, typename Precision>
-    Experiment<D, Precision>::Experiment(Setup setup, std::ostream& out)
-        : setup(std::move(setup)), out(out) {
+    Experiment<D, Precision>::Experiment(std::unique_ptr<Partitioner<D, Precision>> partitioner, Setup setup, std::ostream& out)
+        : setup(std::move(setup)),
+          out(out),
+          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, false, true, UnpluggedMonitor()) {
         out << "{\n"
         << "    'results' = [\n";
     }
@@ -45,7 +48,7 @@ namespace LoadBalancing
     template<uint D, typename Precision>
     void Experiment<D, Precision>::runOnce() {
         auto t1 = std::chrono::high_resolution_clock::now();
-        auto dt = setup.triangulator->triangulate();
+        auto dt = triangulator.triangulate();
         auto t2 = std::chrono::high_resolution_clock::now();
         
         

@@ -137,16 +137,13 @@ int main(int argc, char *argv[]) {
     }
     assert(partitioner);
     
-    lb::DCTriangulator<D, Precision> triangulator(bounds, points, std::move(partitioner), 100, false, false);
-    
     lb::Experiment<D, Precision>::Setup setup {
-        &triangulator,
         bounds,
         points,
         true
     };
         
-    lb::Experiment<D, Precision> exp(std::move(setup), std::cout);
+    lb::Experiment<D, Precision> exp(std::move(partitioner), std::move(setup), std::cout);
     exp.runOnce();
 
     return EXIT_SUCCESS;

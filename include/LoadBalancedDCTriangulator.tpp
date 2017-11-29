@@ -41,26 +41,28 @@ namespace LoadBalancing
 {
     //**************************
 
-    template<uint D, typename Precision>
-    constexpr Precision DCTriangulator<D, Precision>::SAFETY;
+    template<uint D, typename Precision, typename Monitor>
+    constexpr Precision DCTriangulator<D, Precision, Monitor>::SAFETY;
 
-    template<uint D, typename Precision>
-    constexpr uint DCTriangulator<D, Precision>::BASE_CUTOFF;
+    template<uint D, typename Precision, typename Monitor>
+    constexpr uint DCTriangulator<D, Precision, Monitor>::BASE_CUTOFF;
 
     //**************************
 
-    template<uint D, typename Precision>
-    DCTriangulator<D, Precision>::DCTriangulator(
+    template<uint D, typename Precision, typename MonitorT>
+    DCTriangulator<D, Precision, MonitorT>::DCTriangulator(
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
         std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
         const bool parallelEdgeTria,
-        const bool addInfinitePoints)
+        const bool addInfinitePoints,
+        MonitorT monitor)
             : Triangulator<D, Precision>(_bounds, _points),
             mParallelEdgeTria(parallelEdgeTria),
-            mPartitioner(std::move(partitioner))
+            mPartitioner(std::move(partitioner)),
+            mMonitor(std::move(monitor))
     {
         LOG("Initializing DCTriangulator with partitioner: " << mPartitioner->info() << std::endl);
 
@@ -90,9 +92,20 @@ namespace LoadBalancing
             baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, false>>(this->baseBounds, this->points,
                                                                                     gridOccupancy);
     }
+    
+    template<uint D, typename Precision, typename MonitorT>
+    DCTriangulator<D, Precision, MonitorT>::DCTriangulator(
+        const dBox<D, Precision> &_bounds,
+        dPoints<D, Precision> &_points,
+        std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
+        const uint gridOccupancy,
+        const bool parallelBaseSolver,
+        const bool parallelEdgeTria,
+        const bool addInfinitePoints)
+        : DCTriangulator(_bounds, _points, std::move(partitioner), gridOccupancy, parallelBaseSolver,parallelEdgeTria, addInfinitePoints, MonitorT()) {}
 
-    template<uint D, typename Precision>
-    void DCTriangulator<D, Precision>::getEdge(const dSimplices<D, Precision> &simplices,
+    template<uint D, typename Precision, typename MonitorT>
+    void DCTriangulator<D, Precision, MonitorT>::getEdge(const dSimplices<D, Precision> &simplices,
                                             const Partitioning<D, Precision> &partitioning, const uint &partition,
                                             Concurrent_Growing_Point_Ids &edgePoints,
                                             Concurrent_Growing_Simplex_Ids &edgeSimplices) {
@@ -177,8 +190,8 @@ namespace LoadBalancing
         DEDENT
     }
 
-    template<uint D, typename Precision>
-    cWuFaces DCTriangulator<D, Precision>::buildWhereUsed(const dSimplices<D, Precision> &simplices,
+    template<uint D, typename Precision, typename MonitorT>
+    cWuFaces DCTriangulator<D, Precision, MonitorT>::buildWhereUsed(const dSimplices<D, Precision> &simplices,
                                                         const Simplex_Ids &edgeSimplices) {
 
 
@@ -246,8 +259,8 @@ namespace LoadBalancing
         return wuFaces;
     }
 
-    template<uint D, typename Precision>
-    void DCTriangulator<D, Precision>::updateNeighbors(
+    template<uint D, typename Precision, typename MonitorT>
+    void DCTriangulator<D, Precision, MonitorT>::updateNeighbors(
             dSimplices<D, Precision> &simplices,
             const Concurrent_Id_Vector &toCheck,
             const cWuFaces &wuFaces,
@@ -350,8 +363,8 @@ namespace LoadBalancing
         DEDENT
     }
 
-    template<uint D, typename Precision>
-    dSimplices<D, Precision> DCTriangulator<D, Precision>::mergeTriangulation(
+    template<uint D, typename Precision, typename MonitorT>
+    dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::mergeTriangulation(
             std::vector<dSimplices<D, Precision>> &&partialDTs,
             const Simplex_Ids &edgeSimplices,
             dSimplices<D, Precision> &&edgeDT,
@@ -472,8 +485,8 @@ namespace LoadBalancing
         return mergedDT;
     }
 
-    template<uint D, typename Precision>
-    dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulateBase(const Point_Ids &partitionPoints,
+    template<uint D, typename Precision, typename MonitorT>
+    dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::_triangulateBase(const Point_Ids &partitionPoints,
                                                                             const dBox<D, Precision> &bounds,
                                                                             const std::string provenance) {
 
@@ -493,16 +506,22 @@ namespace LoadBalancing
         return dt;
     }
 
-    template<uint D, typename Precision>
-    dSimplices<D, Precision> DCTriangulator<D, Precision>::_triangulate(const Point_Ids &partitionPoints,
+    template<uint D, typename Precision, typename MonitorT>
+    dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::_triangulate(const Point_Ids &partitionPoints,
                                                                         const dBox<D, Precision> &bounds,
-                                                                        const std::string provenance) {        
+                                                                        const std::string provenance) {
+        mMonitor.registerPartitionStart();
         PartitionTree<D, Precision> tree = mPartitioner->partition(bounds, Triangulator<D, Precision>::points, partitionPoints);
-        return recursiveTriangulate(tree, provenance);
+        mMonitor.registerPartitionEnd();
+        
+        mMonitor.registerTriangulationStart();
+        auto triangulation = recursiveTriangulate(tree, provenance);
+        mMonitor.registerTriangulationEnd();
+        return triangulation;
     }
     
-    template<uint D, typename Precision>
-    dSimplices<D, Precision> DCTriangulator<D, Precision>::recursiveTriangulate(PartitionTree<D, Precision>& tree, const std::string provenance) {
+    template<uint D, typename Precision, typename MonitorT>
+    dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::recursiveTriangulate(PartitionTree<D, Precision>& tree, const std::string provenance) {
 
         LOGGER.setIndent(provenance.length());
 
@@ -620,18 +639,4 @@ namespace LoadBalancing
             return _triangulateBase(std::get<Point_Ids>(tree.attachment), bounds, provenance);
         }
     }
-    
-    // specializations
-
-    template
-    class DCTriangulator<2, float>;
-
-    template
-    class DCTriangulator<3, float>;
-
-    template
-    class DCTriangulator<2, double>;
-
-    template
-    class DCTriangulator<3, double>;
 }

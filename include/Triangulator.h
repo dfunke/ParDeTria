@@ -9,7 +9,7 @@
 #include "utils/VTuneAdapter.h"
 namespace LoadBalancing
 {
-    template<uint D, typename Precision>
+    template<uint D, typename Precision, typename Monitor>
     class DCTriangulator;
 }
 
@@ -20,7 +20,7 @@ class Triangulator {
     friend
     class DCTriangulator;
     
-    template<uint D2, typename Precision2>
+    template<uint D2, typename Precision2, typename Monitor>
     friend
     class LoadBalancing::DCTriangulator;
 

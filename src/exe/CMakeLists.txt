@@ -7,7 +7,10 @@ target_link_libraries(LBExperiments
   Logging
   Measurements
   Geometry
-  LoadBalancedDCTriangulator
+  Triangulator
+  CGALTriangulator
+  SpatialSort
+  Partitioner
   kahip
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
@@ -21,7 +24,10 @@ target_link_libraries(LoadBalancing
   Logging
   Measurements
   Geometry
-  LoadBalancedDCTriangulator
+  Triangulator
+  CGALTriangulator
+  SpatialSort
+  Partitioner
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
@@ -34,7 +40,10 @@ target_link_libraries(SamplePartitionerTest
   Logging
   Measurements
   Geometry
-  LoadBalancedDCTriangulator
+  Triangulator
+  CGALTriangulator
+  SpatialSort
+  Partitioner
   kahip
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
@@ -48,8 +57,8 @@ target_link_libraries(DACTest
   Logging
   Measurements
   Geometry
+  Triangulator
   DCTriangulator
-  LoadBalancedDCTriangulator
   kahip
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
