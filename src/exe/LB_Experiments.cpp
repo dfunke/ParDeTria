@@ -46,7 +46,6 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const std::string&
 }
 
 int main(int argc, char *argv[]) {
-    std::string distribution;
     tIdType N;
     uint threads = tbb::task_scheduler_init::default_num_threads();
     std::string pointFile;    
@@ -140,7 +139,8 @@ int main(int argc, char *argv[]) {
     lb::Experiment<D, Precision>::Setup setup {
         bounds,
         points,
-        true
+        true,
+        vm["distribution"].as<std::string>()
     };
         
     lb::Experiment<D, Precision> exp(std::move(partitioner), std::move(setup), std::cout);
