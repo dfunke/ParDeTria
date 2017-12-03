@@ -53,6 +53,21 @@ namespace LoadBalancing
         std::vector<int> nodeRecords;
         std::vector<int> adjacency;
     };
+    
+    void sanitizeAdjacencyList(std::vector<std::vector<size_t>>& adjacencyList) {
+        for(size_t i = 0; i < adjacencyList.size(); ++i) {
+            auto& adjacentNodes = adjacencyList[i];
+            
+            std::sort(begin(adjacentNodes), end(adjacentNodes));
+            adjacentNodes.erase(std::unique(begin(adjacentNodes), end(adjacentNodes)), end(adjacentNodes));
+            
+            auto lowerBound = std::lower_bound(begin(adjacentNodes), end(adjacentNodes), i);
+            auto upperBound = std::upper_bound(begin(adjacentNodes), end(adjacentNodes), i);
+            assert(std::distance(lowerBound, upperBound) <= 1);
+            adjacentNodes.erase(lowerBound, upperBound);
+            
+        }
+    }
 
     Graph adjacencyListToGraph(const std::vector<std::vector<size_t>>& adjacencyList) {
         Graph result;
@@ -88,6 +103,7 @@ namespace LoadBalancing
                 }
             }
         }
+        sanitizeAdjacencyList(adjacencyList);
         return adjacencyListToGraph(adjacencyList);
     }
 
