@@ -5,19 +5,15 @@
 #  --KaHIP_INCLUDE_DIRS - the KaHIP include directories
 #  EJDB_LIBRARIES - link these to use KaHIP
 
-include(LibFindMacros)
-
-# Use pkg-config to get hints about paths
-libfind_pkg_check_modules(LibKDTree_PKGCONF libkahip)
-
 # Include dir
 find_path(LibKDTree_INCLUDE_DIR
   NAMES kdtree++/kdtree.hpp
-  PATHS ${LibKDTree_PKGCONF_INCLUDE_DIRS}
 )
 
-# Set the include dir variables and the libraries and let libfind_process do the rest.
-# NOTE: Singular variables for this library, plural for libraries this this lib depends on.
-set(KaHIP_PROCESS_INCLUDES LibKDTree_INCLUDE_DIR)
-libfind_process(LibKDTree)
+include(FindPackageHandleStandardArgs)
+# handle the QUIETLY and REQUIRED arguments and set LIBXML2_FOUND to TRUE
+# if all listed variables are TRUE
+find_package_handle_standard_args(LibKDTree  DEFAULT_MSG
+                                  LibKDTree_INCLUDE_DIR)
 
+set(LibKDTree_INCLUDE_DIRS LibKDTree_INCLUDE_DIR)
