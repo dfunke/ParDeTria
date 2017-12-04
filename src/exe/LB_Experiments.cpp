@@ -19,6 +19,7 @@
 #include "load_balancing/sample_partitioner/BinaryBoxEstimatingSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
 #include "load_balancing/Experiment.h"
 #include <boost/program_options.hpp>
 
@@ -116,6 +117,9 @@ int main(int argc, char *argv[]) {
     } else if("bounds-distance-pasp" == partitionerName){
         uint sampleSize = vm["sample-size"].as<uint>();
         partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(sampleSize, rand(), threads);
+    } else if("nearest-sample-pasp" == partitionerName) {
+        uint sampleSize = vm["sample-size"].as<uint>();
+        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(sampleSize, rand(), threads);
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
