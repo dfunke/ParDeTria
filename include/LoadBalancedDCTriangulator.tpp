@@ -493,15 +493,18 @@ namespace LoadBalancing
     dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::_triangulateBase(const Point_Ids &partitionPoints,
                                                                             const dBox<D, Precision> &bounds,
                                                                             const std::string provenance) {
+        
+        size_t size = partitionPoints.size();
 
         VTUNE_TASK(TriangulateBase);
         PROFILER_MEAS(provenance.find('e') == std::string::npos ? "basecaseSize" : "edgeBasecaseSize",
-                    partitionPoints.size());
+                    size);
 
         LOGGER.setIndent(provenance.length());
 
         LOG("triangulateBASE called on level " << provenance << " with "
-            << partitionPoints.size() << " points" << std::endl);
+            << size << " points" << std::endl);
+        mMonitor.registerBaseTriangulation(size, provenance);
 
         INDENT
         auto dt = baseTriangulator->_triangulate(partitionPoints, bounds, provenance);

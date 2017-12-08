@@ -7,7 +7,7 @@
 #include "Partitioner.h"
 #include "../LoadBalancedDCTriangulator.h"
 #include "../utils/MakeIds.h"
-#include "monitors/TimingMonitor.h"
+#include "monitors/ComprehensiveMonitor.h"
 
 namespace LoadBalancing
 {
@@ -30,8 +30,8 @@ namespace LoadBalancing
         Setup setup;
         std::ostream& out;
         std::string partitionerName;
-        DCTriangulator<D, Precision, TimingMonitor> triangulator;
-        TimingMonitor::Accumulator timings;
+        DCTriangulator<D, Precision, ComprehensiveMonitor> triangulator;
+        ComprehensiveAccumulator acc;
         size_t runs;
         
         void start();
@@ -45,7 +45,7 @@ namespace LoadBalancing
         : setup(std::move(setup)),
           out(out),
           partitionerName(partitioner->info()),
-          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, false, true, TimingMonitor(timings)),
+          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, false, true, ComprehensiveMonitor(acc)),
           runs(0) {
         start();
     }
@@ -61,8 +61,9 @@ namespace LoadBalancing
             
         out
             << (runs == 0 ? "" : ",") << " {\n"
-            << "            \"partitiontime\": " << timings.partitionTime.count() << ",\n"
-            << "            \"triangulationtime\": " << timings.triangulationTime.count() << ",\n";
+            << "            \"partitiontime\": " << acc.partitionTime.count() << ",\n"
+            << "            \"triangulationtime\": " << acc.triangulationTime.count() << ",\n"
+            << "            \"triangulatedPoints\": " << acc.numTriangulatedPoints << ",\n";
             if(setup.verify) {
                 out
                 << "            \"valid\": " << (verify(dt) ? "true" : "false") << "\n";

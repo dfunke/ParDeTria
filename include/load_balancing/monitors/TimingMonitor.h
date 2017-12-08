@@ -4,15 +4,15 @@
 
 namespace LoadBalancing
 {
-    struct TimingMonitor
+    struct TimingAccumulator {
+        using Duration = std::chrono::milliseconds;
+        Duration partitionTime;
+        Duration triangulationTime;
+    };
+    
+    struct TimingMonitor : public Monitor
     {
-        struct Accumulator {
-            using Duration = std::chrono::milliseconds;
-            Duration partitionTime;
-            Duration triangulationTime;
-        };
-        
-        TimingMonitor(Accumulator& accumulator)
+        TimingMonitor(TimingAccumulator& accumulator)
           :  accumulator(&accumulator) {
               this->accumulator->partitionTime = std::chrono::milliseconds(0);
               this->accumulator->triangulationTime = std::chrono::milliseconds(0);
@@ -24,7 +24,7 @@ namespace LoadBalancing
         
         void registerPartitionEnd() {
             auto now = Clock::now();
-            accumulator->partitionTime = std::chrono::duration_cast<Accumulator::Duration>(now - partitionStart);
+            accumulator->partitionTime = std::chrono::duration_cast<TimingAccumulator::Duration>(now - partitionStart);
         };
         
         void registerTriangulationStart() {
@@ -33,14 +33,14 @@ namespace LoadBalancing
             
         void registerTriangulationEnd() {
             auto now = Clock::now();
-            accumulator->triangulationTime = std::chrono::duration_cast<Accumulator::Duration>(now - triangulationStart);
+            accumulator->triangulationTime = std::chrono::duration_cast<TimingAccumulator::Duration>(now - triangulationStart);
         };
         
         static const std::string unitString;
         
     private:
         using Clock = std::chrono::high_resolution_clock;
-        Accumulator* accumulator;
+        TimingAccumulator* accumulator;
         std::chrono::time_point<Clock> partitionStart;
         std::chrono::time_point<Clock> triangulationStart;
     };

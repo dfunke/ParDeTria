@@ -10,5 +10,6 @@ namespace LoadBalancing
         void registerPartitionEnd() {};
         void registerTriangulationStart() {};
         void registerTriangulationEnd() {};
+        void registerBaseTriangulation(size_t /*numPoints*/, const std::string& /*provenance*/) {};
     };
 }
