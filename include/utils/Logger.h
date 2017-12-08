@@ -38,8 +38,8 @@ class Logger : private boost::noncopyable {
 #define PLOG(msg) ((void)(0))
 #endif
 
-#define INDENT Logger::getInstance().incIndent();
-#define DEDENT Logger::getInstance().decIndent();
+#define INDENT if(IS_NORMAL) Logger::getInstance().incIndent();
+#define DEDENT if(IS_NORMAL) Logger::getInstance().decIndent();
 
 public:
     enum class Verbosity : short {
