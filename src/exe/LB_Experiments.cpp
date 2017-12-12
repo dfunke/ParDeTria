@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()("distribution", po::value<std::string>());
     cCommandLine.add_options()("points", po::value(&pointFile), "load points from file");
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
-    cCommandLine.add_options()("sample-size", po::value<uint>());
+    //cCommandLine.add_options()("sample-size", po::value<uint>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
     cCommandLine.add_options()("help", "produce help message");
 
@@ -107,23 +107,16 @@ int main(int argc, char *argv[]) {
     
     std::random_device rand;
     
+    lb::Sampler<D, Precision> sampler(rand(), [](size_t n) -> size_t { return std::sqrt(n); });
     std::unique_ptr<lb::Partitioner<D, Precision>> partitioner = nullptr;
     if("binary-besp" == partitionerName){
-        uint sampleSize = vm["sample-size"].as<uint>();
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
-        lb::Sampler<D, Precision> sampler(rand(), [sampleSize](size_t /*n*/) -> size_t { return sampleSize; });
         partitioner = std::make_unique<lb::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(baseCutoff, std::move(sampler));
     } else if("center-distance-pasp" == partitionerName){
-        uint sampleSize = vm["sample-size"].as<uint>();
-        lb::Sampler<D, Precision> sampler(rand(), [sampleSize](size_t /*n*/) -> size_t { return sampleSize; });
         partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
     } else if("bounds-distance-pasp" == partitionerName){
-        uint sampleSize = vm["sample-size"].as<uint>();
-        lb::Sampler<D, Precision> sampler(rand(), [sampleSize](size_t /*n*/) -> size_t { return sampleSize; });
         partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
     } else if("nearest-sample-pasp" == partitionerName) {
-        uint sampleSize = vm["sample-size"].as<uint>();
-        lb::Sampler<D, Precision> sampler(rand(), [sampleSize](size_t /*n*/) -> size_t { return sampleSize; });
         partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
