@@ -1,13 +1,11 @@
 #pragma once
 
-#pragma once
-
 #include <cassert>
 #include <random>
 #include <algorithm>
 #include <set>
 #include "../Partitioner.h"
-#include "steps.h"
+#include "Sampler.h"
 
 namespace LoadBalancing
 {
@@ -93,8 +91,8 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     struct BinaryBoxEstimatingSamplePartitioner : public Partitioner<D, Precision>
     {
-        BinaryBoxEstimatingSamplePartitioner(size_t sampleSize, size_t sampleSeed, size_t minNumOfPoints)
-            : mSampleSize(sampleSize), mRand(sampleSeed), mPointsCutoff(minNumOfPoints)
+        BinaryBoxEstimatingSamplePartitioner(size_t minNumOfPoints, Sampler<D, Precision> sampler)
+            : mPointsCutoff(minNumOfPoints), mSampler(std::move(sampler))
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
@@ -109,9 +107,8 @@ namespace LoadBalancing
         }
         
     private:
-        size_t mSampleSize;
-        std::mt19937 mRand;
         size_t mPointsCutoff;
+        Sampler<D, Precision> mSampler;
         
         PartitionTree<D, Precision> buildTreeRecursively(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
@@ -119,18 +116,10 @@ namespace LoadBalancing
                                         size_t remainingRecursions) {
             PartitionTree<D, Precision> tree;
                 
-            if(remainingRecursions > 0 && pointIds.size() >= std::max(mPointsCutoff, mSampleSize)) {
-                auto sample = generateSample<D, Precision>(mSampleSize, pointIds, mRand);
-                dPoints<D, Precision> samplePoints;
-                for(auto id : sample) {
-                    assert((dPoint<D, Precision>::isFinite(id)));
-                    samplePoints.emplace_back(points[id]);
-                }
-                auto simplices = triangulateSample(bounds, samplePoints);
-                auto graph = makeGraph(simplices);
-                auto partitioning = partitionGraph(graph, 2, mRand);
-                auto centerEdges = findPartitionCenterEdges(graph, partitioning);
-                auto centerPoints = makePartitionCenterPoints(centerEdges, samplePoints);
+            if(remainingRecursions > 0 && pointIds.size() >= mPointsCutoff) {
+                auto sampling = mSampler(bounds, points, pointIds, 2);
+                auto centerEdges = findPartitionCenterEdges(sampling.graph, sampling.partition);
+                auto centerPoints = makePartitionCenterPoints(centerEdges, sampling.points);
                 auto boundingBoxes = estimateBoundingBoxes(centerPoints, bounds);
                 auto pointIdsPair = seperatePointIds(points, pointIds, std::get<0>(boundingBoxes));
                 

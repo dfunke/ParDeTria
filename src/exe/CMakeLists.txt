@@ -16,39 +16,6 @@ target_link_libraries(LBExperiments
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
-add_executable (LoadBalancing
-  LoadBalancing.cpp
-)
-
-target_link_libraries(LoadBalancing
-  Logging
-  Measurements
-  Geometry
-  Triangulator
-  CGALTriangulator
-  SpatialSort
-  Partitioner
-  ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
-)
-
-add_executable (SamplePartitionerTest
-  SamplePartitionerTest.cpp
-)
-
-target_link_libraries(SamplePartitionerTest
-  Logging
-  Measurements
-  Geometry
-  Triangulator
-  CGALTriangulator
-  SpatialSort
-  Partitioner
-  kahip
-  ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
-)
-
 add_executable (DACTest
   DAC_Test.cpp
 )

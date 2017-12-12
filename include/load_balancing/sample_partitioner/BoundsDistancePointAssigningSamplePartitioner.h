@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <set>
 #include "../Partitioner.h"
-#include "steps.h"
 #include "load_balancing/BoxUtils.h"
+#include "Sampler.h"
 
 namespace LoadBalancing
 {
@@ -78,23 +78,15 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     struct BoundsDistancePointAssigningSamplePartitioner : public Partitioner<D, Precision>
     {
-        BoundsDistancePointAssigningSamplePartitioner(size_t sampleSize, size_t sampleSeed, size_t partitionSize)
-            : mSampleSize(sampleSize), mRand(sampleSeed), mPartitionSize(partitionSize)
+        BoundsDistancePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler)
+            : mPartitionSize(partitionSize), mSampler(std::move(sampler))
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
-            auto sample = generateSample<D, Precision>(mSampleSize, pointIds, mRand);
-            dPoints<D, Precision> samplePoints;
-            for(auto id : sample) {
-                assert((dPoint<D, Precision>::isFinite(id)));
-                samplePoints.emplace_back(points[id]);
-            }
-            auto simplices = triangulateSample(bounds, samplePoints);
-            auto graph = makeGraph(simplices);
-            auto graphPartitioning = partitionGraph(graph, mPartitionSize, mRand);
-            auto boxes = makeBoundingBoxes(graphPartitioning, mPartitionSize, samplePoints);
+            auto sampling = mSampler(bounds, points, pointIds, mPartitionSize);
+            auto boxes = makeBoundingBoxes(sampling.partition, mPartitionSize, sampling.points);
             auto partitioning = makePartitioningFromBoxes<D, Precision>(boxes, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
@@ -117,8 +109,7 @@ namespace LoadBalancing
         }
         
     private:
-        size_t mSampleSize;
-        std::mt19937 mRand;
         size_t mPartitionSize;
+        Sampler<D, Precision> mSampler;
     };
 }

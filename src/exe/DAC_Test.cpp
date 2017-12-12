@@ -47,18 +47,19 @@ struct TriangulateReturn {
 std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigned char type, size_t threads) {
     std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> result;
             std::random_device rand;
+            LoadBalancing::Sampler<D, Precision> sampler(rand(), [](size_t /*n*/) -> size_t { return 100; });
     switch (type) {
         case 'D':
             result = std::make_unique<LoadBalancing::SimplePartitioner<D, Precision>>();
             break;
         case 'x':
-            result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(100, rand(), 2500);
+            result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(2500, std::move(sampler));
             break;
         case 'y':
-            result = std::make_unique<LoadBalancing::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(100, rand(), 8);
+            result = std::make_unique<LoadBalancing::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(8, std::move(sampler));
             break;
         case 'z':
-            result = std::make_unique<LoadBalancing::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(100, rand(), 8);
+            result = std::make_unique<LoadBalancing::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(8, std::move(sampler));
             break;
         case 'd':
         case 'c':
