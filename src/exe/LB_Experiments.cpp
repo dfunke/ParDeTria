@@ -22,6 +22,7 @@
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
 #include "load_balancing/Experiment.h"
 #include "load_balancing/sample_partitioner/Sampler.h"
+#include "load_balancing/UnboundBubbleGenerator.h"
 #include <boost/program_options.hpp>
 
 constexpr auto D = 3;
@@ -43,6 +44,8 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const std::string&
         result = std::make_unique<BubblePointGenerator<D, Precision>>();
     else if("uniform" == distributionName)
         result = std::make_unique<UniformPointGenerator<D, Precision>>();
+    else if("unbound-bubble" == distributionName)
+        result = std::make_unique<lb::UnboundBubbleGenerator<D, Precision>>(std::pow(2, D), 0.5);
     
     return result;
 }
@@ -150,3 +153,4 @@ int main(int argc, char *argv[]) {
 
     return EXIT_SUCCESS;
 }
+
