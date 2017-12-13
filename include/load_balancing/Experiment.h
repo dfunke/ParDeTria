@@ -16,6 +16,7 @@ namespace LoadBalancing
     {
         struct Setup
         {
+            std::string argumentString;
             dBox<D, Precision> bounds;
             dPoints<D, Precision> points;
             bool verify;
@@ -79,6 +80,7 @@ namespace LoadBalancing
         out << "{\n"
             << "    \"commit\": \"" << GIT_COMMIT << "\",\n"
             << "    \"date\": \"" << makeDateTimeString() << "\",\n"
+            << "    \"args\": \"" << setup.argumentString <<"\",\n"
             << "    \"triangulator\": \"" << "load balanced DC Triangulator\",\n"
             << "    \"partitioner\": \"" << partitionerName << "\",\n"
             << "    \"distribution\": \"" << setup.distribution << "\",\n"

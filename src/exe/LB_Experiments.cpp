@@ -141,7 +141,13 @@ int main(int argc, char *argv[]) {
     }
     assert(partitioner);
     
+    std::string argString = std::accumulate(argv + 2, argv + argc, std::string(argc > 1 ? argv[1] : ""),
+                                            [](std::string acc, const std::string& element) {
+                                                return acc += " " + element;
+                                            });
+    
     lb::Experiment<D, Precision>::Setup setup {
+        argString,
         bounds,
         points,
         true,
