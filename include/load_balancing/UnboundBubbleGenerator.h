@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include "utils/Generator.h"
 
 namespace LoadBalancing
@@ -21,18 +22,32 @@ protected:
               const tIdType n,
               const dBox<D, Precision> &bounds,
               tGenerator &gen) const {
-
+                  
+        auto diff = bounds.high - bounds.low;
+        assert((std::all_of(diff.begin(), diff.end(), [this](auto x) { return x >= mBubbleRadius; })));
+                  
+        dBox<D, Precision> shrunkBounds;
+        std::transform(bounds.low.begin(), bounds.low.end(), shrunkBounds.low.begin(),
+                       [this](auto x) -> auto {
+                           return x + mBubbleRadius;
+                       });
+        
+        std::transform(bounds.high.begin(), bounds.high.end(), shrunkBounds.high.begin(),
+                       [this](auto x) -> auto {
+                           return x - mBubbleRadius;
+                       });
 
         std::uniform_real_distribution<Precision> bubbleDist(0, 1);
         std::uniform_real_distribution<Precision> pointDist(-mBubbleRadius, mBubbleRadius);
         
         std::vector<dVector<D, Precision>> bubbleCenters(mNumBubbles);
-        std::generate(bubbleCenters.begin(), bubbleCenters.end(), [&bounds, &bubbleDist, &gen]() -> auto
+        std::generate(bubbleCenters.begin(), bubbleCenters.end(), [&shrunkBounds, &bubbleDist, &gen]() -> auto
         {
             dVector<D, Precision> v;
-            std::transform(bounds.low.begin(), bounds.low.end(), bounds.high.begin(), v.begin(), [&bubbleDist, &gen](auto low, auto high) -> auto {
-                return low + (high - low) * bubbleDist(gen);
-            });
+            std::transform(shrunkBounds.low.begin(), shrunkBounds.low.end(), shrunkBounds.high.begin(), v.begin(),
+                           [&bubbleDist, &gen](auto low, auto high) -> auto {
+                               return low + (high - low) * bubbleDist(gen);
+                        });
             return v;
         });
         
