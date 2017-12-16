@@ -23,6 +23,7 @@
 #include "load_balancing/Experiment.h"
 #include "load_balancing/sample_partitioner/Sampler.h"
 #include "load_balancing/UnboundBubbleGenerator.h"
+#include "load_balancing/PatchBubbleGenerator.h"
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -43,6 +44,8 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const std::string&
         result = std::make_unique<UniformPointGenerator<D, Precision>>();
     else if("unbound-bubble" == distributionName)
         result = std::make_unique<lb::UnboundBubbleGenerator<D, Precision>>(std::pow(2, D), 0.5);
+    else if("patch-bubble" == distributionName)
+        result = std::make_unique<lb::PatchBubbleGenerator<D, Precision>>(std::pow(2, D));
     
     return result;
 }
