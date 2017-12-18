@@ -16,6 +16,25 @@ target_link_libraries(LBExperiments
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
+add_executable(LBPainting
+  LB_Painting.cpp
+)
+
+target_link_libraries(LBPainting
+  Painter
+  Logging
+  Measurements
+  Geometry
+  Triangulator
+  CGALTriangulator
+  SpatialSort
+  Partitioner
+  kahip
+  ${Boost_LIBRARIES}
+  ${TBB_MALLOC_PROXY_LIBRARIES}
+)
+  
+
 add_executable (DACTest
   DAC_Test.cpp
 )
