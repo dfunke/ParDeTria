@@ -82,4 +82,28 @@ namespace LoadBalancing
         auto center = (box.high + box.low) * Precision(0.5);
         return vecToCenteredBox<D, Precision>(v - center, box.high - center);
     }
+    
+    template <uint D, typename Precision>
+    dVector<D, Precision> vecToLowerQuadrantBoundary(dVector<D, Precision> v) {        
+        dVector<D, Precision> result = vecToLowerQuadrant<D, Precision>(v);
+        if(std::all_of(begin(result), end(result), [](Precision x) -> bool { return x == 0;})) {
+            auto it = std::max_element(begin(v), end(v));
+            result[std::distance(v.begin(), it)] = *it;
+        }
+        return result;
+    }
+    
+    template <uint D, typename Precision>
+    dVector<D, Precision> vecToCenteredBoxBoundary(dVector<D, Precision> v, const dVector<D, Precision>& highCorner) {
+        std::transform(begin(v), end(v), begin(v), [](Precision p) {
+            return std::abs(p);
+        });
+        return vecToLowerQuadrantBoundary<D, Precision>(v - highCorner);
+    }
+    
+    template <uint D, typename Precision>
+    dVector<D, Precision> vecToBoxBoundary(const dVector<D, Precision>& v, const dBox<D, Precision>& box) {
+        auto center = (box.high + box.low) * Precision(0.5);
+        return vecToCenteredBoxBoundary<D, Precision>(v - center, box.high - center);
+    }
 }

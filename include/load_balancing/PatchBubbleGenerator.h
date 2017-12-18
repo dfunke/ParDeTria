@@ -4,6 +4,7 @@
 #include <kdtree++/kdtree.hpp>
 #include "utils/Generator.h"
 #include "VectorOperations.h"
+#include "BoxUtils.h"
 
 namespace LoadBalancing
 {
@@ -27,7 +28,7 @@ protected:
               tGenerator &gen) const {
                   
         auto bubbleCenters = generateBubbleCenters(bounds, gen);
-        auto bubbleRadiuses = calculateBubbleRadiuses(bubbleCenters.begin(), bubbleCenters.end());
+        auto bubbleRadiuses = calculateBubbleRadiuses(bubbleCenters.begin(), bubbleCenters.end(), bounds);
                   
         std::normal_distribution<Precision> pointDist(0.0, 0.5);
         
@@ -63,9 +64,9 @@ protected:
     }
     
     template <typename It>
-    std::vector<Precision> calculateBubbleRadiuses(It first, It last) const {
-        std::vector<Precision> result(std::distance(first, last));
-        std::transform(first, last, result.begin(),
+    std::vector<Precision> calculateBubbleRadiuses(It first, It last, const dBox<D, Precision>& boundary) const {
+        std::vector<Precision> nnSquaredDistances(std::distance(first, last));
+        std::transform(first, last, nnSquaredDistances.begin(),
                 [first, last](const auto& center) {
                     std::vector<Precision> squaredDistances(std::distance(first, last));
                     std::transform(first, last, squaredDistances.begin(), [&center](const auto& other) {
@@ -73,8 +74,20 @@ protected:
                         
                     });
                     std::nth_element(squaredDistances.begin(), squaredDistances.begin() + 1, squaredDistances.end());
-                    return std::sqrt(squaredDistances[1]) / 2;
+                    return squaredDistances[1];
                 });
+        
+        std::vector<Precision> boundarySquaredDistances(std::distance(first, last));
+        std::transform(first, last, boundarySquaredDistances.begin(),
+                [first, last, &boundary](const auto& center) {
+                    return lenSquared(vecToBoxBoundary<D, Precision>(center, boundary));
+                });
+        
+        std::vector<Precision> result(std::distance(first, last));
+        std::transform(nnSquaredDistances.begin(), nnSquaredDistances.end(), boundarySquaredDistances.begin(), result.begin(),
+                       [](Precision nnSqDist, Precision boundSqDist) {
+                           return std::sqrt(std::min(nnSqDist, boundSqDist)) / 2;
+                    });
         return result;
     }
 };
