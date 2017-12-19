@@ -29,6 +29,10 @@ namespace LoadBalancing
                 attachment = std::move(newAttachment);
             }
         }
+        
+        bool isLeaf() const {
+            return std::holds_alternative<Point_Ids>(attachment);
+        }
     };
         
     template <uint D, typename Precision>

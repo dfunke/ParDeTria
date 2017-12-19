@@ -7,6 +7,34 @@
 using Precision = double;
 constexpr uint D = 2;
 
+template <typename Precision, typename RandomIt>
+RandomIt paintPartitionTree(const dPoints<2, Precision>& points,
+                        const lb::PartitionTree<2, Precision>& tree,
+                        Painter<2, Precision>& painter,
+                        RandomIt first, RandomIt last, RandomIt current) {
+    if(current == last)
+        current = first;
+    if(tree.isLeaf()) {
+        painter.setColor(*current++);
+        for(auto id : std::get<Point_Ids>(tree.attachment)) {
+            painter.draw(points[id]);
+        }
+    } else {
+        const auto& children = std::get<typename lb::PartitionTree<2, Precision>::ChildContainer>(tree.attachment);
+        for(const auto& child : children) {
+            current = paintPartitionTree(points, child, painter, first, last, current);
+        }
+    }
+    return current;
+}
+
+template <typename Precision, typename RandomIt>
+void paintPartitionTree(const dPoints<2, Precision>& points,
+                        const lb::PartitionTree<2, Precision>& tree,
+                        Painter<2, Precision>& painter,
+                        RandomIt first, RandomIt last) {
+    paintPartitionTree(points, tree, painter, first, last, first);
+}
 
 int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
@@ -66,9 +94,22 @@ int main(int argc, char *argv[]) {
     auto pointIds = makePointIds(points);
     auto partitioning = partitioner->partition(bounds, points, pointIds);
     
-    Painter<2, double> painter(bounds);
+    Painter<2, double> pointsPainter(bounds);
     for(const auto& point : points) {
-        painter.draw(point);
+        pointsPainter.draw(point);
     }
-    painter.save(filename + "_points");
+    pointsPainter.save(filename + "_points");
+    
+    std::vector<tRGB> colors = {
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0},
+        {1.0, 1.0, 0.0},
+        {0.0, 1.0, 1.0},
+        {1.0, 0.0, 1.0},
+    };
+    
+    Painter<2, double> partitionPainter(bounds);
+    paintPartitionTree(points, partitioning, partitionPainter, colors.begin(), colors.end());
+    partitionPainter.save(filename + "_partitioning");
 }
