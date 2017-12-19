@@ -19,8 +19,19 @@
 namespace po = boost::program_options;
 namespace lb = LoadBalancing;
 
+template <typename T>
+T extract(const std::string& name, const po::variables_map& vm, T defaultValue) {
+    T result;
+    if(vm.count(name))
+        result = vm[name].as<T>();
+    else
+        result = defaultValue;
+    return result;
+}
+
 template <uint D, typename Precision>
-std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const std::string& distributionName) {
+std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const po::variables_map& vm) {
+    std::string distributionName = vm["distribution"].as<std::string>();
     std::unique_ptr<PointGenerator<D, Precision>> result = nullptr;
     if("ellipsoid" == distributionName)
         result = std::make_unique<EllipsoidPointGenerator<D, Precision>>();
@@ -28,14 +39,18 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const std::string&
         result = std::make_unique<SkewLinePointGenerator<D, Precision>>();
     else if("normal" == distributionName)
         result = std::make_unique<NormalPointGenerator<D, Precision>>();
-    else if("bubble" == distributionName)
-        result = std::make_unique<BubblePointGenerator<D, Precision>>();
     else if("uniform" == distributionName)
         result = std::make_unique<UniformPointGenerator<D, Precision>>();
-    else if("unbound-bubble" == distributionName)
-        result = std::make_unique<lb::UnboundBubbleGenerator<D, Precision>>(std::pow(2, D), 0.5);
-    else if("patch-bubble" == distributionName)
-        result = std::make_unique<lb::PatchBubbleGenerator<D, Precision>>(std::pow(2, D));
+    else if("bubble" == distributionName){
+        result = std::make_unique<BubblePointGenerator<D, Precision>>();
+    } else if("unbound-bubble" == distributionName){
+        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(2, D));
+        Precision radius = extract<Precision>("bubble-radius", vm, 0.5);
+        result = std::make_unique<lb::UnboundBubbleGenerator<D, Precision>>(numBubbles, radius);
+    } else if("patch-bubble" == distributionName){
+        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(2, D));
+        result = std::make_unique<lb::PatchBubbleGenerator<D, Precision>>(numBubbles);
+    }
     
     return result;
 }
@@ -73,4 +88,19 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
             std::move(oldPartitioner), maxRecursions, baseCutoff);
     }
     return partitioner;
+}
+
+template <typename Precision>
+po::options_description defaultOptions() {
+    po::options_description cCommandLine("Command Line Options");
+    cCommandLine.add_options()("n", po::value<tIdType>(), "number of points");
+    cCommandLine.add_options()("partitioner", po::value<std::string>());
+    cCommandLine.add_options()("distribution", po::value<std::string>());
+    //cCommandLine.add_options()("points", po::value(&pointFile), "load points from file");
+    //cCommandLine.add_options()("sample-size", po::value<uint>());
+    cCommandLine.add_options()("num-bubbles", po::value<uint>());
+    cCommandLine.add_options()("bubble-radius", po::value<Precision>());
+    cCommandLine.add_options()("split-dimension", po::value<uint>());
+    cCommandLine.add_options()("help", "produce help message");
+    return cCommandLine;
 }

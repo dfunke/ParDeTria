@@ -20,7 +20,7 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
     /*if (vm.count("points")) {
         points = loadObject<dPoints<D, Precision>>(pointFile);
     } else {*/
-        auto pg = createGenerator<D, Precision>(vm["distribution"].as<std::string>());
+        auto pg = createGenerator<D, Precision>(vm);
         auto N = vm["n"].as<tIdType>();
         points = pg->generate(N, bounds, startGen);
     //}
@@ -46,16 +46,9 @@ int main(int argc, char *argv[]) {
     std::string partitionerName;
     uint dim;
 
-    po::options_description cCommandLine("Command Line Options");
-    cCommandLine.add_options()("n", po::value<tIdType>(), "number of points");
+    auto cCommandLine = defaultOptions<double>();
     cCommandLine.add_options()("dim", po::value(&dim), "dimension");
-    cCommandLine.add_options()("partitioner", po::value<std::string>());
-    cCommandLine.add_options()("distribution", po::value<std::string>());
-    //cCommandLine.add_options()("points", po::value(&pointFile), "load points from file");
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
-    //cCommandLine.add_options()("sample-size", po::value<uint>());
-    cCommandLine.add_options()("split-dimension", po::value<uint>());
-    cCommandLine.add_options()("help", "produce help message");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
