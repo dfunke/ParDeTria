@@ -5,7 +5,7 @@
 namespace LoadBalancing
 {
     struct ComprehensiveAccumulator : public TimingAccumulator {
-        size_t numTriangulatedPoints;
+        size_t numTriangulatedPoints = 0;
     };
     
     struct ComprehensiveMonitor : public TimingMonitor
