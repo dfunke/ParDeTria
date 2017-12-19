@@ -25,8 +25,7 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
         points = pg->generate(N, bounds, startGen);
     //}
     
-    std::random_device rand;
-    auto partitioner = createPartitioner<D, Precision>(vm, threads, rand);
+    auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
     assert(partitioner);
     
     typename lb::Experiment<D, Precision>::Setup setup {

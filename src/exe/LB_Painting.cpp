@@ -65,8 +65,7 @@ int main(int argc, char *argv[]) {
         points = pg->generate(N, bounds, startGen);
     //}
     
-    std::random_device rand;
-    auto partitioner = createPartitioner<D, Precision>(vm, threads, rand);
+    auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
     assert(partitioner);
 
     tbb::task_scheduler_init init(threads);
