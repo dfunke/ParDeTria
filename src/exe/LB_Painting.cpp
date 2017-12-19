@@ -7,26 +7,49 @@
 using Precision = double;
 constexpr uint D = 2;
 
-template <typename Precision, typename RandomIt>
-RandomIt paintPartitionTree(const dPoints<2, Precision>& points,
-                        const lb::PartitionTree<2, Precision>& tree,
-                        Painter<2, Precision>& painter,
-                        RandomIt first, RandomIt last, RandomIt current) {
-    if(current == last)
-        current = first;
-    if(tree.isLeaf()) {
-        painter.setColor(*current++);
-        for(auto id : std::get<Point_Ids>(tree.attachment)) {
-            painter.draw(points[id]);
-        }
-    } else {
-        const auto& children = std::get<typename lb::PartitionTree<2, Precision>::ChildContainer>(tree.attachment);
-        for(const auto& child : children) {
-            current = paintPartitionTree(points, child, painter, first, last, current);
-        }
+template <typename Precision>
+struct PartitionTreePainter
+{
+    PartitionTreePainter(Painter<2, Precision>& painter, const dPoints<2, Precision>& points)
+     : painter(&painter), points(&points)
+    {}
+    
+    void operator()(const lb::PartitionTree<2, Precision>& tree) {
+        paintPartitionTree(tree, colors.begin());
     }
-    return current;
-}
+    
+
+    std::vector<tRGB>::iterator paintPartitionTree(const lb::PartitionTree<2, Precision>& tree, std::vector<tRGB>::iterator current) {
+        if(current == colors.end())
+            current = colors.begin();
+        
+        if(tree.isLeaf()) {
+            painter.setColor(*current++);
+            for(auto id : std::get<Point_Ids>(tree.attachment)) {
+                painter.draw(points[id]);
+            }
+        } else {
+            const auto& children = std::get<typename lb::PartitionTree<2, Precision>::ChildContainer>(tree.attachment);
+            for(const auto& child : children) {
+                current = paintPartitionTree(child, current);
+            }
+        }
+        return current;
+    }
+    
+private:
+    const dPoints<2, Precision>* points;
+    Painter<2, Precision>* painter;
+    
+    std::vector<tRGB> colors = {
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0},
+        {1.0, 1.0, 0.0},
+        {0.0, 1.0, 1.0},
+        {1.0, 0.0, 1.0},
+    };
+};
 
 template <typename Precision, typename RandomIt>
 void paintPartitionTree(const dPoints<2, Precision>& points,
@@ -100,16 +123,8 @@ int main(int argc, char *argv[]) {
     }
     pointsPainter.save(filename + "_points");
     
-    std::vector<tRGB> colors = {
-        {1.0, 0.0, 0.0},
-        {0.0, 1.0, 0.0},
-        {0.0, 0.0, 1.0},
-        {1.0, 1.0, 0.0},
-        {0.0, 1.0, 1.0},
-        {1.0, 0.0, 1.0},
-    };
-    
     Painter<2, double> partitionPainter(bounds);
-    paintPartitionTree(points, partitioning, partitionPainter, colors.begin(), colors.end());
+    PartitionTreePainter<double> paintTree(partitionPainter, points);
+    paintTree(partitioning);
     partitionPainter.save(filename + "_partitioning");
 }
