@@ -44,11 +44,11 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const po::variable
     else if("bubble" == distributionName){
         result = std::make_unique<BubblePointGenerator<D, Precision>>();
     } else if("unbound-bubble" == distributionName){
-        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(2, D));
-        Precision radius = extract<Precision>("bubble-radius", vm, 0.5);
+        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(4, D));
+        Precision radius = extract<Precision>("bubble-radius", vm, 10);
         result = std::make_unique<lb::UnboundBubbleGenerator<D, Precision>>(numBubbles, radius);
     } else if("patch-bubble" == distributionName){
-        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(2, D));
+        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(4, D));
         result = std::make_unique<lb::PatchBubbleGenerator<D, Precision>>(numBubbles);
     }
     
