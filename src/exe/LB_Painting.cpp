@@ -15,31 +15,41 @@ struct PartitionTreePainter
     {}
     
     void operator()(const lb::PartitionTree<2, Precision>& tree) {
-        paintPartitionTree(tree, colors.begin());
+        size_t partitions = 0;
+        paintPartitionTree(tree, colors.begin(), partitions);
     }
     
 
-    std::vector<tRGB>::iterator paintPartitionTree(const lb::PartitionTree<2, Precision>& tree, std::vector<tRGB>::iterator current) {
+    std::vector<tRGB>::iterator paintPartitionTree(const lb::PartitionTree<2, Precision>& tree,
+                                                   std::vector<tRGB>::iterator current,
+                                                   size_t& currentNumPartitions) {
         if(current == colors.end())
             current = colors.begin();
         
         if(tree.isLeaf()) {
-            painter.setColor(*current++);
+            auto color = *current++;
+            painter->setColor(color);
+            dVector<2, Precision> center;
+            size_t currentNumPoints = 0;
             for(auto id : std::get<Point_Ids>(tree.attachment)) {
-                painter.draw(points[id]);
+                painter->draw((*points)[id]);
+                center = center * ((Precision)currentNumPoints/(1 + currentNumPoints))
+                    + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
             }
+            painter->setColor(tRGB(0, 0, 0));
+            painter->drawText(std::to_string(currentNumPartitions++), center);
         } else {
             const auto& children = std::get<typename lb::PartitionTree<2, Precision>::ChildContainer>(tree.attachment);
             for(const auto& child : children) {
-                current = paintPartitionTree(child, current);
+                current = paintPartitionTree(child, current, currentNumPartitions);
             }
         }
         return current;
     }
     
 private:
-    const dPoints<2, Precision>* points;
     Painter<2, Precision>* painter;
+    const dPoints<2, Precision>* points;
     
     std::vector<tRGB> colors = {
         {1.0, 0.0, 0.0},

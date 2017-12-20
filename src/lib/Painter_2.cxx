@@ -51,6 +51,16 @@ void PainterImplementation<2, Precision>::setColor(float r, float g, float b,
   cr->set_source_rgba(r, g, b, alpha);
 }
 
+template <typename Precision>
+void PainterImplementation<2, Precision>::drawText(const std::string& text,
+                                                   dVector<2, Precision> coords) {
+  cr->move_to(translatePoint(coords[0], 0),
+              translatePoint(coords[1], 1));
+  cr->set_font_size(20);
+  cr->show_text(text);
+  cr->set_font_size(FONT_SIZE);
+}
+
 //
 template <typename Precision>
 void PainterImplementation<2, Precision>::draw(

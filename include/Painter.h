@@ -54,6 +54,13 @@ public:
 
     return *this;
   }
+  
+  void drawText(const std::string& text, dVector<2, Precision> coords) {
+    #ifndef NDEBUG
+        if (ENABLED)
+        impl.drawText(text, coords);
+    #endif
+  }
 
   void draw(const dPoint<D, Precision> &point, bool drawInfinite = false) {
 #ifndef NDEBUG
