@@ -1,4 +1,5 @@
 #include <string>
+#include <tuple>
 #include <tbb/task_scheduler_init.h>
 #include "Painter.h"
 #include "utils/MakeIds.h"
@@ -17,6 +18,11 @@ struct PartitionTreePainter
     void operator()(const lb::PartitionTree<2, Precision>& tree) {
         size_t partitions = 0;
         paintPartitionTree(tree, colors.begin(), partitions);
+        
+        painter->setColor(tRGB(0, 0, 0));
+        for(const auto label : labels)
+            painter->drawText(std::get<0>(label), std::get<1>(label));
+        labels.clear();
     }
     
 
@@ -39,8 +45,7 @@ struct PartitionTreePainter
             
             painter->drawBox(tree.bounds);
             
-            painter->setColor(tRGB(0, 0, 0));
-            painter->drawText(std::to_string(currentNumPartitions++), center);
+            labels.push_back({std::to_string(currentNumPartitions++), center});
         } else {
             const auto& children = std::get<typename lb::PartitionTree<2, Precision>::ChildContainer>(tree.attachment);
             for(const auto& child : children) {
@@ -53,6 +58,7 @@ struct PartitionTreePainter
 private:
     Painter<2, Precision>* painter;
     const dPoints<2, Precision>* points;
+    std::vector<std::tuple<std::string, dVector<2, Precision>>> labels;
     
     std::vector<tRGB> colors = {
         {1.0, 0.0, 0.0},
