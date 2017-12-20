@@ -55,6 +55,13 @@ public:
     return *this;
   }
   
+  void drawBox(const dBox<2, Precision>& bounds) {
+    #ifndef NDEBUG
+        if (ENABLED)
+        impl.drawBox(bounds);
+    #endif
+  }
+  
   void drawText(const std::string& text, dVector<2, Precision> coords) {
     #ifndef NDEBUG
         if (ENABLED)

@@ -52,6 +52,15 @@ void PainterImplementation<2, Precision>::setColor(float r, float g, float b,
 }
 
 template <typename Precision>
+void PainterImplementation<2, Precision>::drawBox(const dBox<2, Precision>& bounds) {
+  cr->rectangle(translatePoint(bounds.low[0], 0),
+                translatePoint(bounds.low[1], 1),
+                translateLength(bounds.high[0] - bounds.low[0], 0),
+                translateLength(bounds.high[1] - bounds.low[1], 1));
+  stroke();
+}
+
+template <typename Precision>
 void PainterImplementation<2, Precision>::drawText(const std::string& text,
                                                    dVector<2, Precision> coords) {
   cr->move_to(translatePoint(coords[0], 0),

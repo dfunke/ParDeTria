@@ -36,6 +36,9 @@ struct PartitionTreePainter
                 center = center * ((Precision)currentNumPoints/(1 + currentNumPoints))
                     + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
             }
+            
+            painter->drawBox(tree.bounds);
+            
             painter->setColor(tRGB(0, 0, 0));
             painter->drawText(std::to_string(currentNumPartitions++), center);
         } else {
