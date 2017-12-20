@@ -4,7 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <set>
-#include "../Partitioner.h"
+#include "SamplePartitioner.h"
 #include "Sampler.h"
 
 namespace LoadBalancing
@@ -68,7 +68,7 @@ namespace LoadBalancing
     }    
     
     template <uint D, typename Precision>
-    struct CenterDistancePointAssigningSamplePartitioner : public Partitioner<D, Precision>
+    struct CenterDistancePointAssigningSamplePartitioner : public SamplePartitioner<D, Precision>
     {
         CenterDistancePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler))
@@ -77,8 +77,8 @@ namespace LoadBalancing
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
-            auto sampling = mSampler(bounds, points, pointIds, mPartitionSize);
-            auto centers = findPartitionCenters(sampling.partition, mPartitionSize, sampling.points);
+            mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
+            auto centers = findPartitionCenters(mSampling.partition, mPartitionSize, mSampling.points);
             auto partitioning = makePartitioning<D, Precision>(centers, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
@@ -100,7 +100,12 @@ namespace LoadBalancing
             return "center-distance-point-assigning sample partitioner";
         }
         
+        const Sampling<D, Precision>& sampling() const {
+            return mSampling;
+        }
+        
     private:
+        Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
     };

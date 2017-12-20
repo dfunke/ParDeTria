@@ -4,7 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <set>
-#include "../Partitioner.h"
+#include "SamplePartitioner.h"
 #include "Sampler.h"
 
 namespace LoadBalancing
@@ -89,7 +89,7 @@ namespace LoadBalancing
     }
     
     template <uint D, typename Precision>
-    struct BinaryBoxEstimatingSamplePartitioner : public Partitioner<D, Precision>
+    struct BinaryBoxEstimatingSamplePartitioner : public SamplePartitioner<D, Precision>
     {
         BinaryBoxEstimatingSamplePartitioner(size_t minNumOfPoints, Sampler<D, Precision> sampler)
             : mPointsCutoff(minNumOfPoints), mSampler(std::move(sampler))
@@ -106,7 +106,12 @@ namespace LoadBalancing
             return "binary box-estimating sample partitioner";
         }
         
+        const Sampling<D, Precision>& sampling() const {
+            return mSampling;
+        }
+        
     private:
+        Sampling<D, Precision> mSampling;
         size_t mPointsCutoff;
         Sampler<D, Precision> mSampler;
         
@@ -117,9 +122,9 @@ namespace LoadBalancing
             PartitionTree<D, Precision> tree;
                 
             if(remainingRecursions > 0 && pointIds.size() >= mPointsCutoff) {
-                auto sampling = mSampler(bounds, points, pointIds, 2);
-                auto centerEdges = findPartitionCenterEdges(sampling.graph, sampling.partition);
-                auto centerPoints = makePartitionCenterPoints(centerEdges, sampling.points);
+                mSampling = mSampler(bounds, points, pointIds, 2);
+                auto centerEdges = findPartitionCenterEdges(mSampling.graph, mSampling.partition);
+                auto centerPoints = makePartitionCenterPoints(centerEdges, mSampling.points);
                 auto boundingBoxes = estimateBoundingBoxes(centerPoints, bounds);
                 auto pointIdsPair = seperatePointIds(points, pointIds, std::get<0>(boundingBoxes));
                 

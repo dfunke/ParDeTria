@@ -136,5 +136,15 @@ int main(int argc, char *argv[]) {
     Painter<2, double> partitionPainter(bounds);
     PartitionTreePainter<double> paintTree(partitionPainter, points);
     paintTree(partitioning);
+    
+    const auto* sp = dynamic_cast<const lb::SamplePartitioner<2, double>*>(partitioner.get());
+    if(sp){
+        partitionPainter.setColor(tRGB(0, 0, 0));
+        const auto& samplePoints = sp->sampling().points;
+        for(const auto& point : samplePoints) {
+            partitionPainter.draw(point);
+        }
+    }
+    
     partitionPainter.save(filename + "_partitioning");
 }

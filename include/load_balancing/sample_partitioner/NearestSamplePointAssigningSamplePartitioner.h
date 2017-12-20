@@ -5,14 +5,14 @@
 #include <algorithm>
 #include <set>
 #include <kdtree++/kdtree.hpp>
-#include "../Partitioner.h"
+#include "SamplePartitioner.h"
 #include "Sampler.h"
 
 namespace LoadBalancing
 { 
     
     template <uint D, typename Precision>
-    struct NearestSamplePointAssigningSamplePartitioner : public Partitioner<D, Precision>
+    struct NearestSamplePointAssigningSamplePartitioner : public SamplePartitioner<D, Precision>
     {
         NearestSamplePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler))
@@ -21,8 +21,8 @@ namespace LoadBalancing
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
-            auto sampling = mSampler(bounds, points, pointIds, mPartitionSize);
-            auto kdtree = buildKdTree(sampling.partition, sampling.points);
+            mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
+            auto kdtree = buildKdTree(mSampling.partition, mSampling.points);
             auto partitioning = makePartitioning(kdtree, mPartitionSize, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
@@ -42,6 +42,10 @@ namespace LoadBalancing
         std::string info() const override
         {
             return "nearest-sample-point-assigning sample partitioner";
+        }
+        
+        const Sampling<D, Precision>& sampling() const {
+            return mSampling;
         }
         
     private:
@@ -64,6 +68,7 @@ namespace LoadBalancing
         std::vector<Partition> makePartitioning(const Tree& tree, size_t numPartitions,
                               const dPoints<D, Precision>& points, const Point_Ids& pointIds);
          
+        Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
     };
