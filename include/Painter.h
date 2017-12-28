@@ -55,6 +55,13 @@ public:
     return *this;
   }
   
+  void drawLine(const dVector<2, Precision>& a, const dVector<2, Precision>& b) {
+#ifndef NDEBUG
+    if (ENABLED)
+      impl.drawLine(a, b);
+#endif
+  }
+
   void drawBox(const dBox<2, Precision>& bounds) {
     #ifndef NDEBUG
         if (ENABLED)

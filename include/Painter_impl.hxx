@@ -21,6 +21,7 @@ template <uint D, typename Precision> struct PainterImplementation;
 
 template <typename Precision> struct PainterImplementation<2, Precision> {
 public:
+  __attribute__((noinline)) void drawLine(const dVector<2, Precision>& a, const dVector<2, Precision>& b);
   __attribute__((noinline)) void drawBox(const dBox<2, Precision>& bounds);
   __attribute__((noinline)) void drawText(const std::string& text,
                                           dVector<2, Precision> coords);

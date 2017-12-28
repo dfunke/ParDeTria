@@ -7,6 +7,15 @@
 
 using Precision = double;
 constexpr uint D = 2;
+    
+const std::vector<tRGB> colors = {
+    {1.0, 0.0, 0.0},
+    {0.0, 1.0, 0.0},
+    {0.0, 0.0, 1.0},
+    {1.0, 1.0, 0.0},
+    {0.0, 1.0, 1.0},
+    {1.0, 0.0, 1.0},
+};
 
 template <typename Precision>
 struct PartitionTreePainter
@@ -17,7 +26,7 @@ struct PartitionTreePainter
     
     void operator()(const lb::PartitionTree<2, Precision>& tree) {
         size_t partitions = 0;
-        paintPartitionTree(tree, colors.begin(), partitions);
+        paintPartitionTree(tree, colors.cbegin(), partitions);
         
         painter->setColor(tRGB(0, 0, 0));
         for(const auto label : labels)
@@ -26,11 +35,11 @@ struct PartitionTreePainter
     }
     
 
-    std::vector<tRGB>::iterator paintPartitionTree(const lb::PartitionTree<2, Precision>& tree,
-                                                   std::vector<tRGB>::iterator current,
+    std::vector<tRGB>::const_iterator paintPartitionTree(const lb::PartitionTree<2, Precision>& tree,
+                                                   std::vector<tRGB>::const_iterator current,
                                                    size_t& currentNumPartitions) {
-        if(current == colors.end())
-            current = colors.begin();
+        if(current == colors.cend())
+            current = colors.cbegin();
         
         if(tree.isLeaf()) {
             auto color = *current++;
@@ -59,15 +68,6 @@ private:
     Painter<2, Precision>* painter;
     const dPoints<2, Precision>* points;
     std::vector<std::tuple<std::string, dVector<2, Precision>>> labels;
-    
-    std::vector<tRGB> colors = {
-        {1.0, 0.0, 0.0},
-        {0.0, 1.0, 0.0},
-        {0.0, 0.0, 1.0},
-        {1.0, 1.0, 0.0},
-        {0.0, 1.0, 1.0},
-        {1.0, 0.0, 1.0},
-    };
 };
 
 template <typename Precision, typename RandomIt>
@@ -142,18 +142,33 @@ int main(int argc, char *argv[]) {
     }
     pointsPainter.save(filename + "_points");
     
+    Painter<2, double> samplePainter(bounds);
+
     Painter<2, double> partitionPainter(bounds);
     PartitionTreePainter<double> paintTree(partitionPainter, points);
     paintTree(partitioning);
     
     const auto* sp = dynamic_cast<const lb::SamplePartitioner<2, double>*>(partitioner.get());
     if(sp){
+	const auto& sampling = sp->sampling();
+	const auto& graph = sampling.graph;
+	for(size_t i = 0; i < graph.nodeRecords.size() - 1; ++i) {
+	    for(int k = graph.nodeRecords[i]; k < graph.nodeRecords[i + 1]; ++k) {
+		size_t j = graph.adjacency[k];
+	    	samplePainter.setColor(tRGB(0, 0, 0));
+		samplePainter.drawLine(sampling.points[i].coords, sampling.points[j].coords);
+	    }
+	    samplePainter.setColor(colors[sampling.partition[i] % colors.size()]);
+	    samplePainter.draw(sampling.points[i]);
+	}
+
         partitionPainter.setColor(tRGB(0, 0, 0));
-        const auto& samplePoints = sp->sampling().points;
+        const auto& samplePoints = sampling.points;
         for(const auto& point : samplePoints) {
-            partitionPainter.draw(point);
+	    partitionPainter.draw(point);
         }
     }
     
+    samplePainter.save(filename + "_sampling");
     partitionPainter.save(filename + "_partitioning");
 }
