@@ -114,3 +114,10 @@ if(GTest_FOUND)
 	# add testing subdirectory
 	add_subdirectory(tests)
 endif()
+
+set(flags ${CMAKE_CXX_FLAGS})
+get_directory_property(dirs INCLUDE_DIRECTORIES)
+foreach (dir ${dirs})
+	set(flags "${flags} -I ${dir}")
+endforeach()
+file(WRITE cpp_flags.txt ${flags} "\n")
