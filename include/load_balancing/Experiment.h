@@ -67,17 +67,20 @@ namespace LoadBalancing
             << "            \"triangulatedPoints\": " << acc.numTriangulatedPoints << ",\n";
             if(setup.verify) {
                 out
-                << "            \"valid\": " << (verify(dt) ? "true" : "false") << "\n";
+                << "            \"valid\": " << (verify(dt) ? "true" : "false") << ",\n";
             }
+	    size_t partitionCount = 0;
             out
-	    << "            \"partitions\": [\n";
+	    << "            \"partitions\": [";
 	    for(size_t size : acc.partitionSizes) {
 		out
-		<< "                {\n"
-	        << "                      \"size\":" << size << "\n"
-		<< "                },\n";
+		<< (partitionCount == 0 ? "" : ",") << " {\n"
+	        << "                      \"size\": " << size << "\n"
+		<< "                }";
+		++partitionCount;
 	    }
 	    out
+	    << "\n"
 	    << "            ]\n"
             << "        }\n";
             
@@ -94,7 +97,7 @@ namespace LoadBalancing
             << "    \"partitioner\": \"" << partitionerName << "\",\n"
             << "    \"distribution\": \"" << setup.distribution << "\",\n"
             << "    \"numpoints\": " << setup.points.finite_size() << ",\n"
-            << "    \"results\": [\n";
+            << "    \"results\": [";
     }
     
     template<uint D, typename Precision>
