@@ -70,6 +70,15 @@ namespace LoadBalancing
                 << "            \"valid\": " << (verify(dt) ? "true" : "false") << "\n";
             }
             out
+	    << "            \"partitions\": [\n";
+	    for(size_t size : acc.partitionSizes) {
+		out
+		<< "                {\n"
+	        << "                      \"size\":" << size << "\n"
+		<< "                },\n";
+	    }
+	    out
+	    << "            ]\n"
             << "        }\n";
             
             ++runs;
