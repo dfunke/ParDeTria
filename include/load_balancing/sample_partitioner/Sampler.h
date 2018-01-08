@@ -4,6 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <limits>
+#include <vector>
 #include <kaHIP_interface.h>
 #include "CGALTriangulator.h"
 #include "load_balancing/VectorOperations.h"
@@ -23,7 +24,7 @@ namespace LoadBalancing
     {
         Graph graph;
         std::vector<int> partition;
-        dPoints<D, Precision> points;
+	std::vector<dVector<D, Precision>> points;
     };
     
     template <uint D, typename Precision>
@@ -47,7 +48,11 @@ namespace LoadBalancing
             auto simplices = triangulateSample(bounds, samplePoints);
             auto graph = makeGraph(simplices, samplePoints, lenSquared(bounds.low - bounds.high));
             auto partition = partitionGraph(graph, partitionSize, mRand);
-            return Sampling<D, Precision>{std::move(graph), std::move(partition), std::move(samplePoints)};
+	    std::vector<dVector<D, Precision>> samplePointVector;
+            for(auto id : sample) {
+                samplePointVector.push_back(points[id].coords);
+            }
+            return Sampling<D, Precision>{std::move(graph), std::move(partition), std::move(samplePointVector)};
         }
         
     private:
@@ -90,6 +95,9 @@ namespace LoadBalancing
         }
         
         static void sanitizeAdjacencyList(std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
+	    assert(adjacencyList.size() > 0);
+	    assert(adjacencyList[0].size() == 0);
+
             for(size_t i = 0; i < adjacencyList.size(); ++i) {
                 auto& adjacentNodes = adjacencyList[i];
                 
@@ -105,7 +113,16 @@ namespace LoadBalancing
                 assert(std::distance(lowerBound, upperBound) <= 1);
                 adjacentNodes.erase(lowerBound, upperBound);
                 
-            }
+		std::transform(begin(adjacentNodes), end(adjacentNodes), begin(adjacentNodes), [](const auto& node) -> auto { return std::make_pair(node.first - 1, node.second); });
+	    }
+	    adjacencyList.erase(adjacencyList.begin());
+
+    	    assert((std::all_of(begin(adjacencyList), end(adjacencyList), [&adjacencyList](const auto& adjacentNodes) -> bool {
+				    return std::all_of(begin(adjacentNodes), end(adjacentNodes), [&adjacencyList](const auto& node) -> bool {
+						    return node.first < adjacencyList.size();
+						    });
+				    })));
+            
         }
 
         static Graph adjacencyListToGraph(const std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {

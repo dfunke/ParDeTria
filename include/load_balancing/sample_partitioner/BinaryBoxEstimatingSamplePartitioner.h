@@ -26,12 +26,12 @@ namespace LoadBalancing
     
     template <uint D, typename Precision>
     std::vector<dPoint<D, Precision>> makePartitionCenterPoints(const std::vector<std::tuple<size_t, size_t>>& centerEdges,
-                                                                const dPoints<D, Precision>& samplePoints) {
+                                                                const std::vector<dVector<D, Precision>>& samplePoints) {
         std::vector<dPoint<D, Precision>> result;
         for(const auto& edge : centerEdges) {
             const auto& point1 = samplePoints[std::get<0>(edge)];
             const auto& point2 = samplePoints[std::get<1>(edge)];
-            result.push_back((point1.coords + point2.coords) * 0.5);
+            result.push_back((point1 + point2) * 0.5);
         }
         return result;
     }
@@ -124,7 +124,7 @@ namespace LoadBalancing
             if(remainingRecursions > 0 && pointIds.size() >= mPointsCutoff) {
                 mSampling = mSampler(bounds, points, pointIds, 2);
                 auto centerEdges = findPartitionCenterEdges(mSampling.graph, mSampling.partition);
-                auto centerPoints = makePartitionCenterPoints(centerEdges, mSampling.points);
+                auto centerPoints = makePartitionCenterPoints<D, Precision>(centerEdges, mSampling.points);
                 auto boundingBoxes = estimateBoundingBoxes(centerPoints, bounds);
                 auto pointIdsPair = seperatePointIds(points, pointIds, std::get<0>(boundingBoxes));
                 

@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
 	    for(int k = graph.nodeRecords[i]; k < graph.nodeRecords[i + 1]; ++k) {
 		size_t j = graph.adjacency[k];
 	    	samplePainter.setColor(tRGB(0, 0, 0));
-		samplePainter.drawLine(sampling.points[i].coords, sampling.points[j].coords);
+		samplePainter.drawLine(sampling.points[i], sampling.points[j]);
 	    }
 	    samplePainter.setColor(colors[sampling.partition[i] % colors.size()]);
 	    samplePainter.draw(sampling.points[i]);

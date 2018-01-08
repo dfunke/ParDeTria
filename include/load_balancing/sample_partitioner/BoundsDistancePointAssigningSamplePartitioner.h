@@ -13,12 +13,12 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     std::vector<dBox<D, Precision>> makeBoundingBoxes(const std::vector<int>& partitioning,
                                                       size_t partitions,
-                                                      const dPoints<D, Precision>& samplePoints) {
+                                                      const std::vector<dVector<D, Precision>>& samplePoints) {
         
         std::vector<std::vector<dVector<D, Precision>>> samplePartitions(partitions);
         for(size_t i = 0; i < partitioning.size(); ++i) {
             int partition = partitioning[i];
-            samplePartitions[partition].push_back(samplePoints[i].coords);
+            samplePartitions[partition].push_back(samplePoints[i]);
         }
         
         std::vector<dBox<D, Precision>> result(partitions);
@@ -86,7 +86,7 @@ namespace LoadBalancing
                                         const Point_Ids& pointIds) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
-            auto boxes = makeBoundingBoxes(mSampling.partition, mPartitionSize, mSampling.points);
+            auto boxes = makeBoundingBoxes<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
             auto partitioning = makePartitioningFromBoxes<D, Precision>(boxes, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;

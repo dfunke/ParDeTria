@@ -12,14 +12,14 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     std::vector<dVector<D, Precision>> findPartitionCenters(const std::vector<int>& partitioning,
                                                             size_t partitions,
-                                                            const dPoints<D, Precision>& samplePoints) {
+                                                            const std::vector<dVector<D, Precision>>& samplePoints) {
         std::vector<size_t> numPoints(partitions);
         std::vector<dVector<D, Precision>> result(partitions);        
         for(size_t i = 0; i < partitioning.size(); ++i) {
             int partition = partitioning[i];
             ++numPoints[partition];
             result[partition] = result[partition] * ((Precision)numPoints[partition]/(1 + numPoints[partition]))
-                              + samplePoints[i].coords * ((Precision)1/(1 + numPoints[partition]));
+                              + samplePoints[i] * ((Precision)1/(1 + numPoints[partition]));
         }
         
         std::transform(result.begin(), result.end(), numPoints.begin(), result.begin(), [](const dVector<D, Precision>& v, size_t points) {
@@ -78,7 +78,7 @@ namespace LoadBalancing
                                         const Point_Ids& pointIds) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
-            auto centers = findPartitionCenters(mSampling.partition, mPartitionSize, mSampling.points);
+            auto centers = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
             auto partitioning = makePartitioning<D, Precision>(centers, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
