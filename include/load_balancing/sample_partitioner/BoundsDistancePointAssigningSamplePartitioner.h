@@ -13,7 +13,7 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     std::vector<dBox<D, Precision>> makeBoundingBoxes(const std::vector<int>& partitioning,
                                                       size_t partitions,
-                                                      const dPoints<D, Precision>& samplePoints) {
+                                                      const std::vector<dPoint<D, Precision>>& samplePoints) {
         
         std::vector<std::vector<dVector<D, Precision>>> samplePartitions(partitions);
         for(size_t i = 0; i < partitioning.size(); ++i) {

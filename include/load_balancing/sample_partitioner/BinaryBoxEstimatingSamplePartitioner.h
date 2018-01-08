@@ -26,7 +26,7 @@ namespace LoadBalancing
     
     template <uint D, typename Precision>
     std::vector<dPoint<D, Precision>> makePartitionCenterPoints(const std::vector<std::tuple<size_t, size_t>>& centerEdges,
-                                                                const dPoints<D, Precision>& samplePoints) {
+                                                                const std::vector<dPoint<D, Precision>>& samplePoints) {
         std::vector<dPoint<D, Precision>> result;
         for(const auto& edge : centerEdges) {
             const auto& point1 = samplePoints[std::get<0>(edge)];
