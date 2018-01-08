@@ -64,7 +64,7 @@ namespace LoadBalancing
             dBox<D, Precision> bounds;
         };
         using Tree = KDTree::KDTree<D, AssignedVector>;
-        Tree buildKdTree(const std::vector<int>& partitioning, const std::vector<dPoint<D, Precision>>& samplePoints);
+        Tree buildKdTree(const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints);
         std::vector<Partition> makePartitioning(const Tree& tree, size_t numPartitions,
                               const dPoints<D, Precision>& points, const Point_Ids& pointIds);
          
@@ -76,12 +76,12 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     typename NearestSamplePointAssigningSamplePartitioner<D, Precision>::Tree
    NearestSamplePointAssigningSamplePartitioner<D, Precision>::buildKdTree(
-        const std::vector<int>& partitioning, const std::vector<dPoint<D, Precision>>& samplePoints) {
+        const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints) {
         
         Tree tree;
         for(size_t i = 0; i < partitioning.size(); ++i) {
             int partition = partitioning[i];
-            tree.insert({samplePoints[i].coords, partition});
+            tree.insert({samplePoints[i], partition});
         }
         return tree;
     }

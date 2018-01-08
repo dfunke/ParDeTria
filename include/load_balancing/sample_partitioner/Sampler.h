@@ -21,7 +21,7 @@ namespace LoadBalancing
     {
         Graph graph;
         std::vector<int> partition;
-	std::vector<dPoint<D, Precision>> points;
+	std::vector<dVector<D, Precision>> points;
     };
     
     template <uint D, typename Precision>
@@ -45,9 +45,9 @@ namespace LoadBalancing
             auto simplices = triangulateSample(bounds, samplePoints);
             auto graph = makeGraph(simplices);
             auto partition = partitionGraph(graph, partitionSize, mRand);
-	    std::vector<dPoint<D, Precision>> samplePointVector;
+	    std::vector<dVector<D, Precision>> samplePointVector;
             for(auto id : sample) {
-                samplePointVector.push_back(points[id]);
+                samplePointVector.push_back(points[id].coords);
             }
             return Sampling<D, Precision>{std::move(graph), std::move(partition), std::move(samplePointVector)};
         }
