@@ -16,6 +16,7 @@ target_link_libraries(LBExperiments
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
 
+if(PAINT)
 add_executable(LBPainting
   LB_Painting.cpp
 )
@@ -33,7 +34,7 @@ target_link_libraries(LBPainting
   ${Boost_LIBRARIES}
   ${TBB_MALLOC_PROXY_LIBRARIES}
 )
-  
+endif()  
 
 add_executable (DACTest
   DAC_Test.cpp
