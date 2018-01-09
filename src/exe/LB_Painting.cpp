@@ -167,6 +167,14 @@ int main(int argc, char *argv[]) {
         for(const auto& point : samplePoints) {
 	    partitionPainter.draw(point);
         }
+
+	const auto* cdpasp = dynamic_cast<const lb::CenterDistancePointAssigningSamplePartitioner<2, double>*>(sp);
+	if(cdpasp) {
+		partitionPainter.setColor(tRGB(0.5, 0.5, 0.5));
+		for(const auto& point : cdpasp->partitionCenters()) {
+		    partitionPainter.draw(point);
+		}
+	}
     }
     
     samplePainter.save(filename + "_sampling");

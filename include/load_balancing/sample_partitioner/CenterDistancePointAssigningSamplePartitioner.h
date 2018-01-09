@@ -78,8 +78,8 @@ namespace LoadBalancing
                                         const Point_Ids& pointIds) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
-            auto centers = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
-            auto partitioning = makePartitioning<D, Precision>(centers, points, pointIds);
+            mPartitionCenters = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
+            auto partitioning = makePartitioning<D, Precision>(mPartitionCenters, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto partition) {
@@ -103,10 +103,15 @@ namespace LoadBalancing
         const Sampling<D, Precision>& sampling() const {
             return mSampling;
         }
+
+	const std::vector<dVector<D, Precision>>& partitionCenters() const {
+	    return mPartitionCenters;
+	}
         
     private:
         Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
+	std::vector<dVector<D, Precision>> mPartitionCenters;
     };
 }
