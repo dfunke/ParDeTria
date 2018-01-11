@@ -1,12 +1,16 @@
 #pragma once
+#include <cstdlib>
+#include <iostream>
+#include <vector>
+#include <tuple>
 #include "TimingMonitor.h"
-#include <chrono>
 
 namespace LoadBalancing
 {
-    struct ComprehensiveAccumulator : public TimingAccumulator {
-        size_t numTriangulatedPoints = 0;
-	std::vector<size_t> partitionSizes;
+	struct ComprehensiveAccumulator : public TimingAccumulator {
+		size_t numTriangulatedPoints = 0;
+		std::vector<size_t> partitionSizes;
+		std::vector<std::pair<size_t, std::string>> baseTriangulations;
     };
     
     struct ComprehensiveMonitor : public TimingMonitor
@@ -16,8 +20,9 @@ namespace LoadBalancing
             compAcc(&accumulator) {
         }
         
-        void registerBaseTriangulation(size_t numPoints, const std::string& /*provenance*/) {
+        void registerBaseTriangulation(size_t numPoints, const std::string& provenance) {
             compAcc->numTriangulatedPoints += numPoints;
+            compAcc->baseTriangulations.emplace_back(numPoints, provenance);
         };
 
 	template <uint D, typename Precision>

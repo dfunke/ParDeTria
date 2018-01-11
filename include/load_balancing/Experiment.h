@@ -81,10 +81,25 @@ namespace LoadBalancing
 	    }
 	    out
 	    << "\n"
+	    << "            ],\n";
+
+		out
+	    << "            \"basetriangulations\": [";
+		size_t baseCount = 0;
+		for(const auto& base : acc.baseTriangulations) {
+			out
+			<<  (baseCount == 0 ? "" : ",") << " {\n"
+			<< "                        \"points\": " << base.first << "\n"
+			<< "                        \"provenance\": " << base.second << "\n"
+			<< "                }";
+			++baseCount;
+		}
+	    out
+	    << "\n"
 	    << "            ]\n"
-            << "        }\n";
+        << "        }\n";
             
-            ++runs;
+	    ++runs;
     }
     
     template<uint D, typename Precision>
