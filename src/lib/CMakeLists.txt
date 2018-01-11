@@ -1,6 +1,6 @@
 # CMake script for src directory
 
-if(PAINTER)
+if(PAINT)
 add_library (Painter
   Painter.cpp
   Painter_2.cxx
