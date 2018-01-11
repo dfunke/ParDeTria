@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
+#include <mutex>
 #include "TimingMonitor.h"
 
 namespace LoadBalancing
@@ -11,6 +12,8 @@ namespace LoadBalancing
 		size_t numTriangulatedPoints = 0;
 		std::vector<size_t> partitionSizes;
 		std::vector<std::pair<size_t, std::string>> baseTriangulations;
+		
+		std::mutex mutex;
     };
     
     struct ComprehensiveMonitor : public TimingMonitor
@@ -21,29 +24,33 @@ namespace LoadBalancing
         }
         
         void registerBaseTriangulation(size_t numPoints, const std::string& provenance) {
+	        std::lock_guard<std::mutex> lock(compAcc->mutex);
+	        
             compAcc->numTriangulatedPoints += numPoints;
             compAcc->baseTriangulations.emplace_back(numPoints, provenance);
         };
 
-	template <uint D, typename Precision>
-	void registerPartition(const PartitionTree<D, Precision>& tree) {
-	    registerPartitionRecursively(tree);
-	}
-        
+        template <uint D, typename Precision>
+        void registerPartition(const PartitionTree<D, Precision>& tree) {
+	        std::lock_guard<std::mutex> lock(compAcc->mutex);
+	        
+	        registerPartitionRecursively(tree);
+        }
+		
     private:
         ComprehensiveAccumulator* compAcc;
 
-	template <uint D, typename Precision>
-	void registerPartitionRecursively(const PartitionTree<D, Precision>& tree) {
-            if(tree.isLeaf()) {
-                const auto& pointIds = std::get<Point_Ids>(tree.attachment);
-	        compAcc->partitionSizes.push_back(pointIds.size());
-            } else {
-                const auto& children = std::get<typename lb::PartitionTree<D, Precision>::ChildContainer>(tree.attachment);
-                for(const auto& child : children) {
-                    registerPartitionRecursively(child);
-                }
-	    }
+        template <uint D, typename Precision>
+		void registerPartitionRecursively(const PartitionTree<D, Precision>& tree) {
+				if(tree.isLeaf()) {
+					const auto& pointIds = std::get<Point_Ids>(tree.attachment);
+				compAcc->partitionSizes.push_back(pointIds.size());
+				} else {
+					const auto& children = std::get<typename lb::PartitionTree<D, Precision>::ChildContainer>(tree.attachment);
+					for(const auto& child : children) {
+						registerPartitionRecursively(child);
+					}
+			}
         }
     };
 }
