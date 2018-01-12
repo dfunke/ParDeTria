@@ -12,6 +12,7 @@ namespace LoadBalancing
 		size_t numTriangulatedPoints = 0;
 		std::vector<size_t> partitionSizes;
 		std::vector<std::pair<size_t, std::string>> baseTriangulations;
+		size_t sampleSize = 0;
 		
 		std::mutex mutex;
     };
@@ -33,6 +34,10 @@ namespace LoadBalancing
         template <uint D, typename Precision>
         void registerPartition(const PartitionTree<D, Precision>& tree, const Partitioner<D, Precision>& partitioner) {
 	        registerPartitionRecursively(tree);
+	        auto sp = dynamic_cast<const SamplePartitioner<D, Precision>*>(&partitioner);
+	        if(sp) {
+		        compAcc->sampleSize = sp->sampling().partition.size();
+			}
         }
 		
     private:

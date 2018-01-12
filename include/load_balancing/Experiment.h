@@ -64,7 +64,8 @@ namespace LoadBalancing
             << (runs == 0 ? "" : ",") << " {\n"
             << "            \"partitiontime\": " << acc.partitionTime.count() << ",\n"
             << "            \"triangulationtime\": " << acc.triangulationTime.count() << ",\n"
-            << "            \"triangulatedPoints\": " << acc.numTriangulatedPoints << ",\n";
+            << "            \"triangulatedPoints\": " << acc.numTriangulatedPoints << ",\n"
+            << "            \"sampleSize\": " << acc.sampleSize << ",\n";
             if(setup.verify) {
                 out
                 << "            \"valid\": " << (verify(dt) ? "true" : "false") << ",\n";
