@@ -31,9 +31,7 @@ namespace LoadBalancing
         };
 
         template <uint D, typename Precision>
-        void registerPartition(const PartitionTree<D, Precision>& tree) {
-	        std::lock_guard<std::mutex> lock(compAcc->mutex);
-	        
+        void registerPartition(const PartitionTree<D, Precision>& tree, const Partitioner<D, Precision>& partitioner) {
 	        registerPartitionRecursively(tree);
         }
 		
