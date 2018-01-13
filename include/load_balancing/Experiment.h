@@ -90,8 +90,8 @@ namespace LoadBalancing
 		for(const auto& base : acc.baseTriangulations) {
 			out
 			<<  (baseCount == 0 ? "" : ",") << " {\n"
-			<< "                        \"points\": " << base.first << "\n"
-			<< "                        \"provenance\": " << base.second << "\n"
+			<< "                        \"points\": " << base.first << ",\n"
+			<< "                        \"provenance\": \"" << base.second << "\"\n"
 			<< "                }";
 			++baseCount;
 		}
