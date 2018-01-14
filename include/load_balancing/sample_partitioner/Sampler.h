@@ -3,17 +3,39 @@
 #include <cassert>
 #include <random>
 #include <algorithm>
+#include <limits>
 #include <vector>
 #include <kaHIP_interface.h>
 #include "CGALTriangulator.h"
 #include "load_balancing/VectorOperations.h"
 #include "load_balancing/BoxUtils.h"
+#include "load_balancing/VectorOperations.h"
 
 namespace LoadBalancing
 {
+	template <typename In, typename Out>
+	struct Mapper
+	{
+		Mapper(In minIn, In maxIn, Out minOut, Out maxOut)
+			: minIn(minIn), maxIn(maxIn), minOut(minOut), maxOut(maxOut)
+		{
+			assert(minIn < maxIn);
+		}
+
+		Out operator()(In x) {
+			x = std::min(std::max(x, minIn), maxIn);
+			return (x - minIn) * (maxOut - minOut)/(maxIn - minIn) + minOut;
+		}
+		
+	private:
+		In minIn, maxIn;
+		Out minOut, maxOut;
+	};
+	
     struct Graph {
         std::vector<int> nodeRecords;
         std::vector<int> adjacency;
+	std::vector<int> edgeWeights;
     };
     
     template <uint D, typename Precision>
@@ -21,15 +43,24 @@ namespace LoadBalancing
     {
         Graph graph;
         std::vector<int> partition;
-	std::vector<dVector<D, Precision>> points;
+        std::vector<dVector<D, Precision>> points;
     };
     
     template <uint D, typename Precision>
     struct Sampler
     {
-        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize)
-            : mRand(sampleSeed), mSampleSize(std::move(sampleSize))
+	    /**
+	     * Precondition for edgeWeight:
+	     *   - For all (Precision) x, x >= 0: edgeWeight(x) is defined
+	     *   - edgeWeight is strictly monotonic
+	     */
+        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, std::function<int(Precision)> edgeWeight)
+            : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(false), mEdgeWeight(std::move(edgeWeight))
             {}
+        
+        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize)
+            : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(true)
+        {}
         
         auto operator()(const dBox<D, Precision>& bounds,
                                     const dPoints<D, Precision>& points,
@@ -43,7 +74,7 @@ namespace LoadBalancing
                 samplePoints.emplace_back(points[id]);
             }
             auto simplices = triangulateSample(bounds, samplePoints);
-            auto graph = makeGraph(simplices);
+            auto graph = makeGraph(simplices, samplePoints, lenSquared(bounds.low - bounds.high));
             auto partition = partitionGraph(graph, partitionSize, mRand);
 	    std::vector<dVector<D, Precision>> samplePointVector;
             for(auto id : sample) {
@@ -55,9 +86,11 @@ namespace LoadBalancing
     private:
         std::mt19937 mRand;
         std::function<size_t(size_t)>  mSampleSize;
+        bool mUniformEdges;
+        std::function<Precision(int)> mEdgeWeight;
         
         template <typename Generator_t>
-        static std::vector<tIdType> generateSample(size_t sampleSize, size_t pointCloudSize, size_t offset, Generator_t& rand) {
+        std::vector<tIdType> generateSample(size_t sampleSize, size_t pointCloudSize, size_t offset, Generator_t& rand) {
             std::uniform_int_distribution<size_t> dist(0, pointCloudSize - 1);
             
             std::set<tIdType> sample;
@@ -71,7 +104,7 @@ namespace LoadBalancing
         }
         
         template <typename Generator_t>
-        static std::vector<tIdType> generateSample(size_t sampleSize, const Point_Ids& pointIds, Generator_t& rand) {
+        std::vector<tIdType> generateSample(size_t sampleSize, const Point_Ids& pointIds, Generator_t& rand) {
             
             std::vector<tIdType> result;
             std::sample(pointIds.begin(), pointIds.end(), std::back_inserter(result), sampleSize, rand);
@@ -83,7 +116,7 @@ namespace LoadBalancing
             return result;
         }
 
-        static dSimplices<D, Precision> triangulateSample(const dBox<D, Precision>& bounds,
+        dSimplices<D, Precision> triangulateSample(const dBox<D, Precision>& bounds,
                                                     const dPoints<D, Precision>& samplePoints) {
             
             auto sp = samplePoints;
@@ -91,34 +124,38 @@ namespace LoadBalancing
             return triangulator.triangulate();
         }
         
-        static void sanitizeAdjacencyList(std::vector<std::vector<size_t>>& adjacencyList) {
-	    assert(adjacencyList.size() > 0);
-	    assert(adjacencyList[0].size() == 0);
+        void sanitizeAdjacencyList(std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
+	    	assert(adjacencyList.size() > 0);
+			assert(adjacencyList[0].size() == 0);
 
             for(size_t i = 0; i < adjacencyList.size(); ++i) {
                 auto& adjacentNodes = adjacencyList[i];
                 
                 std::sort(begin(adjacentNodes), end(adjacentNodes));
                 adjacentNodes.erase(std::unique(begin(adjacentNodes), end(adjacentNodes)), end(adjacentNodes));
+
+		auto compare = [](const std::pair<size_t, int>& left, const std::pair<size_t, int>& right) -> bool {
+		   return left.first < right.first;
+		};
                 
-                auto lowerBound = std::lower_bound(begin(adjacentNodes), end(adjacentNodes), i);
-                auto upperBound = std::upper_bound(begin(adjacentNodes), end(adjacentNodes), i);
+                auto lowerBound = std::lower_bound(begin(adjacentNodes), end(adjacentNodes), std::make_pair(i, 0), compare);
+                auto upperBound = std::upper_bound(begin(adjacentNodes), end(adjacentNodes), std::make_pair(i, 0), compare);
                 assert(std::distance(lowerBound, upperBound) <= 1);
                 adjacentNodes.erase(lowerBound, upperBound);
                 
-		std::transform(begin(adjacentNodes), end(adjacentNodes), begin(adjacentNodes), [](size_t id) -> size_t { return id - 1; });
+		std::transform(begin(adjacentNodes), end(adjacentNodes), begin(adjacentNodes), [](const auto& node) -> auto { return std::make_pair(node.first - 1, node.second); });
 	    }
 	    adjacencyList.erase(adjacencyList.begin());
 
     	    assert((std::all_of(begin(adjacencyList), end(adjacencyList), [&adjacencyList](const auto& adjacentNodes) -> bool {
-				    return std::all_of(begin(adjacentNodes), end(adjacentNodes), [&adjacencyList](size_t id) -> bool {
-						    return id < adjacencyList.size();
+				    return std::all_of(begin(adjacentNodes), end(adjacentNodes), [&adjacencyList](const auto& node) -> bool {
+						    return node.first < adjacencyList.size();
 						    });
 				    })));
             
         }
 
-        static Graph adjacencyListToGraph(const std::vector<std::vector<size_t>>& adjacencyList) {
+        Graph adjacencyListToGraph(const std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
             Graph result;
             
             int currentRecordBegin = 0;
@@ -127,7 +164,8 @@ namespace LoadBalancing
                     currentRecordBegin += adjacentPoints.size();
                     
                 for(auto adjacentPoint : adjacentPoints) {
-                    result.adjacency.push_back(adjacentPoint);
+                    result.adjacency.push_back(adjacentPoint.first);
+				    result.edgeWeights.push_back(adjacentPoint.second);
                 }
             }
             result.nodeRecords.push_back(result.adjacency.size());
@@ -135,19 +173,26 @@ namespace LoadBalancing
             return result;
         }
 
-        static Graph makeGraph(const dSimplices<D, Precision>& simplices) {
-            std::vector<std::vector<size_t>> adjacencyList;
+        Graph makeGraph(const dSimplices<D, Precision>& simplices, const dPoints<D, Precision>& samplePoints,
+			Precision maxDistSquared) {
+	        Mapper<Precision, int> map(0.0, maxDistSquared, 1, std::numeric_limits<int>::max());
+
+            std::vector<std::vector<std::pair<size_t, int>>> adjacencyList;
             for(auto simplex : simplices) {
                 for(auto pointId : simplex.vertices) {
                     if(dPoint<D, Precision>::isFinite(pointId)) {
                         if(pointId >= adjacencyList.size()) {
                             adjacencyList.resize(pointId + 1);
                         }
-                        std::copy_if(simplex.vertices.begin(), simplex.vertices.end(),
-                                    std::back_inserter(adjacencyList[pointId]), 
-                                    [](tIdType id) -> bool {
-                                        return dPoint<D, Precision>::isFinite(id);
-                                    });
+						for(auto id : simplex.vertices){
+							if(dPoint<D, Precision>::isFinite(id)) {
+								const Precision distSquared = lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
+								std::pair<tIdType, int> edge;
+								edge.first = id;
+								edge.second = mUniformEdges ? 1 : map(mEdgeWeight(distSquared));
+								adjacencyList[pointId].push_back(edge);
+							}
+						}
                     }
                 }
             }
@@ -156,7 +201,7 @@ namespace LoadBalancing
         }
 
         template <typename Generator_t>
-        static std::vector<int> partitionGraph(Graph& graph, size_t numPartitions, Generator_t& rand) {
+        std::vector<int> partitionGraph(Graph& graph, size_t numPartitions, Generator_t& rand) {
             assert(numPartitions <= std::numeric_limits<int>::max());
             assert(graph.nodeRecords.size() - 1 <= std::numeric_limits<int>::max());
             
@@ -169,7 +214,7 @@ namespace LoadBalancing
             kaffpa(&n,
                     nullptr,
                     graph.nodeRecords.data(),
-                    nullptr,
+                    mUniformEdges ? nullptr : graph.edgeWeights.data(),
                     graph.adjacency.data(),
                     &nparts,
                     &imbalance,
