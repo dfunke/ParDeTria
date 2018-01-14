@@ -1,11 +1,13 @@
 # CMake script for src directory
 
+if(PAINT)
 add_library (Painter
   Painter.cpp
   Painter_2.cxx
 )
 
 target_link_libraries(Painter Geometry Logging ${Cairomm_LIBRARIES})
+endif()
 
 add_library (Geometry
   Geometry.cpp

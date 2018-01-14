@@ -13,18 +13,14 @@ namespace LoadBalancing
     std::vector<dVector<D, Precision>> findPartitionCenters(const std::vector<int>& partitioning,
                                                             size_t partitions,
                                                             const std::vector<dVector<D, Precision>>& samplePoints) {
-        std::vector<size_t> numPoints(partitions);
-        std::vector<dVector<D, Precision>> result(partitions);        
+        std::vector<size_t> numPoints(partitions, 0);
+        std::vector<dVector<D, Precision>> result(partitions, dVector<D, Precision>());
         for(size_t i = 0; i < partitioning.size(); ++i) {
             int partition = partitioning[i];
             ++numPoints[partition];
             result[partition] = result[partition] * ((Precision)numPoints[partition]/(1 + numPoints[partition]))
                               + samplePoints[i] * ((Precision)1/(1 + numPoints[partition]));
         }
-        
-        std::transform(result.begin(), result.end(), numPoints.begin(), result.begin(), [](const dVector<D, Precision>& v, size_t points) {
-            return v * (1.0/points);
-        });
         return result;
     }
     
@@ -78,8 +74,8 @@ namespace LoadBalancing
                                         const Point_Ids& pointIds) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
-            auto centers = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
-            auto partitioning = makePartitioning<D, Precision>(centers, points, pointIds);
+            mPartitionCenters = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
+            auto partitioning = makePartitioning<D, Precision>(mPartitionCenters, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto partition) {
@@ -103,10 +99,15 @@ namespace LoadBalancing
         const Sampling<D, Precision>& sampling() const {
             return mSampling;
         }
+
+	const std::vector<dVector<D, Precision>>& partitionCenters() const {
+	    return mPartitionCenters;
+	}
         
     private:
         Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
+	std::vector<dVector<D, Precision>> mPartitionCenters;
     };
 }

@@ -520,7 +520,7 @@ namespace LoadBalancing
         mMonitor.registerPartitionStart();
         PartitionTree<D, Precision> tree = mPartitioner->partition(bounds, Triangulator<D, Precision>::points, partitionPoints);
         mMonitor.registerPartitionEnd();
-	mMonitor.registerPartition(tree);
+        mMonitor.registerPartition(tree, *mPartitioner);
         
         mMonitor.registerTriangulationStart();
         auto triangulation = recursiveTriangulate(tree, provenance);

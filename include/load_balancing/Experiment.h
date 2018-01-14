@@ -64,7 +64,8 @@ namespace LoadBalancing
             << (runs == 0 ? "" : ",") << " {\n"
             << "            \"partitiontime\": " << acc.partitionTime.count() << ",\n"
             << "            \"triangulationtime\": " << acc.triangulationTime.count() << ",\n"
-            << "            \"triangulatedPoints\": " << acc.numTriangulatedPoints << ",\n";
+            << "            \"triangulatedPoints\": " << acc.numTriangulatedPoints << ",\n"
+            << "            \"sampleSize\": " << acc.sampleSize << ",\n";
             if(setup.verify) {
                 out
                 << "            \"valid\": " << (verify(dt) ? "true" : "false") << ",\n";
@@ -81,10 +82,25 @@ namespace LoadBalancing
 	    }
 	    out
 	    << "\n"
+	    << "            ],\n";
+
+		out
+	    << "            \"basetriangulations\": [";
+		size_t baseCount = 0;
+		for(const auto& base : acc.baseTriangulations) {
+			out
+			<<  (baseCount == 0 ? "" : ",") << " {\n"
+			<< "                        \"points\": " << base.first << ",\n"
+			<< "                        \"provenance\": \"" << base.second << "\"\n"
+			<< "                }";
+			++baseCount;
+		}
+	    out
+	    << "\n"
 	    << "            ]\n"
-            << "        }\n";
+        << "        }\n";
             
-            ++runs;
+	    ++runs;
     }
     
     template<uint D, typename Precision>

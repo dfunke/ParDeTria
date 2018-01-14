@@ -58,7 +58,15 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const po::variable
 template <uint D, typename Precision, typename RandomGenerator>
 std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::variables_map& vm, uint threads, RandomGenerator& rand) {
     std::string partitionerName = vm["partitioner"].as<std::string>();
-    lb::Sampler<D, Precision> sampler(rand(), [](size_t n) -> size_t { return std::sqrt(n); });
+
+	std::function<size_t(size_t)> f;
+	if(vm.count("sample-size") == 0) {
+		f = [](size_t n) -> size_t { return std::sqrt(n); };
+	} else {
+		f = [c = vm["sample-size"].as<size_t>()](size_t /*n*/) -> size_t { return c; };
+	}
+    lb::Sampler<D, Precision> sampler(rand(), f);
+    
     std::unique_ptr<lb::Partitioner<D, Precision>> partitioner = nullptr;
     if("binary-besp" == partitionerName){
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
@@ -97,7 +105,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("partitioner", po::value<std::string>());
     cCommandLine.add_options()("distribution", po::value<std::string>());
     //cCommandLine.add_options()("points", po::value(&pointFile), "load points from file");
-    //cCommandLine.add_options()("sample-size", po::value<uint>());
+    cCommandLine.add_options()("sample-size", po::value<size_t>());
     cCommandLine.add_options()("num-bubbles", po::value<uint>());
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
