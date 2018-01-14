@@ -65,7 +65,18 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 	} else {
 		f = [c = vm["sample-size"].as<size_t>()](size_t /*n*/) -> size_t { return c; };
 	}
-    lb::Sampler<D, Precision> sampler(rand(), f);
+
+	bool uniformEdges = vm.count("edge-weights") == 0 || "uniform" == vm["edge-weights"].as<std::string>();
+	std::function<Precision(Precision)> weight;
+	if(!uniformEdges) {
+		if("squared" == vm["edge-weights"].as<std::string>()) {
+			weight = [](Precision d) -> Precision { return 1/(d + 0.0000001); };
+		} else if("linear" == vm["edge-weights"].as<std::string>()) {
+			weight = [](Precision d) -> Precision { return 1/std::sqrt(d + 0.0000001); };
+		}
+	}
+
+    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f) : lb::Sampler<D, Precision>(rand(), f, weight);
     
     std::unique_ptr<lb::Partitioner<D, Precision>> partitioner = nullptr;
     if("binary-besp" == partitionerName){
@@ -106,6 +117,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("distribution", po::value<std::string>());
     //cCommandLine.add_options()("points", po::value(&pointFile), "load points from file");
     cCommandLine.add_options()("sample-size", po::value<size_t>());
+    cCommandLine.add_options()("edge-weights", po::value<std::string>());
     cCommandLine.add_options()("num-bubbles", po::value<uint>());
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
