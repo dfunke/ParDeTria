@@ -8,3 +8,6 @@ add_subdirectory(lib)
 
 # build executables
 add_subdirectory(exe)
+
+#build tests
+add_subdirectory(test)
