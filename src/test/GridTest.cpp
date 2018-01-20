@@ -13,7 +13,7 @@ std::ostream& out(std::ostream& stream, const dIndex<D, IndexPrecision>& i)
 }
 
 template <uint D, typename IndexPrecision>
-bool test(const dIndex<D, IndexPrecision>& real, const dIndex<D, IndexPrecision>& expected)
+bool testEqual(const dIndex<D, IndexPrecision>& real, const dIndex<D, IndexPrecision>& expected)
 {
 	bool result = real == expected;
 	if(!result) {
@@ -24,6 +24,38 @@ bool test(const dIndex<D, IndexPrecision>& real, const dIndex<D, IndexPrecision>
 	return result;
 }
 
+template <uint D, typename IndexPrecision>
+bool testEqualSets(const std::vector<dIndex<D, IndexPrecision>>& real, const std::vector<dIndex<D, IndexPrecision>>& expected) {
+	std::vector<dIndex<D, IndexPrecision>> superfluous;
+	std::copy_if(real.begin(), real.end(), std::back_inserter(superfluous), [&expected] (const auto& i) -> bool {
+	                                 return std::find(expected.begin(), expected.end(), i) == expected.end();
+									 });
+
+	std::vector<dIndex<D, IndexPrecision>> missing;
+	std::copy_if(expected.begin(), expected.end(), std::back_inserter(missing), [&real] (const auto& i) -> bool {
+	                                 return std::find(real.begin(), real.end(), i) == real.end();
+									 });
+
+	bool result = missing.empty() && superfluous.empty();
+	if(!result) {
+		std::cout << "Error:\n";
+		for(const auto& i : missing) {
+			out<D, IndexPrecision>(std::cout << "\tmissing: ", i) << "\n";
+		}
+		
+		for(const auto& i : superfluous) {
+			out<D, IndexPrecision>(std::cout << "\tsuperfluous: ", i) << "\n";
+		}
+	}
+	
+	return result;
+}
+
+void info() {
+	static size_t k;
+	std::cout << "Test " << ++k << "..\n";
+}
+
 int main() {
 	bool result = true;
 
@@ -31,15 +63,54 @@ int main() {
 	using Precision = double;
 	
 	lb::Grid<D, Precision> grid(1.0);
-	std::cout << "Test:\n";
-	result = result && test<D, int64_t>(grid.indexAt({0.0, 0.0}), {0, 0});
-	result = result && test<D, int64_t>(grid.indexAt({0.0, 1.0}), {0, 1});
-	result = result && test<D, int64_t>(grid.indexAt({-1.0, 0.0}), {-1, 0});
-	result = result && test<D, int64_t>(grid.indexAt({0.49, -0.49}), {0, 0});
-	result = result && test<D, int64_t>(grid.indexAt({0.5, -0.5}), {1, 0});
-	result = result && test<D, int64_t>(grid.indexAt({0.5, -0.5001}), {1, -1});
-	result = result && test<D, int64_t>(grid.indexAt({-1.49, 1.49}), {-1, 1});
-	result = result && test<D, int64_t>(grid.indexAt({1.5, -1.49}), {2, -1});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({0.0, 0.0}), {0, 0});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({0.0, 1.0}), {0, 1});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({-1.0, 0.0}), {-1, 0});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({0.49, -0.49}), {0, 0});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({0.5, -0.5}), {1, 0});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({0.5, -0.5001}), {1, -1});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({-1.49, 1.49}), {-1, 1});
+	info();
+	result = result & testEqual<D, int64_t>(grid.indexAt({1.5, -1.49}), {2, -1});
 
+	info();
+	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.2}), {{0, 0}});
+	info();
+	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{5.0, 2.0}, 0.2}), {{5, 2}});
+	info();
+	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
+	info();
+	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.8}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}, {1, 1}, {-1, 1}, {-1, -1}, {1, -1}});
+
+	constexpr double pi = atan(1)*4;
+	lb::Grid<D, Precision> piGrid(pi);
+	info();
+	result = result & testEqual<D, int64_t>(piGrid.indexAt({0.0, 0.0}), {0, 0});
+	info();
+	result = result & testEqual<D, int64_t>(piGrid.indexAt({0.0, pi}), {0, 1});
+	info();
+	result = result & testEqual<D, int64_t>(piGrid.indexAt({pi/2 - 0.1, -pi/2 + 0.1}), {0, 0});	
+	info();
+	result = result & testEqual<D, int64_t>(piGrid.indexAt({pi/2, -pi/2}), {1, 0});
+	info();
+	result = result & testEqual<D, int64_t>(piGrid.indexAt({pi/2, -pi/2 - 0.1}), {1, -1});
+	info();
+	result = result & testEqual<D, int64_t>(piGrid.indexAt({5, 2}), {2, 1});
+
+	info();
+	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.2*pi}), {{0, 0}});
+	info();
+	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{5.0*pi, 2.0*pi}, 0.2}), {{5, 2}});
+	info();
+	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}), {{0, 0}});
+	info();
+	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6*pi}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
 	return result ? 0 : 1;
 }

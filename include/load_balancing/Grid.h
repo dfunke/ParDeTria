@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <algorithm>
 #include "Geometry.h"
+#include "load_balancing/VectorOperations.h"
 #include "load_balancing/dIndex.h"
 
 namespace LoadBalancing
@@ -16,12 +17,15 @@ struct Grid
 {
 	Grid(Precision cellWidth);
 	dIndex<D, IndexPrecision> indexAt(const dVector<D, Precision>& v);
+	dVector<D, Precision> centerOf(const dIndex<D, IndexPrecision>& i);
 	std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere);
 
 private:
 	Precision cellWidth;
 
 	IndexPrecision fitOneDimension(Precision x) const;
+	bool next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision end);
+	Precision diagonalCellLength() const;
 };
 
 
@@ -41,16 +45,60 @@ dIndex<D, IndexPrecision> Grid<D, Precision, IndexPrecision>::indexAt(const dVec
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
+dVector<D, Precision> Grid<D, Precision, IndexPrecision>::centerOf(const dIndex<D, IndexPrecision>& i)
+{
+	dVector<D, Precision> result;
+	std::transform(i.begin(), i.end(), result.begin(), [this] (auto x) { return x * cellWidth; });
+	return result;
+}
+	
+template <uint D, typename Precision, typename IndexPrecision>
 std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::intersectingIndices(const dSphere<D, Precision>& sphere)
 {
-	assert(false);
-	return std::vector<dIndex<D, IndexPrecision>>();
+	std::vector<dIndex<D, IndexPrecision>> result;
+	
+	IndexPrecision discreteRadius = std::ceil(sphere.radius/cellWidth + 1);
+	auto centerIndex = indexAt(sphere.center);	
+	auto maxDist = diagonalCellLength() / 2 + sphere.radius;
+	maxDist *= maxDist;
+
+	dIndex<D, IndexPrecision> gridIter;
+	gridIter.fill(-discreteRadius);
+	do {
+		dIndex<D, IndexPrecision> cell;
+		std::transform(centerIndex.begin(), centerIndex.end(), gridIter.begin(), cell.begin(), std::plus<>());
+		auto cellCenter = centerOf(cell);
+
+		if(lenSquared(cellCenter - sphere.center) <= maxDist) {
+			result.push_back(cell);
+		}
+		
+	} while(next(gridIter, discreteRadius));
+
+	return result;
+}
+
+template <uint D, typename Precision, typename IndexPrecision>
+bool Grid<D, Precision, IndexPrecision>::next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision width)
+{
+		auto it = std::find_if(gridIter.begin(), gridIter.end(), [width] (auto x) { return x < width; });
+		std::fill(gridIter.begin(), it, -width);
+		if(it != gridIter.end())
+			++(*it);
+		
+		return it != gridIter.end();
+}
+
+template <uint D, typename Precision, typename IndexPrecision>
+Precision Grid<D, Precision, IndexPrecision>::diagonalCellLength() const
+{
+	return sqrt(D) * cellWidth;
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
 IndexPrecision Grid<D, Precision, IndexPrecision>::fitOneDimension(Precision x) const
 {
-	return std::floor((x + 0.5)/cellWidth);
+	return std::floor(x/cellWidth + 0.5);
 }
 
 }
