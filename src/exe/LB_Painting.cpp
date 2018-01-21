@@ -52,7 +52,7 @@ struct PartitionTreePainter
                     + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
             }
             
-            painter->drawBox(tree.bounds);
+            painter->drawBox(tree.intersectionChecker->bounds());
             
             labels.push_back({std::to_string(currentNumPartitions++), center});
         } else {

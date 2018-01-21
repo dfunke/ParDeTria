@@ -538,7 +538,7 @@ namespace LoadBalancing
         LOG("triangulateDAC called on level " << provenance << " with "
             << "unknown number of" << " points" << std::endl);
 
-        const auto& bounds = tree.bounds;
+        const auto& bounds = tree.intersectionChecker->bounds();
 
         if (std::holds_alternative<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment)) {
             VTUNE_TASK(TriangulateRecursive);
@@ -551,17 +551,18 @@ namespace LoadBalancing
 
             VTUNE_TASK(Partitioning);
             auto& partioning = std::get<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment);
-            ASSERT(partioning.size() > 0);
+            auto partSize = partioning.size();
+            ASSERT(partSize > 0);
             VTUNE_END_TASK(Partitioning);
 
             DEDENT
 
             std::vector<dSimplices<D, Precision>> partialDTs;
-            partialDTs.resize(partioning.size());
+            partialDTs.resize(partSize);
 
             VTUNE_TASK(TriangulatePartitions);
             tbb::parallel_for(
-                    std::size_t(0), partioning.size(),
+                    std::size_t(0), partSize,
                     [&](const uint i) {
                         LOGGER.setIndent(
                                 provenance.length()); // new thread, initialize Logger indent
@@ -577,7 +578,7 @@ namespace LoadBalancing
             for(auto& subtree : partioning) {
                 subtree.collect();
             }
-            auto flatPartitioning = toOldPartitioning<D, Precision>(partioning);
+            auto flatPartitioning = toOldPartitioning<D, Precision>(std::move(partioning));
 
             VTUNE_TASK(ExtractEdge);
 
@@ -589,7 +590,7 @@ namespace LoadBalancing
             Concurrent_Growing_Simplex_Ids edgeSimplexIds(numPartitionPoints);
 
             tbb::parallel_for(
-                    std::size_t(0), partioning.size(),
+                    std::size_t(0), partSize,
                     [&](const uint i) {
                         LOGGER.setIndent(
                                 provenance.length()); // new thread, initialize Logger indent

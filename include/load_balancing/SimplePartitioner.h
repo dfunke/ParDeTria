@@ -4,6 +4,7 @@
 #include <memory>
 #include "Partitioner.h"
 #include "BoxUtils.h"
+#include "load_balancing/BoundsIntersectionChecker.h"
 
 namespace LoadBalancing
 {
@@ -37,16 +38,18 @@ namespace LoadBalancing
             }
             
             PartitionTree<D, Precision> leftSubtree;
-            leftSubtree.bounds = std::move(leftBounds);
+            leftSubtree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(leftBounds);
             leftSubtree.attachment = std::move(leftIds);
 
             PartitionTree<D, Precision> rightSubtree;
-            rightSubtree.bounds = std::move(rightBounds);
+            rightSubtree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(rightBounds);
             rightSubtree.attachment = std::move(rightIds);
             
             PartitionTree<D, Precision> tree;
-            tree.bounds = bounds;
-            typename PartitionTree<D, Precision>::ChildContainer children{std::move(leftSubtree), std::move(rightSubtree)};
+            tree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
+            typename PartitionTree<D, Precision>::ChildContainer children;
+            children.push_back(std::move(leftSubtree));
+            children.push_back(std::move(rightSubtree));
             tree.attachment = std::move(children);
             
             

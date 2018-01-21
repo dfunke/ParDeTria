@@ -7,6 +7,7 @@
 #include "SamplePartitioner.h"
 #include "load_balancing/BoxUtils.h"
 #include "Sampler.h"
+#include "load_balancing/Grid.h"
 
 namespace LoadBalancing
 {
@@ -93,12 +94,12 @@ namespace LoadBalancing
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto partition) {
                 PartitionTree<D, Precision> subtree;
                 subtree.attachment = std::move(partition.pointIds);
-                subtree.bounds = std::move(partition.bounds);
+	            subtree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(partition.bounds);
                 return subtree;
             });
             
             PartitionTree<D, Precision> tree;
-            tree.bounds = bounds;
+            tree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
             tree.attachment = std::move(subtrees);
             return tree;
         }

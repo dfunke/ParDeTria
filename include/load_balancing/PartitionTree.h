@@ -5,15 +5,16 @@
 #include <algorithm>
 #include "Geometry.h"
 #include "../Partitioner.h"
+#include "load_balancing/IntersectionChecker.h"
 
 namespace LoadBalancing
-{    
+{
     template <uint D, typename Precision>
     struct PartitionTree
     {
         using ChildContainer = std::vector<PartitionTree>;
         
-        dBox<D, Precision> bounds;
+		std::unique_ptr<IntersectionChecker<D, Precision>> intersectionChecker;
         std::variant<ChildContainer, Point_Ids> attachment;
         //size_t numberOfPoints;
         void collect()
@@ -44,7 +45,7 @@ namespace LoadBalancing
             auto ids = std::move(std::get<Point_Ids>(childTree.attachment));
             Partition<D, Precision> partition(ids.size());
             partition.points = std::move(ids);
-            partition.bounds = std::move(childTree.bounds);
+            partition.bounds = std::move(childTree.intersectionChecker->bounds());
             partition.id = id++;
             result.push_back(std::move(partition));
         }
