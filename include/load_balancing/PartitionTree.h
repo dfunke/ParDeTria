@@ -3,6 +3,7 @@
 #include <variant>
 #include <memory>
 #include <algorithm>
+#include <tuple>
 #include "Geometry.h"
 #include "../Partitioner.h"
 #include "load_balancing/IntersectionChecker.h"
@@ -37,18 +38,20 @@ namespace LoadBalancing
     };
         
     template <uint D, typename Precision>
-    Partitioning<D, Precision> toOldPartitioning(typename PartitionTree<D, Precision>::ChildContainer children) {
+    std::pair<Partitioning<D, Precision>, std::vector<std::unique_ptr<IntersectionChecker<D, Precision>>>> toOldPartitioning(typename PartitionTree<D, Precision>::ChildContainer children) {
         Partitioning<D, Precision> result;
+		std::vector<std::unique_ptr<IntersectionChecker<D, Precision>>> checker;
         size_t id = 0;
         for(auto& childTree : children) {
             childTree.collect();
             auto ids = std::move(std::get<Point_Ids>(childTree.attachment));
             Partition<D, Precision> partition(ids.size());
             partition.points = std::move(ids);
-            partition.bounds = std::move(childTree.intersectionChecker->bounds());
+            partition.bounds = childTree.intersectionChecker->bounds();
             partition.id = id++;
+            checker.push_back(std::move(childTree.intersectionChecker));
             result.push_back(std::move(partition));
         }
-        return result;
+        return std::make_pair(std::move(result), std::move(checker));
     }
 }

@@ -63,6 +63,7 @@ namespace LoadBalancing
         
         void getEdge(const dSimplices<D, Precision> &simplices,
                      const Partitioning<D, Precision> &partitioning,
+                     const std::vector<std::unique_ptr<IntersectionChecker<D, Precision>>>& intersectionCheckers,
                      const uint &partition,
                      Concurrent_Growing_Point_Ids &edgePoints, Concurrent_Growing_Simplex_Ids &edgeSimplices);
 

@@ -110,7 +110,9 @@ namespace LoadBalancing
 
     template<uint D, typename Precision, typename MonitorT>
     void DCTriangulator<D, Precision, MonitorT>::getEdge(const dSimplices<D, Precision> &simplices,
-                                            const Partitioning<D, Precision> &partitioning, const uint &partition,
+                                            const Partitioning<D, Precision> &partitioning,
+                                            const std::vector<std::unique_ptr<IntersectionChecker<D, Precision>>>& intersectionCheckers,
+                                            const uint &partition,
                                             Concurrent_Growing_Point_Ids &edgePoints,
                                             Concurrent_Growing_Simplex_Ids &edgeSimplices) {
 
@@ -167,7 +169,7 @@ namespace LoadBalancing
             const auto cs = simplex.circumsphere(this->points);
             bool intersectsBounds = false;
             for (uint i = 0; i < partitioning.size() && !intersectsBounds; ++i) {
-                if (i != partition && partitioning[i].bounds.intersects(cs))
+                if (i != partition && intersectionCheckers[i]->intersects(cs))
                     intersectsBounds = true;
             }
             if (intersectsBounds) {
@@ -578,7 +580,7 @@ namespace LoadBalancing
             for(auto& subtree : partioning) {
                 subtree.collect();
             }
-            auto flatPartitioning = toOldPartitioning<D, Precision>(std::move(partioning));
+            auto [flatPartitioning, intersectionCheckers] = toOldPartitioning<D, Precision>(std::move(partioning));
 
             VTUNE_TASK(ExtractEdge);
 
@@ -597,7 +599,7 @@ namespace LoadBalancing
                         INDENT
                         VLOG("Partition " << i << ": extracting edge" << std::endl);
                         //TODO how to handle edge detection
-                        getEdge(partialDTs[i], flatPartitioning, i, edgePointIds, edgeSimplexIds);
+                        getEdge(partialDTs[i], flatPartitioning, intersectionCheckers, i, edgePointIds, edgeSimplexIds);
                         DEDENT
                     }
             );
