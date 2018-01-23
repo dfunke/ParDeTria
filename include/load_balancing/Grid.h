@@ -16,15 +16,15 @@ template <uint D, typename Precision, typename IndexPrecision = int64_t>
 struct Grid
 {
 	Grid(Precision cellWidth);
-	dIndex<D, IndexPrecision> indexAt(const dVector<D, Precision>& v);
-	dVector<D, Precision> centerOf(const dIndex<D, IndexPrecision>& i);
-	std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere);
+	dIndex<D, IndexPrecision> indexAt(const dVector<D, Precision>& v) const;
+	dVector<D, Precision> centerOf(const dIndex<D, IndexPrecision>& i) const;
+	std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere) const;
 
 private:
 	Precision cellWidth;
 
 	IndexPrecision fitOneDimension(Precision x) const;
-	bool next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision end);
+	bool next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision end) const;
 	Precision diagonalCellLength() const;
 };
 
@@ -37,7 +37,7 @@ Grid<D, Precision, IndexPrecision>::Grid(Precision cellWidth)
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
-dIndex<D, IndexPrecision> Grid<D, Precision, IndexPrecision>::indexAt(const dVector<D, Precision>& v)
+dIndex<D, IndexPrecision> Grid<D, Precision, IndexPrecision>::indexAt(const dVector<D, Precision>& v) const
 {
 	dIndex<D, IndexPrecision> result;
 	std::transform(begin(v), end(v), begin(result), [this] (auto x) -> auto { return fitOneDimension(x); });
@@ -45,7 +45,7 @@ dIndex<D, IndexPrecision> Grid<D, Precision, IndexPrecision>::indexAt(const dVec
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
-dVector<D, Precision> Grid<D, Precision, IndexPrecision>::centerOf(const dIndex<D, IndexPrecision>& i)
+dVector<D, Precision> Grid<D, Precision, IndexPrecision>::centerOf(const dIndex<D, IndexPrecision>& i) const
 {
 	dVector<D, Precision> result;
 	std::transform(i.begin(), i.end(), result.begin(), [this] (auto x) { return x * cellWidth; });
@@ -53,7 +53,7 @@ dVector<D, Precision> Grid<D, Precision, IndexPrecision>::centerOf(const dIndex<
 }
 	
 template <uint D, typename Precision, typename IndexPrecision>
-std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::intersectingIndices(const dSphere<D, Precision>& sphere)
+std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::intersectingIndices(const dSphere<D, Precision>& sphere) const
 {
 	std::vector<dIndex<D, IndexPrecision>> result;
 	
@@ -79,7 +79,7 @@ std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::inter
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
-bool Grid<D, Precision, IndexPrecision>::next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision width)
+bool Grid<D, Precision, IndexPrecision>::next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision width) const
 {
 		auto it = std::find_if(gridIter.begin(), gridIter.end(), [width] (auto x) { return x < width; });
 		std::fill(gridIter.begin(), it, -width);
