@@ -12,4 +12,15 @@ namespace LoadBalancing
 	private:
 		dBox<D, Precision> mBounds;
 	};
+	
+	template <uint D, typename Precision>
+	struct IntersectionPartition {
+		Point_Ids pointIds;
+		std::unique_ptr<IntersectionChecker<D, Precision>> intersectionChecker;
+	};
+
+	template <uint D, typename Precision>
+	struct IntersectionPartitionMaker
+	{
+	};
 }	

@@ -13,6 +13,7 @@
 #include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
+#include "load_balancing/BoundsIntersectionChecker.h"
 
 #include <boost/program_options.hpp>
 
@@ -87,7 +88,8 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
     } else if("bounds-distance-pasp" == partitionerName){
         partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
     } else if("nearest-sample-pasp" == partitionerName) {
-        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
+		lb::BoundsIntersectionPartitionMaker<D, Precision> bicm;
+        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision, decltype(bicm)>>(threads, std::move(sampler), std::move(bicm));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
