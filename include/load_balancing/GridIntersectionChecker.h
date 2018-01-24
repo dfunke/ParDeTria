@@ -7,32 +7,45 @@
 
 namespace LoadBalancing
 {
-	template <uint D, typename Precision, typename IndexPrecision>
+	template <uint D, typename Precision, typename IndexPrecision = int64_t>
 	struct GridIntersectionChecker : IntersectionChecker<D, Precision>
 	{
 		template <typename ForwardIt>
 		GridIntersectionChecker(dBox<D, Precision> bounds, Grid<D, Precision, IndexPrecision> grid, ForwardIt cellsBegin, ForwardIt cellsEnd)
-			: IntersectionChecker<D, Precision>(std::move(bounds)), grid(std::move(grid)), cells(cellsBegin, cellsEnd)
+			: IntersectionChecker<D, Precision>(std::move(bounds)), mGrid(std::move(grid)), cells(cellsBegin, cellsEnd)
 		{}
 		
 		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
 		{
-			auto discreteSphere = grid.intersectingIndices(sphere);
+			auto discreteSphere = mGrid.intersectingIndices(sphere);
 			return std::any_of(discreteSphere.begin(), discreteSphere.end(), [this] (const auto& i) {
 			                   return cells.count(i) == 1;
 							   });
 		}
 
+		
+		Grid<D, Precision, IndexPrecision> grid() const {
+			return mGrid;
+		}
+		
+		auto cellsBegin() const {
+			return cells.cbegin();
+		}
+		
+		auto cellsEnd() const {
+			return cells.cend();
+		}
+
 	private:
-		Grid<D, Precision, IndexPrecision> grid;
+		Grid<D, Precision, IndexPrecision> mGrid;
 		std::unordered_set<dIndex<D, IndexPrecision>, dIndexHasher<D, IndexPrecision>> cells;
 	};
 	
 	template <uint D, typename Precision, typename IndexPrecision = int64_t>
 	struct GridIntersectionPartitionMaker : IntersectionPartitionMaker<D, Precision>
 	{
-		GridIntersectionPartitionMaker(Grid<D, Precision, IndexPrecision> grid)
-			: grid(std::move(grid)) {
+		GridIntersectionPartitionMaker(Grid<D, Precision, IndexPrecision> mGrid)
+			: mGrid(std::move(mGrid)) {
 		}
 
 		template <typename PartitionAssigner>
@@ -54,7 +67,7 @@ namespace LoadBalancing
 					}
 					idss[partition].insert(id);
                 	const auto& coords = points[id].coords;
-					indices.insert(grid.indexAt(coords));
+					indices.insert(mGrid.indexAt(coords));
 					if(initialized[partition]) {
 						enlargeBoxAroundVector<D, Precision>(boundss[partition], coords);
 					} else {
@@ -75,7 +88,7 @@ namespace LoadBalancing
 			for(size_t i = 0; i < result.size(); ++i) {
 				result[i].pointIds = std::move(idss[i]);
 				result[i].intersectionChecker = std::make_unique<GridIntersectionChecker<D, Precision, IndexPrecision>>(std::move(boundss[i]),
-																										grid, indices.begin(),
+																										mGrid, indices.begin(),
 																										indices.end());
 			}
 			
@@ -83,7 +96,7 @@ namespace LoadBalancing
 		}
 		
 	private:
-		Grid<D, Precision, IndexPrecision> grid;
+		Grid<D, Precision, IndexPrecision> mGrid;
 	};
 }
 

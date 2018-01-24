@@ -18,6 +18,7 @@ struct Grid
 	Grid(Precision cellWidth);
 	dIndex<D, IndexPrecision> indexAt(const dVector<D, Precision>& v) const;
 	dVector<D, Precision> centerOf(const dIndex<D, IndexPrecision>& i) const;
+	dBox<D, Precision> boundsOf(const dIndex<D, IndexPrecision>& i) const;
 	std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere) const;
 
 private:
@@ -52,6 +53,16 @@ dVector<D, Precision> Grid<D, Precision, IndexPrecision>::centerOf(const dIndex<
 	return result;
 }
 	
+template <uint D, typename Precision, typename IndexPrecision>
+dBox<D, Precision> Grid<D, Precision, IndexPrecision>::boundsOf(const dIndex<D, IndexPrecision>& i) const
+{
+	dBox<D, Precision> result;
+	auto center = centerOf(i);
+	std::transform(center.begin(), center.end(), result.low.begin(), [this] (auto x) { return x - cellWidth; });
+	std::transform(center.begin(), center.end(), result.high.begin(), [this] (auto x) { return x + cellWidth; });
+	return result;
+}
+
 template <uint D, typename Precision, typename IndexPrecision>
 std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::intersectingIndices(const dSphere<D, Precision>& sphere) const
 {

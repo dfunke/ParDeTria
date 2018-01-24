@@ -4,6 +4,7 @@
 #include "Painter.h"
 #include "utils/MakeIds.h"
 #include "load_balancing/CommandLineInterface.h"
+#include "load_balancing/GridIntersectionChecker.h"
 
 using Precision = double;
 constexpr uint D = 2;
@@ -52,7 +53,39 @@ struct PartitionTreePainter
                     + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
             }
             
-            painter->drawBox(tree.intersectionChecker->bounds());
+			auto gridChecker = dynamic_cast<lb::GridIntersectionChecker<D, Precision>*>(tree.intersectionChecker.get());
+			if(!gridChecker) {
+	            painter->drawBox(tree.intersectionChecker->bounds());
+			} else {
+				for(auto it = gridChecker->cellsBegin(); it != gridChecker->cellsEnd(); ++it) {
+					auto hasNeighbour = [it, gridChecker] (const dIndex<D, Precision>& direction) -> bool {
+						auto cell = *it;
+						std::transform(cell.begin(), cell.end(), direction.begin(), cell.begin(), [] (auto l, auto r) {
+						               return l + r;
+									   });
+						return std::find(gridChecker->cellsBegin(), gridChecker->cellsEnd(), cell) != gridChecker->cellsEnd();
+					};
+					auto bounds = gridChecker->grid().boundsOf(*it);
+					auto bottomLeft = bounds.low;
+					auto topRight = bounds.high;
+					auto bottomRight = bottomLeft;
+					bottomRight[0] = topRight[0];
+					auto topLeft = bottomLeft;
+					topLeft[1] = topRight[1];
+					if(hasNeighbour({0, 1})) {
+						painter->drawLine(topLeft, topRight);
+					}
+					if(hasNeighbour({1, 0})) {
+						painter->drawLine(topRight, bottomRight);
+					}
+					if(hasNeighbour({0, -1})) {
+						painter->drawLine(bottomLeft, bottomRight);
+					}
+					if(hasNeighbour({-1, 0})) {
+						painter->drawLine(topLeft, bottomLeft);
+					}
+				}
+			}
             
             labels.push_back({std::to_string(currentNumPartitions++), center});
         } else {
