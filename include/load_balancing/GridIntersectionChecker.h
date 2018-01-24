@@ -54,7 +54,7 @@ namespace LoadBalancing
 			std::vector<Point_Ids> idss;
 			std::vector<dBox<D, Precision>> boundss;
 			std::vector<bool> initialized;
-			std::unordered_set<dIndex<D, IndexPrecision>, dIndexHasher<D, IndexPrecision>> indices;
+			std::vector<std::unordered_set<dIndex<D, IndexPrecision>, dIndexHasher<D, IndexPrecision>>> indices;
 
 			for(auto id : ids) {
 				if(dPoint<D, Precision>::isFinite(id)) {
@@ -64,10 +64,11 @@ namespace LoadBalancing
 						idss.resize(partition + 1);
 						boundss.resize(partition + 1);
 						initialized.resize(partition + 1, false);
+						indices.resize(partition + 1);
 					}
 					idss[partition].insert(id);
                 	const auto& coords = points[id].coords;
-					indices.insert(mGrid.indexAt(coords));
+					indices[partition].insert(mGrid.indexAt(coords));
 					if(initialized[partition]) {
 						enlargeBoxAroundVector<D, Precision>(boundss[partition], coords);
 					} else {
@@ -88,8 +89,8 @@ namespace LoadBalancing
 			for(size_t i = 0; i < result.size(); ++i) {
 				result[i].pointIds = std::move(idss[i]);
 				result[i].intersectionChecker = std::make_unique<GridIntersectionChecker<D, Precision, IndexPrecision>>(std::move(boundss[i]),
-																										mGrid, indices.begin(),
-																										indices.end());
+																										mGrid, indices[i].begin(),
+																										indices[i].end());
 			}
 			
 			return result;
