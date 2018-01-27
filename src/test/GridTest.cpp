@@ -62,6 +62,7 @@ int main() {
 	constexpr auto D = 2;
 	using Precision = double;
 	
+	std::cout << "2D grid with r=1\n";
 	lb::Grid<D, Precision> grid(1.0);
 	info();
 	result = result & testEqual<D, int64_t>(grid.indexAt({0.0, 0.0}), {0, 0});
@@ -90,6 +91,7 @@ int main() {
 	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.8}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}, {1, 1}, {-1, 1}, {-1, -1}, {1, -1}});
 
 	constexpr double pi = atan(1)*4;
+	std::cout << "2D grid with r=" << pi << "\n";
 	lb::Grid<D, Precision> piGrid(pi);
 	info();
 	result = result & testEqual<D, int64_t>(piGrid.indexAt({0.0, 0.0}), {0, 0});
@@ -112,5 +114,52 @@ int main() {
 	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}), {{0, 0}});
 	info();
 	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6*pi}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
+
+
+	std::cout << "3D grid with r=1.0\n";
+	lb::Grid<3, Precision> grid3(1.0);
+	info();
+	result = result & testEqual<3, int64_t>(grid3.indexAt({0, 0, 0}), {0, 0, 0});
+	info();
+	result = result & testEqual<3, int64_t>(grid3.indexAt({0.5, 0.5, 0.5}), {1, 1, 1});
+	info();
+	result = result & testEqual<3, int64_t>(grid3.indexAt({0.5, -0.5, 0.5}), {1, 0, 1});
+
+	info();
+	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.1}), {{0, 0, 0}});
+	info();
+	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.2}), {{0, 0, 0},
+																		   {1, 0, 0}, {-1, 0, 0},
+																		   {0, 1, 0}, {0, -1, 0},
+																		   {0, 0, 1}, {0, 0, -1}});
+	info();
+	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.6}), {{0, 0, 0},
+																		   {1, 0, 0}, {-1, 0, 0},
+																		   {0, 1, 0}, {0, -1, 0},
+																		   {0, 0, 1}, {0, 0, -1},
+																		   {1, 1, 0}, {-1, 1, 0}, {1, -1, 0}, {-1, -1, 0},
+																		   {1, 0, 1}, {-1, 0, 1}, {1, 0, -1}, {-1, 0, -1},
+																		   {0, 1, 1}, {0, -1, 1}, {0, 1, -1}, {0, -1, -1}
+																		   });
+	info();
+	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.9}), {{0, 0, 0},
+																		   {1, 0, 0}, {-1, 0, 0},
+																		   {0, 1, 0}, {0, -1, 0},
+																		   {0, 0, 1}, {0, 0, -1},
+																		   {1, 1, 0}, {-1, 1, 0}, {1, -1, 0}, {-1, -1, 0},
+																		   {1, 0, 1}, {-1, 0, 1}, {1, 0, -1}, {-1, 0, -1},
+																		   {0, 1, 1}, {0, -1, 1}, {0, 1, -1}, {0, -1, -1},
+																		   {1, 1, 1}, {-1, 1, 1}, {1, -1, 1}, {-1, -1, 1}, {1, 1, -1}, {-1, 1, -1}, {1, -1, -1}, {-1, -1, -1}
+																		   });
+
+
+	std::cout << "3D grid with r=" << pi << "\n";
+	lb::Grid<3, Precision> piGrid3(pi);
+	info();
+	result = result & testEqual<3, int64_t>(piGrid3.indexAt({0, 0, 0}), {0, 0, 0});
+	info();
+	result = result & testEqual<3, int64_t>(piGrid3.indexAt({pi*0.5, pi*0.5, pi*0.5}), {1, 1, 1});
+	info();
+	result = result & testEqual<3, int64_t>(piGrid3.indexAt({pi*0.5, pi*(-0.5), pi*0.5}), {1, 0, 1});
 	return result ? 0 : 1;
 }
