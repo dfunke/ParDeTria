@@ -58,8 +58,8 @@ dBox<D, Precision> Grid<D, Precision, IndexPrecision>::boundsOf(const dIndex<D, 
 {
 	dBox<D, Precision> result;
 	auto center = centerOf(i);
-	std::transform(center.begin(), center.end(), result.low.begin(), [this] (auto x) { return x - cellWidth; });
-	std::transform(center.begin(), center.end(), result.high.begin(), [this] (auto x) { return x + cellWidth; });
+	std::transform(center.begin(), center.end(), result.low.begin(), [this] (auto x) { return x - cellWidth/2; });
+	std::transform(center.begin(), center.end(), result.high.begin(), [this] (auto x) { return x + cellWidth/2; });
 	return result;
 }
 
@@ -71,7 +71,6 @@ std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::inter
 	IndexPrecision discreteRadius = std::ceil(sphere.radius/cellWidth + 1);
 	auto centerIndex = indexAt(sphere.center);	
 	auto maxDist = diagonalCellLength() / 2 + sphere.radius;
-	maxDist *= maxDist;
 
 	dIndex<D, IndexPrecision> gridIter;
 	gridIter.fill(-discreteRadius);
@@ -80,7 +79,7 @@ std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::inter
 		std::transform(centerIndex.begin(), centerIndex.end(), gridIter.begin(), cell.begin(), std::plus<>());
 		auto cellCenter = centerOf(cell);
 
-		if(lenSquared(cellCenter - sphere.center) <= maxDist) {
+		if(lenSquared(cellCenter - sphere.center) <= maxDist * maxDist) {
 			result.push_back(cell);
 		}
 		
