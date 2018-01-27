@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include "Geometry.h"
 
 namespace LoadBalancing
@@ -18,6 +19,11 @@ namespace LoadBalancing
 		Point_Ids pointIds;
 		std::unique_ptr<IntersectionChecker<D, Precision>> intersectionChecker;
 	};
+
+	using PartitionAssigner = std::function<size_t(tIdType)>;
+
+	template <uint D, typename Precision>
+	using IntersectionPartitionMakerFunction = std::function<std::vector<IntersectionPartition<D, Precision>>(const dPoints<D, Precision>&, const Point_Ids&, PartitionAssigner)>;
 
 	template <uint D, typename Precision>
 	struct IntersectionPartitionMaker

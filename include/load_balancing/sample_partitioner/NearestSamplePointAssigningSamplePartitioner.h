@@ -7,15 +7,14 @@
 #include <kdtree++/kdtree.hpp>
 #include "SamplePartitioner.h"
 #include "Sampler.h"
-#include "load_balancing/BoundsIntersectionChecker.h"
+#include "load_balancing/IntersectionChecker.h"
 
 namespace LoadBalancing
 { 
-    
-    template <uint D, typename Precision, typename PartitionMaker>
+    template <uint D, typename Precision>
     struct NearestSamplePointAssigningSamplePartitioner : public SamplePartitioner<D, Precision>
     {
-        NearestSamplePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler, PartitionMaker intersectionCheckerMaker)
+        NearestSamplePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler)), mMakePartition(std::move(intersectionCheckerMaker))
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
@@ -69,12 +68,12 @@ namespace LoadBalancing
         Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
-        PartitionMaker mMakePartition;
+		IntersectionPartitionMakerFunction<D, Precision> mMakePartition;
     };
     
-    template <uint D, typename Precision, typename PartitionMaker>
-    typename NearestSamplePointAssigningSamplePartitioner<D, Precision, PartitionMaker>::Tree
-   NearestSamplePointAssigningSamplePartitioner<D, Precision, PartitionMaker>::buildKdTree(
+    template <uint D, typename Precision>
+    typename NearestSamplePointAssigningSamplePartitioner<D, Precision>::Tree
+   NearestSamplePointAssigningSamplePartitioner<D, Precision>::buildKdTree(
         const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints) {
         
         Tree tree;
@@ -85,9 +84,9 @@ namespace LoadBalancing
         return tree;
     }
     
-    template <uint D, typename Precision, typename PartitionMaker>
+    template <uint D, typename Precision>
     std::vector<IntersectionPartition<D, Precision>>
-    NearestSamplePointAssigningSamplePartitioner<D, Precision, PartitionMaker>::makePartitioning(const Tree& tree,
+    NearestSamplePointAssigningSamplePartitioner<D, Precision>::makePartitioning(const Tree& tree,
 																								 const dPoints<D, Precision>& points,
 																								 const Point_Ids& pointIds) {
 		return mMakePartition(points, pointIds, [&] (auto id) -> size_t {
