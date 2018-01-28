@@ -17,7 +17,7 @@ namespace LoadBalancing
 		
 		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
 		{
-			auto discreteSphere = mGrid.intersectingIndices(sphere);
+			auto discreteSphere = intersectingIndices(sphere, mGrid);
 			return std::any_of(discreteSphere.begin(), discreteSphere.end(), [this] (const auto& i) {
 			                   return cells.count(i) == 1;
 							   });

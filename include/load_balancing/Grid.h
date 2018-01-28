@@ -16,25 +16,34 @@ template <uint D, typename Precision, typename IndexPrecision = int64_t>
 struct Grid
 {
 	Grid(Precision cellWidth);
+	Precision cellWidth() const;
 	dIndex<D, IndexPrecision> indexAt(const dVector<D, Precision>& v) const;
 	dVector<D, Precision> centerOf(const dIndex<D, IndexPrecision>& i) const;
 	dBox<D, Precision> boundsOf(const dIndex<D, IndexPrecision>& i) const;
-	std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere) const;
 
-private:
-	Precision cellWidth;
-
-	IndexPrecision fitOneDimension(Precision x) const;
 	bool next(dIndex<D, IndexPrecision>& gridIter, IndexPrecision end) const;
 	Precision diagonalCellLength() const;
+
+private:
+	Precision mCellWidth;
+
+	IndexPrecision fitOneDimension(Precision x) const;
 };
 
+template <uint D, typename Precision, typename IndexPrecision>
+std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere, const Grid<D, Precision, IndexPrecision>& grid);
 
 template <uint D, typename Precision, typename IndexPrecision>
 Grid<D, Precision, IndexPrecision>::Grid(Precision cellWidth)
-	: cellWidth(cellWidth)
+	: mCellWidth(cellWidth)
 {
-	assert(cellWidth > 0);
+	assert(mCellWidth > 0);
+}
+
+template <uint D, typename Precision, typename IndexPrecision>
+Precision Grid<D, Precision, IndexPrecision>::cellWidth() const
+{
+	return mCellWidth;
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
@@ -49,7 +58,7 @@ template <uint D, typename Precision, typename IndexPrecision>
 dVector<D, Precision> Grid<D, Precision, IndexPrecision>::centerOf(const dIndex<D, IndexPrecision>& i) const
 {
 	dVector<D, Precision> result;
-	std::transform(i.begin(), i.end(), result.begin(), [this] (auto x) { return x * cellWidth; });
+	std::transform(i.begin(), i.end(), result.begin(), [this] (auto x) { return x * mCellWidth; });
 	return result;
 }
 	
@@ -58,32 +67,32 @@ dBox<D, Precision> Grid<D, Precision, IndexPrecision>::boundsOf(const dIndex<D, 
 {
 	dBox<D, Precision> result;
 	auto center = centerOf(i);
-	std::transform(center.begin(), center.end(), result.low.begin(), [this] (auto x) { return x - cellWidth/2; });
-	std::transform(center.begin(), center.end(), result.high.begin(), [this] (auto x) { return x + cellWidth/2; });
+	std::transform(center.begin(), center.end(), result.low.begin(), [this] (auto x) { return x - mCellWidth/2; });
+	std::transform(center.begin(), center.end(), result.high.begin(), [this] (auto x) { return x + mCellWidth/2; });
 	return result;
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
-std::vector<dIndex<D, IndexPrecision>> Grid<D, Precision, IndexPrecision>::intersectingIndices(const dSphere<D, Precision>& sphere) const
+std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere, const Grid<D, Precision, IndexPrecision>& grid)
 {
 	std::vector<dIndex<D, IndexPrecision>> result;
 	
-	IndexPrecision discreteRadius = std::ceil(sphere.radius/cellWidth + 1);
-	auto centerIndex = indexAt(sphere.center);	
-	auto maxDist = diagonalCellLength() / 2 + sphere.radius;
+	IndexPrecision discreteRadius = std::ceil(sphere.radius/grid.cellWidth());
+	auto centerIndex = grid.indexAt(sphere.center);	
+	auto maxDist = grid.diagonalCellLength() / 2 + sphere.radius;
 
 	dIndex<D, IndexPrecision> gridIter;
 	gridIter.fill(-discreteRadius);
 	do {
 		dIndex<D, IndexPrecision> cell;
 		std::transform(centerIndex.begin(), centerIndex.end(), gridIter.begin(), cell.begin(), std::plus<>());
-		auto cellCenter = centerOf(cell);
+		auto cellCenter = grid.centerOf(cell);
 
 		if(lenSquared(cellCenter - sphere.center) <= maxDist * maxDist) {
 			result.push_back(cell);
 		}
 		
-	} while(next(gridIter, discreteRadius));
+	} while(grid.next(gridIter, discreteRadius));
 
 	return result;
 }
@@ -99,16 +108,39 @@ bool Grid<D, Precision, IndexPrecision>::next(dIndex<D, IndexPrecision>& gridIte
 		return it != gridIter.end();
 }
 
+
+template <typename Precision, typename IndexPrecision>
+std::vector<dIndex<2, IndexPrecision>> intersectingIndices(const dSphere<2, Precision>& sphere, const Grid<2, Precision, IndexPrecision>& grid)
+{
+	std::vector<dIndex<2, IndexPrecision>> result;
+	
+	IndexPrecision discreteRadius = std::ceil(sphere.radius/grid.cellWidth());
+	auto centerIndex = grid.indexAt(sphere.center);
+	auto maxDist = grid.diagonalCellLength() / 2 + sphere.radius;
+
+	for(IndexPrecision x = centerIndex[0]-discreteRadius; x <= centerIndex[0]+discreteRadius; ++x) {
+		for(IndexPrecision y = centerIndex[1]-discreteRadius; y <= centerIndex[1]+discreteRadius; ++y) {
+			dIndex<2, IndexPrecision> cell{x, y};
+			auto cellCenter = grid.centerOf(cell);
+
+			if(lenSquared(cellCenter - sphere.center) <= maxDist * maxDist) {
+				result.push_back(cell);
+			}
+		}
+	}
+	return result;
+}
+
 template <uint D, typename Precision, typename IndexPrecision>
 Precision Grid<D, Precision, IndexPrecision>::diagonalCellLength() const
 {
-	return sqrt(D) * cellWidth;
+	return sqrt(D) * mCellWidth;
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
 IndexPrecision Grid<D, Precision, IndexPrecision>::fitOneDimension(Precision x) const
 {
-	return std::floor(x/cellWidth + 0.5);
+	return std::floor(x/mCellWidth + 0.5);
 }
 
 }

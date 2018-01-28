@@ -82,13 +82,13 @@ int main() {
 	result = result & testEqual<D, int64_t>(grid.indexAt({1.5, -1.49}), {2, -1});
 
 	info();
-	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.2}), {{0, 0}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.2}, grid), {{0, 0}});
 	info();
-	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{5.0, 2.0}, 0.2}), {{5, 2}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{5.0, 2.0}, 0.2}, grid), {{5, 2}});
 	info();
-	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}, grid), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
 	info();
-	result = result & testEqualSets<D, int64_t>(grid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.8}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}, {1, 1}, {-1, 1}, {-1, -1}, {1, -1}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.8}, grid), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}, {1, 1}, {-1, 1}, {-1, -1}, {1, -1}});
 
 	constexpr double pi = atan(1)*4;
 	std::cout << "2D grid with r=" << pi << "\n";
@@ -107,13 +107,13 @@ int main() {
 	result = result & testEqual<D, int64_t>(piGrid.indexAt({5, 2}), {2, 1});
 
 	info();
-	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.2*pi}), {{0, 0}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.2*pi}, piGrid), {{0, 0}});
 	info();
-	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{5.0*pi, 2.0*pi}, 0.2}), {{5, 2}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{5.0*pi, 2.0*pi}, 0.2}, piGrid), {{5, 2}});
 	info();
-	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}), {{0, 0}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6}, piGrid), {{0, 0}});
 	info();
-	result = result & testEqualSets<D, int64_t>(piGrid.intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6*pi}), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
+	result = result & testEqualSets<D, int64_t>(intersectingIndices(dSphere<D, Precision>{{0.0, 0.0}, 0.6*pi}, piGrid), {{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}});
 
 
 	std::cout << "3D grid with r=1.0\n";
@@ -126,14 +126,14 @@ int main() {
 	result = result & testEqual<3, int64_t>(grid3.indexAt({0.5, -0.5, 0.5}), {1, 0, 1});
 
 	info();
-	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.1}), {{0, 0, 0}});
+	result = result & testEqualSets<3, int64_t>(intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.1}, grid3), {{0, 0, 0}});
 	info();
-	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.2}), {{0, 0, 0},
+	result = result & testEqualSets<3, int64_t>(intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.2}, grid3), {{0, 0, 0},
 																		   {1, 0, 0}, {-1, 0, 0},
 																		   {0, 1, 0}, {0, -1, 0},
 																		   {0, 0, 1}, {0, 0, -1}});
 	info();
-	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.6}), {{0, 0, 0},
+	result = result & testEqualSets<3, int64_t>(intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.6}, grid3), {{0, 0, 0},
 																		   {1, 0, 0}, {-1, 0, 0},
 																		   {0, 1, 0}, {0, -1, 0},
 																		   {0, 0, 1}, {0, 0, -1},
@@ -142,7 +142,7 @@ int main() {
 																		   {0, 1, 1}, {0, -1, 1}, {0, 1, -1}, {0, -1, -1}
 																		   });
 	info();
-	result = result & testEqualSets<3, int64_t>(grid3.intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.9}), {{0, 0, 0},
+	result = result & testEqualSets<3, int64_t>(intersectingIndices(dSphere<3, Precision>{{0.0, 0.0, 0.0}, 0.9}, grid3), {{0, 0, 0},
 																		   {1, 0, 0}, {-1, 0, 0},
 																		   {0, 1, 0}, {0, -1, 0},
 																		   {0, 0, 1}, {0, 0, -1},
