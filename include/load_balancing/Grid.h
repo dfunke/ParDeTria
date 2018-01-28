@@ -116,16 +116,11 @@ std::vector<dIndex<2, IndexPrecision>> intersectingIndices(const dSphere<2, Prec
 	
 	IndexPrecision discreteRadius = std::ceil(sphere.radius/grid.cellWidth());
 	auto centerIndex = grid.indexAt(sphere.center);
-	auto maxDist = grid.diagonalCellLength() / 2 + sphere.radius;
 
 	for(IndexPrecision x = centerIndex[0]-discreteRadius; x <= centerIndex[0]+discreteRadius; ++x) {
 		for(IndexPrecision y = centerIndex[1]-discreteRadius; y <= centerIndex[1]+discreteRadius; ++y) {
 			dIndex<2, IndexPrecision> cell{x, y};
-			auto cellCenter = grid.centerOf(cell);
-
-			if(lenSquared(cellCenter - sphere.center) <= maxDist * maxDist) {
-				result.push_back(cell);
-			}
+			result.push_back(std::move(cell));
 		}
 	}
 	return result;
