@@ -33,6 +33,25 @@ private:
 template <uint D, typename Precision, typename IndexPrecision>
 std::vector<dIndex<D, IndexPrecision>> intersectingIndices(const dSphere<D, Precision>& sphere, const Grid<D, Precision, IndexPrecision>& grid);
 
+
+template <uint D, typename Precision, typename IndexPrecision>
+bool intersectsWith(const dSphere<D, Precision>& sphere, const dIndex<D, IndexPrecision>& i);
+
+template <uint D, typename Precision, typename IndexPrecision>
+bool intersectsWith(const Grid<D, Precision, IndexPrecision>& grid, const dSphere<D, Precision>& sphere, const dIndex<D, IndexPrecision>& i)
+{
+	auto cell = i;
+	auto center = grid.indexAt(sphere.center);
+	IndexPrecision discreteRadius = std::ceil(sphere.radius/grid.cellWidth());
+	std::transform(cell.begin(), cell.end(), center.begin(), cell.begin(), std::minus<IndexPrecision>());
+	bool result = true;
+	for(const auto& c : cell)
+		if(std::abs(c) > discreteRadius)
+			result = false;
+	
+	return result;
+}
+
 template <uint D, typename Precision, typename IndexPrecision>
 Grid<D, Precision, IndexPrecision>::Grid(Precision cellWidth)
 	: mCellWidth(cellWidth)
