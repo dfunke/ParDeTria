@@ -37,7 +37,7 @@ namespace LoadBalancing
 
 	private:
 		Grid<D, Precision, IndexPrecision> mGrid;
-		std::unordered_set<dIndex<D, IndexPrecision>, dIndexHasher<D, IndexPrecision>> cells;
+		std::vector<dIndex<D, IndexPrecision>> cells;
 	};
 	
 	template <uint D, typename Precision, typename IndexPrecision = int64_t>
