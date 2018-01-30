@@ -40,16 +40,9 @@ bool intersectsWith(const dSphere<D, Precision>& sphere, const dIndex<D, IndexPr
 template <uint D, typename Precision, typename IndexPrecision>
 bool intersectsWith(const Grid<D, Precision, IndexPrecision>& grid, const dSphere<D, Precision>& sphere, const dIndex<D, IndexPrecision>& i)
 {
-	auto cell = i;
-	auto center = grid.indexAt(sphere.center);
-	IndexPrecision discreteRadius = std::ceil(sphere.radius/grid.cellWidth());
-	std::transform(cell.begin(), cell.end(), center.begin(), cell.begin(), std::minus<IndexPrecision>());
-	bool result = true;
-	for(const auto& c : cell)
-		if(std::abs(c) > discreteRadius)
-			result = false;
-	
-	return result;
+	auto cellCenter = grid.centerOf(i);
+	auto intersectionDist = sphere.radius + grid.diagonalCellLength()/2;
+	return lenSquared(cellCenter - sphere.center) <= intersectionDist * intersectionDist;
 }
 
 template <uint D, typename Precision, typename IndexPrecision>
