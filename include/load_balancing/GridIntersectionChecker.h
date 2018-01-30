@@ -17,6 +17,8 @@ namespace LoadBalancing
 		
 		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
 		{
+			if(!IntersectionChecker<D, Precision>::bounds().intersects(sphere))
+				return false;
 			return std::any_of(cells.begin(), cells.end(), [this, &sphere](const auto& i) {
 			                   return intersectsWith<D, Precision, IndexPrecision>(mGrid, sphere, i);
 			                   });
