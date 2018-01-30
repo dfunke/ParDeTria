@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
     auto cCommandLine = defaultOptions<Precision>();
     cCommandLine.add_options()("out", po::value<std::string>());
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
+    cCommandLine.add_options()("mode", po::value<std::string>());
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
@@ -140,7 +141,6 @@ int main(int argc, char *argv[]) {
     for(const auto& point : points) {
         pointsPainter.draw(point);
     }
-    pointsPainter.save(filename + "_points");
     
     Painter<2, double> samplePainter(bounds);
 
@@ -177,6 +177,17 @@ int main(int argc, char *argv[]) {
 	}
     }
     
-    samplePainter.save(filename + "_sampling");
-    partitionPainter.save(filename + "_partitioning");
+	if(vm.count("mode") == 0) {
+		pointsPainter.save(filename + "_points");
+		samplePainter.save(filename + "_sampling");
+		partitionPainter.save(filename + "_partitioning");
+	} else {
+		auto mode = vm["mode"].as<std::string>();
+		if("points" == mode)
+			pointsPainter.save(filename + "_points");
+		else if("sampling" == mode)
+			samplePainter.save(filename + "_sampling");
+		else if("partitioning" == mode)
+			partitionPainter.save(filename + "_partitioning");
+	}
 }
