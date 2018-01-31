@@ -33,7 +33,8 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
         bounds,
         points,
         true,
-        vm["distribution"].as<std::string>()
+        vm["distribution"].as<std::string>(),
+        threads
     };
         
     lb::Experiment<D, Precision> exp(std::move(partitioner), std::move(setup), std::cout);
