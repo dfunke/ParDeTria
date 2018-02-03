@@ -16,6 +16,11 @@ namespace LoadBalancing
 		{
 			return IntersectionChecker<D, Precision>::bounds().intersects(sphere);
 		}
+
+		std::unique_ptr<IntersectionChecker<D, Precision>> copy() const override
+		{
+			return std::make_unique<BoundsIntersectionChecker>(*this);
+		}
 	};
 
 	template <uint D, typename Precision>

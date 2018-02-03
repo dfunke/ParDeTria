@@ -24,6 +24,10 @@ namespace LoadBalancing
 			                   });
 		}
 
+		std::unique_ptr<IntersectionChecker<D, Precision>> copy() const override
+		{
+			return std::make_unique<GridIntersectionChecker>(*this);
+		}
 		
 		Grid<D, Precision, IndexPrecision> grid() const {
 			return mGrid;

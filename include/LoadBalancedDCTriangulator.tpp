@@ -525,13 +525,13 @@ namespace LoadBalancing
         mMonitor.registerPartition(tree, *mPartitioner);
         
         mMonitor.registerTriangulationStart();
-        auto triangulation = recursiveTriangulate(tree, provenance);
+        auto triangulation = recursiveTriangulate(std::move(tree), provenance);
         mMonitor.registerTriangulationEnd();
         return triangulation;
     }
     
     template<uint D, typename Precision, typename MonitorT>
-    dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::recursiveTriangulate(PartitionTree<D, Precision>& tree, const std::string provenance) {
+    dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::recursiveTriangulate(PartitionTree<D, Precision> tree, const std::string provenance) {
 
         LOGGER.setIndent(provenance.length());
 
@@ -552,7 +552,7 @@ namespace LoadBalancing
             INDENT
 
             VTUNE_TASK(Partitioning);
-            auto& partioning = std::get<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment);
+            auto partioning = std::move(std::get<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment));
             auto partSize = partioning.size();
             ASSERT(partSize > 0);
             VTUNE_END_TASK(Partitioning);

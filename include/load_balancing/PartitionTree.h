@@ -18,6 +18,24 @@ namespace LoadBalancing
 		std::unique_ptr<IntersectionChecker<D, Precision>> intersectionChecker;
         std::variant<ChildContainer, Point_Ids> attachment;
         //size_t numberOfPoints;
+        
+		PartitionTree() = default;
+        
+		PartitionTree(const PartitionTree& obj)
+			: intersectionChecker(obj.intersectionChecker->copy()), attachment(obj.attachment)
+		{
+		}
+
+		PartitionTree(PartitionTree&&) = default;
+
+		PartitionTree& operator=(const PartitionTree& rhs)
+		{
+			intersectionChecker = rhs.intersectionChecker.copy();
+			attachment = rhs.attachment;
+		}
+
+		PartitionTree& operator=(PartitionTree&&) = default;
+
         void collect()
         {
             if(auto children = std::get_if<ChildContainer>(&attachment)) {
