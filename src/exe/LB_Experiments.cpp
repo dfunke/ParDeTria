@@ -32,7 +32,7 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
         argString,
         bounds,
         points,
-        true,
+        vm.count("validate") > 0,
         vm["distribution"].as<std::string>(),
         threads
     };
