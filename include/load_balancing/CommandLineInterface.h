@@ -87,7 +87,7 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
     } else if("center-distance-pasp" == partitionerName){
 	    Precision cellWidth = vm["cell-width"].as<Precision>();
 		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
-        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
+        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
     } else if("bounds-distance-pasp" == partitionerName){
 	    Precision cellWidth = vm["cell-width"].as<Precision>();
 		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
