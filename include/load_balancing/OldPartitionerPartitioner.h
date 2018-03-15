@@ -17,7 +17,7 @@ namespace LoadBalancing
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
-            return buildTree(bounds, points, pointIds, maxRecursions);
+            return buildTree(bounds, points, pointIds, maxRecursions, "");
         }
         
         std::string info() const override
@@ -29,22 +29,26 @@ namespace LoadBalancing
         PartitionTree<D, Precision> buildTree(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds,
-                                        size_t remainingRecursions) const
+                                        size_t remainingRecursions,
+                                        std::string provenance) const
         {
-            Partitioning<D, Precision> partitioning = splitter->partition(pointIds, points, "");
+            Partitioning<D, Precision> partitioning = splitter->partition(pointIds, points, provenance);
             
             typename PartitionTree<D, Precision>::ChildContainer children;
+            size_t count = 0;
             for(auto& partition : partitioning) {
+	            provenance.append(std::to_string(count));
                 PartitionTree<D, Precision> subtree;
                 if(remainingRecursions > 0 && pointIds.size() > baseCutoff) {
                     subtree = buildTree(partition.bounds, points,
-                                        partition.points, remainingRecursions - 1);
+                                        partition.points, remainingRecursions - 1, provenance);
                     
                 } else {
                     subtree.attachment = std::move(partition.points);
             		subtree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(partition.bounds);
                 }
                 children.push_back(std::move(subtree));
+                ++count;
             }
             
             PartitionTree<D, Precision> result;
