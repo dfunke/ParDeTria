@@ -29,10 +29,10 @@ struct PartitionTreePainter
         size_t partitions = 0;
         paintPartitionTree(tree, colors.cbegin(), partitions);
         
-        painter->setColor(tRGB(0, 0, 0));
+        /*painter->setColor(tRGB(0, 0, 0));
         for(const auto label : labels)
             painter->drawText(std::get<0>(label), std::get<1>(label));
-        labels.clear();
+        labels.clear();*/
     }
     
 
@@ -53,7 +53,7 @@ struct PartitionTreePainter
                     + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
             }
             
-			auto gridChecker = dynamic_cast<lb::GridIntersectionChecker<D, Precision>*>(tree.intersectionChecker.get());
+			/*auto gridChecker = dynamic_cast<lb::GridIntersectionChecker<D, Precision>*>(tree.intersectionChecker.get());
 			if(!gridChecker) {
 	            painter->drawBox(tree.intersectionChecker->bounds());
 			} else {
@@ -85,7 +85,7 @@ struct PartitionTreePainter
 						painter->drawLine(topLeft, bottomLeft);
 					}
 				}
-			}
+			}*/
             
             labels.push_back({std::to_string(currentNumPartitions++), center});
         } else {
@@ -196,18 +196,18 @@ int main(int argc, char *argv[]) {
 	}
 
         partitionPainter.setColor(tRGB(0, 0, 0));
-        const auto& samplePoints = sampling.points;
+        /*const auto& samplePoints = sampling.points;
         for(const auto& point : samplePoints) {
 	    partitionPainter.draw(point);
-        }
+        }*/
 
-	const auto* cdpasp = dynamic_cast<const lb::CenterDistancePointAssigningSamplePartitioner<2, double>*>(sp);
+	/*const auto* cdpasp = dynamic_cast<const lb::CenterDistancePointAssigningSamplePartitioner<2, double>*>(sp);
 	if(cdpasp) {
 		partitionPainter.setColor(tRGB(0.5, 0.5, 0.5));
 		for(const auto& point : cdpasp->partitionCenters()) {
 		    partitionPainter.draw(point);
 		}
-	}
+	}*/
     }
     
     samplePainter.save(filename + "_sampling");
