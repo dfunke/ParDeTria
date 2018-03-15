@@ -59,10 +59,11 @@ namespace LoadBalancing
                                             const dBox<D, Precision> &bounds,
                                             const std::string provenance) override;
         
-        dSimplices<D, Precision> recursiveTriangulate(PartitionTree<D, Precision>& tree, const std::string provenance);
+        dSimplices<D, Precision> recursiveTriangulate(PartitionTree<D, Precision> tree, const std::string provenance);
         
         void getEdge(const dSimplices<D, Precision> &simplices,
                      const Partitioning<D, Precision> &partitioning,
+                     const std::vector<std::unique_ptr<IntersectionChecker<D, Precision>>>& intersectionCheckers,
                      const uint &partition,
                      Concurrent_Growing_Point_Ids &edgePoints, Concurrent_Growing_Simplex_Ids &edgeSimplices);
 

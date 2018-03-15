@@ -6,6 +6,7 @@
 #include <set>
 #include "SamplePartitioner.h"
 #include "Sampler.h"
+#include "load_balancing/IntersectionChecker.h"
 
 namespace LoadBalancing
 {
@@ -25,49 +26,10 @@ namespace LoadBalancing
     }
     
     template <uint D, typename Precision>
-    auto makePartitioning(const std::vector<dVector<D, Precision>>& partitionPoints,
-                                            const dPoints<D, Precision>& points, const Point_Ids& pointIds) {
-        struct ResultType {
-            Point_Ids pointIds;
-            dBox<D, Precision> bounds;
-        };
-        
-        std::vector<ResultType> result(partitionPoints.size());
-        std::vector<bool> initialized(result.size(), false);
-        for(auto id : pointIds) {
-            if(dPoint<D, Precision>::isFinite(id)) {
-                const auto& coords = points[id].coords;
-                auto it = std::min_element(partitionPoints.begin(), partitionPoints.end(),
-                                        [&coords](const dVector<D, Precision>& left, const dVector<D, Precision>& right) {
-                                            return lenSquared(left - coords) < lenSquared(right - coords);
-                                        });
-                                            
-                auto partition = std::distance(partitionPoints.begin(), it);
-                result[partition].pointIds.insert(id);
-                if(initialized[partition]) {
-                    enlargeBoxAroundVector<D, Precision>(result[partition].bounds, coords);
-                } else {
-                    result[partition].bounds.low = coords;
-                    result[partition].bounds.high = result[partition].bounds.low;
-                    initialized[partition] = true;
-                }
-            }
-        }
-        
-        for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
-            for(auto& e : result) {
-                e.pointIds.insert(k);
-            }
-        }
-        
-        return result;
-    }    
-    
-    template <uint D, typename Precision>
     struct CenterDistancePointAssigningSamplePartitioner : public SamplePartitioner<D, Precision>
     {
-        CenterDistancePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler)
-            : mPartitionSize(partitionSize), mSampler(std::move(sampler))
+        CenterDistancePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
+            : mPartitionSize(partitionSize), mSampler(std::move(sampler)), mMakePartition(std::move(intersectionCheckerMaker))			  
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         const dPoints<D, Precision>& points,
@@ -75,18 +37,18 @@ namespace LoadBalancing
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
             mPartitionCenters = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
-            auto partitioning = makePartitioning<D, Precision>(mPartitionCenters, points, pointIds);
+            auto partitioning = makePartitioning(mPartitionCenters, points, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
-            std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto partition) {
+            std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto& partition) {
                 PartitionTree<D, Precision> subtree;
                 subtree.attachment = std::move(partition.pointIds);
-                subtree.bounds = std::move(partition.bounds);
+            	subtree.intersectionChecker = std::move(partition.intersectionChecker);
                 return subtree;
             });
             
             PartitionTree<D, Precision> tree;
-            tree.bounds = bounds;
+            tree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
             tree.attachment = std::move(subtrees);
             return tree;
         }
@@ -108,6 +70,23 @@ namespace LoadBalancing
         Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
-	std::vector<dVector<D, Precision>> mPartitionCenters;
+		std::vector<dVector<D, Precision>> mPartitionCenters;
+		IntersectionPartitionMakerFunction<D, Precision> mMakePartition;
+		
+		std::vector<IntersectionPartition<D, Precision>>
+		makePartitioning(const std::vector<dVector<D, Precision>>& partitionPoints,
+		                 const dPoints<D, Precision>& points,
+		                 const Point_Ids& pointIds) {
+			return mMakePartition(points, pointIds, [&] (auto id) -> size_t {
+                const auto& coords = points[id].coords;
+                auto it = std::min_element(partitionPoints.begin(), partitionPoints.end(),
+                                        [&coords](const dVector<D, Precision>& left, const dVector<D, Precision>& right) {
+                                            return lenSquared(left - coords) < lenSquared(right - coords);
+                                        });
+                                            
+                auto partition = std::distance(partitionPoints.begin(), it);
+				return partition;
+			});
+		}   
     };
 }

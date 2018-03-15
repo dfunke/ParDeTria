@@ -6,6 +6,7 @@
 #include <set>
 #include "SamplePartitioner.h"
 #include "Sampler.h"
+#include "load_balancing/BoundsIntersectionChecker.h"
 
 namespace LoadBalancing
 {
@@ -131,11 +132,13 @@ namespace LoadBalancing
                 auto leftSubtree = buildTreeRecursively(std::get<0>(boundingBoxes), points, std::get<0>(pointIdsPair), remainingRecursions - 1);
                 auto rightSubtree = buildTreeRecursively(std::get<1>(boundingBoxes), points, std::get<1>(pointIdsPair), remainingRecursions - 1);
             
-                tree.bounds = bounds;
-                typename PartitionTree<D, Precision>::ChildContainer children{std::move(leftSubtree), std::move(rightSubtree)};
+                tree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
+                typename PartitionTree<D, Precision>::ChildContainer children;
+                children.push_back(std::move(leftSubtree));
+                children.push_back(std::move(rightSubtree));
                 tree.attachment = std::move(children);
             } else {
-                tree.bounds = bounds;
+                tree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
                 tree.attachment = pointIds;
             }
             

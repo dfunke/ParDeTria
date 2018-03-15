@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 3.0)
 cmake_policy(VERSION 3.0)
+enable_testing()
 
 project (Delaunay C CXX)
 

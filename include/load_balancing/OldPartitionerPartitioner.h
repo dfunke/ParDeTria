@@ -3,6 +3,7 @@
 #include <memory>
 #include "../Partitioner.h"
 #include "load_balancing/Partitioner.h"
+#include "load_balancing/BoundsIntersectionChecker.h"
 
 namespace LoadBalancing
 {
@@ -41,14 +42,14 @@ namespace LoadBalancing
                     
                 } else {
                     subtree.attachment = std::move(partition.points);
-                    subtree.bounds = std::move(partition.bounds);
+            		subtree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(partition.bounds);
                 }
                 children.push_back(std::move(subtree));
             }
             
             PartitionTree<D, Precision> result;
             result.attachment = std::move(children);
-            result.bounds = std::move(bounds);
+            result.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
             return result;
         }
         

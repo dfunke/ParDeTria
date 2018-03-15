@@ -55,12 +55,12 @@ std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigne
         case 'x':
             result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(2500, std::move(sampler));
             break;
-        case 'y':
+        /*case 'y':
             result = std::make_unique<LoadBalancing::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(8, std::move(sampler));
             break;
         case 'z':
             result = std::make_unique<LoadBalancing::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(8, std::move(sampler));
-            break;
+            break;*/
         case 'd':
         case 'c':
         case 'e':

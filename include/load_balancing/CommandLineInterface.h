@@ -13,6 +13,8 @@
 #include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
+#include "load_balancing/BoundsIntersectionChecker.h"
+#include "load_balancing/GridIntersectionChecker.h"
 
 #include <boost/program_options.hpp>
 
@@ -83,11 +85,18 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
         partitioner = std::make_unique<lb::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(baseCutoff, std::move(sampler));
     } else if("center-distance-pasp" == partitionerName){
-        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
+	    Precision cellWidth = vm["cell-width"].as<Precision>();
+		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
+        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
     } else if("bounds-distance-pasp" == partitionerName){
-        partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
+	    Precision cellWidth = vm["cell-width"].as<Precision>();
+		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
+        partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
     } else if("nearest-sample-pasp" == partitionerName) {
-        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler));
+	    Precision cellWidth = vm["cell-width"].as<Precision>();
+		//lb::BoundsIntersectionPartitionMaker<D, Precision> ipm;
+		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
+        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
@@ -120,7 +129,9 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("edge-weights", po::value<std::string>());
     cCommandLine.add_options()("num-bubbles", po::value<uint>());
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
+    cCommandLine.add_options()("cell-width", po::value<Precision>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
+    cCommandLine.add_options()("validate", po::value<uint>());
     cCommandLine.add_options()("help", "produce help message");
     return cCommandLine;
 }
