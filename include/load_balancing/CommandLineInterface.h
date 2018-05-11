@@ -13,6 +13,7 @@
 #include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/NearestSamplePointAssigningSampleBipartitioner.h"
 #include "load_balancing/BoundsIntersectionChecker.h"
 #include "load_balancing/GridIntersectionChecker.h"
 
@@ -97,6 +98,10 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 		//lb::BoundsIntersectionPartitionMaker<D, Precision> ipm;
 		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
         partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
+    } else if("nearest-sample-pasb" == partitionerName) {
+	    Precision cellWidth = vm["cell-width"].as<Precision>();
+		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
+        partitioner = std::make_unique<lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
