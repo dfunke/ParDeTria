@@ -16,8 +16,8 @@ namespace LoadBalancing
     struct NearestSamplePointAssigningSampleBipartitioner : public SamplePartitioner<D, Precision>
     {
         NearestSamplePointAssigningSampleBipartitioner(size_t partitionSize, Sampler<D, Precision> sampler, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
-            : mPartitionSize(partitionSize),
-			mBasePartitioner(2, std::move(sampler), std::move(intersectionCheckerMaker))
+            : mPartitionSize(partitionSize), mSampler(std::move(sampler)),
+			mMakePartition(std::move(intersectionCheckerMaker))
         {
 	        assert(partitionSize > 0);
 	        assert((partitionSize & (partitionSize - 1)) == 0); // power of two
@@ -35,7 +35,7 @@ namespace LoadBalancing
         }
         
         const Sampling<D, Precision>& sampling() const {
-            return mBasePartitioner.sampling();
+            return mSampling;
         }
         
     private:
@@ -45,7 +45,12 @@ namespace LoadBalancing
 		                                             size_t numPartitions) {
 			PartitionTree<D, Precision> result;
 			if(numPartitions > 1) {
-				auto tree = mBasePartitioner.partition(bounds, points, pointIds);
+				using BasePartitioner =	NearestSamplePointAssigningSamplePartitioner<D, Precision>;
+				BasePartitioner basePartitioner(2, mSampler, mMakePartition);
+
+				auto tree = basePartitioner.partition(bounds, points, pointIds);
+				mSampling = basePartitioner.sampling();
+				
 				assert(!tree.isLeaf());
 				const auto& children =
 					std::get<typename decltype(tree)::ChildContainer>(tree.attachment);
@@ -74,7 +79,9 @@ namespace LoadBalancing
 		}
          
         size_t mPartitionSize;
-		NearestSamplePointAssigningSamplePartitioner<D, Precision> mBasePartitioner;
+        Sampler<D, Precision> mSampler;
+		IntersectionPartitionMakerFunction<D, Precision> mMakePartition;
+        Sampling<D, Precision> mSampling;
     };
 }
 
