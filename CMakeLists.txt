@@ -33,7 +33,7 @@ set(Boost_REALPATH ON)
 find_package(Boost 1.58 REQUIRED COMPONENTS system filesystem serialization program_options)
 
 find_package(CGAL REQUIRED)
-find_package(TBB REQUIRED)
+find_package(TBB REQUIRED COMPONENTS tbbmalloc)
 
 find_package(Threads REQUIRED)
 find_package(EJDB REQUIRED)

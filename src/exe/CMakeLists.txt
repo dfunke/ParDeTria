@@ -13,7 +13,7 @@ target_link_libraries(LBExperiments
   Partitioner
   kahip
   ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${TBB_LIBRARIES}
 )
 
 if(PAINT)
@@ -32,7 +32,7 @@ target_link_libraries(LBPainting
   Partitioner
   kahip
   ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${TBB_LIBRARIES}
 )
 endif()  
 
@@ -48,7 +48,7 @@ target_link_libraries(DACTest
   DCTriangulator
   kahip
   ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${TBB_LIBRARIES}
 )
 
 add_executable (Benchmark
@@ -62,8 +62,8 @@ target_link_libraries(Benchmark
   DCTriangulator
   DBConn
   ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
-  ${EJDB_LIBRARIES}
+  ${TBB_LIBRARIES}
+  ${EJDB_LIBRARES}
 )
 
 add_executable (Studies
@@ -77,7 +77,7 @@ target_link_libraries(Studies
   DCTriangulator
   DBConn
   ${Boost_LIBRARIES}
-  ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${TBB_LIBRARIES}
   ${EJDB_LIBRARIES}
 )
 
@@ -88,7 +88,7 @@ add_executable (BenchmarkDS
 target_link_libraries(BenchmarkDS
   Logging
   Measurements
-  ${TBB_MALLOC_PROXY_LIBRARIES}
+  ${TBB_LIBRARIES}
 )
 
 add_executable (DS_Study
@@ -101,7 +101,7 @@ target_link_libraries(DS_Study
         Geometry
         DCTriangulator
         ${Boost_LIBRARIES}
-        ${TBB_MALLOC_PROXY_LIBRARIES}
+        ${TBB_LIBRARIES}
 )
 
 add_executable (getRun

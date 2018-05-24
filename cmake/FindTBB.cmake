@@ -274,7 +274,7 @@ if(NOT TBB_FOUND)
     add_library(tbb SHARED IMPORTED)
     set_target_properties(tbb PROPERTIES
           INTERFACE_INCLUDE_DIRECTORIES  ${TBB_INCLUDE_DIRS}
-          IMPORTED_LOCATION              ${TBB_LIBRARIES})
+          IMPORTED_LOCATION              "${TBB_LIBRARIES}")
     if(TBB_LIBRARIES_RELEASE AND TBB_LIBRARIES_DEBUG)
       set_target_properties(tbb PROPERTIES
           INTERFACE_COMPILE_DEFINITIONS "$<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:TBB_USE_DEBUG=1>"
