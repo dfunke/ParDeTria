@@ -58,6 +58,21 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const po::variable
     return result;
 }
 
+template <uint D, typename Precision>
+auto createIntersectionPartitionMakerFunction(const po::variables_map& vm) {
+	lb::IntersectionPartitionMakerFunction<D, Precision> pmf;
+    if(vm.count("bounds") <= 0 || vm["bounds"].as<std::string>() == "grid") {
+	    Precision cellWidth = vm["cell-width"].as<Precision>();
+		//pm = std::make_unique<lb::GridIntersectionPartitionMaker<D, Precision>>
+		//	(lb::Grid<D, Precision>{cellWidth});
+		pmf = lb::GridIntersectionPartitionMaker<D, Precision>(lb::Grid<D, Precision>{cellWidth});
+	} else if(vm["bounds"].as<std::string>() == "box" || vm["bounds"].as<std::string>() == "boxes") {
+		pmf = lb::BoundsIntersectionPartitionMaker<D, Precision>();
+	} else {
+		throw std::runtime_error("unknown option for argument 'bounds'");
+	}
+    return pmf;
+}
 template <uint D, typename Precision, typename RandomGenerator>
 std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::variables_map& vm, uint threads, RandomGenerator& rand) {
     std::string partitionerName = vm["partitioner"].as<std::string>();
@@ -79,29 +94,29 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 		}
 	}
 
-    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f) : lb::Sampler<D, Precision>(rand(), f, weight);
-    
+    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f)
+	                            : lb::Sampler<D, Precision>(rand(), f, weight);
+	//std::unique_ptr<lb::GridIntersectionPartitionMaker<D, Precision>> pm = nullptr;
+	auto createIPMF = [](const auto& vm) -> auto {
+		return createIntersectionPartitionMakerFunction<D, Precision>(vm);
+	};
+	
     std::unique_ptr<lb::Partitioner<D, Precision>> partitioner = nullptr;
     if("binary-besp" == partitionerName){
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
         partitioner = std::make_unique<lb::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(baseCutoff, std::move(sampler));
     } else if("center-distance-pasp" == partitionerName){
-	    Precision cellWidth = vm["cell-width"].as<Precision>();
-		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
-        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
+        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>
+	        (threads, std::move(sampler), createIPMF(vm));
     } else if("bounds-distance-pasp" == partitionerName){
-	    Precision cellWidth = vm["cell-width"].as<Precision>();
-		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
-        partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
+        partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>
+	        (threads, std::move(sampler), createIPMF(vm));
     } else if("nearest-sample-pasp" == partitionerName) {
-	    Precision cellWidth = vm["cell-width"].as<Precision>();
-		//lb::BoundsIntersectionPartitionMaker<D, Precision> ipm;
-		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
-        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
+        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>
+	        (threads, std::move(sampler), createIPMF(vm));
     } else if("nearest-sample-pasb" == partitionerName) {
-	    Precision cellWidth = vm["cell-width"].as<Precision>();
-		lb::GridIntersectionPartitionMaker<D, Precision> ipm(lb::Grid<D, Precision>{cellWidth});
-        partitioner = std::make_unique<lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision>>(threads, std::move(sampler), std::move(ipm));
+        partitioner = std::make_unique<lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision>>
+	        (threads, std::move(sampler), createIPMF(vm));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
@@ -135,6 +150,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("num-bubbles", po::value<uint>());
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
     cCommandLine.add_options()("cell-width", po::value<Precision>());
+    cCommandLine.add_options()("bounds", po::value<std::string>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
     cCommandLine.add_options()("validate", po::value<uint>());
     cCommandLine.add_options()("help", "produce help message");
