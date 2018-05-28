@@ -130,7 +130,7 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
             ASSERT(d < D);
             oldPartitioner = std::make_unique<OneDimPartitioner<D, Precision>>(d);
         }
-        auto maxRecursions = oldPartitioner->getRecursionDepth(threads);
+        auto maxRecursions = oldPartitioner->getRecursionDepth(threads) - 1;
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
         partitioner = std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision>>(
             std::move(oldPartitioner), maxRecursions, baseCutoff);
