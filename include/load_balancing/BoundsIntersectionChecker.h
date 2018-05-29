@@ -27,7 +27,9 @@ namespace LoadBalancing
 	struct BoundsIntersectionPartitionMaker : IntersectionPartitionMaker<D, Precision>
 	{
 		template <typename PartitionAssigner>
-		std::vector<IntersectionPartition<D, Precision>> operator()(const dPoints<D, Precision>& points, const Point_Ids& ids, PartitionAssigner part)
+		std::vector<IntersectionPartition<D, Precision>>
+		operator()(const dPoints<D, Precision>& points,
+		           const Point_Ids& ids, PartitionAssigner part)
 		{
 			std::vector<Point_Ids> idss;
 			std::vector<dBox<D, Precision>> boundss;

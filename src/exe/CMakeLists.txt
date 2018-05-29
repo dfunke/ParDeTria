@@ -36,7 +36,7 @@ target_link_libraries(LBPainting
 )
 endif()  
 
-add_executable (DACTest
+add_executable (DACTest EXCLUDE_FROM_ALL
   DAC_Test.cpp
 )
 
@@ -51,7 +51,7 @@ target_link_libraries(DACTest
   ${TBB_LIBRARIES}
 )
 
-add_executable (Benchmark
+add_executable (Benchmark EXCLUDE_FROM_ALL
   Benchmark.cpp
 )
 
@@ -66,7 +66,7 @@ target_link_libraries(Benchmark
   ${EJDB_LIBRARES}
 )
 
-add_executable (Studies
+add_executable (Studies EXCLUDE_FROM_ALL
   Studies.cpp
 )
 
@@ -81,7 +81,7 @@ target_link_libraries(Studies
   ${EJDB_LIBRARIES}
 )
 
-add_executable (BenchmarkDS
+add_executable (BenchmarkDS EXCLUDE_FROM_ALL
   BenchmarkDS.cpp
 )
 
@@ -91,7 +91,7 @@ target_link_libraries(BenchmarkDS
   ${TBB_LIBRARIES}
 )
 
-add_executable (DS_Study
+add_executable (DS_Study EXCLUDE_FROM_ALL
         DS_Studies.cpp
 )
 
@@ -104,7 +104,7 @@ target_link_libraries(DS_Study
         ${TBB_LIBRARIES}
 )
 
-add_executable (getRun
+add_executable (getRun EXCLUDE_FROM_ALL
         GetRun.cpp
         )
 

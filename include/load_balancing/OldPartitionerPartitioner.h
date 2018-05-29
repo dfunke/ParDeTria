@@ -37,11 +37,12 @@ namespace LoadBalancing
             typename PartitionTree<D, Precision>::ChildContainer children;
             size_t count = 0;
             for(auto& partition : partitioning) {
-	            provenance.append(std::to_string(count));
+	            auto prov = provenance;
+	            prov.append(std::to_string(count));
                 PartitionTree<D, Precision> subtree;
                 if(remainingRecursions > 0 && pointIds.size() > baseCutoff) {
                     subtree = buildTree(partition.bounds, points,
-                                        partition.points, remainingRecursions - 1, provenance);
+                                        partition.points, remainingRecursions - 1, prov);
                     
                 } else {
                     subtree.attachment = std::move(partition.points);
