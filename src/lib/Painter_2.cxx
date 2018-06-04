@@ -101,8 +101,9 @@ template <typename Precision>
 void PainterImplementation<2, Precision>::draw(
     const dSimplex<2, Precision> &simplex, const dPoints<2, Precision> &points,
     bool /*drawInfinite*/) {
-
-  auto line = [&](uint a, uint b) {
+	
+  using sizeT = typename dPoints<2, Precision>::vector::size_type;
+  auto line = [&](sizeT a, sizeT b) {
 
     const auto &A = points[a];
     const auto &B = points[b];
