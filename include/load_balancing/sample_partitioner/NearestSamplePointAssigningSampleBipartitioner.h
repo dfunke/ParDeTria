@@ -52,7 +52,7 @@ namespace LoadBalancing
 				mSampling = basePartitioner.sampling();
 				
 				assert(!tree.isLeaf());
-				const auto& children =
+				auto& children =
 					std::get<typename decltype(tree)::ChildContainer>(tree.attachment);
 				assert(children.size() == 2);
 				assert(children[0].isLeaf() && children[1].isLeaf());
@@ -66,8 +66,9 @@ namespace LoadBalancing
 				                                 std::move(std::get<Point_Ids>(children[1].attachment
 																			   )),
 				                                 numPartitions / 2);
-				result.intersectionChecker =
-					std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
+
+				leftTree.intersectionChecker = std::move(children[0].intersectionChecker);
+				rightTree.intersectionChecker = std::move(children[1].intersectionChecker);
 				result.attachment = typename decltype(tree)::ChildContainer {
 					std::move(leftTree), std::move(rightTree)};
 			} else {
