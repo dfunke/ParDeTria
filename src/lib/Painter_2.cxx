@@ -100,33 +100,31 @@ void PainterImplementation<2, Precision>::draw(
 template <typename Precision>
 void PainterImplementation<2, Precision>::draw(
     const dSimplex<2, Precision> &simplex, const dPoints<2, Precision> &points,
-    bool /*drawInfinite*/) {
+    bool drawInfinite) {
 
-  auto line = [&](uint a, uint b) {
+	constexpr std::array<size_t, 3> axes = {0, 1, 2};
+	bool finite = std::all_of(begin(axes), end(axes), [&simplex] (auto d) {
+	                          return dPoint<2, Precision>::isFinite(simplex.vertices[d]);
+	                          });
+	if(drawInfinite || finite) {
+		for (auto d : axes) {
+			const auto &A = points[simplex.vertices[d]];
+			const auto &B = points[simplex.vertices[(d + 1) % axes.size()]];
 
-    const auto &A = points[a];
-    const auto &B = points[b];
+			cr->save();
 
-    cr->save();
+			if (dashed)
+				cr->set_dash(std::vector<double>({2, 2}), 0);
 
-    if (dashed)
-      cr->set_dash(std::vector<double>({2, 2}), 0);
+			cr->move_to(translatePoint(A.coords[0], 0), translatePoint(A.coords[1], 1));
+			cr->line_to(translatePoint(B.coords[0], 0), translatePoint(B.coords[1], 1));
+			stroke();
 
-    cr->move_to(translatePoint(A.coords[0], 0), translatePoint(A.coords[1], 1));
-    cr->line_to(translatePoint(B.coords[0], 0), translatePoint(B.coords[1], 1));
-    stroke();
-
-    cr->unset_dash();
-    cr->restore();
-  };
-
-  for (uint d = 0; d < 2; ++d) {
-    line(simplex.vertices[d], simplex.vertices[d + 1]);
-  }
-  // close the loop
-  line(simplex.vertices[2], simplex.vertices[0]);
-
-  _log(simplex);
+			cr->unset_dash();
+			cr->restore();
+		}
+		_log(simplex);
+	}
 }
 
 template <typename Precision>

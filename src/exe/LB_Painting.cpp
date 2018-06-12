@@ -4,104 +4,12 @@
 #include "Painter.h"
 #include "utils/MakeIds.h"
 #include "load_balancing/CommandLineInterface.h"
-#include "load_balancing/GridIntersectionChecker.h"
+#include "load_balancing/PartitionTreePainter.h"
+#include "load_balancing/monitors/DrawingMonitor.h"
 
 using Precision = double;
 constexpr uint D = 2;
     
-const std::vector<tRGB> colors = {
-    {1.0, 0.0, 0.0},
-    {0.0, 1.0, 0.0},
-    {0.0, 0.0, 1.0},
-    {1.0, 1.0, 0.0},
-    {0.0, 1.0, 1.0},
-    {1.0, 0.0, 1.0},
-};
-
-template <typename Precision>
-struct PartitionTreePainter
-{
-    PartitionTreePainter(Painter<2, Precision>& painter, const dPoints<2, Precision>& points)
-     : painter(&painter), points(&points)
-    {}
-    
-    void operator()(const lb::PartitionTree<2, Precision>& tree) {
-        size_t partitions = 0;
-        paintPartitionTree(tree, colors.cbegin(), partitions);
-        
-        /*painter->setColor(tRGB(0, 0, 0));
-        for(const auto label : labels)
-            painter->drawText(std::get<0>(label), std::get<1>(label));
-        labels.clear();*/
-    }
-    
-
-    std::vector<tRGB>::const_iterator paintPartitionTree(const lb::PartitionTree<2, Precision>& tree,
-                                                   std::vector<tRGB>::const_iterator current,
-                                                   size_t& currentNumPartitions) {
-        if(current == colors.cend())
-            current = colors.cbegin();
-        
-        if(tree.isLeaf()) {
-            auto color = *current++;
-            painter->setColor(color);
-            dVector<2, Precision> center;
-            size_t currentNumPoints = 0;
-            for(auto id : std::get<Point_Ids>(tree.attachment)) {
-                painter->draw((*points)[id]);
-                center = center * ((Precision)currentNumPoints/(1 + currentNumPoints))
-                    + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
-            }
-            
-			/*auto gridChecker = dynamic_cast<lb::GridIntersectionChecker<D, Precision>*>(tree.intersectionChecker.get());
-			if(!gridChecker) {
-	            painter->drawBox(tree.intersectionChecker->bounds());
-			} else {
-				for(auto it = gridChecker->cellsBegin(); it != gridChecker->cellsEnd(); ++it) {
-					auto hasNeighbour = [it, gridChecker] (const dIndex<D, Precision>& direction) -> bool {
-						auto cell = *it;
-						std::transform(cell.begin(), cell.end(), direction.begin(), cell.begin(), [] (auto l, auto r) {
-						               return l + r;
-									   });
-						return std::find(gridChecker->cellsBegin(), gridChecker->cellsEnd(), cell) != gridChecker->cellsEnd();
-					};
-					auto bounds = gridChecker->grid().boundsOf(*it);
-					auto bottomLeft = bounds.low;
-					auto topRight = bounds.high;
-					auto bottomRight = bottomLeft;
-					bottomRight[0] = topRight[0];
-					auto topLeft = bottomLeft;
-					topLeft[1] = topRight[1];
-					if(hasNeighbour({0, 1})) {
-						painter->drawLine(topLeft, topRight);
-					}
-					if(hasNeighbour({1, 0})) {
-						painter->drawLine(topRight, bottomRight);
-					}
-					if(hasNeighbour({0, -1})) {
-						painter->drawLine(bottomLeft, bottomRight);
-					}
-					if(hasNeighbour({-1, 0})) {
-						painter->drawLine(topLeft, bottomLeft);
-					}
-				}
-			}*/
-            
-            labels.push_back({std::to_string(currentNumPartitions++), center});
-        } else {
-            const auto& children = std::get<typename lb::PartitionTree<2, Precision>::ChildContainer>(tree.attachment);
-            for(const auto& child : children) {
-                current = paintPartitionTree(child, current, currentNumPartitions);
-            }
-        }
-        return current;
-    }
-    
-private:
-    Painter<2, Precision>* painter;
-    const dPoints<2, Precision>* points;
-    std::vector<std::tuple<std::string, dVector<2, Precision>>> labels;
-};
 
 template <typename Precision, typename RandomIt>
 void paintPartitionTree(const dPoints<2, Precision>& points,
@@ -111,15 +19,44 @@ void paintPartitionTree(const dPoints<2, Precision>& points,
     paintPartitionTree(points, tree, painter, first, last, first);
 }
 
+template <typename Precision>
+void execute(const po::variables_map& vm, uint threads, const std::string& out,
+             dPoints<D, Precision> points) {
+    dBox<D, Precision> bounds;
+    bounds.low.fill(0);
+    bounds.high.fill(100);
+
+    auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
+    assert(partitioner);
+
+	std::vector<std::pair<std::string, Painter<2, double>>> painters;
+	std::mutex mutex;
+	lb::DrawingMonitor<Precision> monitor(points, colors.begin(), colors.end(), mutex,
+	               [&painters, &bounds, &out](const auto& name) -> auto& {
+	               painters.emplace_back(out + "_triang_" + name, Painter<2, double>(bounds));
+	               return painters.back().second;
+	               });
+   
+	lb::DCTriangulator<D, Precision, decltype(monitor)> triangulator(bounds, points,
+																	  std::move(partitioner), 100,
+																	  false, false, true,
+																	  std::move(monitor));
+	triangulator.triangulate();
+	for(auto& painter : painters) {
+		painter.second.save(painter.first);
+	}
+}
+
 int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
-    //std::string pointFile;    
+    //std::string pointFile;
     std::string partitionerName;
 
     auto cCommandLine = defaultOptions<Precision>();
     cCommandLine.add_options()("out", po::value<std::string>());
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
     cCommandLine.add_options()("mode", po::value<std::string>());
+    cCommandLine.add_options()("no-triang", "just partition, do not triangulate");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
@@ -223,4 +160,7 @@ int main(int argc, char *argv[]) {
 		else if("partitioning" == mode)
 			partitionPainter.save(filename + "_partitioning");
 	}
+     
+	if(vm.count("no-triang") == 0)
+	   execute<double>(vm, threads, filename, points);
 }

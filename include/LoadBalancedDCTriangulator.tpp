@@ -632,6 +632,8 @@ namespace LoadBalancing
                                             _triangulateBase(Point_Ids(std::move(edgePointIds.data())), bounds,
                                                             provenance + "e");
             VTUNE_END_TASK(TriangulateEdge);
+            mMonitor.registerPartialTriangulation(partialDTs, edgeDT,
+												  Triangulator<D, Precision>::points, provenance);
 
             PROFILER_MEAS("edgeDT", edgeDT.simplices.size());
             PROFILER_MEAS("edgeDTPerc", edgeDT.simplices.size() / ([&]() -> std::size_t {
