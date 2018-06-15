@@ -40,6 +40,7 @@ find_package(EJDB REQUIRED)
 find_package(VTune)
 find_package(KaHIP REQUIRED)
 find_package(LibKDTree++ REQUIRED)
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 

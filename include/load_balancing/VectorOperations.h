@@ -48,3 +48,9 @@ template <size_t D, typename Precision>
 Precision len(const dVector<D, Precision>& vec) {
     return std::sqrt(lenSquared(vec));
 }
+
+template <size_t D, typename Precision>
+Precision distanceToPlane(const dVector<D, Precision>& point,
+                          const dVector<D, Precision>& normal, Precision offset) {
+			return scalarProduct(normal, point) - offset;
+}

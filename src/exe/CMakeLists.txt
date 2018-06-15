@@ -12,6 +12,7 @@ target_link_libraries(LBExperiments
   SpatialSort
   Partitioner
   kahip
+  Eigen3::Eigen
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
 )
@@ -31,6 +32,7 @@ target_link_libraries(LBPainting
   SpatialSort
   Partitioner
   kahip
+  Eigen3::Eigen
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
 )

@@ -14,6 +14,7 @@
 #include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSampleBipartitioner.h"
+#include "load_balancing/sample_partitioner/HyperplaneBipartitioner.h"
 #include "load_balancing/BoundsIntersectionChecker.h"
 #include "load_balancing/GridIntersectionChecker.h"
 
@@ -117,6 +118,9 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
     } else if("nearest-sample-pasb" == partitionerName) {
         partitioner = std::make_unique<lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision>>
 	        (threads, std::move(sampler), createIPMF(vm));
+    } else if("hyperplane-sample-pasb" == partitionerName) {
+        partitioner = std::make_unique<lb::HyperplaneSamplingBipartitioner<D, Precision>>
+	        (threads, std::move(sampler));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
