@@ -1,5 +1,6 @@
 #pragma once
 #include "IntersectionChecker.h"
+#include <CGAL/Kernel_d/Point_d.h>
 #include <CGAL/Kernel_d/Hyperplane_d.h>
 #include "VectorOperations.h"
 
