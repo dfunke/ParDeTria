@@ -15,8 +15,9 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     struct NearestSamplePointAssigningSampleBipartitioner : public SamplePartitioner<D, Precision>
     {
-        NearestSamplePointAssigningSampleBipartitioner(size_t partitionSize, Sampler<D, Precision> sampler, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
+        NearestSamplePointAssigningSampleBipartitioner(size_t partitionSize, Sampler<D, Precision> sampler, size_t baseCutoff, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler)),
+			mBaseCutoff(baseCutoff),
 			mMakePartition(std::move(intersectionCheckerMaker))
         {
 	        assert(partitionSize > 0);
@@ -44,7 +45,7 @@ namespace LoadBalancing
 		                                             const Point_Ids& pointIds,
 		                                             size_t numPartitions) {
 			PartitionTree<D, Precision> result;
-			if(numPartitions > 1) {
+			if(numPartitions > 1 && pointIds.size() > mBaseCutoff) {
 				using BasePartitioner =	NearestSamplePointAssigningSamplePartitioner<D, Precision>;
 				BasePartitioner basePartitioner(2, mSampler, mMakePartition);
 
@@ -81,6 +82,7 @@ namespace LoadBalancing
          
         size_t mPartitionSize;
         Sampler<D, Precision> mSampler;
+        size_t mBaseCutoff;
 		IntersectionPartitionMakerFunction<D, Precision> mMakePartition;
         Sampling<D, Precision> mSampling;
     };

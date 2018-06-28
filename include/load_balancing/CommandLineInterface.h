@@ -102,6 +102,7 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 		return createIntersectionPartitionMakerFunction<D, Precision>(vm);
 	};
 	
+    auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
     std::unique_ptr<lb::Partitioner<D, Precision>> partitioner = nullptr;
     if("binary-besp" == partitionerName){
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
@@ -117,7 +118,7 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 	        (threads, std::move(sampler), createIPMF(vm));
     } else if("nearest-sample-pasb" == partitionerName) {
         partitioner = std::make_unique<lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision>>
-	        (threads, std::move(sampler), createIPMF(vm));
+	        (threads, std::move(sampler), baseCutoff, createIPMF(vm));
     } else if("hyperplane-sample-pasb" == partitionerName) {
         partitioner = std::make_unique<lb::HyperplaneSamplingBipartitioner<D, Precision>>
 	        (threads, std::move(sampler));
@@ -135,7 +136,6 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
             oldPartitioner = std::make_unique<OneDimPartitioner<D, Precision>>(d);
         }
         auto maxRecursions = oldPartitioner->getRecursionDepth(threads) - 1;
-        auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
         partitioner = std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision>>(
             std::move(oldPartitioner), maxRecursions, baseCutoff);
     }
