@@ -22,9 +22,11 @@ protected:
               const tIdType n,
               const dBox<D, Precision> &bounds,
               tGenerator &gen) const {
-                  
+
+#ifndef NDEBUG
         auto diff = bounds.high - bounds.low;
         assert((std::all_of(diff.begin(), diff.end(), [this](auto x) { return x >= mBubbleRadius; })));
+#endif
                   
         dBox<D, Precision> shrunkBounds;
         std::transform(bounds.low.begin(), bounds.low.end(), shrunkBounds.low.begin(),
