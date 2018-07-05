@@ -46,10 +46,13 @@ namespace LoadBalancing
         std::vector<dVector<D, Precision>> points;
         dSimplices<D, Precision> simplices;
 
-        void operator=(const Sampling & other){
-            graph = other.graph;
-            partition = other.partition;
-            points = other.points;
+        Sampling clone() const {
+            Sampling res;
+            res.graph = graph;
+            res.partition = partition;
+            res. points = points;
+
+            return res;
         }
     };
     

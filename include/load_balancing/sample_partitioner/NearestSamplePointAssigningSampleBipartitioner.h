@@ -50,7 +50,7 @@ namespace LoadBalancing
 				BasePartitioner basePartitioner(2, mSampler, mMakePartition);
 
 				auto tree = basePartitioner.partition(bounds, points, pointIds);
-				mSampling = basePartitioner.sampling();
+				mSampling = basePartitioner.sampling().clone();
 				
 				assert(!tree.isLeaf());
 				auto& children =
