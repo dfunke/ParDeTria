@@ -44,6 +44,7 @@ namespace LoadBalancing
         Graph graph;
         std::vector<int> partition;
         std::vector<dVector<D, Precision>> points;
+        dSimplices<D, Precision> simplices;
     };
     
     template <uint D, typename Precision>
@@ -80,7 +81,7 @@ namespace LoadBalancing
             for(auto id : sample) {
                 samplePointVector.push_back(points[id].coords);
             }
-            return Sampling<D, Precision>{std::move(graph), std::move(partition), std::move(samplePointVector)};
+            return Sampling<D, Precision>{std::move(graph), std::move(partition), std::move(samplePointVector), std::move(simplices)};
         }
         
     private:
