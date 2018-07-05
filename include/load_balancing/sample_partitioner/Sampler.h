@@ -45,6 +45,12 @@ namespace LoadBalancing
         std::vector<int> partition;
         std::vector<dVector<D, Precision>> points;
         dSimplices<D, Precision> simplices;
+
+        void operator=(const Sampling & other){
+            graph = other.graph;
+            partition = other.partition;
+            points = other.points;
+        }
     };
     
     template <uint D, typename Precision>
