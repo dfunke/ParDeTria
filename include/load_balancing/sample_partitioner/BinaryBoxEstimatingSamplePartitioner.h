@@ -96,7 +96,7 @@ namespace LoadBalancing
             : mPointsCutoff(minNumOfPoints), mSampler(std::move(sampler))
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
             return buildTreeRecursively(bounds, points, pointIds, 10);
@@ -117,7 +117,7 @@ namespace LoadBalancing
         Sampler<D, Precision> mSampler;
         
         PartitionTree<D, Precision> buildTreeRecursively(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds,
                                         size_t remainingRecursions) {
             PartitionTree<D, Precision> tree;

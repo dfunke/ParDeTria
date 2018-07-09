@@ -38,7 +38,7 @@ namespace LoadBalancing
 
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);

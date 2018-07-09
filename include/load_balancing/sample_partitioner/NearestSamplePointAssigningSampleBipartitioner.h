@@ -24,7 +24,7 @@ namespace LoadBalancing
 	        assert((partitionSize & (partitionSize - 1)) == 0); // power of two
         }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
             return makePartitioning(bounds, points, pointIds, mPartitionSize);
@@ -41,7 +41,7 @@ namespace LoadBalancing
         
     private:
 		PartitionTree<D, Precision> makePartitioning(const dBox<D, Precision>& bounds,
-		                                             const dPoints<D, Precision>& points,
+		                                             dPoints<D, Precision>& points,
 		                                             const Point_Ids& pointIds,
 		                                             size_t numPartitions) {
 			PartitionTree<D, Precision> result;

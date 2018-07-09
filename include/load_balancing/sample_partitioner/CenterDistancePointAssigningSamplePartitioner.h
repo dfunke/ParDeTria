@@ -32,7 +32,7 @@ namespace LoadBalancing
             : mPartitionSize(partitionSize), mSampler(std::move(sampler)), mMakePartition(std::move(intersectionCheckerMaker))			  
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);

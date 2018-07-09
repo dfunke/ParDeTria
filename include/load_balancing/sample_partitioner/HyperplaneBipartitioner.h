@@ -26,7 +26,7 @@ namespace LoadBalancing
         }
 
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
 			auto is = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
@@ -45,7 +45,7 @@ namespace LoadBalancing
     private:
 		PartitionTree<D, Precision>
 			makePartitioning(const dBox<D, Precision>& bounds,
-			                 const dPoints<D, Precision>& points,
+			                 dPoints<D, Precision>& points,
 			                 const Point_Ids& pointIds,
 			                 std::unique_ptr<IntersectionChecker<D, Precision>> intersectionChecker,
 			                 size_t numPartitions) {

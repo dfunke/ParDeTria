@@ -14,7 +14,7 @@ namespace LoadBalancing
             : splitter(std::move(splitter)), maxRecursions(maxRecursions), baseCutoff(baseCutoff) { }
         
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
             return buildTree(bounds, points, pointIds, maxRecursions, "");

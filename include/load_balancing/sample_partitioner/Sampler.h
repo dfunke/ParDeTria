@@ -73,20 +73,15 @@ namespace LoadBalancing
         {}
         
         auto operator()(const dBox<D, Precision>& bounds,
-                                    const dPoints<D, Precision>& points,
+                                    dPoints<D, Precision>& points,
                                     const Point_Ids& pointIds,
                                     size_t partitionSize)
         {
             auto sample = generateSample(mSampleSize(points.finite_size()), pointIds, mRand);
-            dPoints<D, Precision> samplePoints;
-            for(auto id : sample) {
-                assert((dPoint<D, Precision>::isFinite(id)));
-                samplePoints.emplace_back(points[id]);
-            }
-            auto simplices = triangulateSample(bounds, samplePoints);
-            auto graph = makeGraph(simplices, samplePoints, lenSquared(bounds.low - bounds.high));
+            auto simplices = triangulateSample(bounds, points, sample);
+            auto graph = makeGraph(simplices, points, lenSquared(bounds.low - bounds.high));
             auto partition = partitionGraph(graph, partitionSize, mRand);
-	    std::vector<dVector<D, Precision>> samplePointVector;
+	        std::vector<dVector<D, Precision>> samplePointVector;
             for(auto id : sample) {
                 samplePointVector.push_back(points[id].coords);
             }
@@ -127,11 +122,11 @@ namespace LoadBalancing
         }
 
         dSimplices<D, Precision> triangulateSample(const dBox<D, Precision>& bounds,
-                                                    const dPoints<D, Precision>& samplePoints) {
+                                                   dPoints<D, Precision>& points,
+                                                   const std::vector<tIdType>& samplePoints) {
             
-            auto sp = samplePoints;
-            CGALTriangulator<D, Precision> triangulator(bounds, sp);
-            return triangulator.triangulate();
+            CGALTriangulator<D, Precision> triangulator(bounds, points);
+            return triangulator.triangulate(samplePoints);
         }
         
         void sanitizeAdjacencyList(std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
