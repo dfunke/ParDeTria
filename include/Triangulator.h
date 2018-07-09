@@ -39,6 +39,16 @@ public:
         return this->_triangulate(allPoints(), baseBounds, std::to_string(TOP));
     }
 
+    template <typename CONTAINER>
+    dSimplices<D, Precision> triangulate(const CONTAINER & a){
+        Point_Ids idSet(a.size());
+        for(const auto & id : a){
+            idSet.insert(id);
+        }
+
+        return _triangulate(idSet, baseBounds, std::to_string(TOP));
+    }
+
 protected:
     virtual dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
                                                   const dBox<D, Precision> &bounds,
