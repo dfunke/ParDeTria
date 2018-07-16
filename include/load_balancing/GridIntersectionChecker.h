@@ -4,6 +4,7 @@
 #include <functional>
 #include "load_balancing/IntersectionChecker.h"
 #include "load_balancing/Grid.h"
+#include "datastructures/AABBTree.h"
 
 namespace LoadBalancing
 {
@@ -12,24 +13,37 @@ namespace LoadBalancing
 	{
 		template <typename ForwardIt>
 		GridIntersectionChecker(dBox<D, Precision> bounds, Grid<D, Precision, IndexPrecision> grid, ForwardIt cellsBegin, ForwardIt cellsEnd)
-			: IntersectionChecker<D, Precision>(std::move(bounds)), mGrid(std::move(grid)), cells(cellsBegin, cellsEnd)
-		{}
+			: IntersectionChecker<D, Precision>(std::move(bounds)), mGrid(std::move(grid)), cells(cellsBegin, cellsEnd), aabb(bounds, grid.cellWidth())
+		{
+
+//			printf("\n creating %.0f-%.0f %.0f-%.0f %.0f-%.0f\n",bounds.low[0], bounds.high[0], bounds.low[1], bounds.high[1], bounds.low[2], bounds.high[2]);
+            VTUNE_TASK(GridIntersectionChecker_CTOR);
+            for(uint i = 0; i < cells.size(); ++i) {
+				const auto & c = cells[i];
+				auto b = grid.boundsOf(c);
+				aabb.insert(b);
+
+//				printf("%u: %lu %lu %lu - %.0f-%.0f %.0f-%.0f %.0f-%.0f\n", i, c[0], c[1], c[2], b.low[0], b.high[0], b.low[1], b.high[1], b.low[2], b.high[2]);
+				//RASSERT(c[0] != 32 && c[1] != 31 && c[2] != 43);
+
+//				if(!aabb.insert(b)) {
+//					printf("\tfailed\n");
+//					RASSERT(false);
+//				}
+			}
+
+		}
 		
 		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
 		{
 			VTUNE_TASK(GridIntersectionChecker);
 
-			VTUNE_TASK(GridIntersectionChecker_PRECHECK);
-			if(!IntersectionChecker<D, Precision>::bounds().intersects(sphere)) {
-                VTUNE_TASK(GridIntersectionChecker_EARLY_RETURN);
-                return false;
-            }
-            VTUNE_END_TASK(GridIntersectionChecker_PRECHECK);
+			ASSERT(aabb.intersects(sphere) == std::any_of(cells.begin(), cells.end(), [this, &sphere](const auto& i) {
+				return intersectsWith<D, Precision, IndexPrecision>(mGrid, sphere, i);
+			}));
 
-			VTUNE_TASK(GridIntersectionChecker_GRID);
-			return std::any_of(cells.begin(), cells.end(), [this, &sphere](const auto& i) {
-			                   return intersectsWith<D, Precision, IndexPrecision>(mGrid, sphere, i);
-			                   });
+
+			return aabb.intersects(sphere);
 		}
 
 		std::unique_ptr<IntersectionChecker<D, Precision>> copy() const override
@@ -52,6 +66,7 @@ namespace LoadBalancing
 	private:
 		Grid<D, Precision, IndexPrecision> mGrid;
 		std::vector<dIndex<D, IndexPrecision>> cells;
+		AABBTree<D, Precision> aabb;
 	};
 	
 	template <uint D, typename Precision, typename IndexPrecision = int64_t>
