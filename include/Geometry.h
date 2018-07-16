@@ -88,6 +88,17 @@ struct dBox {
         return true;
     }
 
+    bool contains(const dBox<D, Precision> &b) const {
+        PROFILER_INC("dBox_containsBox");
+
+        for (uint d = 0; d < D; ++d) {
+            if (!(low[d] <= b.low[d] && b.high[d] <= high[d]))
+                return false;
+        }
+
+        return true;
+    }
+
     /* tests whether sphere is FULLY contained in box */
     bool contains(const dSphere<D, Precision> &sphere) const {
         PROFILER_INC("dBox_containsSphere");
