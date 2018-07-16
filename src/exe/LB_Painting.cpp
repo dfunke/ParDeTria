@@ -21,10 +21,17 @@ void paintPartitionTree(const dPoints<2, Precision>& points,
 
 template <typename Precision>
 void execute(const po::variables_map& vm, uint threads, const std::string& out,
-             dPoints<D, Precision> points) {
+             dPoints<D, Precision> /*points*/) {
+	startGen = tGenerator(START_SEED);
+		
     dBox<D, Precision> bounds;
     bounds.low.fill(0);
     bounds.high.fill(100);
+
+    dPoints<D, Precision> points;
+	auto pg = createGenerator<D, Precision>(vm);
+	auto N = vm["n"].as<tIdType>();
+	points = pg->generate(N, bounds, startGen);
 
     auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
     assert(partitioner);
