@@ -61,6 +61,7 @@ namespace LoadBalancing
         MonitorT monitor)
             : Triangulator<D, Precision>(_bounds, _points),
             mParallelEdgeTria(parallelEdgeTria),
+            mParallelBaseCase(parallelBaseSolver),
             mPartitioner(std::move(partitioner)),
             mMonitor(std::move(monitor))
     {
@@ -89,11 +90,9 @@ namespace LoadBalancing
             }
         }
 
-        if (parallelBaseSolver)
-            baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, true>>(this->baseBounds, this->points,
+        par_baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, true>>(this->baseBounds, this->points,
                                                                                     gridOccupancy);
-        else
-            baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, false>>(this->baseBounds, this->points,
+	    seq_baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, false>>(this->baseBounds, this->points,
                                                                                     gridOccupancy);
     }
     
@@ -494,7 +493,8 @@ namespace LoadBalancing
     template<uint D, typename Precision, typename MonitorT>
     dSimplices<D, Precision> DCTriangulator<D, Precision, MonitorT>::_triangulateBase(const Point_Ids &partitionPoints,
                                                                             const dBox<D, Precision> &bounds,
-                                                                            const std::string provenance) {
+                                                                            const std::string provenance,
+                                                                            const bool parallel) {
         
         size_t size = partitionPoints.size();
 
@@ -509,10 +509,15 @@ namespace LoadBalancing
         mMonitor.registerBaseTriangulation(size, provenance);
 
         INDENT
-        auto dt = baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
-        DEDENT
-
-        return dt;
+        if(parallel) {
+            auto dt = par_baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
+            DEDENT
+            return dt;
+        } else {
+            auto dt = seq_baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
+            DEDENT
+            return dt;
+        }
     }
 
     template<uint D, typename Precision, typename MonitorT>
@@ -624,13 +629,8 @@ namespace LoadBalancing
 
             VTUNE_TASK(TriangulateEdge);
             //TODO how to identify the edge triangulation
-
-            dSimplices<D, Precision> edgeDT = mParallelEdgeTria ?
-                                            _triangulate(Point_Ids(std::move(edgePointIds.data())), bounds,
-                                                        provenance + "e")
-                                                            :
-                                            _triangulateBase(Point_Ids(std::move(edgePointIds.data())), bounds,
-                                                            provenance + "e");
+            auto edgeDT = _triangulateBase(Point_Ids(std::move(edgePointIds.data())), bounds,
+                                                            provenance + "e",mParallelEdgeTria);
             VTUNE_END_TASK(TriangulateEdge);
             mMonitor.registerPartialTriangulation(partialDTs, edgeDT,
 												  Triangulator<D, Precision>::points, provenance);
@@ -649,7 +649,7 @@ namespace LoadBalancing
                                     provenance);
 
         } else { // base case
-            return _triangulateBase(std::get<Point_Ids>(tree.attachment), bounds, provenance);
+            return _triangulateBase(std::get<Point_Ids>(tree.attachment), bounds, provenance, mParallelBaseCase);
         }
     }
 }

@@ -47,7 +47,7 @@ namespace LoadBalancing
         : setup(std::move(setup)),
           out(out),
           partitionerName(partitioner->info()),
-          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, false, true, ComprehensiveMonitor(acc)),
+          triangulator(this->setup.bounds, this->setup.points, std::move(partitioner), 100, false, (partitioner->info().find("bipartitioner") == std::string::npos), true, ComprehensiveMonitor(acc)),
           runs(0) {
         start();
     }

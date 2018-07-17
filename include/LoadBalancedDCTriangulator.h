@@ -53,7 +53,8 @@ namespace LoadBalancing
     protected:
         dSimplices<D, Precision> _triangulateBase(const Point_Ids &partitionPoints,
                                                 const dBox<D, Precision> &bounds,
-                                                const std::string provenance);
+                                                const std::string provenance,
+                                                const bool parallel);
 
         dSimplices<D, Precision> _triangulate(const Point_Ids &partitionPoints,
                                             const dBox<D, Precision> &bounds,
@@ -85,9 +86,11 @@ namespace LoadBalancing
 
     protected:
         const bool mParallelEdgeTria;
+        const bool mParallelBaseCase;
 
         std::unique_ptr<Partitioner<D, Precision>> mPartitioner;
-        std::unique_ptr<Triangulator<D, Precision>> baseTriangulator;
+        std::unique_ptr<Triangulator<D, Precision>> seq_baseTriangulator;
+        std::unique_ptr<Triangulator<D, Precision>> par_baseTriangulator;
         
         MonitorT mMonitor;
 
