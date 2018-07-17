@@ -483,7 +483,7 @@ dSimplices<D, Precision> _pureCgal(const Point_Ids &ids, dPoints<D, Precision> &
                                    const uint gridOccupancy
         /*, bool filterInfinite */) {
 
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, gridOccupancy);
 
     // transform points into CGAL points with info
     auto transform = [&points, &helper](const tIdType i) -> std::pair<typename Tria::Point, tIdType> {
