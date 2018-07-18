@@ -30,22 +30,40 @@ protected:
         auto bubbleCenters = generateBubbleCenters(bounds, gen);
         auto bubbleRadiuses = calculateBubbleRadiuses(bubbleCenters.begin(), bubbleCenters.end(), bounds);
                   
-        std::normal_distribution<Precision> pointDist(0.0, 0.5);
-        
-        for(size_t i = 0; i < n; ++i) {
-            size_t centerIndex = i * ((float)mNumBubbles / n);
-            const auto& center = bubbleCenters[centerIndex];
-            const auto& radius = bubbleRadiuses[centerIndex];
-                  
-            dVector<D, Precision> coords;
-            do {
-                std::generate(coords.begin(), coords.end(), [&gen, &pointDist]() -> auto {
-                    return pointDist(gen);
-                });
-                coords = coords * radius + center;
-            } while(!bounds.contains(coords));            
-            points[i] = coords;
+        std::normal_distribution<Precision> coordsDist(0.0, 0.5);
+        std::normal_distribution<Precision> pointsDist(1.0, 0.1);
+
+        auto remainingPoints = n;
+        size_t idx = 1;
+
+        for(size_t c = 0; c < mNumBubbles; ++c){
+
+            size_t pp = 0;
+
+            if(mNumBubbles - c > 1)
+                pp = (remainingPoints / (mNumBubbles - c)) * pointsDist(gen);
+            else
+                pp = remainingPoints;
+
+            remainingPoints -= pp;
+
+            for(size_t i = 0; i < pp; ++i) {
+                const auto& center = bubbleCenters[c];
+                const auto& radius = bubbleRadiuses[c];
+
+                dVector<D, Precision> coords;
+                do {
+                    std::generate(coords.begin(), coords.end(), [&gen, &coordsDist]() -> auto {
+                        return coordsDist(gen);
+                    });
+                    coords = coords * radius + center;
+                } while(!bounds.contains(coords));
+                points[idx++] = coords;
+            }
         }
+
+        ASSERT(remainingPoints == 0);
+        ASSERT(idx == n + 1);
     }
     
     std::vector<dVector<D, Precision>> generateBubbleCenters(const dBox<D, Precision> &bounds, tGenerator &gen) const {
