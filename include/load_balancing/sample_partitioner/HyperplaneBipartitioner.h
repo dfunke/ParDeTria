@@ -52,7 +52,7 @@ namespace LoadBalancing
 
 			PartitionTree<D, Precision> result;
 			if(numPartitions > 1) {
-           		mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
+           		mSampling = mSampler(bounds, points, pointIds, 2);
 
 				// calc split points ...
 				std::vector<dVector<D, Precision>> splitPoints;
@@ -106,6 +106,12 @@ namespace LoadBalancing
 					} else {
 						rightPoints.insert(id);
 					}
+				}
+
+				// add infinite points
+				for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
+					leftPoints.insert(k);
+					rightPoints.insert(k);
 				}
 
 				// build partition tree
