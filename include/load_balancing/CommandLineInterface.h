@@ -92,6 +92,8 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 			weight = [](Precision d) -> Precision { return 1/(d + 0.0000001); };
 		} else if("linear" == vm["edge-weights"].as<std::string>()) {
 			weight = [](Precision d) -> Precision { return 1/std::sqrt(d + 0.0000001); };
+		} else if("log" == vm["edge-weights"].as<std::string>()) {
+			weight = [](Precision d) -> Precision { return 1/std::log(d + 1.0000001); };
 		}
 	}
 
