@@ -97,17 +97,31 @@ namespace LoadBalancing
 				auto offset = -vector(D)/scalarProduct(normal, orthogonal);
 
 				// separate points
-				Point_Ids leftPoints;
-				Point_Ids rightPoints;
-				for(auto id : pointIds) {
-					auto& coords = points[id].coords;
-					if(distanceToPlane(coords, normal, offset) > 0) {
-						leftPoints.insert(id);
-					} else {
-						rightPoints.insert(id);
+				Concurrent_Growing_Point_Ids leftIdset(pointIds.size() / 2);
+				Concurrent_Growing_Point_Ids rightIdset(pointIds.size() / 2);
+				
+				using Handle = tbb::enumerable_thread_specific<hConcurrent_Growing_Point_Ids,
+					  tbb::cache_aligned_allocator<hConcurrent_Growing_Point_Ids>,
+					  tbb::ets_key_usage_type::ets_key_per_instance>;
+				Handle leftTsPointHandle = std::ref(leftIdset);
+				Handle rightTsPointHandle = std::ref(rightIdset);
+	                
+				tbb::parallel_for(pointIds.range(), [&](const auto &range) {
+			    	for(auto id : range) {
+						auto& coords = points[id].coords;
+						if(distanceToPlane(coords, normal, offset) > 0) {
+							auto& pointsHandle = leftTsPointHandle.local();
+							pointsHandle.insert(id);
+						} else {
+							auto& pointsHandle = rightTsPointHandle.local();
+							pointsHandle.insert(id);
+						}
 					}
-				}
+				});
 
+				Point_Ids leftPoints(std::move(leftIdset.data()));
+				Point_Ids rightPoints(std::move(rightIdset.data()));
+				
 				// add infinite points
 				for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
 					leftPoints.insert(k);
