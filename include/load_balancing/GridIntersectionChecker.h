@@ -79,25 +79,41 @@ namespace LoadBalancing
 		template <typename PartitionAssigner>
 		std::vector<IntersectionPartition<D, Precision>>
 		operator()(const dPoints<D, Precision>& points,
-		           const Point_Ids& ids, size_t /*partitions*/, PartitionAssigner part)
+		           const Point_Ids& ids, size_t partitions, PartitionAssigner part)
 		{
-			std::vector<Point_Ids> idss;
-			std::vector<dBox<D, Precision>> boundss;
-			std::vector<bool> initialized;
-			std::vector<std::unordered_set<dIndex<D, IndexPrecision>, dIndexHasher<D, IndexPrecision>>> indices;
-
-			for(auto id : ids) {
-				if(dPoint<D, Precision>::isFinite(id)) {
-					auto partition = part(id);
-					
-					if(idss.size() <= partition) {
-						idss.resize(partition + 1);
-						boundss.resize(partition + 1);
-						initialized.resize(partition + 1, false);
-						indices.resize(partition + 1);
+			std::vector<Concurrent_Growing_Point_Ids> idsets;
+			idsets.reserve(partitions);
+			for(size_t i = 0; i < partitions; ++i) {
+				idsets.emplace_back(ids.size()/partitions);
+			}
+			using Handle  =tbb::enumerable_thread_specific<hConcurrent_Growing_Point_Ids,
+			      tbb::cache_aligned_allocator<hConcurrent_Growing_Point_Ids>,
+			      tbb::ets_key_usage_type::ets_key_per_instance>;
+	                
+			tbb::parallel_for(ids.range(), [&](const auto &range) {
+			    for(auto id : range) {
+					if(dPoint<D, Precision>::isFinite(id)) {
+						auto partition = part(id);
+						
+						Handle tsPointHandle = std::ref(idsets[partition]);
+						auto& pointsHandle = tsPointHandle.local();
+						pointsHandle.insert(id);
 					}
-					idss[partition].insert(id);
-                	const auto& coords = points[id].coords;
+				}
+			});
+
+			std::vector<Point_Ids> idss;
+			for(auto& ids : idsets) {
+				idss.emplace_back(std::move(ids.data()));
+			}
+			std::vector<dBox<D, Precision>> boundss(partitions);
+			std::vector<bool> initialized(partitions);
+			std::vector<std::unordered_set<dIndex<D, IndexPrecision>,
+				dIndexHasher<D, IndexPrecision>>> indices(partitions);
+			
+			tbb::parallel_for(size_t(0), partitions, [&](auto partition) {
+			    for(auto id : idss[partition]) {
+					const auto& coords = points[id].coords;
 					indices[partition].insert(mGrid.indexAt(coords));
 					if(initialized[partition]) {
 						enlargeBoxAroundVector<D, Precision>(boundss[partition], coords);
@@ -107,7 +123,7 @@ namespace LoadBalancing
 						initialized[partition] = true;
 					}
 				}
-			}
+			});
 			
 			for (tIdType k = dPoint<D, Precision>::cINF; k != 0; ++k) {
 				for(auto& e : idss) {
@@ -118,9 +134,10 @@ namespace LoadBalancing
 			std::vector<IntersectionPartition<D, Precision>> result(idss.size());
 			for(size_t i = 0; i < result.size(); ++i) {
 				result[i].pointIds = std::move(idss[i]);
-				result[i].intersectionChecker = std::make_unique<GridIntersectionChecker<D, Precision, IndexPrecision>>(std::move(boundss[i]),
-																										mGrid, indices[i].begin(),
-																										indices[i].end());
+				using Checker = GridIntersectionChecker<D, Precision, IndexPrecision>;
+				result[i].intersectionChecker = std::make_unique<Checker>(std::move(boundss[i]), mGrid,
+																   indices[i].begin(),
+																   indices[i].end());
 			}
 			
 			return result;
