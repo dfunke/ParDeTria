@@ -27,6 +27,7 @@ namespace LoadBalancing
 	using IntersectionPartitionMakerFunction =
 		std::function<std::vector<IntersectionPartition<D, Precision>>(const dPoints<D, Precision>&,
 																	   const Point_Ids&,
+																	   size_t,
 																	   PartitionAssigner)>;
 
 	template <uint D, typename Precision>

@@ -43,7 +43,7 @@ namespace LoadBalancing
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
             auto boxes = makeBoundingBoxes<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
-            auto partitioning = makePartitioning(boxes, points, pointIds);
+            auto partitioning = makePartitioning(boxes, points, mPartitionSize, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto& partition) {
@@ -77,8 +77,9 @@ namespace LoadBalancing
 		std::vector<IntersectionPartition<D, Precision>>
 		makePartitioning(const std::vector<dBox<D, Precision>>& boxes,
 		                 const dPoints<D, Precision>& points,
+		                 size_t partitions,
 		                 const Point_Ids& pointIds) {
-			return mMakePartition(points, pointIds, [&] (auto id) -> size_t {
+			return mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {
 				const auto& coords = points[id].coords;
 				std::vector<Precision> boxDistances(boxes.size());
 				std::transform(boxes.begin(), boxes.end(), boxDistances.begin(),

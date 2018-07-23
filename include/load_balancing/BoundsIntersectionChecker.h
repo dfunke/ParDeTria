@@ -29,7 +29,7 @@ namespace LoadBalancing
 		template <typename PartitionAssigner>
 		std::vector<IntersectionPartition<D, Precision>>
 		operator()(const dPoints<D, Precision>& points,
-		           const Point_Ids& ids, PartitionAssigner part)
+		           const Point_Ids& ids, size_t /*partitions*/, PartitionAssigner part)
 		{
 			std::vector<Point_Ids> idss;
 			std::vector<dBox<D, Precision>> boundss;

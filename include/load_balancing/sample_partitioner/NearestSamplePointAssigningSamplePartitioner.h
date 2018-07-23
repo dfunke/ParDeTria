@@ -23,7 +23,7 @@ namespace LoadBalancing
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
             auto kdtree = buildKdTree(mSampling.partition, mSampling.points);
-            auto partitioning = makePartitioning(kdtree, points, pointIds);
+            auto partitioning = makePartitioning(kdtree, points, mPartitionSize, pointIds);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto& partition) {
@@ -63,6 +63,7 @@ namespace LoadBalancing
         Tree buildKdTree(const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints);
         std::vector<IntersectionPartition<D, Precision>> makePartitioning(const Tree& tree,
 															  const dPoints<D, Precision>& points,
+															  size_t partitions,
 															  const Point_Ids& pointIds);
          
         Sampling<D, Precision> mSampling;
@@ -88,11 +89,12 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     std::vector<IntersectionPartition<D, Precision>>
     NearestSamplePointAssigningSamplePartitioner<D, Precision>::makePartitioning(const Tree& tree,
-																								 const dPoints<D, Precision>& points,
-																								 const Point_Ids& pointIds) {
+																				 const dPoints<D, Precision>& points,
+																				 size_t partitions,
+																				 const Point_Ids& pointIds) {
         VTUNE_TASK(AssignPointsByTree);
 
-		return mMakePartition(points, pointIds, [&] (auto id) -> size_t {
+		return mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {
 			const auto& coords = points[id].coords;
 			auto it_distance = tree.find_nearest(AssignedVector{coords, -1});
 			assert(it_distance.first != tree.end());
