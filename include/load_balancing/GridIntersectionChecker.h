@@ -81,26 +81,37 @@ namespace LoadBalancing
 		operator()(const dPoints<D, Precision>& points,
 		           const Point_Ids& ids, size_t partitions, PartitionAssigner part)
 		{
+
 			std::vector<Concurrent_Growing_Point_Ids> idsets;
 			idsets.reserve(partitions);
+
+			using Handle  =tbb::enumerable_thread_specific<hConcurrent_Growing_Point_Ids,
+					tbb::cache_aligned_allocator<hConcurrent_Growing_Point_Ids>,
+					tbb::ets_key_usage_type::ets_key_per_instance>;
+
+			std::vector<Handle*> tsPointHandles;
+			tsPointHandles.resize(partitions);
+
 			for(size_t i = 0; i < partitions; ++i) {
 				idsets.emplace_back(ids.size()/partitions);
+				tsPointHandles[i] = new Handle(std::ref(idsets[i]));
 			}
-			using Handle  =tbb::enumerable_thread_specific<hConcurrent_Growing_Point_Ids,
-			      tbb::cache_aligned_allocator<hConcurrent_Growing_Point_Ids>,
-			      tbb::ets_key_usage_type::ets_key_per_instance>;
+
 	                
 			tbb::parallel_for(ids.range(), [&](const auto &range) {
 			    for(auto id : range) {
 					if(dPoint<D, Precision>::isFinite(id)) {
 						auto partition = part(id);
-						
-						Handle tsPointHandle = std::ref(idsets[partition]);
-						auto& pointsHandle = tsPointHandle.local();
+
+						auto& pointsHandle = tsPointHandles[partition]->local();
 						pointsHandle.insert(id);
 					}
 				}
 			});
+
+			for(size_t i = 0; i < partitions; ++i) {
+				delete tsPointHandles[i];
+			}
 
 			std::vector<Point_Ids> idss;
 			for(auto& ids : idsets) {
