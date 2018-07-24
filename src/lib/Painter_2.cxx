@@ -71,10 +71,11 @@ void PainterImplementation<2, Precision>::drawBox(const dBox<2, Precision>& boun
 
 template <typename Precision>
 void PainterImplementation<2, Precision>::drawText(const std::string& text,
-                                                   dVector<2, Precision> coords) {
+                                                   dVector<2, Precision> coords,
+												   size_t fontSize) {
   cr->move_to(translatePoint(coords[0], 0),
               translatePoint(coords[1], 1));
-  cr->set_font_size(20);
+  cr->set_font_size(fontSize);
   cr->show_text(text);
   cr->set_font_size(FONT_SIZE);
 }

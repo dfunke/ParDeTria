@@ -131,9 +131,14 @@ int main(int argc, char *argv[]) {
 	const auto& graph = sampling.graph;
 	for(size_t i = 0; i < graph.nodeRecords.size() - 1; ++i) {
 	    for(int k = graph.nodeRecords[i]; k < graph.nodeRecords[i + 1]; ++k) {
-		size_t j = graph.adjacency[k];
+		    size_t j = graph.adjacency[k];
 	    	samplePainter.setColor(tRGB(0, 0, 0));
-		samplePainter.drawLine(sampling.points[i], sampling.points[j]);
+			samplePainter.drawLine(sampling.points[i], sampling.points[j]);
+			
+			auto center = 0.5 * (sampling.points[i] + sampling.points[j]);
+			std::stringstream ss;
+			ss << std::scientific << std::setprecision(1) << (double)graph.edgeWeights[k];
+			samplePainter.drawText(ss.str(), center, 10);
 	    }
 	    samplePainter.setColor(colors[sampling.partition[i] % colors.size()]);
 	    samplePainter.draw(sampling.points[i]);
