@@ -24,8 +24,8 @@ namespace LoadBalancing
 		}
 
 		Out operator()(In x) {
-			x = std::min(std::max(x, minIn), maxIn);
-			return (x - minIn) * (maxOut - minOut)/(maxIn - minIn) + minOut;
+			In xClamped = std::clamp(x, minIn, maxIn);
+			return (xClamped - minIn) * (maxOut - minOut)/(maxIn - minIn) + minOut;
 		}
 		
 	private:
@@ -38,6 +38,8 @@ namespace LoadBalancing
         std::vector<int> adjacency;
 	std::vector<int> edgeWeights;
     };
+
+
     
     template <uint D, typename Precision>
     struct Sampling
@@ -60,13 +62,17 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     struct Sampler
     {
+        using DistanceToEdgeWeightFunction = std::function<Precision(Precision)>;
+
 	    /**
 	     * Precondition for edgeWeight:
 	     *   - For all (Precision) x, x >= 0: edgeWeight(x) is defined
 	     *   - edgeWeight is strictly monotonic
 	     */
-        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, std::function<int(Precision)> edgeWeight)
-            : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(false), mEdgeWeight(std::move(edgeWeight))
+        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize,
+                DistanceToEdgeWeightFunction edgeWeight)
+            : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(false),
+			mEdgeWeight(std::move(edgeWeight))
             {}
         
         Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize)
@@ -88,14 +94,15 @@ namespace LoadBalancing
             for(auto id : sample) {
                 samplePointVector[idTranslation[id]] = points[id].coords;
             }
-            return Sampling<D, Precision>{std::move(graph), std::move(partition), std::move(samplePointVector), std::move(simplices)};
+            return Sampling<D, Precision>{std::move(graph), std::move(partition),
+	            std::move(samplePointVector), std::move(simplices)};
         }
         
     private:
         std::mt19937 mRand;
         std::function<size_t(size_t)>  mSampleSize;
         bool mUniformEdges;
-        std::function<Precision(int)> mEdgeWeight;
+        DistanceToEdgeWeightFunction mEdgeWeight;
         
         template <typename Generator_t>
         Point_Ids generateSample(size_t sampleSize, const Point_Ids& pointIds, Generator_t& rand) {
@@ -192,7 +199,10 @@ namespace LoadBalancing
                         const dPoints<D, Precision>& samplePoints,
                         std::unordered_map<tIdType, size_t> idTranslation,
                         Precision maxDistSquared) {
-	        Mapper<Precision, int> map(0.0, maxDistSquared, 1, std::numeric_limits<int>::max());
+	        auto lowerWeight = mUniformEdges ? 1 : mEdgeWeight(0.0);
+	        auto upperWeight = mUniformEdges ? 2 : mEdgeWeight(1.0);
+	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
+	        Mapper<Precision, int> map(minWeight, maxWeight, 1, std::numeric_limits<int>::max());
 
             std::vector<std::vector<std::pair<size_t, int>>> adjacencyList(idTranslation.size());
             for(auto simplex : simplices) {
@@ -203,11 +213,12 @@ namespace LoadBalancing
 							auto j = idTranslation[id];
 							if(dPoint<D, Precision>::isFinite(id)) {
 								const Precision distSquared =
-									lenSquared(samplePoints[i].coords - samplePoints[j].coords)
-									/ maxDistSquared;
+									lenSquared(samplePoints[i].coords - samplePoints[j].coords);
+								const Precision normalizedDistSquared = distSquared / maxDistSquared;
 								std::pair<tIdType, int> edge;
 								edge.first = j;
-								edge.second = mUniformEdges ? 1 : map(mEdgeWeight(distSquared));
+								edge.second = mUniformEdges ?
+									1 : map(mEdgeWeight(normalizedDistSquared));
 								adjacencyList[i].push_back(edge);
 							}
 						}
@@ -223,7 +234,8 @@ namespace LoadBalancing
             assert(numPartitions <= std::numeric_limits<int>::max());
             assert(graph.nodeRecords.size() - 1 <= std::numeric_limits<int>::max());
             
-            std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+            std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(),
+													std::numeric_limits<int>::max());
             int n = graph.nodeRecords.size() - 1;
             int edgecut;
             std::vector<int> part(n);
