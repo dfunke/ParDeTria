@@ -92,12 +92,14 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 	bool uniformEdges = vm.count("edge-weights") == 0 || "uniform" == vm["edge-weights"].as<std::string>();
 	std::function<Precision(Precision)> weight;
 	if(!uniformEdges) {
-		if("squared" == vm["edge-weights"].as<std::string>()) {
+		if("squared-inverted" == vm["edge-weights"].as<std::string>()) {
 			weight = [](Precision d) -> Precision { return 1/(d + 0.0000001); };
-		} else if("linear" == vm["edge-weights"].as<std::string>()) {
+		} else if("inverted" == vm["edge-weights"].as<std::string>()) {
 			weight = [](Precision d) -> Precision { return 1/std::sqrt(d + 0.0000001); };
+		} else if("linear" == vm["edge-weights"].as<std::string>()) {
+			weight = [](Precision d) -> Precision { return 1 - d; };
 		} else if("log" == vm["edge-weights"].as<std::string>()) {
-			weight = [](Precision d) -> Precision { return 1/std::log(d + 1.0000001); };
+			weight = [](Precision d) -> Precision { return -std::log(d + 0.0000001); };
 		}
 	}
 
