@@ -4,6 +4,7 @@
 #include "load_balancing/sample_partitioner/Sampler.h"
 #include "load_balancing/UnboundBubbleGenerator.h"
 #include "load_balancing/PatchBubbleGenerator.h"
+#include "load_balancing/MaliciousBubbleGenerator.h"
 
 #include "LoadBalancedDCTriangulator.h"
 #include "load_balancing/Partitioner.h"
@@ -54,6 +55,9 @@ std::unique_ptr<PointGenerator<D, Precision>> createGenerator(const po::variable
     } else if("patch-bubble" == distributionName){
         uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(4, D));
         result = std::make_unique<lb::PatchBubbleGenerator<D, Precision>>(numBubbles);
+    } else if("malicious-bubble" == distributionName){
+        uint numBubbles = extract<uint>("num-bubbles", vm, std::pow(4, D));
+        result = std::make_unique<lb::MaliciousBubbleGenerator<D, Precision>>(numBubbles);
     }
     
     return result;
