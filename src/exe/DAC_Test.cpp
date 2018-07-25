@@ -81,7 +81,8 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const unsigned char splitter,
                               const unsigned char alg,
                               const bool parallelBase,
-                              const bool verify) {
+                              const bool verify,
+                              const uint nCells) {
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
     switch(alg) {
@@ -92,14 +93,14 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
             
         case 'm':
             triangulator_ptr =
-            std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
+            std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, nCells);
             break;
             
         case 'l': {
             auto partitioner = getPartitioner(splitter, threads);
             triangulator_ptr =
             std::make_unique<LoadBalancing::DCTriangulator<D, Precision>>(bounds, points, std::move(partitioner),
-                                                            100, parallelBase, false);
+                                                            nCells, parallelBase, false);
             break;
         }
             
@@ -107,7 +108,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
             auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
             triangulator_ptr =
             std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads,
-                                                           std::move(splitter_ptr), 100, parallelBase,
+                                                           std::move(splitter_ptr), nCells, parallelBase,
                                                            false);
             break;
         }
@@ -184,6 +185,7 @@ int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
     bool parallelBase = false;
+    uint nCells = 100;
 
     bool verify = true;
 
@@ -192,6 +194,7 @@ int main(int argc, char *argv[]) {
 
     po::options_description cCommandLine("Command Line Options");
     cCommandLine.add_options()("n", po::value<tIdType>(&N), "number of points");
+    cCommandLine.add_options()("cells", po::value<uint>(&nCells), "number of grid cells");
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
@@ -283,10 +286,10 @@ int main(int argc, char *argv[]) {
                 std::cout << std::endl;
 
             points = pg->generate(N, bounds, gen);
-            triangulate(bounds, threads, points, p, alg, parallelBase, verify);
+            triangulate(bounds, threads, points, p, alg, parallelBase, verify, nCells);
         }
     } else
-        ret = triangulate(bounds, threads, points, p, alg, parallelBase, verify);
+        ret = triangulate(bounds, threads, points, p, alg, parallelBase, verify, nCells);
 
     LOG("Triangulating "
         << points.size() << " points to " << ret.nSimplices  << " simplices took "
