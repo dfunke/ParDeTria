@@ -24,7 +24,8 @@ public:
   __attribute__((noinline)) void drawLine(const dVector<2, Precision>& a, const dVector<2, Precision>& b);
   __attribute__((noinline)) void drawBox(const dBox<2, Precision>& bounds);
   __attribute__((noinline)) void drawText(const std::string& text,
-                                          dVector<2, Precision> coords);
+                                          dVector<2, Precision> coords,
+                                          size_t fontSize = 20);
     
   __attribute__((noinline)) void draw(const dPoint<2, Precision> &point,
                                       bool drawInfinite = false);

@@ -69,10 +69,10 @@ public:
     #endif
   }
   
-  void drawText(const std::string& text, dVector<2, Precision> coords) {
+  void drawText(const std::string& text, dVector<2, Precision> coords, size_t fontSize = 20) {
     #ifndef NDEBUG
         if (ENABLED)
-        impl.drawText(text, coords);
+        impl.drawText(text, coords, fontSize);
     #endif
   }
 
