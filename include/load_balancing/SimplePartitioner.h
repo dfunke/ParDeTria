@@ -12,7 +12,7 @@ namespace LoadBalancing
     struct SimplePartitioner : public Partitioner<D, Precision>
     {        
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
-                                        const dPoints<D, Precision>& points,
+                                        dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
             auto x = (bounds.low[0] + bounds.high[0])/2;            
