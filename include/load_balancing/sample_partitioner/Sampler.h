@@ -152,19 +152,15 @@ namespace LoadBalancing
             for(size_t i = 0; i < adjacencyList.size(); ++i) {
                 auto& adjacentNodes = adjacencyList[i];
                 
-                std::sort(begin(adjacentNodes), end(adjacentNodes));
-                adjacentNodes.erase(std::unique(begin(adjacentNodes), end(adjacentNodes)), end(adjacentNodes));
-
-				auto compare = [](const std::pair<size_t, int>& left, const std::pair<size_t, int>& right) -> bool {
+				auto compare = [](const std::pair<size_t, int>& left,
+				                  const std::pair<size_t, int>& right) -> bool {
 				   return left.first < right.first;
 				};
-                
-                auto lowerBound = std::lower_bound(begin(adjacentNodes), end(adjacentNodes),
-												   std::make_pair(i, 0), compare);
-                auto upperBound = std::upper_bound(begin(adjacentNodes), end(adjacentNodes),
-												   std::make_pair(i, 0), compare);
-                assert(std::distance(lowerBound, upperBound) <= 1);
-                adjacentNodes.erase(lowerBound, upperBound);
+				
+                std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
+                adjacentNodes.erase(std::unique(begin(adjacentNodes),
+                                                end(adjacentNodes)),
+                                    end(adjacentNodes));
 	    }
 
     	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
@@ -211,7 +207,7 @@ namespace LoadBalancing
                     if(dPoint<D, Precision>::isFinite(pointId)) {
 						for(auto id : simplex.vertices){
 							auto j = idTranslation[id];
-							if(dPoint<D, Precision>::isFinite(id)) {
+							if(dPoint<D, Precision>::isFinite(id) && i != j) {
 								const Precision distSquared =
 									lenSquared(samplePoints[i].coords - samplePoints[j].coords);
 								const Precision normalizedDistSquared = distSquared / maxDistSquared;
