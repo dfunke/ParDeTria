@@ -202,7 +202,7 @@ namespace LoadBalancing
 	        auto lowerWeight = mUniformEdges ? 1 : mEdgeWeight(0.0);
 	        auto upperWeight = mUniformEdges ? 2 : mEdgeWeight(1.0);
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
-	        Mapper<Precision, int> map(minWeight, maxWeight, 1, std::numeric_limits<int>::max());
+	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
             std::vector<std::vector<std::pair<size_t, int>>> adjacencyList(idTranslation.size());
             for(auto simplex : simplices) {
