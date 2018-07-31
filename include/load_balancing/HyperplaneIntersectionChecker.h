@@ -16,7 +16,7 @@ namespace LoadBalancing {
 		
 		virtual bool intersects(const dSphere<D, Precision>& sphere) const
 		{
-			return distanceToPlane(sphere.center, mNormal, mOffset) > 0;
+			return distanceToPlane(sphere.center, mNormal, mOffset) + sphere.radius > 0;
 		}
 		
 		virtual std::unique_ptr<IntersectionChecker<D, Precision>> copy() const

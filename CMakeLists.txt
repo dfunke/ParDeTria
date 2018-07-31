@@ -36,7 +36,6 @@ find_package(CGAL REQUIRED)
 find_package(TBB REQUIRED COMPONENTS tbbmalloc)
 
 find_package(Threads REQUIRED)
-find_package(EJDB REQUIRED)
 find_package(VTune)
 find_package(KaHIP REQUIRED)
 find_package(LibKDTree++ REQUIRED)

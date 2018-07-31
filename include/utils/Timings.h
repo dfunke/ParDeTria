@@ -101,7 +101,7 @@ public:
         return m_counters.at(name);
     }
 
-    std::string str(std::string _traitSep = "   ", std::string _innerSep = ": ") const;
+    std::string str(std::string _traitSep = "   ", std::string _innerSep = ": ", bool printMeas = false) const;
 
     bool operator==(const ExperimentRun &o) const;
 

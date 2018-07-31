@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
 			
 			auto center = 0.5 * (sampling.points[i] + sampling.points[j]);
 			std::stringstream ss;
-			ss << std::scientific << std::setprecision(1) << (double)graph.edgeWeights[k];
+			ss << graph.edgeWeights[k];
 			samplePainter.drawText(ss.str(), center, 10);
 	    }
 	    samplePainter.setColor(colors[sampling.partition[i] % colors.size()]);
