@@ -1,4 +1,5 @@
 #pragma once
+#include <kaHIP_interface.h>
 
 #include "utils/Generator.h"
 #include "load_balancing/sample_partitioner/Sampler.h"
@@ -92,6 +93,18 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 	bool uniformEdges = vm.count("edge-weights") == 0
 		|| "uniform" == vm["edge-weights"].as<std::string>();
 
+	int mode = FAST;
+	if(vm.count("kaffpa-mode") > 0) {
+		auto modeString = vm["kaffpa-mode"].as<std::string>();
+		if("ECO" == modeString) {
+			mode = ECO;
+		} else if("STRONG" == modeString) {
+			mode = STRONG;
+		} else if("FAST" != modeString) {
+			std::cerr << "unsupported kaffpa-mode '" << modeString << "'\n";
+		}
+	}
+
 	typename lb::Sampler<D, Precision>::DistanceToEdgeWeightFunction weight;
 	if(!uniformEdges) {
 		if("squared-inverted" == vm["edge-weights"].as<std::string>()) {
@@ -105,8 +118,8 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 		}
 	}
 
-    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f)
-	                            : lb::Sampler<D, Precision>(rand(), f, weight);
+    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f, mode)
+	                            : lb::Sampler<D, Precision>(rand(), f, mode, weight);
 	//std::unique_ptr<lb::GridIntersectionPartitionMaker<D, Precision>> pm = nullptr;
 	auto createIPMF = [](const auto& vm) -> auto {
 		return createIntersectionPartitionMakerFunction<D, Precision>(vm);
@@ -165,6 +178,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
     cCommandLine.add_options()("cell-width", po::value<Precision>());
     cCommandLine.add_options()("bounds", po::value<std::string>());
+    cCommandLine.add_options()("kaffpa-mode", po::value<std::string>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
     cCommandLine.add_options()("validate", po::value<uint>());
     cCommandLine.add_options()("help", "produce help message");
