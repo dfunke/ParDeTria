@@ -209,7 +209,7 @@ namespace LoadBalancing
 							auto j = idTranslation[id];
 							if(dPoint<D, Precision>::isFinite(id) && i != j) {
 								const Precision distSquared =
-									lenSquared(samplePoints[i].coords - samplePoints[j].coords);
+									lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
 								const Precision normalizedDistSquared = distSquared / maxDistSquared;
 								std::pair<tIdType, int> edge;
 								edge.first = j;
