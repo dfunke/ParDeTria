@@ -132,14 +132,14 @@ namespace LoadBalancing
 				auto leftIC =
 					std::make_unique<HyperplaneIntersectionChecker<D, Precision>>(bounds,
 																				  normal,	
-																				  offset + 1e-6);
+																				  offset - 1e-6);
 				auto leftTree = makePartitioning(bounds, points, std::move(leftPoints),
 				                                 std::move(leftIC), numPartitions / 2);
 				
 				auto rightIC =
 					std::make_unique<HyperplaneIntersectionChecker<D, Precision>>(bounds,
 																				  -normal,
-																				  -offset + 1e-6);
+																				  -offset - 1e-6);
 				auto rightTree = makePartitioning(bounds, points, std::move(rightPoints),
 				                                  std::move(rightIC), numPartitions / 2);
 				result.intersectionChecker = std::move(intersectionChecker);
