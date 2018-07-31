@@ -11,7 +11,7 @@ target_link_libraries(LBExperiments
   CGALTriangulator
   SpatialSort
   Partitioner
-  kahip
+  ${KaHIP_LIBRARIES}
   Eigen3::Eigen
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
@@ -31,7 +31,7 @@ target_link_libraries(LBPainting
   CGALTriangulator
   SpatialSort
   Partitioner
-  kahip
+  ${KaHIP_LIBRARIES}
   Eigen3::Eigen
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
@@ -48,7 +48,7 @@ target_link_libraries(DACTest
   Geometry
   Triangulator
   DCTriangulator
-  kahip
+  ${KaHIP_LIBRARIES}
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
 )
