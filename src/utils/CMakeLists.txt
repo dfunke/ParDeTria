@@ -37,10 +37,10 @@ endif ()
 
 target_link_libraries(Measurements ${TBB_LIBRARIES})
 
-add_library(DBConn EXCLUDE_FROM_ALL
-        DBConnection.cpp
-        ${EJDB_LIBRARIES}
-        )
+#add_library(DBConn EXCLUDE_FROM_ALL
+#        DBConnection.cpp
+#        ${EJDB_LIBRARIES}
+#        )
 
 add_library(Predicates EXCLUDE_FROM_ALL
         Predicates.cpp

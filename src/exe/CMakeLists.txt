@@ -62,10 +62,9 @@ target_link_libraries(Benchmark
   Measurements
   Geometry
   DCTriangulator
-  DBConn
+#  DBConn
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
-  ${EJDB_LIBRARES}
 )
 
 add_executable (Studies EXCLUDE_FROM_ALL
