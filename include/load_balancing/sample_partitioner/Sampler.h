@@ -44,12 +44,12 @@ namespace LoadBalancing
 	        std::ofstream o(filename);
 	        const char SEP = ' ';
 
-	        o << nodeRecords.size() - 1 << SEP << adjacency.size() << SEP << "1" << std::endl;
+	        o << nodeRecords.size() - 1 << SEP << adjacency.size() / 2 << SEP << "1" << std::endl;
 	        for(int n = 0; n < static_cast<int>(nodeRecords.size()) - 1; ++n){
 	            for(int e = nodeRecords[n]; e < nodeRecords[n+1]; ++e){
 	                if(e > nodeRecords[n])
 	                    o << SEP;
-	                o << adjacency[e] << SEP << edgeWeights[e];
+	                o << adjacency[e] + 1 << SEP << edgeWeights[e];
 	            }
 	            o << std::endl;
 	        }
