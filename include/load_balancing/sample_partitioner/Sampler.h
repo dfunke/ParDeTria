@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include <fstream>
 #include <unordered_map>
 #include <kaHIP_interface.h>
 #include "CGALTriangulator.h"
@@ -36,7 +37,23 @@ namespace LoadBalancing
     struct Graph {
         std::vector<int> nodeRecords;
         std::vector<int> adjacency;
-	std::vector<int> edgeWeights;
+	    std::vector<int> edgeWeights;
+
+	    void toFile(const std::string & filename){
+
+	        std::ofstream o(filename);
+	        const char SEP = ' ';
+
+	        o << nodeRecords.size() - 1 << SEP << adjacency.size() << SEP << "1" << std::endl;
+	        for(int n = 0; n < static_cast<int>(nodeRecords.size()) - 1; ++n){
+                char sep = 0;
+	            for(int e = nodeRecords[n]; e < nodeRecords[n+1]; ++e){
+	                o << sep << adjacency[e] << SEP << edgeWeights[e];
+	                sep = SEP;
+	            }
+	            o << std::endl;
+	        }
+	    }
     };
 
 
@@ -151,7 +168,7 @@ namespace LoadBalancing
 		}
         
         void sanitizeAdjacencyList(std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
-	    	assert(adjacencyList.size() > 0);
+            assert(adjacencyList.size() > 0);
     	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
 								[&adjacencyList](const auto& adjacentNodes) -> bool {
 								return std::all_of(begin(adjacentNodes), end(adjacentNodes),
