@@ -94,12 +94,14 @@ namespace LoadBalancing
 																				 const Point_Ids& pointIds) {
         VTUNE_TASK(PartitionerAssignPointsByTree);
 
-		return mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {
-			const auto& coords = points[id].coords;
-			auto it_distance = tree.find_nearest(AssignedVector{coords, -1});
-			assert(it_distance.first != tree.end());
-			const auto& assignedVector = *(it_distance.first);
-			return assignedVector.partitionId;
-		});
+        auto partitioning = mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {
+            const auto& coords = points[id].coords;
+            auto it_distance = tree.find_nearest(AssignedVector{coords, -1});
+            assert(it_distance.first != tree.end());
+            const auto& assignedVector = *(it_distance.first);
+            return assignedVector.partitionId;
+        });
+
+		return partitioning;
     }   
 }
