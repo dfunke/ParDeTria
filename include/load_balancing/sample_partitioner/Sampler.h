@@ -95,7 +95,9 @@ namespace LoadBalancing
             auto graph = makeGraph(simplices, points, idTranslation,
                                    lenSquared(bounds.low - bounds.high));
             auto partition = partitionGraph(graph, partitionSize, mRand);
-	        std::vector<dVector<D, Precision>> samplePointVector(idTranslation.size());
+
+            VTUNE_TASK(CollectPartititioning);
+            std::vector<dVector<D, Precision>> samplePointVector(idTranslation.size());
             for(auto id : sample) {
                 samplePointVector[idTranslation[id]] = points[id].coords;
             }
@@ -112,7 +114,8 @@ namespace LoadBalancing
         
         template <typename Generator_t>
         Point_Ids generateSample(size_t sampleSize, const Point_Ids& pointIds, Generator_t& rand) {
-			std::vector<tIdType> resultIds;
+			VTUNE_TASK(GenerateSample);
+            std::vector<tIdType> resultIds;
             std::sample(pointIds.begin(), pointIds.end(), std::back_inserter(resultIds),
                         sampleSize, rand);
             resultIds.erase(std::remove_if(resultIds.begin(), resultIds.end(), [](tIdType id){
@@ -131,12 +134,14 @@ namespace LoadBalancing
                                                    dPoints<D, Precision>& points,
                                                    const Point_Ids& samplePoints) {
             
+            VTUNE_TASK(TriangulateSample);
             CGALTriangulator<D, Precision> triangulator(bounds, points);
             return triangulator.triangulateSome(samplePoints, bounds);
         }
 
 		std::unordered_map<tIdType, size_t> generateIdTranslation(const Point_Ids& ids) {
-			std::unordered_map<tIdType, size_t> result;
+			VTUNE_TASK(SampleIDTranslation);
+            std::unordered_map<tIdType, size_t> result;
 			size_t count = 0;
 			for(auto id : ids) {
 				result[id] = count++;
@@ -201,7 +206,10 @@ namespace LoadBalancing
                         const dPoints<D, Precision>& samplePoints,
                         std::unordered_map<tIdType, size_t> idTranslation,
                         Precision maxDistSquared) {
-	        auto lowerWeight = mUniformEdges ? 1 : mEdgeWeight(0.0);
+
+            VTUNE_TASK(SampleMakeGraph);
+
+            auto lowerWeight = mUniformEdges ? 1 : mEdgeWeight(0.0);
 	        auto upperWeight = mUniformEdges ? 2 : mEdgeWeight(1.0);
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
@@ -235,7 +243,9 @@ namespace LoadBalancing
         std::vector<int> partitionGraph(Graph& graph, size_t numPartitions, Generator_t& rand) {
             assert(numPartitions <= std::numeric_limits<int>::max());
             assert(graph.nodeRecords.size() - 1 <= std::numeric_limits<int>::max());
-            
+
+            VTUNE_TASK(PartitionGraph);
+
             std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(),
 													std::numeric_limits<int>::max());
             int n = graph.nodeRecords.size() - 1;

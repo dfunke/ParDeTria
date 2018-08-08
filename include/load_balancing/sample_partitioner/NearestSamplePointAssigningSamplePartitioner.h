@@ -77,7 +77,7 @@ namespace LoadBalancing
    NearestSamplePointAssigningSamplePartitioner<D, Precision>::buildKdTree(
         const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints) {
 
-        VTUNE_TASK(BuildTree);
+        VTUNE_TASK(PartitionerBuildTree);
         Tree tree;
         for(size_t i = 0; i < partitioning.size(); ++i) {
             int partition = partitioning[i];
@@ -92,7 +92,7 @@ namespace LoadBalancing
 																				 const dPoints<D, Precision>& points,
 																				 size_t partitions,
 																				 const Point_Ids& pointIds) {
-        VTUNE_TASK(AssignPointsByTree);
+        VTUNE_TASK(PartitionerAssignPointsByTree);
 
 		return mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {
 			const auto& coords = points[id].coords;
