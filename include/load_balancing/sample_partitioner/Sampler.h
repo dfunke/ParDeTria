@@ -46,10 +46,10 @@ namespace LoadBalancing
 
 	        o << nodeRecords.size() - 1 << SEP << adjacency.size() << SEP << "1" << std::endl;
 	        for(int n = 0; n < static_cast<int>(nodeRecords.size()) - 1; ++n){
-                char sep = 0;
 	            for(int e = nodeRecords[n]; e < nodeRecords[n+1]; ++e){
-	                o << sep << adjacency[e] << SEP << edgeWeights[e];
-	                sep = SEP;
+	                if(e > nodeRecords[n])
+	                    o << SEP;
+	                o << adjacency[e] << SEP << edgeWeights[e];
 	            }
 	            o << std::endl;
 	        }
