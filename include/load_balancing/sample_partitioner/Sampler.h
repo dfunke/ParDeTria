@@ -69,15 +69,20 @@ namespace LoadBalancing
 	     *   - For all (Precision) x, x >= 0: edgeWeight(x) is defined
 	     *   - edgeWeight is strictly monotonic
 	     */
-        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize,
+        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, int kaffpaMode,
                 DistanceToEdgeWeightFunction edgeWeight)
             : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(false),
-			mEdgeWeight(std::move(edgeWeight))
-            {}
+			  mKaffpaMode(kaffpaMode), mEdgeWeight(std::move(edgeWeight))
+        {
+	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG);
+        }
         
-        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize)
-            : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(true)
-        {}
+        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, int kaffpaMode)
+            : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(true),
+			  mKaffpaMode(kaffpaMode)
+        {
+	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG);
+        }
         
         auto operator()(const dBox<D, Precision>& bounds,
                                     dPoints<D, Precision>& points,
@@ -102,6 +107,7 @@ namespace LoadBalancing
         std::mt19937 mRand;
         std::function<size_t(size_t)>  mSampleSize;
         bool mUniformEdges;
+        int mKaffpaMode;
         DistanceToEdgeWeightFunction mEdgeWeight;
         
         template <typename Generator_t>
@@ -209,7 +215,7 @@ namespace LoadBalancing
 							auto j = idTranslation[id];
 							if(dPoint<D, Precision>::isFinite(id) && i != j) {
 								const Precision distSquared =
-									lenSquared(samplePoints[i].coords - samplePoints[j].coords);
+									lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
 								const Precision normalizedDistSquared = distSquared / maxDistSquared;
 								std::pair<tIdType, int> edge;
 								edge.first = j;
@@ -246,7 +252,7 @@ namespace LoadBalancing
                     &imbalance,
                     true,
                     dist(rand),
-                    FAST,
+                    mKaffpaMode,
                     &edgecut,
                     part.data());
             
