@@ -35,6 +35,13 @@ namespace LoadBalancing
 	};
 	
     struct Graph {
+
+        Graph(const std::size_t & n = 1, const std::size_t & m = 1){
+            nodeRecords.reserve(n);
+            adjacency.reserve(m);
+            edgeWeights.reserve(m);
+        }
+
         std::vector<int> nodeRecords;
         std::vector<int> adjacency;
 	    std::vector<int> edgeWeights;
@@ -201,8 +208,8 @@ namespace LoadBalancing
             
         }
 
-        Graph adjacencyListToGraph(const std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
-            Graph result;
+        Graph adjacencyListToGraph(const std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList, const std::size_t & n, const std::size_t & m) {
+            Graph result(n, m);
             
             int currentRecordBegin = 0;
             for(const auto& adjacentPoints : adjacencyList) {
@@ -231,6 +238,9 @@ namespace LoadBalancing
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
+	        std::size_t n = idTranslation.size();
+	        std::size_t m = 0;
+
             std::vector<std::vector<std::pair<size_t, int>>> adjacencyList(idTranslation.size());
             for(auto simplex : simplices) {
                 for(auto pointId : simplex.vertices) {
@@ -247,13 +257,14 @@ namespace LoadBalancing
 								edge.second = mUniformEdges ?
 									1 : map(mEdgeWeight(normalizedDistSquared));
 								adjacencyList[i].push_back(edge);
+								++m;
 							}
 						}
                     }
                 }
             }
             sanitizeAdjacencyList(adjacencyList);
-            return adjacencyListToGraph(adjacencyList);
+            return adjacencyListToGraph(adjacencyList, n, m);
         }
 
         template <typename Generator_t>
