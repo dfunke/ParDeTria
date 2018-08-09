@@ -100,7 +100,9 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 			mode = ECO;
 		} else if("STRONG" == modeString) {
 			mode = STRONG;
-		} else if("FAST" != modeString) {
+		} else if("PAR" == modeString) {
+            mode = FASTSOCIALMULTITRY_PARALLEL;
+        } else if("FAST" != modeString) {
 			std::cerr << "unsupported kaffpa-mode '" << modeString << "'\n";
 		}
 	}

@@ -346,7 +346,7 @@ namespace LoadBalancing
                     &imbalance,
                     true,
                     dist(rand),
-                    mKaffpaMode,
+                    mKaffpaMode, numPartitions,
                     &edgecut,
                     part.data());
             
