@@ -11,6 +11,7 @@ target_link_libraries(LBExperiments
   CGALTriangulator
   SpatialSort
   Partitioner
+  atomic
   ${KaHIP_LIBRARIES}
   Eigen3::Eigen
   ${Boost_LIBRARIES}
