@@ -184,19 +184,36 @@ namespace LoadBalancing
 				                       });
 								})));
 
-            for(size_t i = 0; i < adjacencyList.size(); ++i) {
-                auto& adjacentNodes = adjacencyList[i];
-                
-				auto compare = [](const std::pair<size_t, int>& left,
-				                  const std::pair<size_t, int>& right) -> bool {
-				   return left.first < right.first;
-				};
-				
-                std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
-                adjacentNodes.erase(std::unique(begin(adjacentNodes),
-                                                end(adjacentNodes)),
-                                    end(adjacentNodes));
-	    }
+            tbb::parallel_for(
+                    std::size_t(0), adjacencyList.size(),
+                    [&](const uint i) {
+                        auto& adjacentNodes = adjacencyList[i];
+
+                        auto compare = [](const std::pair<size_t, int>& left,
+                                          const std::pair<size_t, int>& right) -> bool {
+                            return left.first < right.first;
+                        };
+
+                        std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
+                        adjacentNodes.erase(std::unique(begin(adjacentNodes),
+                                                        end(adjacentNodes)),
+                                            end(adjacentNodes));
+                    }
+            );
+
+//            for(size_t i = 0; i < adjacencyList.size(); ++i) {
+//                auto& adjacentNodes = adjacencyList[i];
+//
+//				auto compare = [](const std::pair<size_t, int>& left,
+//				                  const std::pair<size_t, int>& right) -> bool {
+//				   return left.first < right.first;
+//				};
+//
+//                std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
+//                adjacentNodes.erase(std::unique(begin(adjacentNodes),
+//                                                end(adjacentNodes)),
+//                                    end(adjacentNodes));
+//	    }
 
     	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
 								[&adjacencyList](const auto& adjacentNodes) -> bool {
