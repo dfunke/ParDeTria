@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <kaHIP_interface.h>
+#include <tbb/concurrent_vector.h>
 #include "CGALTriangulator.h"
 #include "load_balancing/VectorOperations.h"
 #include "load_balancing/BoxUtils.h"
@@ -135,6 +136,8 @@ namespace LoadBalancing
         bool mUniformEdges;
         int mKaffpaMode;
         DistanceToEdgeWeightFunction mEdgeWeight;
+
+        using tParAdjList = std::vector<tbb::concurrent_unordered_map<size_t, int>>;
         
         template <typename Generator_t>
         Point_Ids generateSample(size_t sampleSize, const Point_Ids& pointIds, Generator_t& rand) {
@@ -174,58 +177,64 @@ namespace LoadBalancing
 			return result;
 		}
         
-        void sanitizeAdjacencyList(std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList) {
-            assert(adjacencyList.size() > 0);
-    	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
-								[&adjacencyList](const auto& adjacentNodes) -> bool {
-								return std::all_of(begin(adjacentNodes), end(adjacentNodes),
-				                       [&adjacencyList](const auto& node) -> bool {
-				                       return node.first < adjacencyList.size();
-				                       });
-								})));
-
-            tbb::parallel_for(
-                    std::size_t(0), adjacencyList.size(),
-                    [&](const uint i) {
-                        auto& adjacentNodes = adjacencyList[i];
-
-                        auto compare = [](const std::pair<size_t, int>& left,
-                                          const std::pair<size_t, int>& right) -> bool {
-                            return left.first < right.first;
-                        };
-
-                        std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
-                        adjacentNodes.erase(std::unique(begin(adjacentNodes),
-                                                        end(adjacentNodes)),
-                                            end(adjacentNodes));
-                    }
-            );
-
-//            for(size_t i = 0; i < adjacencyList.size(); ++i) {
-//                auto& adjacentNodes = adjacencyList[i];
+//        void sanitizeAdjacencyList(tParAdjList& adjacencyList) {
+//            assert(adjacencyList.size() > 0);
+//    	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
+//								[&adjacencyList](const auto& adjacentNodes) -> bool {
+//								return std::all_of(begin(adjacentNodes), end(adjacentNodes),
+//				                       [&adjacencyList](const auto& node) -> bool {
+//				                       return node.first < adjacencyList.size();
+//				                       });
+//								})));
 //
-//				auto compare = [](const std::pair<size_t, int>& left,
-//				                  const std::pair<size_t, int>& right) -> bool {
-//				   return left.first < right.first;
-//				};
+//            tbb::parallel_for(
+//                    std::size_t(0), adjacencyList.size(),
+//                    [&](const uint i) {
+//                        auto& adjacentNodes = adjacencyList[i];
 //
-//                std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
-//                adjacentNodes.erase(std::unique(begin(adjacentNodes),
-//                                                end(adjacentNodes)),
-//                                    end(adjacentNodes));
-//	    }
+//                        auto compare = [](const std::pair<size_t, int>& left,
+//                                          const std::pair<size_t, int>& right) -> bool {
+//                            return left.first < right.first;
+//                        };
+//
+//                        std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
+////                        adjacentNodes.erase(std::unique(begin(adjacentNodes),
+////                                                        end(adjacentNodes)),
+////                                            end(adjacentNodes));
+//                        if(std::unique(begin(adjacentNodes), end(adjacentNodes)) != end(adjacentNodes)){
+//                            for(auto i : adjacentNodes)
+//                                std::cout << i.first << " ";
+//                        }
+//                        std::cout << std::endl;
+//                        RASSERT(std::unique(begin(adjacentNodes), end(adjacentNodes)) == end(adjacentNodes));
+//                    }
+//            );
+//
+////            for(size_t i = 0; i < adjacencyList.size(); ++i) {
+////                auto& adjacentNodes = adjacencyList[i];
+////
+////				auto compare = [](const std::pair<size_t, int>& left,
+////				                  const std::pair<size_t, int>& right) -> bool {
+////				   return left.first < right.first;
+////				};
+////
+////                std::sort(begin(adjacentNodes), end(adjacentNodes), compare);
+////                adjacentNodes.erase(std::unique(begin(adjacentNodes),
+////                                                end(adjacentNodes)),
+////                                    end(adjacentNodes));
+////	    }
+//
+//    	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
+//								[&adjacencyList](const auto& adjacentNodes) -> bool {
+//								return std::all_of(begin(adjacentNodes), end(adjacentNodes),
+//				                       [&adjacencyList](const auto& node) -> bool {
+//				                       return node.first < adjacencyList.size();
+//				                       });
+//								})));
+//
+//        }
 
-    	    assert((std::all_of(begin(adjacencyList), end(adjacencyList),
-								[&adjacencyList](const auto& adjacentNodes) -> bool {
-								return std::all_of(begin(adjacentNodes), end(adjacentNodes),
-				                       [&adjacencyList](const auto& node) -> bool {
-				                       return node.first < adjacencyList.size();
-				                       });
-								})));
-            
-        }
-
-        Graph adjacencyListToGraph(const std::vector<std::vector<std::pair<size_t, int>>>& adjacencyList, const std::size_t & n, const std::size_t & m) {
+        Graph adjacencyListToGraph(const tParAdjList& adjacencyList, const std::size_t & n, const std::size_t & m) {
             Graph result(n, m);
             
             int currentRecordBegin = 0;
@@ -256,32 +265,62 @@ namespace LoadBalancing
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
 	        std::size_t n = idTranslation.size();
-	        std::size_t m = 0;
+	        std::atomic_size_t m(0);
 
-            std::vector<std::vector<std::pair<size_t, int>>> adjacencyList(idTranslation.size());
-            for(auto simplex : simplices) {
-                for(auto pointId : simplex.vertices) {
-	                auto i = idTranslation[pointId];
-                    if(dPoint<D, Precision>::isFinite(pointId)) {
-						for(auto id : simplex.vertices){
-							auto j = idTranslation[id];
-							if(dPoint<D, Precision>::isFinite(id) && i != j) {
-								const Precision distSquared =
-									lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
-								const Precision normalizedDistSquared = distSquared / maxDistSquared;
-								std::pair<tIdType, int> edge;
-								edge.first = j;
-								edge.second = mUniformEdges ?
-									1 : map(mEdgeWeight(normalizedDistSquared));
-								adjacencyList[i].push_back(edge);
-								++m;
-							}
-						}
+            tParAdjList adjacencyList(idTranslation.size());
+            tbb::parallel_for(simplices.range(), [&](auto &r) {
+
+                // we need an explicit iterator loop here for the it < r.end() comparision
+                // range-based for loop uses it != r.end() which doesn't work
+                for (auto it = r.begin(); it < r.end(); ++it) {
+                    auto &simplex = *it;
+                    for(auto pointId : simplex.vertices) {
+                        auto i = idTranslation[pointId];
+                        if(dPoint<D, Precision>::isFinite(pointId)) {
+                            for(auto id : simplex.vertices){
+                                auto j = idTranslation[id];
+                                if(dPoint<D, Precision>::isFinite(id) && i != j) {
+                                    const Precision distSquared =
+                                            lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
+                                    const Precision normalizedDistSquared = distSquared / maxDistSquared;
+                                    std::pair<tIdType, int> edge;
+                                    edge.first = j;
+                                    edge.second = mUniformEdges ?
+                                                  1 : map(mEdgeWeight(normalizedDistSquared));
+                                    if(adjacencyList[i].insert(edge).second)
+                                        ++m;
+
+                                }
+                            }
+                        }
                     }
                 }
-            }
-            sanitizeAdjacencyList(adjacencyList);
-            return adjacencyListToGraph(adjacencyList, n, m);
+            });
+
+//            for(auto simplex : simplices) {
+//                for(auto pointId : simplex.vertices) {
+//	                auto i = idTranslation[pointId];
+//                    if(dPoint<D, Precision>::isFinite(pointId)) {
+//						for(auto id : simplex.vertices){
+//							auto j = idTranslation[id];
+//							if(dPoint<D, Precision>::isFinite(id) && i != j) {
+//								const Precision distSquared =
+//									lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
+//								const Precision normalizedDistSquared = distSquared / maxDistSquared;
+//								std::pair<tIdType, int> edge;
+//								edge.first = j;
+//								edge.second = mUniformEdges ?
+//									1 : map(mEdgeWeight(normalizedDistSquared));
+//								adjacencyList[i].push_back(edge);
+//								++m;
+//							}
+//						}
+//                    }
+//                }
+//            }
+
+            //sanitizeAdjacencyList(adjacencyList);
+            return adjacencyListToGraph(adjacencyList, n, m.load());
         }
 
         template <typename Generator_t>
