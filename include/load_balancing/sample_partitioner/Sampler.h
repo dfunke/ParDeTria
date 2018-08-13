@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <kaHIP_interface.h>
 #include <tbb/concurrent_vector.h>
+#include <tbb/enumerable_thread_specific.h>
 #include "CGALTriangulator.h"
 #include "load_balancing/VectorOperations.h"
 #include "load_balancing/BoxUtils.h"
@@ -248,6 +249,9 @@ namespace LoadBalancing
                 }
             }
             result.nodeRecords.push_back(result.adjacency.size());
+
+            ASSERT(result.nodeRecords.size() - 1 == n);
+            ASSERT(result.adjacency.size() == m);
             
             return result;
         }
@@ -265,13 +269,16 @@ namespace LoadBalancing
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
 	        std::size_t n = idTranslation.size();
-	        std::atomic_size_t m(0);
+	        std::size_t m = 0;
+	        tbb::enumerable_thread_specific<std::size_t> tsM;
 
             tParAdjList adjacencyList(idTranslation.size());
             tbb::parallel_for(simplices.range(), [&](auto &r) {
 
                 // we need an explicit iterator loop here for the it < r.end() comparision
                 // range-based for loop uses it != r.end() which doesn't work
+
+                auto & lM = tsM.local();
                 for (auto it = r.begin(); it < r.end(); ++it) {
                     auto &simplex = *it;
                     for(auto pointId : simplex.vertices) {
@@ -288,7 +295,7 @@ namespace LoadBalancing
                                     edge.second = mUniformEdges ?
                                                   1 : map(mEdgeWeight(normalizedDistSquared));
                                     if(adjacencyList[i].insert(edge).second)
-                                        ++m;
+                                        ++lM;
 
                                 }
                             }
@@ -296,6 +303,7 @@ namespace LoadBalancing
                     }
                 }
             });
+            m = tsM.combine([](const std::size_t &a, const std::size_t &b) { return a + b;});
 
 //            for(auto simplex : simplices) {
 //                for(auto pointId : simplex.vertices) {
@@ -320,7 +328,7 @@ namespace LoadBalancing
 //            }
 
             //sanitizeAdjacencyList(adjacencyList);
-            return adjacencyListToGraph(adjacencyList, n, m.load());
+            return adjacencyListToGraph(adjacencyList, n, m);
         }
 
         template <typename Generator_t>
