@@ -99,7 +99,7 @@ namespace LoadBalancing
             : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(false),
 			  mKaffpaMode(kaffpaMode), mEdgeWeight(std::move(edgeWeight))
         {
-	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG);
+	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG || mKaffpaMode == FASTSOCIALMULTITRY_PARALLEL);
         }
         
         Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, int kaffpaMode)
