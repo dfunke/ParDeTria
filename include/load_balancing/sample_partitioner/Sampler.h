@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <kaHIP_interface.h>
 #include <tbb/concurrent_vector.h>
-#include <tbb/enumerable_thread_specific.h>
 #include "CGALTriangulator.h"
 #include "load_balancing/VectorOperations.h"
 #include "load_balancing/BoxUtils.h"
@@ -269,8 +268,7 @@ namespace LoadBalancing
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
 	        std::size_t n = idTranslation.size();
-	        std::size_t m = 0;
-	        tbb::enumerable_thread_specific<std::size_t> tsM;
+	        std::atomic_size_t m(0);
 
             tParAdjList adjacencyList(idTranslation.size());
             tbb::parallel_for(simplices.range(), [&](auto &r) {
@@ -278,7 +276,7 @@ namespace LoadBalancing
                 // we need an explicit iterator loop here for the it < r.end() comparision
                 // range-based for loop uses it != r.end() which doesn't work
 
-                auto & lM = tsM.local();
+                std::size_t lM = 0;
                 for (auto it = r.begin(); it < r.end(); ++it) {
                     auto &simplex = *it;
                     for(auto pointId : simplex.vertices) {
@@ -302,8 +300,8 @@ namespace LoadBalancing
                         }
                     }
                 }
+                m += lM;
             });
-            m = tsM.combine([](const std::size_t &a, const std::size_t &b) { return a + b;});
 
 //            for(auto simplex : simplices) {
 //                for(auto pointId : simplex.vertices) {
@@ -328,7 +326,7 @@ namespace LoadBalancing
 //            }
 
             //sanitizeAdjacencyList(adjacencyList);
-            return adjacencyListToGraph(adjacencyList, n, m);
+            return adjacencyListToGraph(adjacencyList, n, m.load());
         }
 
         template <typename Generator_t>
