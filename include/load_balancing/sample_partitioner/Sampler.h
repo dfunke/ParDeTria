@@ -239,27 +239,27 @@ namespace LoadBalancing
 //								})));
 //
 //        }
-
-        Graph adjacencyListToGraph(const tParAdjList& adjacencyList, const std::size_t & n, const std::size_t & m) {
-            Graph result(n, m);
-            
-            int currentRecordBegin = 0;
-            for(const auto& adjacentPoints : adjacencyList) {
-                    result.nodeRecords.push_back(currentRecordBegin);
-                    currentRecordBegin += adjacentPoints.size();
-                    
-                for(auto adjacentPoint : adjacentPoints) {
-                    result.adjacency.push_back(adjacentPoint.first);
-				    result.edgeWeights.push_back(adjacentPoint.second);
-                }
-            }
-            result.nodeRecords.push_back(result.adjacency.size());
-
-            ASSERT(result.nodeRecords.size() - 1 == n);
-            ASSERT(result.adjacency.size() == m);
-            
-            return result;
-        }
+//
+//        Graph adjacencyListToGraph(const tParAdjList& adjacencyList, const std::size_t & n, const std::size_t & m) {
+//            Graph result(n, m);
+//
+//            int currentRecordBegin = 0;
+//            for(const auto& adjacentPoints : adjacencyList) {
+//                    result.nodeRecords.push_back(currentRecordBegin);
+//                    currentRecordBegin += adjacentPoints.size();
+//
+//                for(auto adjacentPoint : adjacentPoints) {
+//                    result.adjacency.push_back(adjacentPoint.first);
+//				    result.edgeWeights.push_back(adjacentPoint.second);
+//                }
+//            }
+//            result.nodeRecords.push_back(result.adjacency.size());
+//
+//            ASSERT(result.nodeRecords.size() - 1 == n);
+//            ASSERT(result.adjacency.size() == m);
+//
+//            return result;
+//        }
 
         Graph makeGraph(const dSimplices<D, Precision>& simplices,
                         const dPoints<D, Precision>& samplePoints,
@@ -276,6 +276,7 @@ namespace LoadBalancing
             tParAdjList adjacencyList(idTranslation.size());
             Graph graph(idTranslation.size());
 
+            VTUNE_TASK(SampleMakeGraph_COLLECT);
             tbb::parallel_for(simplices.range(), [&](auto &r) {
 
                 // we need an explicit iterator loop here for the it < r.end() comparision
@@ -306,10 +307,14 @@ namespace LoadBalancing
                     }
                 }
             });
+            VTUNE_END_TASK(SampleMakeGraph_COLLECT);
 
+            VTUNE_TASK(SampleMakeGraph_PREFIX);
             std::partial_sum(graph.nodeRecords.begin(), graph.nodeRecords.end(), graph.nodeRecords.begin());
             graph.resizeEdges(graph.nodeRecords.back());
+            VTUNE_END_TASK(SampleMakeGraph_PREFIX);
 
+            VTUNE_TASK(SampleMakeGraph_ASSIGN);
             tbb::parallel_for(tbb::blocked_range(std::size_t(0), adjacencyList.size()), [&] (const auto & r) {
 
                 for(auto v=r.begin(); v !=r.end(); ++v ){
