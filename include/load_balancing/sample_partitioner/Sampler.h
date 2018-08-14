@@ -3,6 +3,7 @@
 #include <cassert>
 #include <random>
 #include <algorithm>
+#include <numeric>
 #include <limits>
 #include <vector>
 #include <fstream>
@@ -38,9 +39,14 @@ namespace LoadBalancing
     struct Graph {
 
         Graph(const std::size_t & n = 1, const std::size_t & m = 1){
-            nodeRecords.reserve(n);
-            adjacency.reserve(m);
-            edgeWeights.reserve(m);
+            nodeRecords.resize(n+1);
+            adjacency.resize(m);
+            edgeWeights.resize(m);
+        }
+
+        void resizeEdges(const std::size_t & m){
+            adjacency.resize(m);
+            edgeWeights.resize(m);
         }
 
         std::vector<int> nodeRecords;
@@ -267,16 +273,14 @@ namespace LoadBalancing
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
-	        std::size_t n = idTranslation.size();
-	        std::atomic_size_t m(0);
-
             tParAdjList adjacencyList(idTranslation.size());
+            Graph graph(idTranslation.size());
+
             tbb::parallel_for(simplices.range(), [&](auto &r) {
 
                 // we need an explicit iterator loop here for the it < r.end() comparision
                 // range-based for loop uses it != r.end() which doesn't work
 
-                std::size_t lM = 0;
                 for (auto it = r.begin(); it < r.end(); ++it) {
                     auto &simplex = *it;
                     for(auto pointId : simplex.vertices) {
@@ -292,15 +296,34 @@ namespace LoadBalancing
                                     edge.first = j;
                                     edge.second = mUniformEdges ?
                                                   1 : map(mEdgeWeight(normalizedDistSquared));
-                                    if(adjacencyList[i].insert(edge).second)
-                                        ++lM;
+                                    if(adjacencyList[i].insert(edge).second) {
+                                        __atomic_fetch_add(&graph.nodeRecords[i+1], 1, __ATOMIC_RELAXED);
+                                    }
 
                                 }
                             }
                         }
                     }
                 }
-                m += lM;
+            });
+
+            std::partial_sum(graph.nodeRecords.begin(), graph.nodeRecords.end(), graph.nodeRecords.begin());
+            graph.resizeEdges(graph.nodeRecords.back());
+
+            tbb::parallel_for(tbb::blocked_range(std::size_t(0), adjacencyList.size()), [&] (const auto & r) {
+
+                for(auto v=r.begin(); v !=r.end(); ++v ){
+                    auto & adjacentPoints = adjacencyList[v];
+                    int i = graph.nodeRecords[v];
+
+                    for (auto adjacentPoint : adjacentPoints) {
+                        graph.adjacency[i] = adjacentPoint.first;
+                        graph.edgeWeights[i] = adjacentPoint.second;
+                        ++i;
+                    }
+
+                    ASSERT(graph.nodeRecords[v+1] - graph.nodeRecords[v] == static_cast<int>(adjacentPoints.size()));
+                }
             });
 
 //            for(auto simplex : simplices) {
@@ -326,7 +349,7 @@ namespace LoadBalancing
 //            }
 
             //sanitizeAdjacencyList(adjacencyList);
-            return adjacencyListToGraph(adjacencyList, n, m.load());
+            return graph;
         }
 
         template <typename Generator_t>
