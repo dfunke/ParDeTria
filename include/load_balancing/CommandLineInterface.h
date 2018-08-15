@@ -84,10 +84,22 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
     std::string partitionerName = vm["partitioner"].as<std::string>();
 
 	std::function<size_t(size_t)> f;
-	if(vm.count("sample-size") == 0) {
+	if(vm.count("sample-size") == 0 && vm.count("sampling") == 0) {
 		f = [](size_t n) -> size_t { return std::sqrt(n); };
-	} else {
+	} else if(vm.count("sample-size") == 0) {
+		auto sampling = vm["sampling"].as<std::string>();
+		if("sqrt" == sampling) {
+			f = [](size_t n) -> size_t { return std::sqrt(n); };
+		} else if("log" == sampling) {
+			f = [](size_t n) -> size_t { return std::log2(n); };
+		} else {
+			throw std::runtime_error("unknown option for argument 'sampling'");
+		}
+	} else if(vm.count("sampling") == 0) {
 		f = [c = vm["sample-size"].as<size_t>()](size_t /*n*/) -> size_t { return c; };
+	} else {
+		throw std::runtime_error("illegaly set mutually exclusive"
+		                         "options 'sample-size' and 'sampling'");
 	}
 
 	bool uniformEdges = vm.count("edge-weights") == 0
