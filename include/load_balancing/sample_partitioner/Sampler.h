@@ -271,7 +271,7 @@ namespace LoadBalancing
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
-            tbb::concurrent_unordered_map<std::pair<tIdType, tIdType>, int> edgeMap;
+            tbb::concurrent_unordered_map<std::pair<tIdType, tIdType>, int> edgeMap(D*simplices.upperBound() - simplices.lowerBound());
             Graph graph(idTranslation.size());
 
             VTUNE_TASK(SampleMakeGraph_COLLECT);
