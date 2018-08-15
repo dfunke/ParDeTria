@@ -142,8 +142,6 @@ namespace LoadBalancing
         bool mUniformEdges;
         int mKaffpaMode;
         DistanceToEdgeWeightFunction mEdgeWeight;
-
-        using tParAdjList = std::vector<tbb::concurrent_unordered_map<size_t, int>>;
         
         template <typename Generator_t>
         Point_Ids generateSample(size_t sampleSize, const Point_Ids& pointIds, Generator_t& rand) {
@@ -273,7 +271,7 @@ namespace LoadBalancing
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
-            tParAdjList adjacencyList(idTranslation.size());
+            tbb::concurrent_unordered_map<std::pair<tIdType, tIdType>, int> edgeMap;
             Graph graph(idTranslation.size());
 
             VTUNE_TASK(SampleMakeGraph_COLLECT);
@@ -293,11 +291,12 @@ namespace LoadBalancing
                                     const Precision distSquared =
                                             lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
                                     const Precision normalizedDistSquared = distSquared / maxDistSquared;
-                                    std::pair<tIdType, int> edge;
-                                    edge.first = j;
-                                    edge.second = mUniformEdges ?
+                                    std::pair<tIdType, tIdType> edge;
+                                    edge.first = i;
+                                    edge.second = j;
+                                    int weight = mUniformEdges ?
                                                   1 : map(mEdgeWeight(normalizedDistSquared));
-                                    if(adjacencyList[i].insert(edge).second) {
+                                    if(edgeMap.insert(std::make_pair(edge, weight)).second) {
                                         __atomic_fetch_add(&graph.nodeRecords[i+1], 1, __ATOMIC_RELAXED);
                                     }
 
@@ -315,19 +314,16 @@ namespace LoadBalancing
             VTUNE_END_TASK(SampleMakeGraph_PREFIX);
 
             VTUNE_TASK(SampleMakeGraph_ASSIGN);
-            tbb::parallel_for(tbb::blocked_range(std::size_t(0), adjacencyList.size()), [&] (const auto & r) {
+            std::vector<int> index(idTranslation.size());
+            tbb::parallel_for(edgeMap.range(), [&] (const auto & r) {
 
                 for(auto v=r.begin(); v !=r.end(); ++v ){
-                    auto & adjacentPoints = adjacencyList[v];
-                    int i = graph.nodeRecords[v];
+                    auto & edge = v->first;
+                    int base = graph.nodeRecords[edge.first];
+                    int offset = __atomic_fetch_add(&index[edge.first], 1, __ATOMIC_RELAXED);
 
-                    for (auto adjacentPoint : adjacentPoints) {
-                        graph.adjacency[i] = adjacentPoint.first;
-                        graph.edgeWeights[i] = adjacentPoint.second;
-                        ++i;
-                    }
-
-                    ASSERT(graph.nodeRecords[v+1] - graph.nodeRecords[v] == static_cast<int>(adjacentPoints.size()));
+                    graph.adjacency[base+offset] = edge.second;
+                    graph.edgeWeights[base+offset] = v->second;
                 }
             });
 
