@@ -23,19 +23,20 @@ namespace LoadBalancing
 	struct Mapper
 	{
 		Mapper(In minIn, In maxIn, Out minOut, Out maxOut)
-			: minIn(minIn), maxIn(maxIn), minOut(minOut), maxOut(maxOut)
+			: minIn(minIn), maxIn(maxIn), minOut(minOut), maxOut(maxOut), scale((maxOut - minOut)/(maxIn - minIn))
 		{
 			assert(minIn < maxIn);
 		}
 
 		Out operator()(In x) {
 			In xClamped = std::clamp(x, minIn, maxIn);
-			return (xClamped - minIn) * (maxOut - minOut)/(maxIn - minIn) + minOut;
+			return (xClamped - minIn) * scale + minOut;
 		}
 		
 	private:
-		In minIn, maxIn;
-		Out minOut, maxOut;
+		const In minIn, maxIn;
+		const Out minOut, maxOut;
+		const Out scale;
 	};
 	
     struct Graph {
@@ -264,13 +265,13 @@ namespace LoadBalancing
         Graph makeGraph(const dSimplices<D, Precision>& simplices,
                         const dPoints<D, Precision>& samplePoints,
                         std::unordered_map<tIdType, size_t> idTranslation,
-                        Precision maxDistSquared) {
+                        const Precision maxDistSquared) {
 
             VTUNE_TASK(SampleMakeGraph);
 
-            auto lowerWeight = mUniformEdges ? 1 : mEdgeWeight(0.0);
-	        auto upperWeight = mUniformEdges ? 2 : mEdgeWeight(1.0);
-	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
+            const auto lowerWeight = mUniformEdges ? 1 : mEdgeWeight(0.0);
+	        const auto upperWeight = mUniformEdges ? 2 : mEdgeWeight(1.0);
+	        const auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
 
@@ -282,7 +283,7 @@ namespace LoadBalancing
             typedef GrowingHashTable<tEdgeMap> tgEdgeMap;
             typedef GrowingHashTableHandle<tEdgeMap> hEdgeMap;
 
-            tgEdgeMap edgeMap(D*simplices.upperBound() - simplices.lowerBound());
+            tgEdgeMap edgeMap(D * simplices.upperBound() - simplices.lowerBound());
             tbb::enumerable_thread_specific<hEdgeMap,
                     tbb::cache_aligned_allocator<hEdgeMap>,
                     tbb::ets_key_usage_type::ets_key_per_instance> tsEdgeMapHandle(std::ref(edgeMap));
