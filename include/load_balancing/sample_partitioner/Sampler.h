@@ -10,10 +10,12 @@
 #include <unordered_map>
 #include <kaHIP_interface.h>
 #include <tbb/concurrent_vector.h>
+#include <tbb/enumerable_thread_specific.h>
 #include "CGALTriangulator.h"
 #include "load_balancing/VectorOperations.h"
 #include "load_balancing/BoxUtils.h"
 #include "load_balancing/VectorOperations.h"
+#include "datastructures/LP_Map.hxx"
 
 namespace LoadBalancing
 {
@@ -271,11 +273,25 @@ namespace LoadBalancing
 	        auto [minWeight, maxWeight] = std::minmax(lowerWeight, upperWeight);
 	        Mapper<Precision, int> map(minWeight, maxWeight, 1, 99);
 
-            tbb::concurrent_unordered_map<std::pair<tIdType, tIdType>, int> edgeMap(D*simplices.upperBound() - simplices.lowerBound());
-            Graph graph(idTranslation.size());
 
             VTUNE_TASK(SampleMakeGraph_COLLECT);
+
+            //tbb::concurrent_unordered_map<std::pair<tIdType, tIdType>, int> edgeMap(D*simplices.upperBound() - simplices.lowerBound());
+
+            typedef Concurrent_LP_Map<tIdType, int> tEdgeMap;
+            typedef GrowingHashTable<tEdgeMap> tgEdgeMap;
+            typedef GrowingHashTableHandle<tEdgeMap> hEdgeMap;
+
+            tgEdgeMap edgeMap(D*simplices.upperBound() - simplices.lowerBound());
+            tbb::enumerable_thread_specific<hEdgeMap,
+                    tbb::cache_aligned_allocator<hEdgeMap>,
+                    tbb::ets_key_usage_type::ets_key_per_instance> tsEdgeMapHandle(std::ref(edgeMap));
+
+            Graph graph(idTranslation.size());
+
             tbb::parallel_for(simplices.range(), [&](auto &r) {
+
+                auto &edgeMapHandle = tsEdgeMapHandle.local();
 
                 // we need an explicit iterator loop here for the it < r.end() comparision
                 // range-based for loop uses it != r.end() which doesn't work
@@ -291,12 +307,10 @@ namespace LoadBalancing
                                     const Precision distSquared =
                                             lenSquared(samplePoints[pointId].coords - samplePoints[id].coords);
                                     const Precision normalizedDistSquared = distSquared / maxDistSquared;
-                                    std::pair<tIdType, tIdType> edge;
-                                    edge.first = i;
-                                    edge.second = j;
+                                    std::size_t edge = (i << (sizeof(tIdType) * CHAR_BIT / 2)) + j;
                                     int weight = mUniformEdges ?
                                                   1 : map(mEdgeWeight(normalizedDistSquared));
-                                    if(edgeMap.insert(std::make_pair(edge, weight)).second) {
+                                    if(edgeMapHandle.insert(edge, weight)) {
                                         __atomic_fetch_add(&graph.nodeRecords[i+1], 1, __ATOMIC_RELAXED);
                                     }
 
@@ -315,15 +329,22 @@ namespace LoadBalancing
 
             VTUNE_TASK(SampleMakeGraph_ASSIGN);
             std::vector<int> index(idTranslation.size());
-            tbb::parallel_for(edgeMap.range(), [&] (const auto & r) {
+            tbb::parallel_for(edgeMap.handle().range(), [&] (const auto & r) {
 
                 for(auto v=r.begin(); v !=r.end(); ++v ){
-                    auto & edge = v->first;
-                    int base = graph.nodeRecords[edge.first];
-                    int offset = __atomic_fetch_add(&index[edge.first], 1, __ATOMIC_RELAXED);
+                    const auto & edge = *v;
+                    tIdType i = edge.first >> (sizeof(tIdType) * CHAR_BIT / 2);
+                    tIdType j = edge.first - (i << (sizeof(tIdType) * CHAR_BIT / 2));
 
-                    graph.adjacency[base+offset] = edge.second;
-                    graph.edgeWeights[base+offset] = v->second;
+                    assert(0 <= i && i < idTranslation.size());
+                    assert(0 <= j && j < idTranslation.size());
+                    assert(i != j);
+
+                    int base = graph.nodeRecords[i];
+                    int offset = __atomic_fetch_add(&index[i], 1, __ATOMIC_RELAXED);
+
+                    graph.adjacency[base+offset] = j;
+                    graph.edgeWeights[base+offset] = edge.second;
                 }
             });
 
