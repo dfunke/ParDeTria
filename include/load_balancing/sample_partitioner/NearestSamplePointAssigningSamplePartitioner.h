@@ -4,7 +4,8 @@
 #include <random>
 #include <algorithm>
 #include <set>
-#include <kdtree++/kdtree.hpp>
+#include <nanoflann.hpp>
+#include "load_balancing/KDTreeVectorOfVectorsAdaptor.h"
 #include "SamplePartitioner.h"
 #include "Sampler.h"
 #include "load_balancing/IntersectionChecker.h"
@@ -23,7 +24,8 @@ namespace LoadBalancing
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
             auto kdtree = buildKdTree(mSampling.partition, mSampling.points);
-            auto partitioning = makePartitioning(kdtree, points, mPartitionSize, pointIds);
+            auto partitioning = makePartitioning(kdtree, points, mPartitionSize, pointIds,
+                                                 mSampling.partition);
             
             typename PartitionTree<D, Precision>::ChildContainer subtrees;
             std::transform(partitioning.begin(), partitioning.end(), std::back_inserter(subtrees), [](auto& partition) {
@@ -59,12 +61,13 @@ namespace LoadBalancing
             }
         };
         
-        using Tree = KDTree::KDTree<D, AssignedVector>;
+        using Tree = KDTreeVectorOfVectorsAdaptor<std::vector<dVector<D, Precision>>, Precision, D>;
         Tree buildKdTree(const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints);
         std::vector<IntersectionPartition<D, Precision>> makePartitioning(const Tree& tree,
 															  const dPoints<D, Precision>& points,
 															  size_t partitions,
-															  const Point_Ids& pointIds);
+															  const Point_Ids& pointIds,
+															  const std::vector<int>& partitioning);
          
         Sampling<D, Precision> mSampling;
         size_t mPartitionSize;
@@ -75,14 +78,11 @@ namespace LoadBalancing
     template <uint D, typename Precision>
     typename NearestSamplePointAssigningSamplePartitioner<D, Precision>::Tree
    NearestSamplePointAssigningSamplePartitioner<D, Precision>::buildKdTree(
-        const std::vector<int>& partitioning, const std::vector<dVector<D, Precision>>& samplePoints) {
+        const std::vector<int>& /*partitioning*/,
+        const std::vector<dVector<D, Precision>>& samplePoints) {
 
         VTUNE_TASK(BuildTree);
-        Tree tree;
-        for(size_t i = 0; i < partitioning.size(); ++i) {
-            int partition = partitioning[i];
-            tree.insert({samplePoints[i], partition});
-        }
+        Tree tree(D, samplePoints);
         return tree;
     }
     
@@ -91,15 +91,18 @@ namespace LoadBalancing
     NearestSamplePointAssigningSamplePartitioner<D, Precision>::makePartitioning(const Tree& tree,
 																				 const dPoints<D, Precision>& points,
 																				 size_t partitions,
-																				 const Point_Ids& pointIds) {
+																				 const Point_Ids& pointIds,
+																				 const std::vector<int>& partitioning) {
         VTUNE_TASK(AssignPointsByTree);
 
 		return mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {
 			const auto& coords = points[id].coords;
-			auto it_distance = tree.find_nearest(AssignedVector{coords, -1});
-			assert(it_distance.first != tree.end());
-			const auto& assignedVector = *(it_distance.first);
-			return assignedVector.partitionId;
+			tIdType index;
+			Precision distSquared;
+			nanoflann::KNNResultSet<Precision> resultSet(1);
+			resultSet.init(&index, &distSquared);
+			tree.index->findNeighbors(resultSet, coords.data(), nanoflann::SearchParams());
+			return partitioning[index];
 		});
     }   
 }
