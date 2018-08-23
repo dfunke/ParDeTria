@@ -271,7 +271,9 @@ public:
 
         if(f.is_open()) {
             while (getline(f, line)) {
+#ifndef NDEBUG
                 ++lc;
+#endif
 
                 dPoint<D, Precision> p;
                 split(fields, line, sep);
