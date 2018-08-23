@@ -115,7 +115,7 @@ namespace LoadBalancing
             : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(true),
 			  mKaffpaMode(kaffpaMode)
         {
-	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG);
+	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG || mKaffpaMode == FASTSOCIALMULTITRY_PARALLEL);
         }
         
         auto operator()(const dBox<D, Precision>& bounds,
