@@ -17,13 +17,13 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
     bounds.high.fill(100);
 
     dPoints<D, Precision> points;
-    /*if (vm.count("points")) {
-        points = loadObject<dPoints<D, Precision>>(pointFile);
-    } else {*/
+    if (vm.count("points")) {
+        bounds = points.loadFromFile(vm["points"].as<std::string>());
+    } else {
         auto pg = createGenerator<D, Precision>(vm);
         auto N = vm["n"].as<tIdType>();
         points = pg->generate(N, bounds, startGen);
-    //}
+    }
     
     auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
     assert(partitioner);
@@ -43,13 +43,15 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
 
 int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
-    //std::string pointFile;    
+    std::string pointFile;
     std::string partitionerName;
     uint dim;
 
     auto cCommandLine = defaultOptions<double>();
     cCommandLine.add_options()("dim", po::value(&dim), "dimension");
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
+    cCommandLine.add_options()("points", po::value<std::string>(&pointFile),
+                               "load points from file");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
