@@ -22,7 +22,7 @@
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
 #include "mods/Indexed_Triangulation_data_structure_3.h"
-#include "mods/Delaunay_triangulation_3.h"
+#include <CGAL/Delaunay_triangulation_3.h>
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
 // boost
