@@ -96,7 +96,8 @@ namespace LoadBalancing
 
     public:
         static constexpr Precision SAFETY = 100;
-        static constexpr uint BASE_CUTOFF = 500;
+        static constexpr uint BASE_CUTOFF = 5000;
+        static constexpr uint PARALLEL_THRESHOLD = 50000;
     };
 }
 
