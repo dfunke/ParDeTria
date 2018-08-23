@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     
-    if(!vm.count("distribution")) {
+    if(!(vm.count("distribution") || vm.count("points"))) {
         std::cout << "Please specify a distribution" << std::endl;
         return EXIT_FAILURE;
     }
