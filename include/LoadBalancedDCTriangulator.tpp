@@ -45,6 +45,9 @@ namespace LoadBalancing
     constexpr Precision DCTriangulator<D, Precision, Monitor>::SAFETY;
 
     template<uint D, typename Precision, typename Monitor>
+    constexpr uint DCTriangulator<D, Precision, Monitor>::PARALLEL_THRESHOLD;
+
+    template<uint D, typename Precision, typename Monitor>
     constexpr uint DCTriangulator<D, Precision, Monitor>::BASE_CUTOFF;
 
     //**************************
@@ -509,7 +512,7 @@ namespace LoadBalancing
         mMonitor.registerBaseTriangulation(size, provenance);
 
         INDENT
-        if(parallel) {
+        if(parallel && partitionPoints.size() > PARALLEL_THRESHOLD) {
             auto dt = par_baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
             DEDENT
             return dt;

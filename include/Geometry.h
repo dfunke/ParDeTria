@@ -8,6 +8,7 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
@@ -250,6 +251,54 @@ public:
 
     dPoints(const VectorAdapter2<dPoint<D, Precision>> &other)
             : VectorAdapter2<dPoint<D, Precision>>(other) { }
+
+    dBox<D, Precision> loadFromFile(const std::string & file, const char sep = ' '){
+
+        std::ifstream f;
+        std::string line;
+        std::vector<std::string> fields;
+
+        dBox<D, Precision> bounds;
+        bounds.low.fill(std::numeric_limits<Precision>::max());
+        bounds.high.fill(std::numeric_limits<Precision>::min());
+
+#ifndef NDEBUG
+        std::size_t lc = 0;
+        std::size_t oldSize = this->finite_size();
+#endif
+
+        f.open(file);
+
+        if(f.is_open()) {
+            while (getline(f, line)) {
+                ++lc;
+
+                dPoint<D, Precision> p;
+                split(fields, line, sep);
+
+                ASSERT(fields.size() == D);
+
+                for(uint d = 0; d < D; ++d){
+                    p.coords[d] = std::stod(fields[d]);
+
+                    if(p.coords[d] < bounds.low[d])
+                        bounds.low[d] = p.coords[d];
+                    if(p.coords[d] > bounds.high[d])
+                        bounds.high[d] = p.coords[d];
+                }
+
+                this->emplace_back(p);
+            }
+        } else {
+            std::cerr << "File " << file << " not found" << std::endl;
+        }
+
+        ASSERT(this->finite_size() - oldSize == lc);
+
+        f.close();
+
+        return bounds;
+    }
 
     bool operator==(const Concurrent_Growing_Point_Ids &other) const {
         return operator==(other.handle());
