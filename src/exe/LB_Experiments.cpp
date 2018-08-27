@@ -17,12 +17,16 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
     bounds.high.fill(100);
 
     dPoints<D, Precision> points;
+    std::string distribution;
     if (vm.count("points")) {
-        bounds = points.loadFromFile(vm["points"].as<std::string>());
+        std::string filename = vm["points"].as<std::string>();
+        bounds = points.loadFromFile(filename);
+        distribution = filename;
     } else {
         auto pg = createGenerator<D, Precision>(vm);
         auto N = vm["n"].as<tIdType>();
         points = pg->generate(N, bounds, startGen);
+        distribution = vm["distribution"].as<std::string>();
     }
     
     auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
@@ -33,7 +37,7 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
         bounds,
         points,
         vm.count("validate") > 0,
-        vm["distribution"].as<std::string>(),
+        distribution,
         threads
     };
         
