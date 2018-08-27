@@ -22,6 +22,7 @@ namespace LoadBalancing
             bool verify;
             std::string distribution;
             size_t threads;
+            uint seed;
         };
         
         Experiment(std::unique_ptr<Partitioner<D, Precision>> partitioner, Setup setup, std::ostream& out);
@@ -116,6 +117,7 @@ namespace LoadBalancing
             << "    \"distribution\": \"" << setup.distribution << "\",\n"
             << "    \"numpoints\": " << setup.points.finite_size() << ",\n"
             << "    \"threads\": " << setup.threads << ",\n"
+            << "    \"seed\": " << setup.seed << ",\n"
             << "    \"results\": [";
     }
     

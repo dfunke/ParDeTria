@@ -38,7 +38,8 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
         points,
         vm.count("validate") > 0,
         distribution,
-        threads
+        threads,
+        vm.count("seed") ? vm["seed"].as<uint>() : START_SEED
     };
         
     lb::Experiment<D, Precision> exp(std::move(partitioner), std::move(setup), std::cout);
@@ -67,6 +68,10 @@ int main(int argc, char *argv[]) {
     }
 
     LOGGER.setLogLevel(static_cast<Logger::Verbosity>(0));
+
+	if(vm.count("seed")) {
+		startGen.seed(vm["seed"].as<uint>());
+	}
     
     if (!(vm.count("n") || vm.count("points"))) {
         std::cout << "Please specify number of points or point file" << std::endl;

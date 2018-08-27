@@ -22,7 +22,7 @@ void paintPartitionTree(const dPoints<2, Precision>& points,
 template <typename Precision>
 void execute(const po::variables_map& vm, uint threads, const std::string& out,
              dPoints<D, Precision> /*points*/) {
-	startGen = tGenerator(START_SEED);
+	startGen = tGenerator(vm.count("seed") ? vm["seed"].as<uint>() : START_SEED);
 		
     dBox<D, Precision> bounds;
     bounds.low.fill(0);
@@ -75,6 +75,10 @@ int main(int argc, char *argv[]) {
     }
 
     LOGGER.setLogLevel(static_cast<Logger::Verbosity>(0));
+
+	if(vm.count("seed")) {
+		startGen.seed(vm["seed"].as<uint>());
+	}
     
     if (!(vm.count("n") || vm.count("points"))) {
         std::cout << "Please specify number of points or point file" << std::endl;

@@ -195,6 +195,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("kaffpa-mode", po::value<std::string>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
     cCommandLine.add_options()("validate", po::value<uint>());
+    cCommandLine.add_options()("seed", po::value<uint>());
     cCommandLine.add_options()("help", "produce help message");
     return cCommandLine;
 }
