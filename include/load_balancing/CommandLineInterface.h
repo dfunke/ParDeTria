@@ -187,6 +187,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("distribution", po::value<std::string>());
     //cCommandLine.add_options()("points", po::value(&pointFile), "load points from file");
     cCommandLine.add_options()("sample-size", po::value<size_t>());
+    cCommandLine.add_options()("sampling", po::value<std::string>());
     cCommandLine.add_options()("edge-weights", po::value<std::string>());
     cCommandLine.add_options()("num-bubbles", po::value<uint>());
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
