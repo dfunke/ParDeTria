@@ -17,11 +17,11 @@ namespace zkr {
         Reset, Bright, Dim, Underline, Blink, Reverse, Hidden
     };
 
-    char *cc::color(int attr, int fg, int bg) {
+    char *cc::color(char attr, char fg, char bg) {
         static char command[13];
 
         /* Command is the control command to the terminal */
-        sprintf(command, "%c[%d;%d;%dm", 0x1B, attr, fg + 30, bg + 40);
+        sprintf(command, "%c[%c;%c;%cm", 0x1B, attr, fg + 30, bg + 40);
         return command;
     }
 
