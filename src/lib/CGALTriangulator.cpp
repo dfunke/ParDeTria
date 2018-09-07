@@ -14,6 +14,7 @@
 
 // CGAL
 #define CGAL_LINKED_WITH_TBB
+#define CGAL_CONCURRENT_TRIANGULATION_3_ADD_TEMPORARY_POINTS_ON_FAR_SPHERE
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
