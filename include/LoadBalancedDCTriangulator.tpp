@@ -633,19 +633,6 @@ namespace LoadBalancing
             VTUNE_TASK(TriangulateEdge);
             //TODO how to identify the edge triangulation
 
-            //output edge points for debug
-            {
-                std::ofstream f("edge_points.points");
-
-                auto handle = edgePointIds.handle();
-
-                for(const auto &id : handle){
-                    const auto &p = this->points[id];
-                    f << p.coords[0] << " " << p.coords[1] << " " << p.coords[2] << std::endl;
-                }
-                f.close();
-            }
-
             auto edgeDT = _triangulateBase(Point_Ids(std::move(edgePointIds.data())), bounds,
                                                             provenance + "e",mParallelEdgeTria);
             VTUNE_END_TASK(TriangulateEdge);
