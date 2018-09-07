@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         return EXIT_SUCCESS;
     }
 
-    LOGGER.setLogLevel(static_cast<Logger::Verbosity>(0));
+    LOGGER.setLogLevel(Logger::Verbosity::SILENT);
 
 	if(vm.count("seed")) {
 		startGen.seed(vm["seed"].as<uint>());
