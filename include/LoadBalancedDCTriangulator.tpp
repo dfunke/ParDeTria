@@ -86,7 +86,7 @@ namespace LoadBalancing
                 p.coords = stats.mid;
 
                 for (uint d = 0; d < D; ++d)
-                    p.coords[d] +=
+                    p.coords[d] =
                             (i & (1 << d) ? 1 : -1) * 2 * SAFETY * (stats.max[d] - stats.min[d]);
 
                 this->points[dPoint<D, Precision>::cINF | i] = std::move(p);
