@@ -513,7 +513,28 @@ namespace LoadBalancing
 
         INDENT
         if(parallel && partitionPoints.size() > PARALLEL_THRESHOLD) {
-            auto dt = par_baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
+
+            //we need to adapt the bounds
+            auto lBounds = bounds;
+
+            for (uint d = 0; d < D; ++d) {
+                lBounds.low[d] = -1 * 2 * SAFETY * (bounds.high[d] - bounds.low[d]);
+                lBounds.high[d] =  2 * SAFETY * (bounds.high[d] - bounds.low[d]);
+            }
+
+            {
+                std::ofstream f("parallel.points");
+                for (const auto &id : partitionPoints) {
+                    const auto & c = this->points[id].coords;
+                    if (!lBounds.contains(c)) {
+                        std::cerr << "point out of bounds" << std::endl;
+                    }
+                    f << c[0] << " " << c[1] << " " << c[2] << std::endl;
+                }
+                f.close();
+            }
+
+            auto dt = par_baseTriangulator->_triangulate(partitionPoints, lBounds, provenance);
             DEDENT
             return dt;
         } else {
