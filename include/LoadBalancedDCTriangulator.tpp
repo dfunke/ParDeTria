@@ -522,12 +522,14 @@ namespace LoadBalancing
                 lBounds.high[d] =  2 * SAFETY * (bounds.high[d] - bounds.low[d]);
             }
 
+            std::cout << "adapted bounds: " << lBounds << std::endl;
+
             {
                 std::ofstream f("parallel.points");
                 for (const auto &id : partitionPoints) {
                     const auto & c = this->points[id].coords;
                     if (!lBounds.contains(c)) {
-                        std::cerr << "point out of bounds" << std::endl;
+                        std::cerr << "point out of bounds " << id << " [" << c[0] << ", " << c[1] << ", " << c[2] << "]" << std::endl;
                     }
                     f << c[0] << " " << c[1] << " " << c[2] << std::endl;
                 }
