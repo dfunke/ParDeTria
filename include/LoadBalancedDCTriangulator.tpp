@@ -519,7 +519,7 @@ namespace LoadBalancing
 
             for (uint d = 0; d < D; ++d) {
                 lBounds.low[d] = -1 * 2 * SAFETY * (bounds.high[d] - bounds.low[d]);
-                lBounds.high[d] =  2 * SAFETY * (bounds.high[d] - bounds.low[d]);
+                lBounds.high[d] =  (2 * SAFETY + 1) * (bounds.high[d] - bounds.low[d]);
             }
 
             std::cout << "adapted bounds: " << lBounds << std::endl;
