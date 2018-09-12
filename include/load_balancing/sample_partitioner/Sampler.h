@@ -373,23 +373,23 @@ namespace LoadBalancing
                 }
             });
 
-            tbb::parallel_for(tbb::blocked_range(std::size_t(0), idTranslation.size()), [&] (const auto &r){
-                for (auto n = r.begin(); n < r.end(); ++n) {
-                    for (int i = graph.nodeRecords[n]; i < graph.nodeRecords[n+1]; ++i) {
-                        auto value = graph.adjacency[i];
-                        auto data = graph.edgeWeights[i];
-                        int hole = i;
-
-                        for (; hole > graph.nodeRecords[n] && value < graph.adjacency[hole - 1]; --hole) {
-                            graph.adjacency[hole] = graph.adjacency[hole - 1];
-                            graph.edgeWeights[hole] = graph.edgeWeights[hole - 1];
-                        }
-
-                        graph.adjacency[hole] = value;
-                        graph.edgeWeights[hole] = data;
-                    }
-                }
-            });
+//            tbb::parallel_for(tbb::blocked_range(std::size_t(0), idTranslation.size()), [&] (const auto &r){
+//                for (auto n = r.begin(); n < r.end(); ++n) {
+//                    for (int i = graph.nodeRecords[n]; i < graph.nodeRecords[n+1]; ++i) {
+//                        auto value = graph.adjacency[i];
+//                        auto data = graph.edgeWeights[i];
+//                        int hole = i;
+//
+//                        for (; hole > graph.nodeRecords[n] && value < graph.adjacency[hole - 1]; --hole) {
+//                            graph.adjacency[hole] = graph.adjacency[hole - 1];
+//                            graph.edgeWeights[hole] = graph.edgeWeights[hole - 1];
+//                        }
+//
+//                        graph.adjacency[hole] = value;
+//                        graph.edgeWeights[hole] = data;
+//                    }
+//                }
+//            });
 
             return graph;
         }
