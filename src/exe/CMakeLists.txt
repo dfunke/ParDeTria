@@ -9,6 +9,7 @@ target_link_libraries(LBExperiments
   Geometry
   Triangulator
   CGALTriangulator
+  DCTriangulator
   SpatialSort
   Partitioner
   atomic

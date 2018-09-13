@@ -99,7 +99,7 @@ TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
         case 'l': {
             auto partitioner = getPartitioner(splitter, threads);
             triangulator_ptr =
-            std::make_unique<LoadBalancing::DCTriangulator<D, Precision>>(bounds, points, std::move(partitioner),
+            std::make_unique<LoadBalancing::DCTriangulator<D, Precision>>(bounds, points, threads, std::move(partitioner),
                                                             nCells, parallelBase, false);
             break;
         }

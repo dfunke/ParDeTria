@@ -31,6 +31,7 @@
 // own
 #include "Geometry.h"
 #include "CGALTriangulator.h"
+#include "DCTriangulator.h"
 
 #include "utils/Timings.h"
 #include "utils/Logger.h"
@@ -56,6 +57,7 @@ namespace LoadBalancing
     DCTriangulator<D, Precision, MonitorT>::DCTriangulator(
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
+        uint threads,
         std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
@@ -93,8 +95,10 @@ namespace LoadBalancing
             }
         }
 
-        par_baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, true>>(this->baseBounds, this->points,
-                                                                                    gridOccupancy);
+        auto base_partitioner = ::Partitioner<D, Precision>::make('c');
+        par_baseTriangulator =
+                std::make_unique<::DCTriangulator<D, Precision>>(this->baseBounds, this->points, threads, std::move(base_partitioner),
+                                                                              gridOccupancy, false, true, false);
 	    seq_baseTriangulator = std::make_unique<CGALTriangulator<D, Precision, false>>(this->baseBounds, this->points,
                                                                                     gridOccupancy);
     }
@@ -103,12 +107,13 @@ namespace LoadBalancing
     DCTriangulator<D, Precision, MonitorT>::DCTriangulator(
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
+        uint threads,
         std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
         const bool parallelEdgeTria,
         const bool addInfinitePoints)
-        : DCTriangulator(_bounds, _points, std::move(partitioner), gridOccupancy, parallelBaseSolver,parallelEdgeTria, addInfinitePoints, MonitorT()) {}
+        : DCTriangulator(_bounds, _points, threads, std::move(partitioner), gridOccupancy, parallelBaseSolver,parallelEdgeTria, addInfinitePoints, MonitorT()) {}
 
     template<uint D, typename Precision, typename MonitorT>
     void DCTriangulator<D, Precision, MonitorT>::getEdge(const dSimplices<D, Precision> &simplices,
@@ -512,15 +517,15 @@ namespace LoadBalancing
         mMonitor.registerBaseTriangulation(size, provenance);
 
         INDENT
-        if(parallel && partitionPoints.size() > PARALLEL_THRESHOLD) {
+        if(parallel /*&& partitionPoints.size() > PARALLEL_THRESHOLD*/) {
 
             //we need to adapt the bounds
-            auto lBounds = bounds;
-
-            for (uint d = 0; d < D; ++d) {
-                lBounds.low[d] = -1 * 2 * SAFETY * (bounds.high[d] - bounds.low[d]);
-                lBounds.high[d] =  (2 * SAFETY) * (bounds.high[d] - bounds.low[d]);
-            }
+//            auto lBounds = bounds;
+//
+//            for (uint d = 0; d < D; ++d) {
+//                lBounds.low[d] = -1 * 2 * SAFETY * (bounds.high[d] - bounds.low[d]);
+//                lBounds.high[d] =  (2 * SAFETY) * (bounds.high[d] - bounds.low[d]);
+//            }
 
 //            std::cout << "adapted bounds: " << lBounds << std::endl;
 //
@@ -536,7 +541,7 @@ namespace LoadBalancing
 //                f.close();
 //            }
 
-            auto dt = par_baseTriangulator->_triangulate(partitionPoints, lBounds, provenance);
+            auto dt = par_baseTriangulator->_triangulate(partitionPoints, bounds, provenance);
             DEDENT
             return dt;
         } else {

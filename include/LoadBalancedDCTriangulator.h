@@ -36,6 +36,7 @@ namespace LoadBalancing
     public:
 
         DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
+                    uint threads,
                     std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
                     const uint gridOccupancy = 1,
                     const bool parallelBaseSolver = false,
@@ -43,6 +44,7 @@ namespace LoadBalancing
                     const bool addInfinitePoints = true);
 
         DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
+                    uint threads,
                     std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
                     const uint gridOccupancy,
                     const bool parallelBaseSolver,
