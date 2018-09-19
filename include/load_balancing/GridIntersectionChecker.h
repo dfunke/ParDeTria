@@ -36,8 +36,6 @@ namespace LoadBalancing
 		
 		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
 		{
-			VTUNE_TASK(GridIntersectionChecker);
-
 			ASSERT(aabb.intersects(sphere) == std::any_of(cells.begin(), cells.end(), [this, &sphere](const auto& i) {
 				return intersectsWith<D, Precision, IndexPrecision>(mGrid, sphere, i);
 			}));
