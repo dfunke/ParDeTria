@@ -67,6 +67,12 @@ if (PAINT)
   include_directories(${Cairomm_INCLUDE_DIRS} ${INCLUDE_DIRECTORIES})
 endif ()
 
+option(REPRODUCIBLE "Enable reproducible results - performance penalty" OFF)
+if (REPRODUCIBLE)
+    message(STATUS "REPRODUCIBLE mode enabled")
+    add_definitions(-DREPRODUCIBLE)
+endif ()
+
 option(VALGRIND "Enable Valgrind compatibility options" OFF)
 if (VALGRIND)
   message(STATUS "Valgrind mode enabled")
