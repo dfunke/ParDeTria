@@ -80,6 +80,8 @@ namespace LoadBalancing
 		           const Point_Ids& ids, size_t partitions, PartitionAssigner part)
 		{
 
+		    VTUNE_TASK(AssignPoints);
+
 			std::vector<Concurrent_Growing_Point_Ids> idsets;
 			idsets.reserve(partitions);
 
