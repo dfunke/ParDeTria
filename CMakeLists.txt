@@ -41,7 +41,9 @@ find_package(VTune)
 find_package(KaHIP REQUIRED)
 find_package(LibKDTree++ REQUIRED)
 find_package(Nanoflann REQUIRED)
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Numa REQUIRED)
+
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 

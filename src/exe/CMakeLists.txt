@@ -17,6 +17,7 @@ target_link_libraries(LBExperiments
   Eigen3::Eigen
   ${Boost_LIBRARIES}
   ${TBB_LIBRARIES}
+  ${NUMA_LIBRARY}
 )
 
 if(PAINT)
