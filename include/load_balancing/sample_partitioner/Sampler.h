@@ -409,22 +409,25 @@ namespace LoadBalancing
 													std::numeric_limits<int>::max());
             int n = graph.nodeRecords.size() - 1;
             int edgecut;
-            std::vector<int> part(n);
+            std::vector<int> part(n); // is initialized to 0
             int nparts = numPartitions;
             double imbalance = 0.05;
-            kaffpa(&n,
-                    nullptr,
-                    graph.nodeRecords.data(),
-                    mUniformEdges ? nullptr : graph.edgeWeights.data(),
-                    graph.adjacency.data(),
-                    &nparts,
-                    &imbalance,
-                    true,
-                    dist(rand),
-                    mKaffpaMode, numPartitions,
-                    &edgecut,
-                    part.data());
-            
+
+            if(nparts > 1) { // navigate around bug in KaHIP that doesn't handle corner cases gracefully
+                kaffpa(&n,
+                       nullptr,
+                       graph.nodeRecords.data(),
+                       mUniformEdges ? nullptr : graph.edgeWeights.data(),
+                       graph.adjacency.data(),
+                       &nparts,
+                       &imbalance,
+                       true,
+                       dist(rand),
+                       mKaffpaMode, numPartitions,
+                       &edgecut,
+                       part.data());
+            }
+
             return part;
         }
     };
