@@ -18,6 +18,8 @@ class Partition {
 public:
     Partition(const std::size_t &nPoints) : points(nPoints) { }
     Partition(Point_Ids &&_points) : points(std::move(_points)) { }
+    Partition(const Point_Ids & _points, const dBox<D, Precision> & _bounds, uint _id)
+    : id(_id), points(_points), bounds(_bounds) { }
 
     Partition(Partition &&other)
             : id(other.id),

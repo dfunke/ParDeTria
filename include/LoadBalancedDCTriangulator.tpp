@@ -578,7 +578,8 @@ namespace LoadBalancing
 
         const auto& bounds = tree.intersectionChecker->bounds();
 
-        if (std::holds_alternative<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment)) {
+        if (std::holds_alternative<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment)
+                && std::get<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment).size() > 1) {
             VTUNE_TASK(TriangulateRecursive);
 
             LOG("Recursive case" << std::endl);
@@ -681,7 +682,12 @@ namespace LoadBalancing
                                     provenance);
 
         } else { // base case
-            return _triangulateBase(std::get<Point_Ids>(tree.attachment), bounds, provenance, mParallelBaseCase);
+            if (std::holds_alternative<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment)){
+                return _triangulateBase(std::get<Point_Ids>(
+                        std::get<typename PartitionTree<D, Precision>::ChildContainer>(tree.attachment)[0].attachment), bounds, provenance, mParallelBaseCase);
+            } else {
+                return _triangulateBase(std::get<Point_Ids>(tree.attachment), bounds, provenance, mParallelBaseCase);
+            }
         }
     }
 }

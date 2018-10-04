@@ -17,7 +17,7 @@ namespace LoadBalancing
                                         dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds) override
         {
-            return buildTree(bounds, points, pointIds, maxRecursions, "");
+            return buildTree(bounds, points, pointIds, maxRecursions, "0");
         }
         
         std::string info() const override
@@ -32,8 +32,14 @@ namespace LoadBalancing
                                         size_t remainingRecursions,
                                         std::string provenance) const
         {
-            Partitioning<D, Precision> partitioning = splitter->partition(pointIds, points, provenance);
-            
+            Partitioning<D, Precision> partitioning;
+
+            if(remainingRecursions > 0) {
+                partitioning = splitter->partition(pointIds, points, provenance);
+            } else {
+                partitioning.emplace_back(pointIds, bounds, 0);
+            }
+
             typename PartitionTree<D, Precision>::ChildContainer children;
             size_t count = 0;
             for(auto& partition : partitioning) {
@@ -43,7 +49,7 @@ namespace LoadBalancing
                 if(remainingRecursions > 0 && pointIds.size() > baseCutoff) {
                     subtree = buildTree(partition.bounds, points,
                                         partition.points, remainingRecursions - 1, prov);
-                    
+
                 } else {
                     subtree.attachment = std::move(partition.points);
             		subtree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(partition.bounds);
@@ -51,7 +57,7 @@ namespace LoadBalancing
                 children.push_back(std::move(subtree));
                 ++count;
             }
-            
+
             PartitionTree<D, Precision> result;
             result.attachment = std::move(children);
             result.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
