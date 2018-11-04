@@ -131,9 +131,14 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 			weight = [](Precision d) -> Precision { return -std::log(d + 0.0000001); };
 		}
 	}
+	
+	double imbalance = 0.05;
+	if(vm.count("imbalance") > 0) {
+		imbalance = vm["imbalance"].as<double>();
+	}
 
-    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f, mode)
-	                            : lb::Sampler<D, Precision>(rand(), f, mode, weight);
+    auto sampler = uniformEdges ? lb::Sampler<D, Precision>(rand(), f, mode, imbalance)
+	                            : lb::Sampler<D, Precision>(rand(), f, mode, imbalance, weight);
 	//std::unique_ptr<lb::GridIntersectionPartitionMaker<D, Precision>> pm = nullptr;
 	auto createIPMF = [](const auto& vm) -> auto {
 		return createIntersectionPartitionMakerFunction<D, Precision>(vm);
@@ -189,6 +194,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("sample-size", po::value<size_t>());
     cCommandLine.add_options()("sampling", po::value<std::string>());
     cCommandLine.add_options()("edge-weights", po::value<std::string>());
+    cCommandLine.add_options()("imbalance", po::value<double>());
     cCommandLine.add_options()("num-bubbles", po::value<uint>());
     cCommandLine.add_options()("bubble-radius", po::value<Precision>());
     cCommandLine.add_options()("cell-width", po::value<Precision>());

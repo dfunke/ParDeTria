@@ -104,16 +104,17 @@ namespace LoadBalancing
 	     *   - edgeWeight is strictly monotonic
 	     */
         Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, int kaffpaMode,
-                DistanceToEdgeWeightFunction edgeWeight)
+                double imbalance, DistanceToEdgeWeightFunction edgeWeight)
             : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(false),
-			  mKaffpaMode(kaffpaMode), mEdgeWeight(std::move(edgeWeight))
+			  mKaffpaMode(kaffpaMode), mImbalance(imbalance), mEdgeWeight(std::move(edgeWeight))
         {
 	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG || mKaffpaMode == FASTSOCIALMULTITRY_PARALLEL);
         }
         
-        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, int kaffpaMode)
+        Sampler(size_t sampleSeed, std::function<size_t(size_t)> sampleSize, int kaffpaMode,
+                double imbalance)
             : mRand(sampleSeed), mSampleSize(std::move(sampleSize)), mUniformEdges(true),
-			  mKaffpaMode(kaffpaMode)
+			  mKaffpaMode(kaffpaMode), mImbalance(imbalance)
         {
 	        assert(mKaffpaMode == FAST || mKaffpaMode == ECO || mKaffpaMode == STRONG || mKaffpaMode == FASTSOCIALMULTITRY_PARALLEL);
         }
@@ -144,6 +145,7 @@ namespace LoadBalancing
         std::function<size_t(size_t)>  mSampleSize;
         bool mUniformEdges;
         int mKaffpaMode;
+        double mImbalance;
         DistanceToEdgeWeightFunction mEdgeWeight;
         
         template <typename Generator_t>
@@ -411,7 +413,6 @@ namespace LoadBalancing
             int edgecut;
             std::vector<int> part(n); // is initialized to 0
             int nparts = numPartitions;
-            double imbalance = 0.05;
 
             if(nparts > 1) { // navigate around bug in KaHIP that doesn't handle corner cases gracefully
                 kaffpa(&n,
@@ -420,7 +421,7 @@ namespace LoadBalancing
                        mUniformEdges ? nullptr : graph.edgeWeights.data(),
                        graph.adjacency.data(),
                        &nparts,
-                       &imbalance,
+                       &mImbalance,
                        true,
                        dist(rand),
                        mKaffpaMode, numPartitions,
