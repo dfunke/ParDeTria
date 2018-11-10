@@ -25,7 +25,9 @@ namespace LoadBalancing
             uint seed;
         };
         
-        Experiment(std::unique_ptr<Partitioner<D, Precision>> partitioner, Setup setup, std::ostream& out);
+        Experiment(std::unique_ptr<Partitioner<D, Precision, ComprehensiveMonitor>> partitioner,
+                   Setup setup,
+                   std::ostream& out);
         ~Experiment();
         void runOnce();
         
@@ -44,7 +46,7 @@ namespace LoadBalancing
     };
     
     template<uint D, typename Precision>
-    Experiment<D, Precision>::Experiment(std::unique_ptr<Partitioner<D, Precision>> partitioner, Setup setup, std::ostream& out)
+    Experiment<D, Precision>::Experiment(std::unique_ptr<Partitioner<D, Precision, ComprehensiveMonitor>> partitioner, Setup setup, std::ostream& out)
         : setup(std::move(setup)),
           out(out),
           partitionerName(partitioner->info()),

@@ -58,7 +58,7 @@ namespace LoadBalancing
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
         uint threads,
-        std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
+        std::unique_ptr<LoadBalancing::Partitioner<D, Precision, MonitorT>> partitioner,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
         const bool parallelEdgeTria,
@@ -108,7 +108,7 @@ namespace LoadBalancing
         const dBox<D, Precision> &_bounds,
         dPoints<D, Precision> &_points,
         uint threads,
-        std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
+        std::unique_ptr<LoadBalancing::Partitioner<D, Precision, MonitorT>> partitioner,
         const uint gridOccupancy,
         const bool parallelBaseSolver,
         const bool parallelEdgeTria,
@@ -556,7 +556,10 @@ namespace LoadBalancing
                                                                         const dBox<D, Precision> &bounds,
                                                                         const std::string provenance) {
         mMonitor.registerPartitionStart();
-        PartitionTree<D, Precision> tree = mPartitioner->partition(bounds, Triangulator<D, Precision>::points, partitionPoints);
+        PartitionTree<D, Precision> tree = mPartitioner->partition(bounds,
+																   Triangulator<D, Precision>::points,
+																   partitionPoints,
+																   mMonitor);
         mMonitor.registerPartitionEnd();
         mMonitor.registerPartition(tree, *mPartitioner);
         

@@ -15,8 +15,8 @@
 
 namespace LoadBalancing
 { 
-    template <uint D, typename Precision>
-    struct HyperplaneSamplingBipartitioner : public SamplePartitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct HyperplaneSamplingBipartitioner : public SamplePartitioner<D, Precision, MonitorT>
     {
         HyperplaneSamplingBipartitioner(size_t partitionSize, Sampler<D, Precision> sampler)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler))
@@ -27,10 +27,11 @@ namespace LoadBalancing
 
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) override
+                                        const Point_Ids& pointIds,
+                                        MonitorT& monitor) override
         {
 			auto is = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
-            return makePartitioning(bounds, points, pointIds, std::move(is), mPartitionSize);
+            return makePartitioning(bounds, points, pointIds, std::move(is), mPartitionSize, monitor);
         }
         
         std::string info() const override
@@ -48,11 +49,13 @@ namespace LoadBalancing
 			                 dPoints<D, Precision>& points,
 			                 const Point_Ids& pointIds,
 			                 std::unique_ptr<IntersectionChecker<D, Precision>> intersectionChecker,
-			                 size_t numPartitions) {
+			                 size_t numPartitions,
+			                 MonitorT& monitor) {
 
 			PartitionTree<D, Precision> result;
 			if(numPartitions > 1) {
            		mSampling = mSampler(bounds, points, pointIds, 2);
+				monitor.registerSampleTriangulation(mSampling.size(), "s0");
 
 				// calc split points ...
 				std::vector<dVector<D, Precision>> splitPoints;
@@ -134,14 +137,14 @@ namespace LoadBalancing
 																				  normal,	
 																				  offset - 1e-6);
 				auto leftTree = makePartitioning(bounds, points, std::move(leftPoints),
-				                                 std::move(leftIC), numPartitions / 2);
+				                                 std::move(leftIC), numPartitions / 2, monitor);
 				
 				auto rightIC =
 					std::make_unique<HyperplaneIntersectionChecker<D, Precision>>(bounds,
 																				  -normal,
 																				  -offset - 1e-6);
 				auto rightTree = makePartitioning(bounds, points, std::move(rightPoints),
-				                                  std::move(rightIC), numPartitions / 2);
+				                                  std::move(rightIC), numPartitions / 2, monitor);
 				result.intersectionChecker = std::move(intersectionChecker);
 				result.attachment = typename decltype(result)::ChildContainer {
 					std::move(leftTree), std::move(rightTree)};

@@ -37,7 +37,7 @@ namespace LoadBalancing
 
         DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
                     uint threads,
-                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
+                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision, MonitorT>> partitioner,
                     const uint gridOccupancy = 1,
                     const bool parallelBaseSolver = false,
                     const bool parallelEdgeTria = true,
@@ -45,7 +45,7 @@ namespace LoadBalancing
 
         DCTriangulator(const dBox<D, Precision> &_bounds, dPoints<D, Precision> &_points,
                     uint threads,
-                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> partitioner,
+                    std::unique_ptr<LoadBalancing::Partitioner<D, Precision, MonitorT>> partitioner,
                     const uint gridOccupancy,
                     const bool parallelBaseSolver,
                     const bool parallelEdgeTria,
@@ -90,7 +90,7 @@ namespace LoadBalancing
         const bool mParallelEdgeTria;
         const bool mParallelBaseCase;
 
-        std::unique_ptr<Partitioner<D, Precision>> mPartitioner;
+        std::unique_ptr<Partitioner<D, Precision, MonitorT>> mPartitioner;
         std::unique_ptr<Triangulator<D, Precision>> seq_baseTriangulator;
         std::unique_ptr<Triangulator<D, Precision>> par_baseTriangulator;
         

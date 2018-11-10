@@ -12,8 +12,8 @@
 
 namespace LoadBalancing
 { 
-    template <uint D, typename Precision>
-    struct NearestSamplePointAssigningSampleBipartitioner : public SamplePartitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct NearestSamplePointAssigningSampleBipartitioner : SamplePartitioner<D, Precision, MonitorT>
     {
         NearestSamplePointAssigningSampleBipartitioner(size_t partitionSize, Sampler<D, Precision> sampler, size_t baseCutoff, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler)),
@@ -23,11 +23,13 @@ namespace LoadBalancing
 	        assert(partitionSize > 0);
 	        assert((partitionSize & (partitionSize - 1)) == 0); // power of two
         }
+
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) override
+                                        const Point_Ids& pointIds,
+                                        MonitorT& monitor) override
         {
-            return makePartitioning(bounds, points, pointIds, mPartitionSize);
+            return makePartitioning(bounds, points, pointIds, mPartitionSize, "s0", monitor);
         }
         
         std::string info() const override
@@ -43,14 +45,19 @@ namespace LoadBalancing
 		PartitionTree<D, Precision> makePartitioning(const dBox<D, Precision>& bounds,
 		                                             dPoints<D, Precision>& points,
 		                                             const Point_Ids& pointIds,
-		                                             size_t numPartitions) {
+		                                             size_t numPartitions,
+		                                             std::string provenance,
+		                                             MonitorT& monitor) {
 			PartitionTree<D, Precision> result;
 			if(numPartitions > 1 && pointIds.size() > mBaseCutoff) {
-				using BasePartitioner =	NearestSamplePointAssigningSamplePartitioner<D, Precision>;
+				using BasePartitioner
+					=	NearestSamplePointAssigningSamplePartitioner<D, Precision, UnpluggedMonitor>;
 				BasePartitioner basePartitioner(2, mSampler, mMakePartition);
 
-				auto tree = basePartitioner.partition(bounds, points, pointIds);
+				UnpluggedMonitor unpluggedMonitor;
+				auto tree = basePartitioner.partition(bounds, points, pointIds, unpluggedMonitor);
 				mSampling = basePartitioner.sampling().clone();
+				monitor.registerSampleTriangulation(mSampling.size(), provenance);
 				
 				assert(!tree.isLeaf());
 				auto& children =
@@ -61,12 +68,16 @@ namespace LoadBalancing
 				                                 points,
 				                                 std::move(std::get<Point_Ids>(children[0].attachment
 																			   )),
-				                                 numPartitions / 2);
+				                                 numPartitions / 2,
+				                                 provenance + "0",
+				                                 monitor);
 				auto rightTree = makePartitioning(children[1].intersectionChecker->bounds(),
 				                                 points,
 				                                 std::move(std::get<Point_Ids>(children[1].attachment
 																			   )),
-				                                 numPartitions / 2);
+				                                 numPartitions / 2,
+				                                 provenance + "1",
+				                                 monitor);
 
 				leftTree.intersectionChecker = std::move(children[0].intersectionChecker);
 				rightTree.intersectionChecker = std::move(children[1].intersectionChecker);

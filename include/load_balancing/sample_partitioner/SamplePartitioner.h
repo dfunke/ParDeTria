@@ -4,8 +4,8 @@
 
 namespace LoadBalancing
 {
-    template <uint D, typename Precision>
-    struct SamplePartitioner : Partitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct SamplePartitioner : Partitioner<D, Precision, MonitorT>
     {
         virtual const Sampling<D, Precision>& sampling() const = 0;
     };

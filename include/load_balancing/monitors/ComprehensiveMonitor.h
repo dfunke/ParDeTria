@@ -29,12 +29,17 @@ namespace LoadBalancing
 	        
             compAcc->numTriangulatedPoints += numPoints;
             compAcc->baseTriangulations.emplace_back(numPoints, provenance);
-        };
+        }
+        
+        void registerSampleTriangulation(size_t numPoints, const std::string& provenance) {
+	        registerBaseTriangulation(numPoints, provenance);
+        }
 
-        template <uint D, typename Precision>
-        void registerPartition(const PartitionTree<D, Precision>& tree, const Partitioner<D, Precision>& partitioner) {
+        template <uint D, typename Precision, typename MonitorT>
+	    void registerPartition(const PartitionTree<D, Precision>& tree,
+	                           const Partitioner<D, Precision, MonitorT>& partitioner) {
 	        registerPartitionRecursively(tree);
-	        auto sp = dynamic_cast<const SamplePartitioner<D, Precision>*>(&partitioner);
+	        auto sp = dynamic_cast<const SamplePartitioner<D, Precision, MonitorT>*>(&partitioner);
 	        if(sp) {
 		        compAcc->sampleSize = sp->sampling().partition.size();
 			}

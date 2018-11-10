@@ -5,12 +5,13 @@
 
 namespace LoadBalancing
 {
-    template <uint D, typename Precision>
+    template <uint D, typename Precision, typename MonitorT>
     struct Partitioner
     {
         virtual PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) = 0;
+                                        const Point_Ids& pointIds,
+                                        MonitorT& monitor) = 0;
         
         virtual std::string info() const = 0;
     };

@@ -25,17 +25,20 @@ namespace LoadBalancing
         return result;
     }
     
-    template <uint D, typename Precision>
-    struct CenterDistancePointAssigningSamplePartitioner : public SamplePartitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct CenterDistancePointAssigningSamplePartitioner
+    : SamplePartitioner<D, Precision, MonitorT>
     {
         CenterDistancePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler)), mMakePartition(std::move(intersectionCheckerMaker))			  
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) override
+                                        const Point_Ids& pointIds,
+                                        MonitorT& monitor) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
+            monitor.registerSampleTriangulation(mSampling.size(), "s0");
             mPartitionCenters = findPartitionCenters<D, Precision>(mSampling.partition, mPartitionSize, mSampling.points);
             auto partitioning = makePartitioning(mPartitionCenters, points, pointIds, mPartitionSize);
             

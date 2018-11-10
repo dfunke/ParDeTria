@@ -8,6 +8,7 @@
 
 #include "load_balancing/CommandLineInterface.h"
 #include "load_balancing/Experiment.h"
+#include "load_balancing/monitors/ComprehensiveMonitor.h"
 
 
 template <uint D, typename Precision>
@@ -29,7 +30,9 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
         distribution = vm["distribution"].as<std::string>();
     }
     
-    auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
+    auto partitioner = createPartitioner<D, Precision, lb::ComprehensiveMonitor>(vm,
+																				 threads,
+																				 startGen);
     assert(partitioner);
     
     typename lb::Experiment<D, Precision>::Setup setup {

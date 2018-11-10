@@ -7,15 +7,16 @@
 
 namespace LoadBalancing
 {
-    template <uint D, typename Precision>
-    struct OldPartitionerPartitioner : public Partitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct OldPartitionerPartitioner : public Partitioner<D, Precision, MonitorT>
     {
         OldPartitionerPartitioner(std::unique_ptr<::Partitioner<D, Precision>> splitter, size_t maxRecursions, size_t baseCutoff)
             : splitter(std::move(splitter)), maxRecursions(maxRecursions), baseCutoff(baseCutoff) { }
         
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) override
+                                        const Point_Ids& pointIds,
+                                        MonitorT& /*monitor*/) override
         {
             return buildTree(bounds, points, pointIds, maxRecursions, "0");
         }

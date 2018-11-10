@@ -79,8 +79,10 @@ auto createIntersectionPartitionMakerFunction(const po::variables_map& vm) {
 	}
     return pmf;
 }
-template <uint D, typename Precision, typename RandomGenerator>
-std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::variables_map& vm, uint threads, RandomGenerator& rand) {
+template <uint D, typename Precision, typename MonitorT, typename RandomGenerator>
+std::unique_ptr<lb::Partitioner<D, Precision, MonitorT>> createPartitioner(const po::variables_map& vm,
+																		   uint threads,
+																		   RandomGenerator& rand) {
     std::string partitionerName = vm["partitioner"].as<std::string>();
 
 	std::function<size_t(size_t)> f;
@@ -145,24 +147,31 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
 	};
 	
     auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
-    std::unique_ptr<lb::Partitioner<D, Precision>> partitioner = nullptr;
+    std::unique_ptr<lb::Partitioner<D, Precision, MonitorT>> partitioner = nullptr;
     if("binary-besp" == partitionerName){
         auto baseCutoff = lb::DCTriangulator<D, Precision>::BASE_CUTOFF;
-        partitioner = std::make_unique<lb::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(baseCutoff, std::move(sampler));
+        partitioner =
+	        std::make_unique<lb::BinaryBoxEstimatingSamplePartitioner<D, Precision, MonitorT>>
+	        (baseCutoff, std::move(sampler));
     } else if("center-distance-pasp" == partitionerName){
-        partitioner = std::make_unique<lb::CenterDistancePointAssigningSamplePartitioner<D, Precision>>
+        partitioner = std::make_unique<
+	        lb::CenterDistancePointAssigningSamplePartitioner<D, Precision, MonitorT>>
 	        (threads, std::move(sampler), createIPMF(vm));
     } else if("bounds-distance-pasp" == partitionerName){
-        partitioner = std::make_unique<lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>
+        partitioner = std::make_unique<
+	        lb::BoundsDistancePointAssigningSamplePartitioner<D, Precision, MonitorT>>
 	        (threads, std::move(sampler), createIPMF(vm));
     } else if("nearest-sample-pasp" == partitionerName) {
-        partitioner = std::make_unique<lb::NearestSamplePointAssigningSamplePartitioner<D, Precision>>
+        partitioner = std::make_unique<
+	        lb::NearestSamplePointAssigningSamplePartitioner<D, Precision, MonitorT>>
 	        (threads, std::move(sampler), createIPMF(vm));
     } else if("nearest-sample-pasb" == partitionerName) {
-        partitioner = std::make_unique<lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision>>
+        partitioner = std::make_unique<
+	        lb::NearestSamplePointAssigningSampleBipartitioner<D, Precision, MonitorT>>
 	        (threads, std::move(sampler), baseCutoff, createIPMF(vm));
     } else if("hyperplane-sample-pasb" == partitionerName) {
-        partitioner = std::make_unique<lb::HyperplaneSamplingBipartitioner<D, Precision>>
+        partitioner = std::make_unique<
+	        lb::HyperplaneSamplingBipartitioner<D, Precision, MonitorT>>
 	        (threads, std::move(sampler));
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
@@ -178,7 +187,8 @@ std::unique_ptr<lb::Partitioner<D, Precision>> createPartitioner(const po::varia
             oldPartitioner = std::make_unique<OneDimPartitioner<D, Precision>>(d);
         }
         auto maxRecursions = oldPartitioner->getRecursionDepth(threads);
-        partitioner = std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision>>(
+        partitioner =
+	        std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision, MonitorT>>(
             std::move(oldPartitioner), maxRecursions, baseCutoff);
     }
     return partitioner;

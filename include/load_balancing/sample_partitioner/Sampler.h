@@ -51,6 +51,10 @@ namespace LoadBalancing
             adjacency.resize(m);
             edgeWeights.resize(m);
         }
+        
+		size_t size() const {
+			return nodeRecords.size() - 1;
+		}
 
         std::vector<int> nodeRecords;
         std::vector<int> adjacency;
@@ -61,7 +65,7 @@ namespace LoadBalancing
 	        std::ofstream o(filename);
 	        const char SEP = ' ';
 
-	        o << nodeRecords.size() - 1 << SEP << adjacency.size() / 2 << SEP << "1" << std::endl;
+	        o << size() << SEP << adjacency.size() / 2 << SEP << "1" << std::endl;
 	        for(int n = 0; n < static_cast<int>(nodeRecords.size()) - 1; ++n){
 	            for(int e = nodeRecords[n]; e < nodeRecords[n+1]; ++e){
 	                if(e > nodeRecords[n])
@@ -91,6 +95,10 @@ namespace LoadBalancing
 
             return res;
         }
+
+		size_t size() const {
+			return graph.size();
+		}
     };
     
     template <uint D, typename Precision>

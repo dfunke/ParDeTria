@@ -8,8 +8,8 @@
 
 namespace LoadBalancing
 {
-    template <uint D, typename Precision>
-    struct SimplePartitioner : public Partitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct SimplePartitioner : public Partitioner<D, Precision, MonitorT>
     {        
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,

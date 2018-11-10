@@ -12,17 +12,20 @@
 
 namespace LoadBalancing
 { 
-    template <uint D, typename Precision>
-    struct NearestSamplePointAssigningSamplePartitioner : public SamplePartitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct NearestSamplePointAssigningSamplePartitioner : SamplePartitioner<D, Precision, MonitorT>
     {
         NearestSamplePointAssigningSamplePartitioner(size_t partitionSize, Sampler<D, Precision> sampler, IntersectionPartitionMakerFunction<D, Precision> intersectionCheckerMaker)
             : mPartitionSize(partitionSize), mSampler(std::move(sampler)), mMakePartition(std::move(intersectionCheckerMaker))
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) override
+                                        const Point_Ids& pointIds,
+                                        MonitorT& monitor) override
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
+			monitor.registerSampleTriangulation(mSampling.size(), "s0");
+
             auto kdtree = buildKdTree(mSampling.partition, mSampling.points);
             auto partitioning = makePartitioning(kdtree, points, mPartitionSize, pointIds,
                                                  mSampling.partition);
@@ -75,9 +78,9 @@ namespace LoadBalancing
 		IntersectionPartitionMakerFunction<D, Precision> mMakePartition;
     };
     
-    template <uint D, typename Precision>
-    typename NearestSamplePointAssigningSamplePartitioner<D, Precision>::Tree
-   NearestSamplePointAssigningSamplePartitioner<D, Precision>::buildKdTree(
+    template <uint D, typename Precision, typename MonitorT>
+    typename NearestSamplePointAssigningSamplePartitioner<D, Precision, MonitorT>::Tree
+   NearestSamplePointAssigningSamplePartitioner<D, Precision, MonitorT>::buildKdTree(
         const std::vector<int>& /*partitioning*/,
         const std::vector<dVector<D, Precision>>& samplePoints) {
 
@@ -86,13 +89,14 @@ namespace LoadBalancing
         return tree;
     }
     
-    template <uint D, typename Precision>
+    template <uint D, typename Precision, typename MonitorT>
     std::vector<IntersectionPartition<D, Precision>>
-    NearestSamplePointAssigningSamplePartitioner<D, Precision>::makePartitioning(const Tree& tree,
-																				 const dPoints<D, Precision>& points,
-																				 size_t partitions,
-																				 const Point_Ids& pointIds,
-																				 const std::vector<int>& partitioning) {
+    NearestSamplePointAssigningSamplePartitioner<D, Precision, MonitorT>::
+    makePartitioning(const Tree& tree,
+                     const dPoints<D, Precision>& points,
+                     size_t partitions,
+                     const Point_Ids& pointIds,
+                     const std::vector<int>& partitioning) {
         VTUNE_TASK(PartitionerAssignPointsByTree);
 
 		return mMakePartition(points, pointIds, partitions, [&] (auto id) -> size_t {

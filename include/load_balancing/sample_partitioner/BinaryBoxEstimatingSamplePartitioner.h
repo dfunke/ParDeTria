@@ -89,17 +89,18 @@ namespace LoadBalancing
         return result;
     }
     
-    template <uint D, typename Precision>
-    struct BinaryBoxEstimatingSamplePartitioner : public SamplePartitioner<D, Precision>
+    template <uint D, typename Precision, typename MonitorT>
+    struct BinaryBoxEstimatingSamplePartitioner : SamplePartitioner<D, Precision, MonitorT>
     {
         BinaryBoxEstimatingSamplePartitioner(size_t minNumOfPoints, Sampler<D, Precision> sampler)
             : mPointsCutoff(minNumOfPoints), mSampler(std::move(sampler))
         { }
         PartitionTree<D, Precision> partition(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
-                                        const Point_Ids& pointIds) override
+                                        const Point_Ids& pointIds,
+                                        MonitorT& monitor) override
         {
-            return buildTreeRecursively(bounds, points, pointIds, 10);
+            return buildTreeRecursively(bounds, points, pointIds, 10, monitor);
         }
         
         std::string info() const override
@@ -119,18 +120,20 @@ namespace LoadBalancing
         PartitionTree<D, Precision> buildTreeRecursively(const dBox<D, Precision>& bounds,
                                         dPoints<D, Precision>& points,
                                         const Point_Ids& pointIds,
-                                        size_t remainingRecursions) {
+                                        size_t remainingRecursions,
+                                        MonitorT& monitor) {
             PartitionTree<D, Precision> tree;
                 
             if(remainingRecursions > 0 && pointIds.size() >= mPointsCutoff) {
                 mSampling = mSampler(bounds, points, pointIds, 2);
+                monitor.registerSampleTriangulation(mSampling.size(), "s0");
                 auto centerEdges = findPartitionCenterEdges(mSampling.graph, mSampling.partition);
                 auto centerPoints = makePartitionCenterPoints<D, Precision>(centerEdges, mSampling.points);
                 auto boundingBoxes = estimateBoundingBoxes(centerPoints, bounds);
                 auto pointIdsPair = seperatePointIds(points, pointIds, std::get<0>(boundingBoxes));
                 
-                auto leftSubtree = buildTreeRecursively(std::get<0>(boundingBoxes), points, std::get<0>(pointIdsPair), remainingRecursions - 1);
-                auto rightSubtree = buildTreeRecursively(std::get<1>(boundingBoxes), points, std::get<1>(pointIdsPair), remainingRecursions - 1);
+                auto leftSubtree = buildTreeRecursively(std::get<0>(boundingBoxes), points, std::get<0>(pointIdsPair), remainingRecursions - 1, monitor);
+                auto rightSubtree = buildTreeRecursively(std::get<1>(boundingBoxes), points, std::get<1>(pointIdsPair), remainingRecursions - 1, monitor);
             
                 tree.intersectionChecker = std::make_unique<BoundsIntersectionChecker<D, Precision>>(bounds);
                 typename PartitionTree<D, Precision>::ChildContainer children;
