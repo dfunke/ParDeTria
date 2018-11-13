@@ -143,13 +143,13 @@ namespace LoadBalancing
 			}
 
 			std::vector<IntersectionPartition<D, Precision>> result(idss.size());
-			for(size_t i = 0; i < result.size(); ++i) {
+			tbb::parallel_for(size_t(0), partitions, [&](auto i) {
 				result[i].pointIds = std::move(idss[i]);
 				using Checker = GridIntersectionChecker<D, Precision, IndexPrecision>;
 				result[i].intersectionChecker = std::make_unique<Checker>(std::move(boundss[i]), mGrid,
 																   indices[i].begin(),
 																   indices[i].end());
-			}
+			});
 			
 			return result;
 		}
