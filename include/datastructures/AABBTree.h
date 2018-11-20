@@ -49,6 +49,32 @@ public:
 
     }
 
+	TreeNode(TreeNode&& other) {
+		std::swap(bounds, other.bounds);
+		std::swap(cell_size, other.cell_size);
+		std::swap(nChildren, other.nChildren);
+		std::swap(children, other.children);
+	}
+
+	TreeNode& operator=(const TreeNode& other) {
+        bounds = other.bounds;
+        cell_size = other.cell_size;
+        nChildren = other.nChildren;
+
+        for (int i = 0; i < other.nChildren; ++i) {
+            children[i] = std::make_unique<TreeNode>(*other.children[i]);
+        }
+
+		return *this;
+	}
+
+	TreeNode& operator=(TreeNode&& other) {
+		std::swap(bounds, other.bounds);
+		std::swap(cell_size, other.cell_size);
+		std::swap(nChildren, other.nChildren);
+		std::swap(children, other.children);
+	}
+
     bool contains(const dBox<D, Precision> &b) const {
         return bounds.contains(b) || bounds == b;
     }
