@@ -73,6 +73,8 @@ public:
 		std::swap(cell_size, other.cell_size);
 		std::swap(nChildren, other.nChildren);
 		std::swap(children, other.children);
+
+		return *this;
 	}
 
     bool contains(const dBox<D, Precision> &b) const {
@@ -197,6 +199,16 @@ public:
     AABBTree(const dBox<D, Precision> &bounds, const Precision cell_size) : m_root(round(bounds, cell_size), cell_size, false) {}
 
     AABBTree(const AABBTree &other) : m_root(other.m_root) {}
+
+    AABBTree(AABBTree &&other) {
+        std::swap(m_root, other.m_root);
+    }
+
+    AABBTree& operator=(AABBTree&& other) {
+        std::swap(m_root, other.m_root);
+
+        return *this;
+    }
 
     bool insert(const dBox<D, Precision> &a) {
         return m_root.insert(std::make_unique<TreeNode<D, Precision>>(a, m_root.cell_size, true));
