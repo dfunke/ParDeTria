@@ -44,6 +44,11 @@ namespace LoadBalancing
 			return aabb.intersects(sphere);
 		}
 
+		using Intersection = typename AABBTree<D, Precision>::Intersection;
+		Intersection intersectingCells(const dSphere<D, Precision>& sphere) const {
+			return aabb.intersectingCells(sphere);
+		}
+
 		std::unique_ptr<IntersectionChecker<D, Precision>> copy() const override
 		{
 			return std::make_unique<GridIntersectionChecker>(*this);
@@ -154,7 +159,7 @@ namespace LoadBalancing
 			return result;
 		}
 		
-	private:
+	protected:
 		Grid<D, Precision, IndexPrecision> mGrid;
 	};
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Geometry.h"
+#include "load_balancing/Grid.h"
 
 // forward declaration of AABB Tree
 template<uint D, typename Precision>
@@ -152,6 +153,22 @@ public:
 
     }
 
+	using Intersection = std::vector<dIndex<D, int64_t>>;
+	void intersectingCells(const dSphere<D, Precision>& c,
+	                       Intersection& result) const {
+	    const LoadBalancing::Grid<D, Precision>& grid(cell_size);
+
+		if(bounds.intersects(c)) {
+			if(leaf()) {
+				result.push_back(grid.indexAt(Precision(0.5) * (bounds.low + bounds.high)));
+			} else {	
+				for (int i = 0; i < nChildren; ++i) {
+					children[i]->intersectingCells(c, result);
+				}
+			}
+		}
+	}
+
 private:
 
     void split() {
@@ -200,8 +217,7 @@ public:
 
     AABBTree(const AABBTree &other) : m_root(other.m_root) {}
 
-    AABBTree(AABBTree &&other) {
-        std::swap(m_root, other.m_root);
+    AABBTree(AABBTree &&other) : m_root(std::move(other.m_root)) {
     }
 
     AABBTree& operator=(AABBTree&& other) {
@@ -217,6 +233,13 @@ public:
     bool intersects(const dSphere<D, Precision> &c) const {
         return m_root.intersects(c);
     }
+
+	using Intersection = typename TreeNode<D, Precision>::Intersection;
+	Intersection intersectingCells(const dSphere<D, Precision>& c) const {
+		Intersection result;
+		m_root.intersectingCells(c, result);
+		return result;
+	}
 
 private:
     TreeNode<D, Precision> m_root;

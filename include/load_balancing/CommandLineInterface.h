@@ -19,6 +19,7 @@
 #include "load_balancing/sample_partitioner/HyperplaneBipartitioner.h"
 #include "load_balancing/BoundsIntersectionChecker.h"
 #include "load_balancing/GridIntersectionChecker.h"
+#include "load_balancing/AccurateGridIntersectionChecker.h"
 
 #include <boost/program_options.hpp>
 
@@ -69,9 +70,11 @@ auto createIntersectionPartitionMakerFunction(const po::variables_map& vm) {
 	lb::IntersectionPartitionMakerFunction<D, Precision> pmf;
     if(vm.count("bounds") <= 0 || vm["bounds"].as<std::string>() == "grid") {
 	    Precision cellWidth = vm["cell-width"].as<Precision>();
-		//pm = std::make_unique<lb::GridIntersectionPartitionMaker<D, Precision>>
-		//	(lb::Grid<D, Precision>{cellWidth});
 		pmf = lb::GridIntersectionPartitionMaker<D, Precision>(lb::Grid<D, Precision>{cellWidth});
+	} else if(vm["bounds"].as<std::string>() == "accurate-grid") {
+	    Precision cellWidth = vm["cell-width"].as<Precision>();
+		pmf =
+			lb::AccurateGridIntersectionPartitionMaker<D, Precision>(lb::Grid<D, Precision>{cellWidth});
 	} else if(vm["bounds"].as<std::string>() == "box" || vm["bounds"].as<std::string>() == "boxes") {
 		pmf = lb::BoundsIntersectionPartitionMaker<D, Precision>();
 	} else {
