@@ -32,6 +32,7 @@ target_link_libraries(LBPainting
   Geometry
   Triangulator
   CGALTriangulator
+  DCTriangulator
   SpatialSort
   Partitioner
   ${KaHIP_LIBRARIES}

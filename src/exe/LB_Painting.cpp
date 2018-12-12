@@ -6,6 +6,7 @@
 #include "load_balancing/CommandLineInterface.h"
 #include "load_balancing/PartitionTreePainter.h"
 #include "load_balancing/monitors/DrawingMonitor.h"
+#include "load_balancing/monitors/UnpluggedMonitor.h"
 
 using Precision = double;
 constexpr uint D = 2;
@@ -33,9 +34,6 @@ void execute(const po::variables_map& vm, uint threads, const std::string& out,
 	auto N = vm["n"].as<tIdType>();
 	points = pg->generate(N, bounds, startGen);
 
-    auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
-    assert(partitioner);
-
 	std::vector<std::pair<std::string, Painter<2, double>>> painters;
 	std::mutex mutex;
 	lb::DrawingMonitor<Precision> monitor(points, colors.begin(), colors.end(), mutex,
@@ -43,8 +41,11 @@ void execute(const po::variables_map& vm, uint threads, const std::string& out,
 	               painters.emplace_back(out + "_triang_" + name, Painter<2, double>(bounds));
 	               return painters.back().second;
 	               });
+
+    auto partitioner = createPartitioner<D, Precision, decltype(monitor)>(vm, threads, startGen);
+    assert(partitioner);
    
-	lb::DCTriangulator<D, Precision, decltype(monitor)> triangulator(bounds, points,
+	lb::DCTriangulator<D, Precision, decltype(monitor)> triangulator(bounds, points, threads,
 																	  std::move(partitioner), 100,
 																	  false, false, true,
 																	  std::move(monitor));
@@ -110,13 +111,14 @@ int main(int argc, char *argv[]) {
         points = pg->generate(N, bounds, startGen);
     //}
     
-    auto partitioner = createPartitioner<D, Precision>(vm, threads, startGen);
+    auto partitioner = createPartitioner<D, Precision, lb::UnpluggedMonitor>(vm, threads, startGen);
     assert(partitioner);
 
     tbb::task_scheduler_init init(threads);
     
     auto pointIds = makePointIds(points);
-    auto partitioning = partitioner->partition(bounds, points, pointIds);
+	lb::UnpluggedMonitor monitor;
+    auto partitioning = partitioner->partition(bounds, points, pointIds, monitor);
     
     Painter<2, double> pointsPainter(bounds);
     for(const auto& point : points) {
@@ -129,7 +131,7 @@ int main(int argc, char *argv[]) {
     PartitionTreePainter<double> paintTree(partitionPainter, points);
     paintTree(partitioning);
     
-    const auto* sp = dynamic_cast<const lb::SamplePartitioner<2, double>*>(partitioner.get());
+    const auto* sp = dynamic_cast<const lb::SamplePartitioner<2, double, lb::UnpluggedMonitor>*>(partitioner.get());
     if(sp){
 	const auto& sampling = sp->sampling();
 	const auto& graph = sampling.graph;
