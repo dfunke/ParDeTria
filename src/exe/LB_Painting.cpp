@@ -6,6 +6,7 @@
 #include "load_balancing/CommandLineInterface.h"
 #include "load_balancing/PartitionTreePainter.h"
 #include "load_balancing/monitors/DrawingMonitor.h"
+#include "load_balancing/monitors/SampleDrawingMonitor.h"
 #include "load_balancing/monitors/UnpluggedMonitor.h"
 
 using Precision = double;
@@ -111,70 +112,50 @@ int main(int argc, char *argv[]) {
         points = pg->generate(N, bounds, startGen);
     //}
     
-    auto partitioner = createPartitioner<D, Precision, lb::UnpluggedMonitor>(vm, threads, startGen);
+	std::vector<std::pair<std::string, Painter<2, double>>> painters;
+	std::mutex mutex;
+	lb::SampleDrawingMonitor<Precision> monitor(points, colors.begin(), colors.end(), mutex,
+	               [&painters, &bounds, &out=filename](const auto& name) -> auto& {
+	               painters.emplace_back(out + "_sampling_" + name, Painter<2, double>(bounds));
+	               return painters.back().second;
+	               });
+
+    auto partitioner = createPartitioner<D, Precision, decltype(monitor)>(vm, threads, startGen);
     assert(partitioner);
 
     tbb::task_scheduler_init init(threads);
     
     auto pointIds = makePointIds(points);
-	lb::UnpluggedMonitor monitor;
     auto partitioning = partitioner->partition(bounds, points, pointIds, monitor);
     
     Painter<2, double> pointsPainter(bounds);
     for(const auto& point : points) {
         pointsPainter.draw(point);
     }
-    
-    Painter<2, double> samplePainter(bounds);
+   
+	lb::DCTriangulator<D, Precision, decltype(monitor)> triangulator(bounds, points, threads,
+																	  std::move(partitioner), 100,
+																	  false, false, true,
+																	  std::move(monitor));
 
     Painter<2, double> partitionPainter(bounds);
     PartitionTreePainter<double> paintTree(partitionPainter, points);
     paintTree(partitioning);
     
-    const auto* sp = dynamic_cast<const lb::SamplePartitioner<2, double, lb::UnpluggedMonitor>*>(partitioner.get());
-    if(sp){
-	const auto& sampling = sp->sampling();
-	const auto& graph = sampling.graph;
-	for(size_t i = 0; i < graph.nodeRecords.size() - 1; ++i) {
-	    for(int k = graph.nodeRecords[i]; k < graph.nodeRecords[i + 1]; ++k) {
-		    size_t j = graph.adjacency[k];
-	    	samplePainter.setColor(tRGB(0, 0, 0));
-			samplePainter.drawLine(sampling.points[i], sampling.points[j]);
-			
-			auto center = 0.5 * (sampling.points[i] + sampling.points[j]);
-			std::stringstream ss;
-			ss << graph.edgeWeights[k];
-			samplePainter.drawText(ss.str(), center, 10);
-	    }
-	    samplePainter.setColor(colors[sampling.partition[i] % colors.size()]);
-	    samplePainter.draw(sampling.points[i]);
-	}
-
-        partitionPainter.setColor(tRGB(0, 0, 0));
-        /*const auto& samplePoints = sampling.points;
-        for(const auto& point : samplePoints) {
-	    partitionPainter.draw(point);
-        }*/
-
-	/*const auto* cdpasp = dynamic_cast<const lb::CenterDistancePointAssigningSamplePartitioner<2, double>*>(sp);
-	if(cdpasp) {
-		partitionPainter.setColor(tRGB(0.5, 0.5, 0.5));
-		for(const auto& point : cdpasp->partitionCenters()) {
-		    partitionPainter.draw(point);
-		}
-	}*/
-    }
-    
 	if(vm.count("mode") == 0) {
 		pointsPainter.save(filename + "_points");
-		samplePainter.save(filename + "_sampling");
 		partitionPainter.save(filename + "_partitioning");
+		for(auto& painter : painters) {
+			painter.second.save(painter.first);
+		}
 	} else {
 		auto mode = vm["mode"].as<std::string>();
 		if("points" == mode)
 			pointsPainter.save(filename + "_points");
 		else if("sampling" == mode)
-			samplePainter.save(filename + "_sampling");
+			for(auto& painter : painters) {
+				painter.second.save(painter.first);
+			}
 		else if("partitioning" == mode)
 			partitionPainter.save(filename + "_partitioning");
 	}

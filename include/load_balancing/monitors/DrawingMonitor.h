@@ -8,8 +8,6 @@
 #include "Painter.h"
 #include "Monitor.h"
 
-std::mutex mutex;
-
 namespace LoadBalancing
 { 
 	template <typename Precision>
@@ -29,7 +27,7 @@ namespace LoadBalancing
 	         const dSimplices<2, Precision>& borderTriangulation,
 	         const dPoints<2, Precision>& points, const std::string& provenance)
 	        {
-				std::lock_guard<decltype(mutex)> lock(mutex);
+				std::lock_guard<decltype(*mMutex)> lock(*mMutex);
 		        auto& painter = mCreatePainter(provenance);
 		        size_t c = 0;
 		        for(const auto& triang : partialTriangulations) {

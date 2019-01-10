@@ -58,6 +58,7 @@ namespace LoadBalancing
 				auto tree = basePartitioner.partition(bounds, points, pointIds, unpluggedMonitor);
 				mSampling = basePartitioner.sampling().clone();
 				monitor.registerSampleTriangulation(mSampling.size(), provenance);
+				monitor.registerSampling(mSampling, provenance);
 				
 				assert(!tree.isLeaf());
 				auto& children =

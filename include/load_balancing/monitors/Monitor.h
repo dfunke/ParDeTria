@@ -15,6 +15,9 @@ namespace LoadBalancing
 	                           const Partitioner<D, Precision, MonitorT>& /*partitioner*/) {}
         void registerSampleTriangulation(size_t /*numPoints*/, const std::string& /*provenance*/) {}
         template <uint D, typename Precision>
+        void registerSampling(const Sampling<D, Precision>& /*sampling*/,
+                              const std::string& /*provenance*/) {}
+        template <uint D, typename Precision>
         void registerPartialTriangulation
 	        (const std::vector<dSimplices<D, Precision>>& /*partialTriangulations*/,
 	         const dSimplices<D, Precision>& /*borderTriangulation*/,

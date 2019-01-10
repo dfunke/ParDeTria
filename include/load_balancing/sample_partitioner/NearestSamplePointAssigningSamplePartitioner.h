@@ -25,6 +25,7 @@ namespace LoadBalancing
         {
             mSampling = mSampler(bounds, points, pointIds, mPartitionSize);
 			monitor.registerSampleTriangulation(mSampling.size(), "s0");
+			monitor.registerSampling(mSampling, "s0");
 
             auto kdtree = buildKdTree(mSampling.partition, mSampling.points);
             auto partitioning = makePartitioning(kdtree, points, mPartitionSize, pointIds,
