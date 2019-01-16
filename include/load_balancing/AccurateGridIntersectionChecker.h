@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <algorithm>
 #include <unordered_set>
 #include <functional>
@@ -22,7 +23,7 @@ namespace LoadBalancing
 
 		private:
 		const dPoints<D, Precision>* points;
-		std::shared_ptr<CellsWithPoints> mCells;
+		CellsWithPoints mCells;
 
 
 		public:
@@ -39,7 +40,7 @@ namespace LoadBalancing
 		}
 
 		AccurateGridIntersectionChecker(GridIntersectionChecker<D, Precision> gic,
-		                                std::shared_ptr<CellsWithPoints> cells,
+		                                CellsWithPoints cells,
 		                                const dPoints<D, Precision>& points)
 			: GridIntersectionChecker<D, Precision>(std::move(gic)),
 			  points(&points),
@@ -49,15 +50,14 @@ namespace LoadBalancing
 		{
 			auto cells = GridIntersectionChecker<D, Precision>::intersectingCells(sphere);
 			for(const auto& cell : cells) {
-				auto it = mCells->find(cell);
-				assert(it != mCells->end());
+				auto it = mCells.find(cell);
+				assert(it != mCells.end());
 				for(tIdType pointId : it->second.pointIds) {
 					Precision distSquared = lenSquared(sphere.center - (*points)[pointId].coords);
 					if(distSquared < sphere.radius * sphere.radius)
 						return true;
 				}
 			}
-			
 			return false;
 		}
 
@@ -88,27 +88,26 @@ namespace LoadBalancing
 			std::vector<IntersectionPartition<D, Precision>> gridIntersectionPartitioning =
 				GridIntersectionPartitionMaker<D, Precision>::operator()(points, ids, partitions,
 																		  std::move(part));
-			using Cells = typename AGIC::CellsWithPoints;
-			Cells cells;
-			for(tIdType id : ids) {
-				auto index = GridIntersectionPartitionMaker<D, Precision>::mGrid.indexAt(points[id].coords);
-				auto it = cells.find(index);
-				if(it != cells.end()) {
-					it->second.pointIds.push_back(id);
-				} else {
-					cells[index] = typename AGIC::CellData{{id}};
-				}
-			}
-
-			auto cellsPtr = std::make_shared<decltype(cells)>(std::move(cells));
-			
 			std::vector<IntersectionPartition<D, Precision>> result;
-			for(auto& partition : gridIntersectionPartitioning) {
-				auto intersectionChecker = std::move(partition.intersectionChecker);
+			for(auto& intersectionPartition : gridIntersectionPartitioning) {
+				using Cells = typename AGIC::CellsWithPoints;
+				Cells cells;
+				for(tIdType id : intersectionPartition.pointIds) {
+					auto index = GridIntersectionPartitionMaker<D, Precision>::mGrid
+						.indexAt(points[id].coords);
+					auto it = cells.find(index);
+					if(it != cells.end()) {
+						it->second.pointIds.push_back(id);
+					} else {
+						cells[index] = typename AGIC::CellData{{id}};
+					}
+				}
+
+				auto intersectionChecker = std::move(intersectionPartition.intersectionChecker);
 				auto gridIntersectionChecker =
 					*(dynamic_cast<GIC*>(intersectionChecker.release()));
-				partition.intersectionChecker =
-					std::make_unique<AGIC>(std::move(gridIntersectionChecker), cellsPtr, points);
+				intersectionPartition.intersectionChecker =
+					std::make_unique<AGIC>(std::move(gridIntersectionChecker), std::move(cells), points);
 			}
 
 			return gridIntersectionPartitioning;
