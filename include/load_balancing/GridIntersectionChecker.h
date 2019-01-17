@@ -34,7 +34,8 @@ namespace LoadBalancing
 
 		}
 		
-		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
+		virtual bool intersects(const dSphere<D, Precision>& sphere,
+		                        const dSimplex<D, Precision>&) const override
 		{
 			ASSERT(aabb.intersects(sphere) == std::any_of(cells.begin(), cells.end(), [this, &sphere](const auto& i) {
 				return intersectsWith<D, Precision, IndexPrecision>(mGrid, sphere, i);

@@ -176,7 +176,7 @@ namespace LoadBalancing
             const auto cs = simplex.circumsphere(this->points);
             bool intersectsBounds = false;
             for (uint i = 0; i < partitioning.size() && !intersectsBounds; ++i) {
-                if (i != partition && intersectionCheckers[i]->intersects(cs))
+                if (i != partition && intersectionCheckers[i]->intersects(cs, simplex))
                     intersectsBounds = true;
             }
             if (intersectsBounds) {

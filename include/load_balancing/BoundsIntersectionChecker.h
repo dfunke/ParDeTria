@@ -12,7 +12,8 @@ namespace LoadBalancing
 			: IntersectionChecker<D, Precision>(std::move(bounds)) {
 		}
 
-		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
+		virtual bool intersects(const dSphere<D, Precision>& sphere,
+		                        const dSimplex<D, Precision>&) const override
 		{
 			return IntersectionChecker<D, Precision>::bounds().intersects(sphere);
 		}

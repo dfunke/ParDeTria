@@ -14,7 +14,8 @@ namespace LoadBalancing {
 			: IntersectionChecker<D, Precision>(std::move(bounds)), mNormal(std::move(normal)),
 		      mOffset(offset) {}
 		
-		virtual bool intersects(const dSphere<D, Precision>& sphere) const
+		virtual bool intersects(const dSphere<D, Precision>& sphere,
+		                        const dSimplex<D, Precision>&) const
 		{
 			return distanceToPlane(sphere.center, mNormal, mOffset) + sphere.radius > 0;
 		}

@@ -9,7 +9,8 @@ namespace LoadBalancing
 	{
 		IntersectionChecker(dBox<D, Precision> bounds) : mBounds(bounds) {}
 		virtual ~IntersectionChecker() = default;
-		virtual bool intersects(const dSphere<D, Precision>& sphere) const = 0;
+		virtual bool intersects(const dSphere<D, Precision>& sphere,
+		                        const dSimplex<D, Precision>& simplex) const = 0;
 		virtual std::unique_ptr<IntersectionChecker<D, Precision>> copy() const = 0;
 		const dBox<D, Precision>& bounds() const { return mBounds; }
 	private:

@@ -46,15 +46,15 @@ namespace LoadBalancing
 			  points(&points),
 			  mCells(std::move(cells)) { }
 		
-		virtual bool intersects(const dSphere<D, Precision>& sphere) const override
+		virtual bool intersects(const dSphere<D, Precision>& sphere,
+		                        const dSimplex<D, Precision>& simplex) const override
 		{
 			auto cells = GridIntersectionChecker<D, Precision>::intersectingCells(sphere);
 			for(const auto& cell : cells) {
 				auto it = mCells.find(cell);
 				assert(it != mCells.end());
 				for(tIdType pointId : it->second.pointIds) {
-					Precision distSquared = lenSquared(sphere.center - (*points)[pointId].coords);
-					if(distSquared < sphere.radius * sphere.radius)
+					if(checkCircumsphereContainsPoint((*points)[pointId], sphere, simplex))
 						return true;
 				}
 			}
@@ -64,6 +64,33 @@ namespace LoadBalancing
 		std::unique_ptr<IntersectionChecker<D, Precision>> copy() const override
 		{
 			return std::make_unique<AccurateGridIntersectionChecker>(*this);
+		}
+
+	private:
+		bool checkCircumsphereContainsPoint(const dPoint<2, Precision>& point,
+		                                    const dSphere<2, Precision>&,
+		                                    const dSimplex<2, Precision>& simplex) const {
+			return GeometryCore<2, Precision>::inSphere(point,
+			                                            (*points)[simplex.vertices[0]],
+			                                            (*points)[simplex.vertices[1]],
+			                                            (*points)[simplex.vertices[2]]);
+		}
+		
+		bool checkCircumsphereContainsPoint(const dPoint<3, Precision>& point,
+		                                    const dSphere<3, Precision>&,
+		                                    const dSimplex<3, Precision>& simplex) const {
+			return GeometryCore<3, Precision>::inSphere(point,
+			                                            (*points)[simplex.vertices[0]],
+			                                            (*points)[simplex.vertices[1]],
+			                                            (*points)[simplex.vertices[2]],
+			                                            (*points)[simplex.vertices[3]]);
+		}
+		template <uint D2>
+		bool checkCircumsphereContainsPoint(const dPoint<D2, Precision>& point,
+		                                    const dSphere<D2, Precision>& sphere,
+		                                    const dSimplex<D2, Precision>&) const {
+			Precision distSquared =	lenSquared(sphere.center - point.coords);
+			return distSquared < sphere.radius * sphere.radius;
 		}
 	};
 	
