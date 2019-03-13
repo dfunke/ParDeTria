@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
     cCommandLine.add_options()("mode", po::value<std::string>());
     cCommandLine.add_options()("no-triang", "just partition, do not triangulate");
+    cCommandLine.add_options()("print-tree", "just partition, do not triangulate");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
@@ -127,6 +128,9 @@ int main(int argc, char *argv[]) {
     
     auto pointIds = makePointIds(points);
     auto partitioning = partitioner->partition(bounds, points, pointIds, monitor);
+
+	if(vm.count("print-tree") > 0)
+		printPartitionTree(partitioning, std::cout);
     
     Painter<2, double> pointsPainter(bounds);
     for(const auto& point : points) {

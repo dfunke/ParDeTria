@@ -72,4 +72,31 @@ namespace LoadBalancing
         }
         return std::make_pair(std::move(result), std::move(checker));
     }
+
+	template <uint D, typename Precision>
+	void printPartitionTree(const PartitionTree<D, Precision>& tree,
+							std::ostream& out,
+							size_t indent=0) {
+		struct {
+			int indent;
+			std::ostream* out;
+			void operator()(const Point_Ids& ids)
+			{
+				std::cout << "ids\n";
+				*out << std::string(indent, '-') << " " << ids.size() << "\n";
+			}
+			
+			void operator()(const typename PartitionTree<D, Precision>::ChildContainer& children)
+			{
+				*out << std::string(indent, '-') << " (" << children.size() << ")\n";
+				for(const auto& child : children) {
+					printPartitionTree(child, *out, indent + 1);
+				}
+			}
+		} visitor;
+		visitor.out = &out;
+		visitor.indent = indent;
+
+		std::visit(visitor, tree.attachment);
+	}
 }
