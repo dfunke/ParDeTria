@@ -49,10 +49,55 @@ namespace LoadBalancing
                 attachment = std::move(newAttachment);
             }
         }
+
+		void flatten()
+		{
+			struct {
+				void operator()(const Point_Ids&)
+				{
+				}
+				
+				void operator()(ChildContainer& children)
+				{
+					flattenContainer(children);
+				}
+			} visitor;
+
+			std::visit(visitor, attachment);
+		}
         
         bool isLeaf() const {
             return std::holds_alternative<Point_Ids>(attachment);
         }
+
+	private:
+        static void flattenContainer(ChildContainer& children)
+		{
+			struct {
+				ChildContainer* parentContainer;
+				PartitionTree* tree;
+				void operator()(const Point_Ids&)
+				{
+					parentContainer->push_back(std::move(*tree));
+				}
+		
+				void operator()(ChildContainer& children)
+				{
+					flattenContainer(children);
+					parentContainer->reserve(parentContainer->size() + children.size());
+					std::move(children.begin(), children.end(),
+							  std::back_inserter(*parentContainer));
+				}
+			} innerVisitor;
+			ChildContainer newContainer;
+			innerVisitor.parentContainer = &newContainer;
+			
+			for(auto& child : children) {
+				innerVisitor.tree = &child;
+				std::visit(innerVisitor, child.attachment);
+			}
+			children = std::move(newContainer);
+		}
     };
         
     template <uint D, typename Precision>

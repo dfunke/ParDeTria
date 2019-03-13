@@ -17,6 +17,7 @@
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSamplePartitioner.h"
 #include "load_balancing/sample_partitioner/NearestSamplePointAssigningSampleBipartitioner.h"
 #include "load_balancing/sample_partitioner/HyperplaneBipartitioner.h"
+#include "load_balancing/FlatPartitioner.h"
 #include "load_balancing/BoundsIntersectionChecker.h"
 #include "load_balancing/GridIntersectionChecker.h"
 #include "load_balancing/AccurateGridIntersectionChecker.h"
@@ -194,6 +195,12 @@ std::unique_ptr<lb::Partitioner<D, Precision, MonitorT>> createPartitioner(const
 	        std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision, MonitorT>>(
             std::move(oldPartitioner), maxRecursions, baseCutoff);
     }
+
+	if(vm.count("flatten") > 0) {
+		using FlatPartitioner = lb::FlatPartitioner<D, Precision, MonitorT>;
+		partitioner = std::make_unique<FlatPartitioner>(std::move(partitioner));
+	}
+
     return partitioner;
 }
 
@@ -214,6 +221,7 @@ po::options_description defaultOptions() {
     cCommandLine.add_options()("bounds", po::value<std::string>());
     cCommandLine.add_options()("kaffpa-mode", po::value<std::string>());
     cCommandLine.add_options()("split-dimension", po::value<uint>());
+    cCommandLine.add_options()("flatten", "flatten partition tree before triangulation");
     cCommandLine.add_options()("validate", po::value<uint>());
     cCommandLine.add_options()("seed", po::value<uint>());
     cCommandLine.add_options()("help", "produce help message");
