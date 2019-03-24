@@ -21,6 +21,7 @@
 #include "load_balancing/BoundsIntersectionChecker.h"
 #include "load_balancing/GridIntersectionChecker.h"
 #include "load_balancing/AccurateGridIntersectionChecker.h"
+#include "load_balancing/kWaySplitter.h"
 
 #include <boost/program_options.hpp>
 
@@ -177,6 +178,8 @@ std::unique_ptr<lb::Partitioner<D, Precision, MonitorT>> createPartitioner(const
         partitioner = std::make_unique<
 	        lb::HyperplaneSamplingBipartitioner<D, Precision, MonitorT>>
 	        (threads, std::move(sampler));
+	} else if("kway-cycle" == partitionerName) {
+		partitioner = std::make_unique<lb::KWaySplitter<D, Precision, MonitorT>>(threads);
     } else {
         std::unique_ptr<Partitioner<D, Precision>> oldPartitioner = nullptr;
         if("dWay" == partitionerName) {
@@ -189,7 +192,7 @@ std::unique_ptr<lb::Partitioner<D, Precision, MonitorT>> createPartitioner(const
             uint d = vm["split-dimension"].as<uint>();
             ASSERT(d < D);
             oldPartitioner = std::make_unique<OneDimPartitioner<D, Precision>>(d);
-        }
+		}
         auto maxRecursions = oldPartitioner->getRecursionDepth(threads);
         partitioner =
 	        std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision, MonitorT>>(
