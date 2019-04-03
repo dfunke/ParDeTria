@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cassert>
-#include <kdtree++/kdtree.hpp>
 #include "utils/Generator.h"
 #include "VectorOperations.h"
 #include "BoxUtils.h"

@@ -4,7 +4,6 @@
 #include <random>
 #include <algorithm>
 #include <set>
-#include <kdtree++/kdtree.hpp>
 #include "SamplePartitioner.h"
 #include "Sampler.h"
 #include "load_balancing/IntersectionChecker.h"

@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <set>
 #include <Eigen/Eigen>
-#include <kdtree++/kdtree.hpp>
 #include "SamplePartitioner.h"
 #include "Sampler.h"
 #include "load_balancing/IntersectionChecker.h"

@@ -39,7 +39,6 @@ find_package(TBB REQUIRED COMPONENTS tbbmalloc)
 find_package(Threads REQUIRED)
 find_package(VTune)
 find_package(KaHIP REQUIRED)
-find_package(LibKDTree++ REQUIRED)
 find_package(Nanoflann REQUIRED)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(Numa REQUIRED)
@@ -51,7 +50,6 @@ include_directories(
   SYSTEM
   ${CGAL_INCLUDE_DIRS}
   ${KaHIP_INCLUDE_DIRS}
-  ${LibKDTree_INCLUDE_DIR}
   ${Nanoflann_INCLUDE_DIR}
 )
 
