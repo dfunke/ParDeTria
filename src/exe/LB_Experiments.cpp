@@ -46,7 +46,10 @@ void execute(const po::variables_map& vm, uint threads, const std::string& argSt
     };
         
     lb::Experiment<D, Precision> exp(std::move(partitioner), std::move(setup), std::cout);
-    exp.runOnce();
+    bool valid = exp.runOnce();
+    if(!valid) {
+	    LOGGER.printLog(std::cerr);
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -54,12 +57,16 @@ int main(int argc, char *argv[]) {
     std::string pointFile;
     std::string partitionerName;
     uint dim;
+    int verbosity = (short)Logger::Verbosity::NORMAL;
 
     auto cCommandLine = defaultOptions<double>();
     cCommandLine.add_options()("dim", po::value(&dim), "dimension");
     cCommandLine.add_options()("threads", po::value(&threads), "specify number of threads");
     cCommandLine.add_options()("points", po::value<std::string>(&pointFile),
                                "load points from file");
+    cCommandLine.add_options()("verbosity", po::value<int>(&verbosity),
+                               "verbosity");
+    LOGGER.setLogLevel(static_cast<Logger::Verbosity>(verbosity));
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, cCommandLine), vm);
@@ -69,8 +76,6 @@ int main(int argc, char *argv[]) {
         std::cout << cCommandLine << std::endl;
         return EXIT_SUCCESS;
     }
-
-    LOGGER.setLogLevel(Logger::Verbosity::SILENT);
 
 	if(vm.count("seed")) {
 		startGen.seed(vm["seed"].as<uint>());

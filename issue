@@ -1,0 +1,5 @@
+build/bin/LBExperiments --n 50000 --dim 3 --distribution patch-bubble --partitioner nearest-sample-pasp --cell-width 0.00000001 --bounds accurate-grid
+
+terminate called after throwing an instance of 'AssertionException'
+  what():  /home/vincent/Storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/LoadBalancedDCTriangulator.tpp:353: failed assertion `!set || cand == simplex.neighbors[d]'
+

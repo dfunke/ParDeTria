@@ -26,10 +26,9 @@ namespace LoadBalancing
         };
         
         Experiment(std::unique_ptr<Partitioner<D, Precision, ComprehensiveMonitor>> partitioner,
-                   Setup setup,
-                   std::ostream& out);
+                   Setup setup, std::ostream& out);
         ~Experiment();
-        void runOnce();
+        bool runOnce();
         
     private:
         Setup setup;
@@ -62,8 +61,9 @@ namespace LoadBalancing
     }
     
     template<uint D, typename Precision>
-    void Experiment<D, Precision>::runOnce() {
+    bool Experiment<D, Precision>::runOnce() {
         auto dt = triangulator.triangulate();
+        bool result = true;
             
         out
             << (runs == 0 ? "" : ",") << " {\n"
@@ -73,8 +73,9 @@ namespace LoadBalancing
             << "            \"simplices\": " << dt.exact_size() << ",\n"
             << "            \"sampleSize\": " << acc.sampleSize << ",\n";
             if(setup.verify) {
+	            result = verify(dt);
                 out
-                << "            \"valid\": " << (verify(dt) ? "true" : "false") << ",\n";
+                << "            \"valid\": " << (result ? "true" : "false") << ",\n";
             }
 	    size_t partitionCount = 0;
             out
@@ -107,6 +108,8 @@ namespace LoadBalancing
         << "        }\n";
             
 	    ++runs;
+
+		return result;
     }
     
     template<uint D, typename Precision>

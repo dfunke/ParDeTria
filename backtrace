@@ -1,0 +1,57 @@
+#87164 0x00007ffff7d8f58e in start_thread () from /lib64/libpthread.so.0
+#87163 0x00007ffff7e90f9d in tbb::internal::rml::private_worker::thread_routine(void*) ()
+   from /lib64/libtbb.so.2
+#87162 0x00007ffff7e90d74 in tbb::internal::rml::private_worker::run() () from /lib64/libtbb.so.2
+#87161 0x00007ffff7e94a53 in tbb::internal::market::process(rml::job&) () from /lib64/libtbb.so.2
+#87160 0x00007ffff7e95f30 in tbb::internal::arena::process(tbb::internal::generic_scheduler&) ()
+   from /lib64/libtbb.so.2
+#87159 0x00007ffff7e9c71d in tbb::internal::custom_scheduler<tbb::internal::IntelSchedulerTraits>::local_wait_for_all(tbb::task&, tbb::task*) () from /lib64/libtbb.so.2
+#87158 0x0000000001183fb5 in tbb::internal::do_iteration_task<DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>::execute() (this=0x7fffd30b9f40)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/mods/parallel_do.h:106
+106	            parallel_do_operator_selector<Body, Item>::call(*my_feeder.my_body, my_value, my_feeder);
+#87157 0x000000000118421e in tbb::internal::parallel_do_operator_selector<DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>::call<unsigned long, tbb::internal::parallel_do_feeder_impl<{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>, 0>({lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1} const&, unsigned long, tbb::internal::parallel_do_feeder_impl<{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>&) (obj=..., arg1=101034, arg2=warning: RTTI symbol not found for class 'tbb::internal::parallel_do_feeder_impl<DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>'
+...)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/mods/parallel_do.h:84
+84	            internal_call( obj, arg1, arg2, &Body::operator() );
+#87156 0x0000000001184438 in tbb::internal::parallel_do_operator_selector<DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>::internal_call<unsigned long, tbb::internal::parallel_do_feeder_impl<{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>, unsigned long>({lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1} const&, unsigned long&, tbb::internal::parallel_do_feeder_impl<{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>&, void ({lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}::*)(unsigned long, tbb::parallel_do_feeder<unsigned long>&) const) (obj=..., 
+    arg1=@0x7ffff4c8d7f0: 101034, arg2=warning: RTTI symbol not found for class 'tbb::internal::parallel_do_feeder_impl<DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>'
+...)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/mods/parallel_do.h:69
+69	            obj(arg1, arg2);
+#87155 0x00000000011567e6 in DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}::operator()(unsigned long, tbb::parallel_do_feeder<unsigned long>&) const (
+    this=0x15a93c0, id=101034, feeder=warning: RTTI symbol not found for class 'tbb::internal::parallel_do_feeder_impl<DCTriangulator<3u, double>::getEdge(dSimplices<3u, double> const&, Partitioning<3u, double> const&, unsigned int const&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&, GrowingHashTable<Concurrent_LP_Set<unsigned long, true> >&)::{lambda(unsigned long, tbb::parallel_do_feeder<unsigned long>&)#1}, unsigned long>'
+...)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/src/lib/DCTriangulator.cpp:163
+163	            edgeSimplicesHandle.insert(simplex.id);
+#87154 0x0000000000ef6dc6 in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::insert<unsigned long> (this=0x7fffd323ac80, args#0=101034)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:227
+227	            grow();
+#87153 0x0000000000f08722 in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::grow (
+    this=0x7fffd323ac80)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:402
+402	        getTable();
+#87152 0x0000000000ee625c in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::getTable (
+    this=0x7fffd323ac80)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:344
+344	            getTable();
+#87151 0x0000000000ee625c in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::getTable (
+    this=0x7fffd323ac80)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:344
+344	            getTable();
+#87150 0x0000000000ee625c in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::getTable (
+    this=0x7fffd323ac80)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:344
+344	            getTable();
+#87149 0x0000000000ee625c in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::getTable (
+    this=0x7fffd323ac80)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:344
+344	            getTable();
+
+[...]
+
+#2  0x0000000000ee622d in GrowingHashTableHandle<Concurrent_LP_Set<unsigned long, true> >::getTable (
+    this=0x7fffd323ac80)
+    at /storage/Studium/HiWi-ITI_Sanders/DelaunayTriangulation/include/datastructures/Growing_LP.hxx:341
+#1  0x0000000000eae97b in std::shared_ptr<Concurrent_LP_Set<unsigned long, true> >::operator= (
+    this=0x7fffd323ac90) at /usr/include/c++/8/bits/shared_ptr.h:103
+#0  0x0000000000eae94c in std::__shared_ptr<Concurrent_LP_Set<unsigned long, true>, (__gnu_cxx::_Lock_policy)2>::operator= (this=0x7fffd323ac90) at /usr/include/c++/8/bits/shared_ptr_base.h:1078
