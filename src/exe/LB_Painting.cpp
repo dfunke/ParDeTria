@@ -45,12 +45,15 @@ bool execute(const po::variables_map& vm, uint threads, const std::string& out,
 
     auto partitioner = createPartitioner<D, Precision, decltype(monitor)>(vm, threads, startGen);
     assert(partitioner);
-   
-	lb::DCTriangulator<D, Precision, decltype(monitor)> triangulator(bounds, points, threads,
-																	  std::move(partitioner), 100,
-																	  false, false, true,
-																	  std::move(monitor));
-	triangulator.triangulate();
+
+	using Triangulator = lb::DCTriangulator<D, Precision, decltype(monitor)>;
+	Triangulator triangulator(bounds, points, threads,
+	                          std::move(partitioner), 100,
+	                          false,
+	                          (partitioner->info().find("bipartitioner") == std::string::npos),
+	                          true,
+	                          std::move(monitor));
+
 	auto dt = triangulator.triangulate();
 	for(auto& painter : painters) {
 		painter.second.save(painter.first);
