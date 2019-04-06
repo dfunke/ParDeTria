@@ -35,6 +35,7 @@ target_link_libraries(LBPainting
   DCTriangulator
   SpatialSort
   Partitioner
+  atomic
   ${KaHIP_LIBRARIES}
   Eigen3::Eigen
   ${Boost_LIBRARIES}

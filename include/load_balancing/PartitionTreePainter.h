@@ -47,17 +47,22 @@ struct PartitionTreePainter
                     + (*points)[id].coords * ((Precision)1/(1 + currentNumPoints));
             }
             
-			/*auto gridChecker = dynamic_cast<lb::GridIntersectionChecker<D, Precision>*>(tree.intersectionChecker.get());
+
+			using GIC = lb::GridIntersectionChecker<2, Precision>;
+			auto gridChecker = dynamic_cast<GIC*>(tree.intersectionChecker.get());
 			if(!gridChecker) {
 	            painter->drawBox(tree.intersectionChecker->bounds());
 			} else {
 				for(auto it = gridChecker->cellsBegin(); it != gridChecker->cellsEnd(); ++it) {
-					auto hasNeighbour = [it, gridChecker] (const dIndex<D, Precision>& direction) -> bool {
-						auto cell = *it;
-						std::transform(cell.begin(), cell.end(), direction.begin(), cell.begin(), [] (auto l, auto r) {
-						               return l + r;
-									   });
-						return std::find(gridChecker->cellsBegin(), gridChecker->cellsEnd(), cell) != gridChecker->cellsEnd();
+					auto hasNeighbour =
+						[it, gridChecker] (const dIndex<2, Precision>& direction) -> bool {
+							auto cell = *it;
+							std::transform(cell.begin(), cell.end(), direction.begin(),
+							               cell.begin(), [] (auto l, auto r) {
+							               return l + r;
+							               });
+							return std::find(gridChecker->cellsBegin(), gridChecker->cellsEnd(),
+							                 cell) != gridChecker->cellsEnd();
 					};
 					auto bounds = gridChecker->grid().boundsOf(*it);
 					auto bottomLeft = bounds.low;
@@ -79,7 +84,7 @@ struct PartitionTreePainter
 						painter->drawLine(topLeft, bottomLeft);
 					}
 				}
-			}*/
+			}
             
             labels.push_back({std::to_string(currentNumPartitions++), center});
         } else {
