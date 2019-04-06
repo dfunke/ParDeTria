@@ -22,8 +22,8 @@ void paintPartitionTree(const dPoints<2, Precision>& points,
 }
 
 template <typename Precision>
-void execute(const po::variables_map& vm, uint threads, const std::string& out,
-             dPoints<D, Precision> /*points*/) {
+bool execute(const po::variables_map& vm, uint threads, const std::string& out,
+             dPoints<D, Precision> /*points*/, bool verify) {
 	startGen = tGenerator(vm.count("seed") ? vm["seed"].as<uint>() : START_SEED);
 		
     dBox<D, Precision> bounds;
@@ -51,8 +51,22 @@ void execute(const po::variables_map& vm, uint threads, const std::string& out,
 																	  false, false, true,
 																	  std::move(monitor));
 	triangulator.triangulate();
+	auto dt = triangulator.triangulate();
 	for(auto& painter : painters) {
 		painter.second.save(painter.first);
+	}
+
+
+	if(verify) {
+		CGALTriangulator<D, Precision, false> cgal(bounds, points);
+		auto realDT = cgal.triangulate();
+
+		auto vr = dt.verify(points);
+		auto ccr = dt.crossCheck(realDT);
+
+        return vr.valid && ccr.valid;
+	} else {
+		return true;
 	}
 }
 
@@ -164,6 +178,9 @@ int main(int argc, char *argv[]) {
 			partitionPainter.save(filename + "_partitioning");
 	}
      
+	int result = 0;
 	if(vm.count("no-triang") == 0)
-	   execute<double>(vm, threads, filename, points);
+	   result = execute<double>(vm, threads, filename, points, vm.count("validate") == 1) ? 0 : -1;
+
+	return result;
 }
