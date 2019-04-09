@@ -1116,7 +1116,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
                         // we have found the point of nn that is NOT shared with s
                         const auto &p = points[nn.vertices[d]];
                         if (s.inSphere(p, points)) {
-                            LOG("Point " << p << " is in circle of " << s << std::endl);
+                            LOG("Point " << nn.vertices[d] << " " << p << " is in circle of " << s << std::endl);
 
                             tbb::spin_mutex::scoped_lock lock(mtx);
                             result.valid = false;
