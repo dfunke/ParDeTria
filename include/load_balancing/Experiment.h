@@ -138,11 +138,12 @@ namespace LoadBalancing
     bool Experiment<D, Precision>::verify(const dSimplices<D, Precision>& dt) {
         CGALTriangulator<D, Precision, false> cgal(setup.bounds, setup.points);
         auto realDT = cgal.triangulate();
+        auto realVR = realDT.verify(setup.points);
 
         auto vr = dt.verify(setup.points);
         auto ccr = dt.crossCheck(realDT);
 
-        return vr.valid && ccr.valid;
+        return realVR.valid && vr.valid && ccr.valid;
     }
     
     template<uint D, typename Precision>
