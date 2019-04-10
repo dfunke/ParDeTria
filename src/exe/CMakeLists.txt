@@ -43,6 +43,26 @@ target_link_libraries(LBPainting
 )
 endif()  
 
+add_executable(LBPointDump
+    LB_PointDump.cpp
+)
+
+target_link_libraries(LBPointDump
+  Logging
+  Measurements
+  Geometry
+  Triangulator
+  CGALTriangulator
+  DCTriangulator
+  SpatialSort
+  Partitioner
+  atomic
+  ${KaHIP_LIBRARIES}
+  Eigen3::Eigen
+  ${Boost_LIBRARIES}
+  ${TBB_LIBRARIES}
+  ${NUMA_LIBRARY}
+)
 add_executable (DACTest EXCLUDE_FROM_ALL
   DAC_Test.cpp
 )
