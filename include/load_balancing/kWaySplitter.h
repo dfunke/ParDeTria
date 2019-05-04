@@ -53,26 +53,43 @@ namespace LoadBalancing
 			auto stats = getPointStatsSeq(pointIds.begin(), pointIds.end(), points);
 			dBox<D, Precision> bounds(stats.min, stats.max);
 
-			if(depth < splits.size()) {
+			if(depth < splits.size()) { 
 				size_t dim = depth % D;
 				float min = stats.min[dim];
 				float max = stats.max[dim];
 				size_t numPartitions = splits[depth];
+                
+                std::vector<Concurrent_Growing_Point_Ids> idsets;
+                idsets.reserve(numPartitions);
+                for(size_t i = 0; i < numPartitions; ++i) {
+                    idsets.emplace_back(pointIds.size()/numPartitions);
+                }
+                using Handle = tbb::enumerable_thread_specific<hConcurrent_Growing_Point_Ids,
+                      tbb::cache_aligned_allocator<hConcurrent_Growing_Point_Ids>,
+                      tbb::ets_key_usage_type::ets_key_per_instance>;
+                        
+                tbb::parallel_for(pointIds.range(), [&](const auto &range) {
+                    for(auto id : range) {
+                        if(dPoint<D, Precision>::isFinite(id)) {
+                            auto coord = points[id].coords[dim];
+                            float normalizedAxisPosition = (coord - min)/(max - min);
+                            int partition = (size_t)std::floor(normalizedAxisPosition
+                                                               * numPartitions);
+                            partition = std::clamp(partition, 0, (int)numPartitions - 1);
+                            
+                            Handle tsPointHandle = std::ref(idsets[partition]);
+                            auto& pointsHandle = tsPointHandle.local();
+                            pointsHandle.insert(id);
+                        }
+                    }
+                });
+                
+                std::vector<Point_Ids> idss;
+                for(auto& ids : idsets) {
+                    idss.emplace_back(std::move(ids.data()));
+                }
 
-				std::vector<Point_Ids> partitioning(numPartitions);
-
-				for(auto id : pointIds) {
-					if(!dPoint<D, Precision>::isFinite(id))
-						continue; // skip infinite points, they will be added later
-
-					float normalizedAxisPosition = (points[id].coords[dim] - min)/(max - min);
-					int partition = (size_t)std::floor(normalizedAxisPosition * numPartitions);
-					partition = std::clamp(partition, 0, (int)numPartitions - 1);
-
-					partitioning[partition].insert(id);
-				}
-
-				for(auto&& partition : partitioning) {
+				for(auto&& partition : idss) {
 					auto subresult = partitionRecursively(points, std::move(partition), depth + 1);
 					result.reserve(result.size() + subresult.size());
 					std::move(std::begin(subresult), std::end(subresult),
