@@ -54,7 +54,7 @@ namespace zkr {
             static const char *lightwhite;
         };
 
-        static char *color(int attr, int fg, int bg);
+        static char *color(char attr, char fg, char bg);
 
         static const char *console;
         static const char *underline;

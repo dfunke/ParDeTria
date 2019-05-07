@@ -8,13 +8,17 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <unordered_set>
 #include <unordered_map>
+#include <queue>
 #include <array>
 #include <cmath>
 #include <functional>
 #include <set>
+
+#include <boost/dynamic_bitset.hpp>
 
 #include <datastructures/Growing_LP.hxx>
 //#include "datastructures/IndexedVector.hxx"
@@ -79,6 +83,17 @@ struct dBox {
 
         for (uint d = 0; d < D; ++d) {
             if (!(low[d] <= p[d] && p[d] <= high[d]))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool contains(const dBox<D, Precision> &b) const {
+        PROFILER_INC("dBox_containsBox");
+
+        for (uint d = 0; d < D; ++d) {
+            if (!(low[d] <= b.low[d] && b.high[d] <= high[d]))
                 return false;
         }
 
@@ -199,6 +214,16 @@ public:
         return ~cINF & i;
     }
 
+    Precision sqDistance(const dPoint<D, Precision> &p) const {
+        Precision x = 0;
+
+        for(uint d = 0; d < D; ++d){
+            x += (p.coords[d] - coords[d]) * (p.coords[d] - coords[d]);
+        }
+
+        return x;
+    }
+
     static constexpr tIdType cINF = ~tIdType(0) ^((1 << D) - 1);
     static constexpr tIdType nINF = ~tIdType(0) - cINF + 1;
 };
@@ -226,6 +251,56 @@ public:
 
     dPoints(const VectorAdapter2<dPoint<D, Precision>> &other)
             : VectorAdapter2<dPoint<D, Precision>>(other) { }
+
+    dBox<D, Precision> loadFromFile(const std::string & file, const char sep = ' '){
+
+        std::ifstream f;
+        std::string line;
+        std::vector<std::string> fields;
+
+        dBox<D, Precision> bounds;
+        bounds.low.fill(std::numeric_limits<Precision>::max());
+        bounds.high.fill(std::numeric_limits<Precision>::min());
+
+#ifndef NDEBUG
+        std::size_t lc = 0;
+        std::size_t oldSize = this->finite_size();
+#endif
+
+        f.open(file);
+
+        if(f.is_open()) {
+            while (getline(f, line)) {
+#ifndef NDEBUG
+                ++lc;
+#endif
+
+                dPoint<D, Precision> p;
+                split(fields, line, sep);
+
+                ASSERT(fields.size() == D);
+
+                for(uint d = 0; d < D; ++d){
+                    p.coords[d] = std::stod(fields[d]);
+
+                    if(p.coords[d] < bounds.low[d])
+                        bounds.low[d] = p.coords[d];
+                    if(p.coords[d] > bounds.high[d])
+                        bounds.high[d] = p.coords[d];
+                }
+
+                this->emplace_back(p);
+            }
+        } else {
+            std::cerr << "File " << file << " not found" << std::endl;
+        }
+
+        ASSERT(this->finite_size() - oldSize == lc);
+
+        f.close();
+
+        return bounds;
+    }
 
     bool operator==(const Concurrent_Growing_Point_Ids &other) const {
         return operator==(other.handle());
@@ -279,6 +354,19 @@ public:
 
     static Precision orientation(const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
                                  const dPoint<D, Precision> &s2, const dPoint<D, Precision> &s3);
+    static bool inSimplex(const dPoint<D, Precision> &p,
+                          const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
+                          const dPoint<D, Precision> &s2);
+
+    static bool inSimplex(const dPoint<D, Precision> &p,
+                          const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2,
+                          const dPoint<D, Precision> &s3);
+
+    static Precision sqDistanceToFace(const dPoint<D, Precision> &p,
+                                      const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1);
+
+    static Precision sqDistanceToFace(const dPoint<D, Precision> &p,
+                                      const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1, const dPoint<D, Precision> &s2);
 
     static bool inSphere(const dPoint<D, Precision> &p,
                          const dPoint<D, Precision> &s0, const dPoint<D, Precision> &s1,
@@ -304,6 +392,16 @@ public:
     template<class Collection>
     static Precision orientation(const dSimplex<D, Precision> &simplex,
                                  const Collection &points);
+    template<class Collection>
+    static bool inSimplex(const dSimplex<D, Precision> &simplex,
+                          const dPoint<D, Precision> &p,
+                          const Collection &points);
+
+    template<class Collection>
+    static Precision sqDistanceToFace(const dSimplex<D, Precision> &simplex,
+                                      const uint d,
+                                      const dPoint<D, Precision> &p,
+                                      const Collection &points);
 
     template<class Collection>
     static bool inSphere(const dSimplex<D, Precision> &simplex,
@@ -473,10 +571,26 @@ public:
     }
 
     template<class Collection>
+    bool inSimplex(const dPoint<D, Precision> &p, const Collection &points) const {
+        PROFILER_INC("dSimplex_inSimplex");
+
+        return GeometryHelper<D, Precision>::inSimplex(*this, p, points);
+    }
+
+    template<class Collection>
     bool inSphere(const dPoint<D, Precision> &p, const Collection &points) const {
         PROFILER_INC("dSimplex_inSphere");
 
         return GeometryHelper<D, Precision>::inSphere(*this, p, points);
+    }
+
+    template<class Collection>
+    Precision sqDistanceToFace(const uint d,
+                               const dPoint<D, Precision> &p,
+                               const Collection &points) const {
+        PROFILER_INC("dSimplex_sqDistanceToFace");
+
+        return GeometryHelper<D, Precision>::sqDistanceToFace(*this, d, p, points);
     }
 
     template<class Collection>
@@ -495,6 +609,22 @@ public:
         ASSERT(sharedVertices <= D || id == other.id);
 
         return sharedVertices == D;
+    }
+
+    tIdType findNearestVertex(const dPoint<D, Precision> &p, const dPoints<D, Precision> &points) const {
+
+        Precision minD = std::numeric_limits<Precision>::max();
+        tIdType id = dPoint<D, Precision>::cINF;
+
+        for(uint d = 0; d < D + 1; ++d){
+            Precision x = p.sqDistance(points[vertices[d]]);
+            if(x < minD){
+                minD = x;
+                id = vertices[d];
+            }
+        }
+
+        return id;
     }
 
     void sortVertices() {
@@ -705,6 +835,68 @@ public:
         convexHull = std::move(newCV);
     }
 
+    tIdType findNearestSimplex(const dPoint<D, Precision> &p, const dPoints<D, Precision> &points,
+                                  tIdType hintSimplex = dSimplex<D, Precision>::cINF) const {
+
+        typedef std::pair<Precision, tIdType> pqItem;
+        auto cmp = [](const pqItem &a, const pqItem &b) { return a.first > b.first; };
+
+        if(hintSimplex == dSimplex<D, Precision>::cINF){
+            hintSimplex = this->lowerBound();
+        }
+
+        std::priority_queue<pqItem, std::vector<pqItem>, decltype(cmp)> pQueue(cmp);
+        pQueue.emplace(std::numeric_limits<Precision>::max(), hintSimplex);
+
+        boost::dynamic_bitset<> marks(this->upperBound() - this->lowerBound() + 1);
+        marks[hintSimplex - this->lowerBound()] = true;
+
+        uint hintBlock = 0;
+        Precision minD = std::numeric_limits<Precision>::max();
+        tIdType minDId = dPoint<D, Precision>::cINF;
+
+        VTUNE_TASK(FindNearestSimplex);
+        while (!pQueue.empty()) {
+
+            tIdType id = pQueue.top().second;
+            Precision currD = pQueue.top().first;
+            pQueue.pop();
+
+            const auto &s = this->at(id, hintBlock);
+            ASSERT((dSimplex<D, Precision>::isFinite(s.id)));
+
+//            if (s.mark == doneMark) {
+//                continue; //already checked
+//            }
+//            s.mark = doneMark;
+
+
+            if (s.inSimplex(p, points)) { // point is within simplex s
+                return s.id;
+            } else {
+
+                //check whether s is closer to the point than previously visited simplices
+                if(currD < minD){
+                    minD = currD;
+                    minDId = s.id;
+                }
+
+                // enqueue neighbors for processing
+                for (uint d = 0; d < D + 1; ++d) {
+                    const auto &n = s.neighbors[d];
+                    if (dSimplex<D, Precision>::isFinite(n) && !marks[n - this->lowerBound()]) {
+                        // n was not yet inspected
+                        marks[n - this->lowerBound()] = true;
+                        pQueue.push(std::make_pair(s.sqDistanceToFace(d, p, points), n));
+                    }
+                }
+            }
+        }
+        VTUNE_END_TASK(FindNearestSimplex);
+
+        return minDId;
+    }
+
 //    void offset(const tIdType offset){
 //        base::offset(offset);
 //        simplexID += offset;
@@ -805,6 +997,31 @@ public:
     }
 
     template<class Collection>
+    static bool inSimplex(const dSimplex<2, Precision> &simplex,
+                          const dPoint<2, Precision> &p,
+                          const Collection &points) {
+        return GeometryCore<2, Precision>::inSimplex(p, points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                     points[simplex.vertices[2]]);
+    }
+
+    template<class Collection>
+    static Precision sqDistanceToFace(const dSimplex<2, Precision> &simplex,
+                                      const uint d,
+                                      const dPoint<2, Precision> &p,
+                                      const Collection &points){
+        switch(d){
+            case 0:
+                return GeometryCore<2, Precision>::sqDistanceToFace(p, points[simplex.vertices[1]], points[simplex.vertices[2]]);
+            case 1:
+                return GeometryCore<2, Precision>::sqDistanceToFace(p, points[simplex.vertices[0]], points[simplex.vertices[2]]);
+            case 2:
+                return GeometryCore<2, Precision>::sqDistanceToFace(p, points[simplex.vertices[0]], points[simplex.vertices[1]]);
+            default:
+                throw std::exception();
+        }
+    }
+
+    template<class Collection>
     static bool inSphere(const dSimplex<2, Precision> &simplex,
                          const dPoint<2, Precision> &p,
                          const Collection &points) {
@@ -830,6 +1047,34 @@ public:
                                  const Collection &points) {
         return GeometryCore<3, Precision>::orientation(points[simplex.vertices[0]], points[simplex.vertices[1]],
                                                        points[simplex.vertices[2]], points[simplex.vertices[3]]);
+    }
+
+    template<class Collection>
+    static bool inSimplex(const dSimplex<3, Precision> &simplex,
+                          const dPoint<3, Precision> &p,
+                          const Collection &points) {
+
+        return GeometryCore<3, Precision>::inSimplex(p, points[simplex.vertices[0]], points[simplex.vertices[1]],
+                                                     points[simplex.vertices[2]], points[simplex.vertices[3]]);
+    }
+
+    template<class Collection>
+    static Precision sqDistanceToFace(const dSimplex<3, Precision> &simplex,
+                                      const uint d,
+                                      const dPoint<3, Precision> &p,
+                                      const Collection &points){
+        switch(d){
+            case 0:
+                return GeometryCore<3, Precision>::sqDistanceToFace(p, points[simplex.vertices[1]], points[simplex.vertices[2]], points[simplex.vertices[3]]);
+            case 1:
+                return GeometryCore<3, Precision>::sqDistanceToFace(p, points[simplex.vertices[0]], points[simplex.vertices[2]], points[simplex.vertices[3]]);
+            case 2:
+                return GeometryCore<3, Precision>::sqDistanceToFace(p, points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[3]]);
+            case 3:
+                return GeometryCore<3, Precision>::sqDistanceToFace(p, points[simplex.vertices[0]], points[simplex.vertices[1]], points[simplex.vertices[2]]);
+            default:
+                throw std::exception();
+        }
     }
 
     template<class Collection>

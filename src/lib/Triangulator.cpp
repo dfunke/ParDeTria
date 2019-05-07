@@ -3,21 +3,14 @@
 //
 
 #include "Triangulator.h"
+#include "utils/MakeIds.h"
 
 template<uint D, typename Precision>
 constexpr char Triangulator<D, Precision>::TOP;
 
 template<uint D, typename Precision>
 Point_Ids Triangulator<D, Precision>::allPoints() const {
-    Point_Ids allPoints(points.size());
-    for (tIdType i = 1; i < points.finite_size(); ++i)
-        allPoints.insert(points.offset() + i);
-    for (tIdType infVertex = 0; infVertex < dPoint<D,Precision>::nINF;
-         ++infVertex)
-
-        allPoints.insert(dPoint<D,Precision>::cINF + infVertex);
-
-    return allPoints;
+    return  makePointIds(points);
 }
 
 // specializations

@@ -13,6 +13,13 @@
 #include "utils/Serialization.hxx"
 #include "utils/ProgressDisplay.h"
 
+#include "LoadBalancedDCTriangulator.h"
+#include "load_balancing/OldPartitionerPartitioner.h"
+#include "load_balancing/SimplePartitioner.h"
+#include "load_balancing/sample_partitioner/BinaryBoxEstimatingSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/CenterDistancePointAssigningSamplePartitioner.h"
+#include "load_balancing/sample_partitioner/BoundsDistancePointAssigningSamplePartitioner.h"
+
 #include <boost/program_options.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
@@ -37,28 +44,81 @@ struct TriangulateReturn {
     ExperimentRun run;
 };
 
+std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> getPartitioner(unsigned char type, size_t threads) {
+    std::unique_ptr<LoadBalancing::Partitioner<D, Precision>> result;
+            std::random_device rand;
+            LoadBalancing::Sampler<D, Precision> sampler(rand(), [](size_t /*n*/) -> size_t { return 100; });
+    switch (type) {
+        case 'D':
+            result = std::make_unique<LoadBalancing::SimplePartitioner<D, Precision>>();
+            break;
+        case 'x':
+            result = std::make_unique<LoadBalancing::BinaryBoxEstimatingSamplePartitioner<D, Precision>>(2500, std::move(sampler));
+            break;
+        /*case 'y':
+            result = std::make_unique<LoadBalancing::CenterDistancePointAssigningSamplePartitioner<D, Precision>>(8, std::move(sampler));
+            break;
+        case 'z':
+            result = std::make_unique<LoadBalancing::BoundsDistancePointAssigningSamplePartitioner<D, Precision>>(8, std::move(sampler));
+            break;*/
+        case 'd':
+        case 'c':
+        case 'e':
+        default:
+            auto oldPartitioner = Partitioner<D, Precision>::make(type);
+            auto maxRecursions = oldPartitioner->getRecursionDepth(threads);
+            auto baseCutoff = DCTriangulator<D, Precision>::BASE_CUTOFF;
+            result = std::make_unique<LoadBalancing::OldPartitionerPartitioner<D, Precision>>(
+                std::move(oldPartitioner), maxRecursions, baseCutoff);
+            break;
+    }
+    return result;
+}
+
 TriangulateReturn triangulate(const dBox<D, Precision> &bounds,
                               const uint threads,
                               dPoints<D, Precision> &points,
                               const unsigned char splitter,
                               const unsigned char alg,
                               const bool parallelBase,
-                              const bool verify) {
+                              const bool verify,
+                              const uint nCells) {
 
     std::unique_ptr<Triangulator<D, Precision>> triangulator_ptr;
-    if (alg == 'c') {
-        triangulator_ptr =
-                std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
-    } else {
-        if (alg == 'm') {
+    switch(alg) {
+        case 'c':
+            triangulator_ptr = 
+            std::make_unique<PureCGALTriangulator<D, Precision, false>>(bounds, points);
+            break;
+            
+        case 'm':
             triangulator_ptr =
-                    std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, 100);
-        } else {
+            std::make_unique<PureCGALTriangulator<D, Precision, true>>(bounds, points, nCells);
+            break;
+            
+        case 'l': {
+            auto partitioner = getPartitioner(splitter, threads);
+            triangulator_ptr =
+            std::make_unique<LoadBalancing::DCTriangulator<D, Precision>>(bounds, points, threads, std::move(partitioner),
+                                                            nCells, parallelBase, false);
+            break;
+        }
+            
+        case 'd': { // with same parameters as 'l'
             auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
             triangulator_ptr =
-                    std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads, std::move(splitter_ptr), 100,
-                                                                   parallelBase);
+            std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads,
+                                                           std::move(splitter_ptr), nCells, parallelBase,
+                                                           false);
+            break;
         }
+            
+        default:
+            auto splitter_ptr = Partitioner<D, Precision>::make(splitter);
+            triangulator_ptr =
+            std::make_unique<DCTriangulator<D, Precision>>(bounds, points, threads,
+                                                           std::move(splitter_ptr), 100, parallelBase);
+            break;
     }
 
     TriangulateReturn ret;
@@ -125,6 +185,7 @@ int main(int argc, char *argv[]) {
     uint threads = tbb::task_scheduler_init::default_num_threads();
     unsigned char alg = 'd';
     bool parallelBase = false;
+    uint nCells = 100;
 
     bool verify = true;
 
@@ -133,6 +194,7 @@ int main(int argc, char *argv[]) {
 
     po::options_description cCommandLine("Command Line Options");
     cCommandLine.add_options()("n", po::value<tIdType>(&N), "number of points");
+    cCommandLine.add_options()("cells", po::value<uint>(&nCells), "number of grid cells");
     cCommandLine.add_options()(
             "splitter", po::value<unsigned char>(&p),
             "splitter - _c_ycle, _d_-dimensional, _[0-d-1]_ fixed dimension");
@@ -224,10 +286,10 @@ int main(int argc, char *argv[]) {
                 std::cout << std::endl;
 
             points = pg->generate(N, bounds, gen);
-            triangulate(bounds, threads, points, p, alg, parallelBase, verify);
+            triangulate(bounds, threads, points, p, alg, parallelBase, verify, nCells);
         }
     } else
-        ret = triangulate(bounds, threads, points, p, alg, parallelBase, verify);
+        ret = triangulate(bounds, threads, points, p, alg, parallelBase, verify, nCells);
 
     LOG("Triangulating "
         << points.size() << " points to " << ret.nSimplices  << " simplices took "

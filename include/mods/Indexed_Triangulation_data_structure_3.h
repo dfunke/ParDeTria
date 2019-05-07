@@ -3385,7 +3385,7 @@ create_star_3(Vertex_handle v, Cell_handle c, int li, int prev_ind2)
                     CGAL_triangulation_assertion(false);
                     return false;
                 }
-                // no break; continue
+		[[fallthrough]];
             }
             case -1: {
                 if (number_of_vertices() < 1) {

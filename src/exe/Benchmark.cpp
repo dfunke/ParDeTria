@@ -10,7 +10,6 @@
 #include "utils/Timings.h"
 #include "utils/System.h"
 #include "utils/ASSERT.h"
-#include "utils/DBConnection.h"
 #include "utils/Serialization.hxx"
 
 #include <boost/program_options.hpp>
@@ -22,21 +21,13 @@
 #define Precision double
 
 std::vector<unsigned char> splitters = {'c'};
-std::vector<unsigned char> triangulators = {'c', 'm', 'd'};
-std::vector<unsigned char> distributions = {'u', 'e', 'l'};
+std::vector<unsigned char> triangulators = {'c', 'm'};
+std::vector<unsigned char> distributions = {'u'};
 std::vector<uint> occupancies = {10, 50, 100, 1000};
 
 enum class TriState : char {
     INDEF = -1, FALSE = 0, TRUE = 1
 };
-
-DBConnection db("db_" + getHostname() + ".dat",
-#ifndef ENABLE_PROFILING
-                "benchmarks"
-#else
-                "profiling"
-#endif
-);
 
 dBox<D, Precision> bounds(
         dVector<D, Precision>({{0, 0, 0}}),
@@ -117,7 +108,7 @@ void runExperiment(ExperimentRun &run, const uint reps = 10) {
 
     run.addTrait("end-time", getDatetime());
 
-    db.save(run);
+    std::cout << "RESULT " << run.str(" ", "=", true) << std::endl;
 }
 
 //**************************
@@ -132,10 +123,10 @@ void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10, bool
 
         runExperiment(runs[i], reps);
 
-        std::cout << "\tAverage time: "
-        << runs[i].avgMeasurement("times") / 1e6
-        << " ms\tAverage mem: "
-        << runs[i].avgMeasurement("memory") / 1e6 << " MB" << std::endl;
+//        std::cout << "\tAverage time: "
+//        << runs[i].avgMeasurement("times") / 1e6
+//        << " ms\tAverage mem: "
+//        << runs[i].avgMeasurement("memory") / 1e6 << " MB" << std::endl;
     }
 
 }
@@ -145,8 +136,7 @@ void runExperiments(std::vector<ExperimentRun> &runs, const uint reps = 10, bool
 std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint minN = 10,
                                                   int maxThreads = -1, int minThreads = 1,
                                                   bool parallel_base = false,
-                                                  TriState parallel_edge = TriState::INDEF,
-                                                  int runNumber = -1) {
+                                                  TriState parallel_edge = TriState::INDEF) {
 
     std::vector<ExperimentRun> runs;
 
@@ -155,10 +145,6 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
         maxThreads = tbb::task_scheduler_init::default_num_threads();
     if (minThreads == -1)
         minThreads = maxThreads;
-
-    //determine the latest run number
-    if (runNumber == -1)
-        runNumber = db.getMaximum<uint>("run-number") + 1;
 
     //loop over distributions
     for (const unsigned char dist : distributions) {
@@ -173,7 +159,6 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
                 if (alg == 'c') {
 
                     ExperimentRun run;
-                    run.addTrait("run-number", runNumber);
                     run.addTrait("dist", dist);
                     run.addTrait("nP", nPoints);
                     run.addTrait("alg", alg);
@@ -192,7 +177,6 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
                             if (alg == 'm') {
                                 ExperimentRun run;
-                                run.addTrait("run-number", runNumber);
                                 run.addTrait("dist", dist);
                                 run.addTrait("nP", nPoints);
                                 run.addTrait("alg", alg);
@@ -208,7 +192,6 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
                                     if (firstOccupancy) { // we do not need to generate runs for the following occupancies
                                         ExperimentRun runSeq;
-                                        runSeq.addTrait("run-number", runNumber);
                                         runSeq.addTrait("dist", dist);
                                         runSeq.addTrait("nP", nPoints);
                                         runSeq.addTrait("alg", alg);
@@ -232,7 +215,6 @@ std::vector<ExperimentRun> generateExperimentRuns(const uint maxN, const uint mi
 
                                     if (parallel_base) {
                                         ExperimentRun runPar;
-                                        runPar.addTrait("run-number", runNumber);
                                         runPar.addTrait("dist", dist);
                                         runPar.addTrait("nP", nPoints);
                                         runPar.addTrait("alg", alg);
@@ -286,7 +268,6 @@ int main(int argc, char *argv[]) {
     uint reps = 10;
     std::string runFile;
     std::string run;
-    int runNumber = -1;
 
     po::options_description cCommandLine("Command Line Options");
     // point options
@@ -329,8 +310,6 @@ int main(int argc, char *argv[]) {
                                "file containing experiments to run");
     cCommandLine.add_options()("run-string", po::value<std::string>(&run),
                                "string describing an experiment to run");
-    cCommandLine.add_options()("run-number", po::value<int>(&runNumber),
-                               "specify run-number, default -1 = automatic");
     cCommandLine.add_options()("gen-only", "just generate test-cases");
     cCommandLine.add_options()("reverse", "reverse test-case execution");
 
@@ -361,10 +340,6 @@ int main(int argc, char *argv[]) {
         }
     } else if (vm.count("run-string")) {
         ExperimentRun exRun(run);
-        if (runNumber != -1) {
-            // a run-number was specified on the command line
-            exRun.addTrait("run-number", runNumber);
-        }
 
         runs.push_back(std::move(exRun));
     } else {
@@ -405,7 +380,7 @@ int main(int argc, char *argv[]) {
         }
 
         runs = generateExperimentRuns(maxN, minN, maxThreads, minThreads, parallelBase,
-                                      parallelEdge, runNumber);
+                                      parallelEdge);
     }
 
 #ifdef ENABLE_PROFILING

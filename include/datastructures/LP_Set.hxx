@@ -265,6 +265,9 @@ public:
         m_arraySize = nextPow2(std::max(std::size_t(1), size));
         ALLOCATE(m_arraySize);
     }
+    
+    LP_Set(const LP_Set<K, Growing>& other)
+        : LP_Set(other.copy()) { }
 
     template <bool Growing2>
     LP_Set(LP_Set<K, Growing2> &&other)

@@ -14,6 +14,7 @@
 
 // CGAL
 #define CGAL_LINKED_WITH_TBB
+#define CGAL_CONCURRENT_TRIANGULATION_3_ADD_TEMPORARY_POINTS_ON_FAR_SPHERE
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
@@ -22,7 +23,7 @@
 #include <CGAL/Triangulation_vertex_base_with_info_2.h>
 
 #include "mods/Indexed_Triangulation_data_structure_3.h"
-#include "mods/Delaunay_triangulation_3.h"
+#include <CGAL/Delaunay_triangulation_3.h>
 #include <CGAL/Triangulation_vertex_base_with_info_3.h>
 
 // boost
@@ -305,7 +306,7 @@ dSimplices<D, Precision> _delaunayCgal(const Point_Ids &ids, dPoints<D, Precisio
 
     PLOG("delaunayCGAL called with " << ids.size() << " points and bounds " << bounds << std::endl);
 
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, gridOccupancy);
 
     VTUNE_TASK(CgalTriangulation);
     Tria t = helper.make_tria();
@@ -412,7 +413,7 @@ protected:
         typedef CGAL::Triangulation_vertex_base_with_info_3<tIdType, K> Vb;
         typedef Triangulation_dSimplexAdapter_3<K, _detail::Concurrent_IndexHandler> Cb;
         typedef CGAL::Indexed_Triangulation_data_structure_3<Vb, Cb, CGAL::Parallel_tag, _detail::Concurrent_IndexHandler> Tds;
-        typedef CGAL::Delaunay_triangulation_3<K, Tds> CT;
+        typedef CGAL::Delaunay_triangulation_3<K, Tds, CGAL::Default, CGAL::Spatial_lock_grid_3<CGAL::Tag_non_blocking>> CT;
 
         return _delaunayCgal<3, Precision, CT, true>(ids, this->points, bounds,
                                                      this->gridOccupancy /*, filterInfinite */);
@@ -483,7 +484,7 @@ dSimplices<D, Precision> _pureCgal(const Point_Ids &ids, dPoints<D, Precision> &
                                    const uint gridOccupancy
         /*, bool filterInfinite */) {
 
-    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, std::cbrt(ids.size() / gridOccupancy));
+    CGALHelper<D, Precision, Tria, Parallel> helper(bounds, gridOccupancy);
 
     // transform points into CGAL points with info
     auto transform = [&points, &helper](const tIdType i) -> std::pair<typename Tria::Point, tIdType> {

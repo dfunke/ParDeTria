@@ -45,7 +45,7 @@ std::string print_stacktrace(const std::string & file, const int line, const uin
     void** addrlist = new void*[max_frames+1];
 
     // retrieve current stack addresses
-    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
+    int addrlen = backtrace(addrlist, max_frames+1);
 
     if (addrlen == 0) {
         ss << "\t<empty, possibly corrupt>\n";

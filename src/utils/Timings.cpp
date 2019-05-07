@@ -41,7 +41,7 @@ ExperimentRun::ExperimentRun(const std::string &run, std::string _traitSep, std:
     }
 }
 
-std::string ExperimentRun::str(std::string _traitSep, std::string _innerSep) const {
+std::string ExperimentRun::str(std::string _traitSep, std::string _innerSep, bool printMeas) const {
 
     std::stringstream ss;
 
@@ -49,6 +49,12 @@ std::string ExperimentRun::str(std::string _traitSep, std::string _innerSep) con
     for (const auto &trait : m_traits) {
         ss << sep << trait.first << _innerSep << trait.second;
         sep = _traitSep;
+    }
+
+    if(printMeas){
+        for (const auto &meas : m_measurements){
+            ss << sep << meas.first << _innerSep << avgMeasurement(meas.first);
+        }
     }
 
     return ss.str();

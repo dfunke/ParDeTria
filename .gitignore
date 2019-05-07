@@ -17,3 +17,5 @@ plot
 .pydevproject
 .settings
 .idea
+
+cpp_flags.txt

@@ -14,7 +14,7 @@ if (VTUNE)
             )
 endif ()
 
-add_library(Logging
+add_library(Logging EXCLUDE_FROM_ALL
         Logger.cpp
         ccolor.cpp
         StringUtils.cxx
@@ -22,7 +22,7 @@ add_library(Logging
 
 target_link_libraries(Logging ${TBB_LIBRARIES})
 
-add_library(Measurements
+add_library(Measurements EXCLUDE_FROM_ALL
         Timings.cpp
         System.c
         System.cpp
@@ -37,12 +37,12 @@ endif ()
 
 target_link_libraries(Measurements ${TBB_LIBRARIES})
 
-add_library(DBConn
-        DBConnection.cpp
-        ${EJDB_LIBRARIES}
-        )
+#add_library(DBConn EXCLUDE_FROM_ALL
+#        DBConnection.cpp
+#        ${EJDB_LIBRARIES}
+#        )
 
-add_library(Predicates
+add_library(Predicates EXCLUDE_FROM_ALL
         Predicates.cpp
         )
 

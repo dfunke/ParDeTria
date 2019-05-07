@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 3.0)
 cmake_policy(VERSION 3.0)
+enable_testing()
 
 project (Delaunay C CXX)
 
@@ -27,29 +28,50 @@ endif()
 # search path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/")
 
+find_package(CGAL REQUIRED)
+
 set(Boost_NO_BOOST_CMAKE ON)
 set(Boost_REALPATH ON)
 find_package(Boost 1.58 REQUIRED COMPONENTS system filesystem serialization program_options)
 
-find_package(CGAL REQUIRED)
-find_package(TBB REQUIRED)
+find_package(TBB REQUIRED COMPONENTS tbbmalloc)
 
 find_package(Threads REQUIRED)
-find_package(EJDB REQUIRED)
 find_package(VTune)
+find_package(KaHIP REQUIRED)
+find_package(Nanoflann REQUIRED)
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Numa REQUIRED)
+
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
 include_directories(
   SYSTEM
   ${CGAL_INCLUDE_DIRS}
+  ${KaHIP_INCLUDE_DIRS}
+  ${Nanoflann_INCLUDE_DIR}
 )
 
 include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++14 -pedantic -Wall -Wextra -Werror")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -pedantic -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -std=c++17 -ggdb -pedantic -Wall -Wextra -Werror -fopenmp")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -std=c11 -ggdb -pedantic -Wall -Wextra -Werror -fopenmp")
+
+option(PAINT "Enable painting features" OFF)
+if (PAINT)
+  message(STATUS "Paint mode enabled")
+  add_definitions(-DENABLE_PAINTING)
+  find_package(Cairomm REQUIRED)
+  include_directories(${Cairomm_INCLUDE_DIRS} ${INCLUDE_DIRECTORIES})
+endif ()
+
+option(REPRODUCIBLE "Enable reproducible results - performance penalty" OFF)
+if (REPRODUCIBLE)
+    message(STATUS "REPRODUCIBLE mode enabled")
+    add_definitions(-DREPRODUCIBLE)
+endif ()
 
 option(VALGRIND "Enable Valgrind compatibility options" OFF)
 if (VALGRIND)
@@ -104,3 +126,10 @@ if(GTest_FOUND)
 	# add testing subdirectory
 	add_subdirectory(tests)
 endif()
+
+set(flags ${CMAKE_CXX_FLAGS})
+get_directory_property(dirs INCLUDE_DIRECTORIES)
+foreach (dir ${dirs})
+	set(flags "${flags} -I ${dir}")
+endforeach()
+file(WRITE cpp_flags.txt ${flags} "\n")

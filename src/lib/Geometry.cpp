@@ -41,6 +41,31 @@ std::atomic<tIdType> dSimplices<D, Precision>::simplexID(1);
 /*  jrs@cs.cmu.edu                                                           */
 /*****************************************************************************/
 
+// common operations
+template<std::size_t D, typename Precision>
+Precision dot(const dVector<D, Precision> &a, const dVector<D, Precision> &b){
+    Precision r = 0;
+    for(uint d = 0; d < D; ++d)
+        r += a[d] * b[d];
+    return r;
+}
+
+template<std::size_t D, typename Precision>
+dVector<D, Precision> operator+(const dVector<D, Precision> &a, const dVector<D, Precision> &b){
+    dVector<D, Precision> r = a;
+    for(uint d = 0; d < D; ++d)
+        r[d] += b[d];
+    return r;
+}
+
+template<std::size_t D, typename Precision>
+dVector<D, Precision> operator-(const dVector<D, Precision> &a, const dVector<D, Precision> &b){
+    dVector<D, Precision> r = b;
+    for(uint d = 0; d < D; ++d)
+        r[d] -= a[d];
+    return r;
+}
+
 // specializations
 
 template<typename Precision>
@@ -72,6 +97,52 @@ public:
 //        return acx * bcy - acy * bcx;
 
         return Predicates<2, Precision>::orient(s0.coords.data(), s1.coords.data(), s2.coords.data());
+    }
+
+    static bool inSimplex(const dPoint<2, Precision> &p,
+                          const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1, const dPoint<2, Precision> &s2) {
+        // Compute vectors
+        auto v1 = s1.coords - s0.coords;
+        auto v2 = s2.coords - s0.coords;
+        auto vp = p.coords  - s0.coords;
+
+        // Compute dot products
+        auto v1v1 = dot(v1, v1);
+        auto v1v2 = dot(v1, v2);
+        auto v1vp = dot(v1, vp);
+        auto v2v2 = dot(v2, v2);
+        auto v2vp = dot(v2, vp);
+
+        /*
+         * Solve[{v1vp == u*(v1v1) + v*(v1v2),
+         *        v2vp == u*(v1v2) + v*(v2v2)},
+         *        {u, v}]
+         *
+         * {{u->-((v1vp v2v2-v1v2 v2vp)  / (v1v2^2-v1v1 v2v2)),
+         *   v->-((-v1v2 v1vp+v1v1 v2vp) / (v1v2^2-v1v1 v2v2))}}
+         *
+         * */
+
+        // Compute barycentric coordinates
+        auto invDenom = Precision(1) / (v1v2 * v1v2 - v1v1 * v2v2);
+
+        auto u = -(( v1vp * v2v2 - v1v2 * v2vp) * invDenom);
+        auto v = -((-v1v2 * v1vp + v1v1 * v2vp) * invDenom);
+
+        // Check if point is in triangle
+        return (u >= 0) && (v >= 0) && (u + v <= 1);
+
+    }
+
+    static Precision sqDistanceToFace(const dPoint<2, Precision> &p,
+                                      const dPoint<2, Precision> &s0, const dPoint<2, Precision> &s1) {
+
+        auto v = s1.coords - s0.coords;
+        auto r = p.coords  - s0.coords;
+
+        auto n = dVector<2, Precision>({ v[1], -v[0] });
+
+        return std::abs(dot(n,r) / dot(n, n));
     }
 
     static bool inSphere(const dPoint<2, Precision> &p,
@@ -215,6 +286,66 @@ public:
 //               cdx * (ady * bdz - adz * bdy);
 
         return Predicates<3, Precision>::orient(s0.coords.data(), s1.coords.data(), s2.coords.data(), s3.coords.data());
+    }
+
+    static bool inSimplex(const dPoint<3, Precision> &p,
+                          const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2, const dPoint<3, Precision> &s3) {
+        // Compute vectors
+        auto v1 = s1.coords - s0.coords;
+        auto v2 = s2.coords - s0.coords;
+        auto v3 = s3.coords - s0.coords;
+        auto vp = p.coords  - s0.coords;
+
+        // Compute dot products
+        auto v1v1 = dot(v1, v1);
+        auto v1v2 = dot(v1, v2);
+        auto v1v3 = dot(v1, v3);
+        auto v1vp = dot(v1, vp);
+        auto v2v2 = dot(v2, v2);
+        auto v2v3 = dot(v2, v3);
+        auto v2vp = dot(v2, vp);
+        auto v3v3 = dot(v3, v3);
+        auto v3vp = dot(v3, vp);
+
+        /*
+         * Solve[{v1vp == u*(v1v1) + v*(v1v2) + z*(v1v3),
+                  v2vp == u*(v1v2) + v*(v2v2) + z*(v2v3),
+                  v3vp == u*(v1v3) + v*(v2v3) + z*(v3v3)},
+                  {u, v, z}]
+         *
+         * {{u -> -((-v1vp v2v3^2 + v1v3 v2v3 v2vp + v1vp v2v2 v3v3 - v1v2 v2vp v3v3 - v1v3 v2v2 v3vp + v1v2 v2v3 v3vp)
+         *         /(v1v3^2 v2v2 - 2 v1v2 v1v3 v2v3 + v1v1 v2v3^2 + v1v2^2 v3v3 - v1v1 v2v2 v3v3)),
+         *   v -> -((v1v3 v1vp v2v3 - v1v3^2 v2vp - v1v2 v1vp v3v3 + v1v1 v2vp v3v3 + v1v2 v1v3 v3vp - v1v1 v2v3 v3vp)
+         *         /(v1v3^2 v2v2 - 2 v1v2 v1v3 v2v3 + v1v1 v2v3^2 + v1v2^2 v3v3 - v1v1 v2v2 v3v3)),
+         *   z -> -((-v1v3 v1vp v2v2 + v1v2 v1vp v2v3 + v1v2 v1v3 v2vp - v1v1 v2v3 v2vp - v1v2^2 v3vp + v1v1 v2v2 v3vp)
+         *         /(v1v3^2 v2v2 - 2 v1v2 v1v3 v2v3 + v1v1 v2v3^2 + v1v2^2 v3v3 - v1v1 v2v2 v3v3))}}
+         *
+         * */
+
+        // Compute barycentric coordinates
+        auto invDenom = Precision(1) / (v1v3 * v1v3 * v2v2 - 2 * v1v2 * v1v3 * v2v3 + v1v1 * v2v3 * v2v3 + v1v2 * v1v2 * v3v3 - v1v1 * v2v2 * v3v3);
+
+        auto u = -((-v1vp * v2v3 * v2v3 + v1v3 * v2v3 * v2vp + v1vp * v2v2 * v3v3 - v1v2 * v2vp * v3v3 - v1v3 * v2v2 * v3vp + v1v2 * v2v3 * v3vp) * invDenom);
+        auto v = -(( v1v3 * v1vp * v2v3 - v1v3 * v1v3 * v2vp - v1v2 * v1vp * v3v3 + v1v1 * v2vp * v3v3 + v1v2 * v1v3 * v3vp - v1v1 * v2v3 * v3vp) * invDenom);
+        auto z = -((-v1v3 * v1vp * v2v2 + v1v2 * v1vp * v2v3 + v1v2 * v1v3 * v2vp - v1v1 * v2v3 * v2vp - v1v2 * v1v2 * v3vp + v1v1 * v2v2 * v3vp) * invDenom);
+
+        // Check if point is in triangle
+        return (u >= 0) && (v >= 0) && (z >= 0) && (u + v + z <= 1);
+
+    }
+
+    static Precision sqDistanceToFace(const dPoint<3, Precision> &p,
+                                      const dPoint<3, Precision> &s0, const dPoint<3, Precision> &s1, const dPoint<3, Precision> &s2) {
+
+        auto u = s1.coords - s0.coords;
+        auto v = s2.coords - s0.coords;
+        auto w = p.coords  - s0.coords;
+
+        auto n = dVector<3, Precision>({ (u[1] * v[2] - u[2] * v[1]),
+                                         (u[2] * v[0] - u[0] * v[2]),
+                                         (u[0] * v[1] - u[1] * v[0]) });
+
+        return std::abs(dot(w,n) / dot(n,n));
     }
 
     static bool inSphere(const dPoint<3, Precision> &p,
@@ -985,7 +1116,7 @@ dSimplices<D, Precision>::verify(const dPoints<D, Precision> &points, const Poin
                         // we have found the point of nn that is NOT shared with s
                         const auto &p = points[nn.vertices[d]];
                         if (s.inSphere(p, points)) {
-                            LOG("Point " << p << " is in circle of " << s << std::endl);
+                            LOG("Point " << nn.vertices[d] << " " << p << " is in circle of " << s << std::endl);
 
                             tbb::spin_mutex::scoped_lock lock(mtx);
                             result.valid = false;
